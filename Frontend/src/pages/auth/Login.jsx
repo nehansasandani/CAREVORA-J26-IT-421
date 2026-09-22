@@ -1,15 +1,15 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Mail,
   Lock,
   Eye,
   EyeOff,
   LogIn,
-  
 } from "lucide-react";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+
 import { loginUser } from "../../services/authApi";
+import PopupMessage from "../../components/PopupMessage";
 
 function Login() {
   const [showPassword, setShowPassword] = useState(false);
@@ -17,69 +17,103 @@ function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+
   const navigate = useNavigate();
+
+  const [popup, setPopup] = useState({
+    show: false,
+    type: "success",
+    title: "",
+    message: "",
+    redirect: null,
+  });
+
   const handleSubmit = async (e) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  try {
-    setLoading(true);
+    try {
+      setLoading(true);
 
-    const data = await loginUser({
-      email,
-      password,
-    });
+      const data = await loginUser({
+        email,
+        password,
+      });
 
-    // Save login information
-    localStorage.setItem("token", data.token);
-    localStorage.setItem("user", JSON.stringify(data.user));
+      console.log("LOGIN USER:", data.user);
 
-    // Redirect according to role
-    if (data.user.role === "caregiver") {
-      navigate("/caregiver");
-    } else if (data.user.role === "elderly") {
-      navigate("/elderly");
+      // Save login information
+      localStorage.setItem("token", data.token);
+      localStorage.setItem(
+        "user",
+        JSON.stringify(data.user)
+      );
+
+      // Redirect according to role
+      if (data.user.role === "caregiver") {
+        navigate("/caregiver");
+      } else if (data.user.role === "elderly") {
+        navigate("/elderly");
+      }
+    } catch (error) {
+      setPopup({
+        show: true,
+        type: "error",
+        title: "Login Failed",
+        message:
+          error.message ||
+          "Unable to log in. Please check your email and password.",
+        redirect: null,
+      });
+    } finally {
+      setLoading(false);
     }
-  } catch (error) {
-    alert(error.message);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
+
+  const closePopup = () => {
+    setPopup({
+      show: false,
+      type: "success",
+      title: "",
+      message: "",
+      redirect: null,
+    });
+  };
 
   return (
     <div className="login-page">
 
-{/* =========================
-    LEFT BRANDING SECTION
-========================= */}
-<div className="login-brand">
+      {/* =========================
+          LEFT BRANDING SECTION
+      ========================= */}
+      <div className="login-brand">
 
-  <div className="brand-content">
+        <div className="brand-content">
 
-    <div className="login-logo">
-      <img
-        src="/logo1.png"
-        alt="Carevora logo"
-      />
-    </div>
+          <div className="login-logo">
+            <img
+              src="/logo1.png"
+              alt="Carevora logo"
+            />
+          </div>
 
-    <p className="brand-description">
-      AI-Powered Wellness Monitoring and
-      Early Risk Detection System for
-      Elderly Care Homes
-    </p>
+          <p className="brand-description">
+            AI-Powered Wellness Monitoring and
+            Early Risk Detection System for
+            Elderly Care Homes
+          </p>
 
-  </div>
+        </div>
 
-  {/* Background Decorations */}
-  <div className="brand-decoration decoration-one"></div>
-  <div className="brand-decoration decoration-two"></div>
+        {/* Background Decorations */}
+        <div className="brand-decoration decoration-one"></div>
+        <div className="brand-decoration decoration-two"></div>
 
-</div>
+      </div>
 
-      
 
-      {/* Login Section */}
+      {/* =========================
+          LOGIN SECTION
+      ========================= */}
       <div className="login-section">
 
         <div className="login-card">
@@ -186,7 +220,7 @@ function Login() {
             </div>
 
 
-            {/* Login button */}
+            {/* Login Button */}
             <button
               type="submit"
               className="login-submit"
@@ -218,6 +252,18 @@ function Login() {
         </div>
 
       </div>
+
+
+      {/* =========================
+          POPUP MESSAGE
+      ========================= */}
+      <PopupMessage
+        show={popup.show}
+        type={popup.type}
+        title={popup.title}
+        message={popup.message}
+        onClose={closePopup}
+      />
 
     </div>
   );

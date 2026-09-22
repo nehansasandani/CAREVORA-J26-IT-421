@@ -27,10 +27,18 @@ const userSchema = new mongoose.Schema(
       enum: ["caregiver", "elderly"],
       required: true,
     },
+
+        elderHomeId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "ElderHome",
+      required: true,
+    },
+    
   },
   {
     timestamps: true,
   }
 );
+
 
 module.exports = mongoose.model("User", userSchema);

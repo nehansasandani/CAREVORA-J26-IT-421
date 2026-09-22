@@ -5,6 +5,7 @@ import {
   User,
   Mail,
   ShieldCheck,
+  Home,
 } from "lucide-react";
 
 import { useEffect, useState } from "react";
@@ -219,6 +220,20 @@ useEffect(() => {
             </p>
 
           </div>
+
+          <div className="foundation-card">
+
+  <Home size={20} />
+
+  <h3>
+    Elder Home
+  </h3>
+
+  <p>
+    {resident.elderHomeId?.name || "Not assigned"}
+  </p>
+
+</div>
 
         </div>
 

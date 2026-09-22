@@ -20,6 +20,8 @@ import ResidentProfile from "../pages/caregiver/ResidentProfile";
 import Profile from "../pages/caregiver/Profile";
 import Settings from "../pages/caregiver/Settings";
 
+import ElderHomeRegister from "../pages/elderHome/ElderHomeRegister";
+
 function AppRoutes() {
   return (
     <Routes>
@@ -86,6 +88,14 @@ function AppRoutes() {
   path="/caregiver/settings"
   element={<Settings />}
 />
+
+<Route
+  path="/register-elder-home"
+  element={<ElderHomeRegister />}
+/>
+
+
+
 
     </Routes>
   );

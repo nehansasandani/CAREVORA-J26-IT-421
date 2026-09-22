@@ -2,8 +2,17 @@ const User = require("../models/User");
 
 const getResidents = async (req, res) => {
   try {
+    const { elderHomeId } = req.query;
+
+    if (!elderHomeId) {
+      return res.status(400).json({
+        message: "Elder home is required",
+      });
+    }
+
     const residents = await User.find({
       role: "elderly",
+      elderHomeId: elderHomeId,
     }).select("-password");
 
     res.json(residents);
@@ -19,10 +28,12 @@ const getResidents = async (req, res) => {
 const getResidentById = async (req, res) => {
   try {
 
-    const resident = await User.findOne({
-      _id: req.params.id,
-      role: "elderly",
-    }).select("-password");
+const resident = await User.findOne({
+  _id: req.params.id,
+  role: "elderly",
+})
+  .select("-password")
+  .populate("elderHomeId", "name");
 
     if (!resident) {
       return res.status(404).json({

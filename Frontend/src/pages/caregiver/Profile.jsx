@@ -2,6 +2,7 @@ import {
   User,
   Mail,
   ShieldCheck,
+  Home
 } from "lucide-react";
 
 import CaregiverSidebar from "./CaregiverSidebar";
@@ -98,7 +99,20 @@ function Profile() {
               Caregiver
             </p>
 
-          </div>
+</div>
+            <div className="foundation-card">
+
+  <Home size={20} />
+
+  <h3>Elder Home</h3>
+
+  <p>
+    {user?.elderHomeId?.name || "Not available"}
+  </p>
+
+</div>
+
+         
 
         </div>
 

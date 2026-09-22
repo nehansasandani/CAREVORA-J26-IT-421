@@ -7,6 +7,8 @@ const app = express();
 
 const residentRoutes = require("./routes/residentRoutes");
 
+const elderHomeRoutes = require("./routes/elderHomeRoutes");
+
 app.use(cors());
 app.use(express.json());
 
@@ -19,5 +21,7 @@ app.get("/", (req, res) => {
 app.use("/api/auth", authRoutes);
 
 app.use("/api/residents", residentRoutes);
+
+app.use("/api/elder-homes", elderHomeRoutes);
 
 module.exports = app;

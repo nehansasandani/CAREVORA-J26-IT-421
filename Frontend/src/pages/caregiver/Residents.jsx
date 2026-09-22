@@ -5,8 +5,12 @@ import { useEffect, useState } from "react";
 
 function Residents() {
 
-const [residents, setResidents] = useState([]);
-const [loading, setLoading] = useState(true);
+  const [residents, setResidents] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const user = JSON.parse(
+    localStorage.getItem("user")
+  );
 
 useEffect(() => {
 
@@ -15,8 +19,8 @@ useEffect(() => {
     try {
 
       const response = await fetch(
-        "http://localhost:5000/api/residents"
-      );
+  `http://localhost:5000/api/residents?elderHomeId=${user?.elderHomeId?._id || user?.elderHomeId}`
+);
 
       const data = await response.json();
 

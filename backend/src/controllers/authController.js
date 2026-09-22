@@ -9,7 +9,15 @@ const register = async (req, res) => {
       email,
       password,
       role,
+      elderHomeId,
     } = req.body;
+
+    if (!elderHomeId) {
+  return res.status(400).json({
+    message: "Elder home is required",
+  });
+}
+
 
     const existingUser = await User.findOne({
       email,
@@ -24,11 +32,14 @@ const register = async (req, res) => {
     const hashedPassword =
       await bcrypt.hash(password, 10);
 
+
+
     const user = await User.create({
       name,
       email,
       password: hashedPassword,
       role,
+      elderHomeId,
     });
 
     res.status(201).json({
@@ -38,6 +49,7 @@ const register = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        elderHomeId: user.elderHomeId,
       },
     });
 
@@ -57,9 +69,9 @@ const login = async (req, res) => {
       password,
     } = req.body;
 
-    const user = await User.findOne({
-      email,
-    });
+const user = await User.findOne({
+  email,
+}).populate("elderHomeId", "name");
 
     if (!user) {
       return res.status(401).json({
@@ -98,6 +110,7 @@ const login = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        elderHomeId: user.elderHomeId,
       },
     });
 
