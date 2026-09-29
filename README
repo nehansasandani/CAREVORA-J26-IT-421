@@ -1,0 +1,74 @@
+# Carevora
+
+## AI-Powered Personalized Wellness Monitoring and Early Risk Detection System for Elderly Care Homes
+
+Carevora is an AI-powered elderly-care support platform designed to assist caregivers in monitoring the emotional, cognitive, and metabolic well-being of elderly residents.
+
+The system combines artificial intelligence, machine learning, conversational assessment, personalized risk prediction, explainable AI, and caregiver decision support within a unified web-based platform.
+
+> **Note:** Carevora is intended to provide AI-assisted risk monitoring and caregiver decision support. It is not a medical diagnostic system and does not replace professional healthcare services.
+
+---
+
+## Research Project
+
+**Project:** J26-IT-421  
+**Degree:** B.Sc. (Hons) in Information Technology  
+**Institution:** Sri Lanka Institute of Information Technology (SLIIT)
+
+### Research Components
+
+The Carevora platform consists of multiple research components:
+
+1. **Emotional Wellness, Social Isolation and Loneliness Trajectory Prediction**
+2. **Cognitive Wellness Monitoring and Early Cognitive Decline Prediction**
+3. **Metabolic Health Risk Prediction**
+
+The components are integrated through common application, AI/ML, database, authentication, and caregiver-support services.
+
+---
+
+# System Overview
+
+Carevora follows a modular architecture where elderly residents provide assessment information through the application and the collected information is processed by the corresponding AI/ML component.
+
+The overall workflow can be summarized as:
+
+```text
+Elderly Resident
+       |
+       v
+AI-Assisted Assessment / Interaction
+       |
+       v
+Data Collection
+       |
+       v
+Feature Processing
+       |
+       v
+AI / Machine Learning Services
+       |
+       +-------------------------------+
+       |               |               |
+       v               v               v
+Emotional         Cognitive        Metabolic
+Wellness          Wellness         Health
+Component         Component        Component
+       |               |               |
+       +---------------+---------------+
+                       |
+                       v
+              Risk Prediction
+                       |
+                       v
+             Explainable Insights
+                       |
+                       v
+          Personalized Recommendations
+                       |
+                       v
+              Caregiver Dashboard
+                       |
+                       v
+              Follow-up / Reassessment
