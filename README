@@ -1,11 +1,13 @@
 # 🏡 Carevora
 
+<p align="center">
+
 ### AI-Powered Personalized Wellness Monitoring and Early Risk Detection System for Elderly Care Homes
 
-<p align="center">
-  <b>J26-IT-421</b><br>
-  B.Sc. (Hons) in Information Technology<br>
-  Sri Lanka Institute of Information Technology (SLIIT)
+**J26-IT-421**  
+**B.Sc. (Hons) in Information Technology**  
+**Sri Lanka Institute of Information Technology (SLIIT)**
+
 </p>
 
 ---
@@ -14,154 +16,112 @@
 
 **Carevora** is an AI-powered elderly-care support platform designed to assist caregivers in monitoring the **emotional, cognitive, and metabolic well-being** of elderly residents.
 
-The platform combines:
+The platform brings together **Artificial Intelligence, Machine Learning, conversational assessment, personalized risk prediction, Explainable AI, and caregiver decision support** within a unified web-based elderly-care system.
 
-- 🤖 Artificial Intelligence
-- 🧠 Machine Learning
-- 💬 AI-Assisted Conversational Assessment
-- 📊 Personalized Risk Prediction
-- 🔍 Explainable AI
-- 💡 Personalized Recommendations
-- 👩‍⚕️ Caregiver Decision Support
-
-into a unified web-based elderly-care platform.
-
-> **Important:** Carevora is an academic research and decision-support system.  
-> It is **not a medical diagnostic system** and does not replace professional healthcare services.
+> ⚠️ **Important:** Carevora is an academic research and decision-support system. It is **not a medical diagnostic system** and does not replace professional healthcare services.
 
 ---
 
 ## 🎓 Research Project
 
-| | Details |
+| Category | Details |
 |---|---|
-| **Project** | J26-IT-421 |
+| **Project Code** | J26-IT-421 |
 | **Degree** | B.Sc. (Hons) in Information Technology |
 | **Institution** | Sri Lanka Institute of Information Technology (SLIIT) |
 | **Project Type** | Undergraduate Research Project |
-| **Platform** | Web-Based AI Elderly-Care System |
+| **Domain** | Artificial Intelligence & Machine Learning |
+| **Application Area** | Elderly Care |
 
 ---
 
 # 🔬 Research Components
 
-Carevora consists of three main research components:
-
-### 💙 1. Emotional Wellness, Social Isolation & Loneliness Trajectory Prediction
-
-Focuses on:
-
-- Emotional wellness assessment
-- Loneliness assessment
-- Social-isolation assessment
-- Multimodal data processing
-- Resident-specific baseline modelling
-- Baseline deviation detection
-- Longitudinal trend analysis
-- Future trajectory prediction
-- Explainable risk factors
-- Personalized activity recommendations
-- Caregiver alerts
-- Post-intervention reassessment
-
-**Proposed Algorithm:**
-
-> **RALPA — Resident-Adaptive Longitudinal Prediction Algorithm**
+Carevora consists of three major research components that work together through a shared elderly-care platform.
 
 ---
 
-### 🧠 2. Cognitive Wellness Monitoring & Early Cognitive Decline Prediction
+## 💙 Component 1 — Emotional Wellness, Social Isolation & Loneliness Trajectory Prediction
 
-Focuses on:
+This component focuses on identifying changes in the emotional and social well-being of elderly residents and predicting future loneliness and social-isolation trajectories.
 
-- AI-assisted cognitive assessment
-- Memory assessment
-- Attention assessment
-- Orientation assessment
-- Recall assessment
-- Reasoning-related indicators
-- Speech and response processing
-- Cognitive feature extraction
-- Cognitive-risk prediction
-- Explainable AI
-- Personalized cognitive activities
-- Caregiver alerts
-- Follow-up reassessment
+### Key Features
 
-**Proposed Algorithm:**
+- 💬 AI-assisted structured conversation
+- 🙂 Facial emotional analysis
+- 🎙️ Vocal emotional analysis
+- 📝 Questionnaire-based assessment
+- 👥 Social-behavioural indicators
+- 📊 Resident-specific baseline modelling
+- 📈 Baseline deviation detection
+- ⏳ Longitudinal trend analysis
+- 🔮 Future loneliness trajectory prediction
+- 🔮 Future social-isolation trajectory prediction
+- 🔍 Explainable risk factors
+- 💡 Personalized activity recommendations
+- 🚨 Caregiver alerts
+- 🔄 Post-intervention reassessment
 
-> **ACRF — Adaptive Cognitive Risk Fusion**
+### Proposed Algorithm
 
----
+**RALPA — Resident-Adaptive Longitudinal Prediction Algorithm**
 
-### ❤️ 3. Metabolic Health Risk Prediction
+RALPA is designed to support resident-specific longitudinal analysis by considering historical observations, personal baseline patterns, deviations from baseline, and temporal trends before predicting future risk trajectories.
 
-Focuses on AI-assisted monitoring and prediction of metabolic-health-related risks using relevant health and physiological information.
-
-The component is designed to provide:
-
-- Risk prediction
-- Personalized monitoring
-- Explainable risk information
-- Caregiver decision support
-
----
-
-# 🏗️ System Architecture
-
-Carevora follows a modular architecture connecting the frontend, backend, AI/ML services, database, and caregiver interface.
+### Emotional Wellness Flow
 
 ```text
-                         ┌───────────────────────┐
-                         │    Elderly Resident   │
-                         └───────────┬───────────┘
-                                     │
-                                     ▼
-                         ┌───────────────────────┐
-                         │ AI-Assisted Assessment│
-                         └───────────┬───────────┘
-                                     │
-                                     ▼
-                         ┌───────────────────────┐
-                         │   Data Collection     │
-                         └───────────┬───────────┘
-                                     │
-                                     ▼
-                         ┌───────────────────────┐
-                         │  AI / ML Processing   │
-                         └───────────┬───────────┘
-                                     │
-              ┌──────────────────────┼──────────────────────┐
-              │                      │                      │
-              ▼                      ▼                      ▼
-       ┌──────────────┐       ┌──────────────┐       ┌──────────────┐
-       │  Emotional   │       │  Cognitive   │       │  Metabolic   │
-       │  Wellness    │       │  Wellness    │       │    Health    │
-       └──────┬───────┘       └──────┬───────┘       └──────┬───────┘
-              │                      │                      │
-              └──────────────────────┼──────────────────────┘
-                                     │
-                                     ▼
-                         ┌───────────────────────┐
-                         │   Risk Prediction     │
-                         └───────────┬───────────┘
-                                     │
-                                     ▼
-                         ┌───────────────────────┐
-                         │  Explainable Insights │
-                         └───────────┬───────────┘
-                                     │
-                                     ▼
-                         ┌───────────────────────┐
-                         │ Personalized Support  │
-                         └───────────┬───────────┘
-                                     │
-                                     ▼
-                         ┌───────────────────────┐
-                         │ Caregiver Dashboard   │
-                         └───────────┬───────────┘
-                                     │
-                                     ▼
-                         ┌───────────────────────┐
-                         │ Follow-up / Reassessment│
-                         └───────────────────────┘
+┌─────────────────────────────┐
+│   Multimodal Observations   │
+│                             │
+│ Facial • Vocal •            │
+│ Questionnaire • Behavioural │
+└──────────────┬──────────────┘
+               │
+               ▼
+┌─────────────────────────────┐
+│ Resident Historical Data    │
+└──────────────┬──────────────┘
+               │
+               ▼
+┌─────────────────────────────┐
+│ Resident-Specific Baseline  │
+└──────────────┬──────────────┘
+               │
+               ▼
+┌─────────────────────────────┐
+│ Baseline Deviation          │
+│ Detection                   │
+└──────────────┬──────────────┘
+               │
+               ▼
+┌─────────────────────────────┐
+│ Longitudinal Trend Analysis │
+└──────────────┬──────────────┘
+               │
+               ▼
+┌─────────────────────────────┐
+│            RALPA            │
+└──────────────┬──────────────┘
+               │
+               ▼
+┌─────────────────────────────┐
+│ Future Risk / Trajectory    │
+│ Prediction                  │
+└──────────────┬──────────────┘
+               │
+               ▼
+┌─────────────────────────────┐
+│ Explainable Risk Factors    │
+└──────────────┬──────────────┘
+               │
+               ▼
+┌─────────────────────────────┐
+│ Personalized Activities     │
+└──────────────┬──────────────┘
+               │
+               ▼
+┌─────────────────────────────┐
+│ Post-Intervention           │
+│ Reassessment                │
+└─────────────────────────────┘
