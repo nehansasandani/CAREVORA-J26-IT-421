@@ -1,74 +1,167 @@
-# Carevora
+# 🏡 Carevora
 
-## AI-Powered Personalized Wellness Monitoring and Early Risk Detection System for Elderly Care Homes
+### AI-Powered Personalized Wellness Monitoring and Early Risk Detection System for Elderly Care Homes
 
-Carevora is an AI-powered elderly-care support platform designed to assist caregivers in monitoring the emotional, cognitive, and metabolic well-being of elderly residents.
-
-The system combines artificial intelligence, machine learning, conversational assessment, personalized risk prediction, explainable AI, and caregiver decision support within a unified web-based platform.
-
-> **Note:** Carevora is intended to provide AI-assisted risk monitoring and caregiver decision support. It is not a medical diagnostic system and does not replace professional healthcare services.
-
----
-
-## Research Project
-
-**Project:** J26-IT-421  
-**Degree:** B.Sc. (Hons) in Information Technology  
-**Institution:** Sri Lanka Institute of Information Technology (SLIIT)
-
-### Research Components
-
-The Carevora platform consists of multiple research components:
-
-1. **Emotional Wellness, Social Isolation and Loneliness Trajectory Prediction**
-2. **Cognitive Wellness Monitoring and Early Cognitive Decline Prediction**
-3. **Metabolic Health Risk Prediction**
-
-The components are integrated through common application, AI/ML, database, authentication, and caregiver-support services.
+<p align="center">
+  <b>J26-IT-421</b><br>
+  B.Sc. (Hons) in Information Technology<br>
+  Sri Lanka Institute of Information Technology (SLIIT)
+</p>
 
 ---
 
-# System Overview
+## 🌿 About Carevora
 
-Carevora follows a modular architecture where elderly residents provide assessment information through the application and the collected information is processed by the corresponding AI/ML component.
+**Carevora** is an AI-powered elderly-care support platform designed to assist caregivers in monitoring the **emotional, cognitive, and metabolic well-being** of elderly residents.
 
-The overall workflow can be summarized as:
+The platform combines:
+
+- 🤖 Artificial Intelligence
+- 🧠 Machine Learning
+- 💬 AI-Assisted Conversational Assessment
+- 📊 Personalized Risk Prediction
+- 🔍 Explainable AI
+- 💡 Personalized Recommendations
+- 👩‍⚕️ Caregiver Decision Support
+
+into a unified web-based elderly-care platform.
+
+> **Important:** Carevora is an academic research and decision-support system.  
+> It is **not a medical diagnostic system** and does not replace professional healthcare services.
+
+---
+
+## 🎓 Research Project
+
+| | Details |
+|---|---|
+| **Project** | J26-IT-421 |
+| **Degree** | B.Sc. (Hons) in Information Technology |
+| **Institution** | Sri Lanka Institute of Information Technology (SLIIT) |
+| **Project Type** | Undergraduate Research Project |
+| **Platform** | Web-Based AI Elderly-Care System |
+
+---
+
+# 🔬 Research Components
+
+Carevora consists of three main research components:
+
+### 💙 1. Emotional Wellness, Social Isolation & Loneliness Trajectory Prediction
+
+Focuses on:
+
+- Emotional wellness assessment
+- Loneliness assessment
+- Social-isolation assessment
+- Multimodal data processing
+- Resident-specific baseline modelling
+- Baseline deviation detection
+- Longitudinal trend analysis
+- Future trajectory prediction
+- Explainable risk factors
+- Personalized activity recommendations
+- Caregiver alerts
+- Post-intervention reassessment
+
+**Proposed Algorithm:**
+
+> **RALPA — Resident-Adaptive Longitudinal Prediction Algorithm**
+
+---
+
+### 🧠 2. Cognitive Wellness Monitoring & Early Cognitive Decline Prediction
+
+Focuses on:
+
+- AI-assisted cognitive assessment
+- Memory assessment
+- Attention assessment
+- Orientation assessment
+- Recall assessment
+- Reasoning-related indicators
+- Speech and response processing
+- Cognitive feature extraction
+- Cognitive-risk prediction
+- Explainable AI
+- Personalized cognitive activities
+- Caregiver alerts
+- Follow-up reassessment
+
+**Proposed Algorithm:**
+
+> **ACRF — Adaptive Cognitive Risk Fusion**
+
+---
+
+### ❤️ 3. Metabolic Health Risk Prediction
+
+Focuses on AI-assisted monitoring and prediction of metabolic-health-related risks using relevant health and physiological information.
+
+The component is designed to provide:
+
+- Risk prediction
+- Personalized monitoring
+- Explainable risk information
+- Caregiver decision support
+
+---
+
+# 🏗️ System Architecture
+
+Carevora follows a modular architecture connecting the frontend, backend, AI/ML services, database, and caregiver interface.
 
 ```text
-Elderly Resident
-       |
-       v
-AI-Assisted Assessment / Interaction
-       |
-       v
-Data Collection
-       |
-       v
-Feature Processing
-       |
-       v
-AI / Machine Learning Services
-       |
-       +-------------------------------+
-       |               |               |
-       v               v               v
-Emotional         Cognitive        Metabolic
-Wellness          Wellness         Health
-Component         Component        Component
-       |               |               |
-       +---------------+---------------+
-                       |
-                       v
-              Risk Prediction
-                       |
-                       v
-             Explainable Insights
-                       |
-                       v
-          Personalized Recommendations
-                       |
-                       v
-              Caregiver Dashboard
-                       |
-                       v
-              Follow-up / Reassessment
+                         ┌───────────────────────┐
+                         │    Elderly Resident   │
+                         └───────────┬───────────┘
+                                     │
+                                     ▼
+                         ┌───────────────────────┐
+                         │ AI-Assisted Assessment│
+                         └───────────┬───────────┘
+                                     │
+                                     ▼
+                         ┌───────────────────────┐
+                         │   Data Collection     │
+                         └───────────┬───────────┘
+                                     │
+                                     ▼
+                         ┌───────────────────────┐
+                         │  AI / ML Processing   │
+                         └───────────┬───────────┘
+                                     │
+              ┌──────────────────────┼──────────────────────┐
+              │                      │                      │
+              ▼                      ▼                      ▼
+       ┌──────────────┐       ┌──────────────┐       ┌──────────────┐
+       │  Emotional   │       │  Cognitive   │       │  Metabolic   │
+       │  Wellness    │       │  Wellness    │       │    Health    │
+       └──────┬───────┘       └──────┬───────┘       └──────┬───────┘
+              │                      │                      │
+              └──────────────────────┼──────────────────────┘
+                                     │
+                                     ▼
+                         ┌───────────────────────┐
+                         │   Risk Prediction     │
+                         └───────────┬───────────┘
+                                     │
+                                     ▼
+                         ┌───────────────────────┐
+                         │  Explainable Insights │
+                         └───────────┬───────────┘
+                                     │
+                                     ▼
+                         ┌───────────────────────┐
+                         │ Personalized Support  │
+                         └───────────┬───────────┘
+                                     │
+                                     ▼
+                         ┌───────────────────────┐
+                         │ Caregiver Dashboard   │
+                         └───────────┬───────────┘
+                                     │
+                                     ▼
+                         ┌───────────────────────┐
+                         │ Follow-up / Reassessment│
+                         └───────────────────────┘
