@@ -31,8 +31,8 @@ env/
 *.pkl
 *.joblib
 
-# Local datasets and generated feature data
-ai-service/data/
+# Local raw dataset
+ai-service/data/raw/
 
 # IDE
 .vscode/
