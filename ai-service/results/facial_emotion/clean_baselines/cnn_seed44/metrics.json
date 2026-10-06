@@ -1,0 +1,18 @@
+{
+    "model": "CNN Baseline",
+    "dataset": "FER-2013 Clean",
+    "seed": 44,
+    "train_images": 26912,
+    "test_images": 6610,
+    "image_size": 48,
+    "batch_size": 32,
+    "accuracy": 0.34296520423600607,
+    "macro_precision": 0.30742492269873456,
+    "macro_recall": 0.35007131061601793,
+    "macro_f1": 0.292967545134447,
+    "weighted_precision": 0.35906246935845426,
+    "weighted_recall": 0.34296520423600607,
+    "weighted_f1": 0.33572523327046655,
+    "epochs_configured": 30,
+    "epochs_trained": 16
+}

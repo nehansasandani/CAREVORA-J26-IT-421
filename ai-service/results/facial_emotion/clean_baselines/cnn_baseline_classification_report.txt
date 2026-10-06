@@ -1,0 +1,24 @@
+CAREVORA - CNN_Baseline
+Clean FER-2013 Test Evaluation
+Test images: 6610
+
+Loss: 1.4736
+Accuracy: 0.4381
+Macro Precision: 0.3919
+Macro Recall: 0.4141
+Macro F1: 0.3596
+Weighted F1: 0.4129
+
+              precision    recall  f1-score   support
+
+       angry     0.3653    0.0684    0.1152       892
+     disgust     0.1154    0.4500    0.1837        80
+        fear     0.2582    0.0849    0.1278       930
+       happy     0.6847    0.6401    0.6616      1717
+     neutral     0.4259    0.4012    0.4132      1189
+         sad     0.3162    0.6500    0.4255      1203
+    surprise     0.5774    0.6043    0.5905       599
+
+    accuracy                         0.4381      6610
+   macro avg     0.3919    0.4141    0.3596      6610
+weighted avg     0.4514    0.4381    0.4129      6610

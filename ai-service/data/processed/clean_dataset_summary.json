@@ -1,0 +1,31 @@
+{
+    "source_dataset": "C:\\Users\\HP\\Desktop\\ITPM426\\CAREVORA-J26-IT-421\\ai-service\\data\\raw\\fer2013",
+    "output_dataset": "C:\\Users\\HP\\Desktop\\ITPM426\\CAREVORA-J26-IT-421\\ai-service\\data\\raw\\fer2013_clean",
+    "original_train_images": 28709,
+    "original_test_images": 7178,
+    "train_test_overlap_images_removed_from_train": 703,
+    "conflicting_duplicate_groups": 39,
+    "conflicting_duplicate_images_removed": 73,
+    "extra_duplicate_train_images_removed": 1021,
+    "test_overlap_images_removed": 568,
+    "final_clean_train_images": 26912,
+    "final_clean_test_images": 6610,
+    "train_class_counts": {
+        "angry": 3776,
+        "disgust": 350,
+        "fear": 3797,
+        "happy": 7030,
+        "neutral": 4822,
+        "sad": 4677,
+        "surprise": 2460
+    },
+    "test_class_counts": {
+        "angry": 892,
+        "disgust": 80,
+        "fear": 930,
+        "happy": 1717,
+        "neutral": 1189,
+        "sad": 1203,
+        "surprise": 599
+    }
+}
