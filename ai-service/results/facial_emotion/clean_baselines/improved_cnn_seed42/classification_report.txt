@@ -1,0 +1,24 @@
+CLEAN IMPROVED CNN - FER-2013
+Seed: 42
+Test images: 6610
+
+              precision    recall  f1-score   support
+
+       angry     0.4889    0.5191    0.5035       892
+     disgust     0.3077    0.3000    0.3038        80
+        fear     0.4565    0.2989    0.3613       930
+       happy     0.8215    0.8363    0.8289      1717
+     neutral     0.5053    0.6434    0.5660      1189
+         sad     0.4805    0.4414    0.4601      1203
+    surprise     0.6683    0.6795    0.6738       599
+
+    accuracy                         0.5906      6610
+   macro avg     0.5327    0.5312    0.5282      6610
+weighted avg     0.5862    0.5906    0.5844      6610
+
+
+Accuracy: 0.590620
+Macro Precision: 0.532677
+Macro Recall: 0.531227
+Macro F1: 0.528212
+Weighted F1: 0.584386

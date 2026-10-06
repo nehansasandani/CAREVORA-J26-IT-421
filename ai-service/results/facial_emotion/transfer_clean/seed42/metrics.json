@@ -1,0 +1,12 @@
+{
+    "seed": 42,
+    "clean_test_images": 6610,
+    "test_loss": 1.2052963972091675,
+    "test_accuracy": 0.6196671724319458,
+    "model": "EfficientNetB0",
+    "dataset": "FER-2013 clean",
+    "validation_split": 0.15,
+    "phase1_epochs": 15,
+    "phase2_epochs": 30,
+    "best_model": "C:\\Users\\HP\\Desktop\\ITPM426\\CAREVORA-J26-IT-421\\ai-service\\src\\models\\clean_seed\\seed42\\transfer_emotion_clean.keras"
+}
