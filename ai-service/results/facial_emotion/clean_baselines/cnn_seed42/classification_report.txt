@@ -1,0 +1,25 @@
+CLEAN FER-2013 CNN BASELINE
+Seed: 42
+Test Images: 6610
+
+Accuracy: 0.317398
+Macro Precision: 0.282892
+Macro Recall: 0.327811
+Macro F1: 0.241982
+Weighted Precision: 0.340192
+Weighted Recall: 0.317398
+Weighted F1: 0.291281
+
+              precision    recall  f1-score   support
+
+       angry     0.2778    0.0168    0.0317       892
+     disgust     0.0297    0.4250    0.0555        80
+        fear     0.2104    0.0828    0.1188       930
+       happy     0.4795    0.5987    0.5325      1717
+     neutral     0.3061    0.2363    0.2667      1189
+         sad     0.3480    0.1704    0.2288      1203
+    surprise     0.3288    0.7646    0.4598       599
+
+    accuracy                         0.3174      6610
+   macro avg     0.2829    0.3278    0.2420      6610
+weighted avg     0.3402    0.3174    0.2913      6610

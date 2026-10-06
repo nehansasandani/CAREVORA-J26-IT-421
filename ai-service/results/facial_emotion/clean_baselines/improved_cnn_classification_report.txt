@@ -1,0 +1,24 @@
+CAREVORA - Improved_CNN
+Clean FER-2013 Test Evaluation
+Test images: 6610
+
+Loss: 1.2266
+Accuracy: 0.5189
+Macro Precision: 0.4372
+Macro Recall: 0.4867
+Macro F1: 0.4411
+Weighted F1: 0.5033
+
+              precision    recall  f1-score   support
+
+       angry     0.3916    0.4170    0.4039       892
+     disgust     0.1527    0.3875    0.2191        80
+        fear     0.3182    0.1054    0.1583       930
+       happy     0.8324    0.7752    0.8028      1717
+     neutral     0.4430    0.6215    0.5173      1189
+         sad     0.3941    0.3308    0.3597      1203
+    surprise     0.5287    0.7696    0.6268       599
+
+    accuracy                         0.5189      6610
+   macro avg     0.4372    0.4867    0.4411      6610
+weighted avg     0.5150    0.5189    0.5033      6610
