@@ -1,0 +1,15 @@
+{
+    "model": "Improved CNN",
+    "dataset": "FER-2013 clean/de-duplicated",
+    "seed": 44,
+    "test_images": 6610,
+    "accuracy": 0.5711043872919819,
+    "macro_precision": 0.4986928401728604,
+    "macro_recall": 0.4998422203280462,
+    "macro_f1": 0.4928984606747205,
+    "weighted_f1": 0.5594886800148374,
+    "validation_split": 0.15,
+    "epochs_requested": 50,
+    "epochs_trained": 50,
+    "best_epoch": 49
+}
