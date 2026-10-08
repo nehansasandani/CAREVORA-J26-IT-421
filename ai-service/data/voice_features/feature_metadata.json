@@ -1,0 +1,50 @@
+{
+    "dataset": "CREMA-D",
+    "feature_type": "Log-Mel Spectrogram",
+    "sample_rate": 16000,
+    "n_mels": 128,
+    "n_fft": 2048,
+    "hop_length": 512,
+    "max_pad_len": 174,
+    "num_classes": 6,
+    "class_names": [
+        "angry",
+        "disgust",
+        "fear",
+        "happy",
+        "neutral",
+        "sad"
+    ],
+    "splits": [
+        {
+            "split": "train",
+            "samples": 5147,
+            "feature_shape": [
+                5147,
+                128,
+                174
+            ],
+            "failed_files": 0
+        },
+        {
+            "split": "validation",
+            "samples": 1066,
+            "feature_shape": [
+                1066,
+                128,
+                174
+            ],
+            "failed_files": 0
+        },
+        {
+            "split": "test",
+            "samples": 1229,
+            "feature_shape": [
+                1229,
+                128,
+                174
+            ],
+            "failed_files": 0
+        }
+    ]
+}
