@@ -44,3 +44,13 @@ Use `SEED=42`, `SEED=43`, or `SEED=44` to reproduce the committed runs.
 
 The dependency versions required by these scripts are listed in
 `requirements.txt`.
+
+## Voice emotion training
+
+The CREMA-D voice pipeline uses actor-independent train, validation, and test
+splits with log-Mel spectrogram features. The reproducible scripts are in
+`src/voice/`, and the seed-specific CNN checkpoints and research summaries are
+stored under `src/models/voice/` and `results/voice_emotion/`.
+
+Feature arrays under `data/voice_features/` are tracked with Git LFS because
+the generated NumPy files are larger than GitHub's regular-file limit.

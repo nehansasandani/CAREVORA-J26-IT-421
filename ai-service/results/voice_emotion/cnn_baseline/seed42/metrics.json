@@ -1,0 +1,17 @@
+{
+    "model": "CNN Baseline",
+    "dataset": "CREMA-D",
+    "feature": "Log-Mel Spectrogram",
+    "split_strategy": "Actor-independent",
+    "seed": 42,
+    "train_samples": 5147,
+    "validation_samples": 1066,
+    "test_samples": 1229,
+    "test_accuracy": 0.5703824247355573,
+    "macro_f1": 0.5699288526940006,
+    "weighted_f1": 0.5680478557790863,
+    "best_epoch": 35,
+    "best_validation_loss": 1.0998679399490356,
+    "best_validation_accuracy": 0.5759850144386292,
+    "epochs_trained": 43
+}
