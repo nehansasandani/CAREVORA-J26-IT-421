@@ -8,6 +8,9 @@ import java.util.List;
 
 @Repository
 public interface AssessmentRepository extends JpaRepository<Assessment, Long> {
-    List<Assessment> findByResidentIdOrderByCreatedAtDesc(Long residentId);
+    List<Assessment> findByResidentIdOrderByCreatedAtDescIdDesc(Long residentId);
+    default List<Assessment> findByResidentIdOrderByCreatedAtDesc(Long residentId) {
+        return findByResidentIdOrderByCreatedAtDescIdDesc(residentId);
+    }
     List<Assessment> findTop10ByOrderByCreatedAtDesc();
 }

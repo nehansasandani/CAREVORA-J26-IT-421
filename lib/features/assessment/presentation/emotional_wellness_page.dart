@@ -730,6 +730,16 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
   void _updateEmotionFromResult(FacialEmotionResult result) {
     setState(() {
       _facialConfidence = result.confidence;
+      if (result.confidence <= 0.0) {
+        _selectedEmotion = 'Neutral';
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Facial emotion model retired from active pipeline. Assessment relies on structured questionnaire and vocal metrics.'),
+            duration: Duration(seconds: 4),
+          ),
+        );
+        return;
+      }
       if (result.primaryEmotion == EmotionCategory.happy) {
         _selectedEmotion = 'Happy';
         _lonelinessScore = 52;
@@ -2628,7 +2638,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                     Icon(LucideIcons.checkCircle2, size: 16, color: AppColors.riskLow),
                     SizedBox(width: 8),
                     Text(
-                      'Model: RALPA-Adaptive v1',
+                      'Models: Carevora Colab Ensembles (High-Risk & Trajectory) + RALPA Engine',
                       style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.navy),
                     ),
                   ],

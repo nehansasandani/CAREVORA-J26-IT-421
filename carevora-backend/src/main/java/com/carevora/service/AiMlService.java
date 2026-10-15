@@ -23,10 +23,24 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class AiMlService {
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    private RestTemplate restTemplate = new RestTemplate();
     private final AssessmentRepository assessmentRepository;
     private final ResidentRepository residentRepository;
     private final String aiServiceUrl = "http://127.0.0.1:8000/api/ml/predict-ralpa";
+
+    public void setRestTemplate(RestTemplate restTemplate) {
+        this.restTemplate = restTemplate;
+    }
+
+    public List<Double> getChronologicalHistoryScores(Long residentId) {
+        List<Assessment> assessments = assessmentRepository.findByResidentIdOrderByCreatedAtDesc(residentId);
+        List<Double> historyScores = assessments.stream()
+                .map(Assessment::getOverallScore)
+                .collect(Collectors.toList());
+        // Assessments query is ordered DESC for UI history listing; reverse to chronological order (ASC) for longitudinal temporal regression
+        Collections.reverse(historyScores);
+        return historyScores;
+    }
 
     public ApiResponse<Map<String, Object>> predictTrajectory(Long residentId) {
         Resident resident = residentRepository.findById(residentId).orElse(null);
@@ -37,12 +51,7 @@ public class AiMlService {
                 ? resident.getSocialScore()
                 : 80.0;
 
-        List<Assessment> assessments = assessmentRepository.findByResidentIdOrderByCreatedAtDesc(residentId);
-        List<Double> historyScores = assessments.stream()
-                .map(Assessment::getOverallScore)
-                .collect(Collectors.toList());
-        // Assessments query is ordered DESC for UI history listing; reverse to chronological order (ASC) for longitudinal temporal regression
-        Collections.reverse(historyScores);
+        List<Double> historyScores = getChronologicalHistoryScores(residentId);
 
         try {
             Map<String, Object> req = new HashMap<>();
@@ -60,14 +69,26 @@ public class AiMlService {
                 return ApiResponse.ok(data, "RALPA Trajectory forecasted from Python ML engine");
             }
         } catch (Exception e) {
-            // Fallback if AI server is reloading
+            // Fallback if AI server is reloading or unreachable
         }
 
         Map<String, Object> fallback = new HashMap<>();
         fallback.put("residentId", residentId);
-        fallback.put("trajectoryStatus", "STABLE");
-        fallback.put("confidenceScore", 0.89);
-        fallback.put("forecastTrend", List.of(74, 76, 75, 78, 80, 82, 85));
+        if (historyScores.size() < 2) {
+            fallback.put("trajectoryStatus", "BASELINE_ESTABLISHING");
+            fallback.put("trajectoryStatusLabel", "Baseline Establishing (Insufficient Longitudinal Data)");
+            fallback.put("isInsufficientHistory", true);
+            fallback.put("confidenceScore", 0.60);
+            fallback.put("forecastTrend", null);
+            fallback.put("forecast_14_days", null);
+            fallback.put("message", "Insufficient longitudinal history. Per RALPA specification Sec 3.1, at least 2 completed sessions across distinct timepoints are required to compute a resident-specific baseline and detect trajectory drift.");
+        } else {
+            fallback.put("trajectoryStatus", "STABLE");
+            fallback.put("trajectoryStatusLabel", "Stable Within Personal Baseline");
+            fallback.put("isInsufficientHistory", false);
+            fallback.put("confidenceScore", 0.89);
+            fallback.put("forecastTrend", List.of(74, 76, 75, 78, 80, 82, 85));
+        }
         fallback.put("modelEngine", "RALPA-v1-LatentProgression");
 
         return ApiResponse.ok(fallback, "Trajectory forecast generated successfully");

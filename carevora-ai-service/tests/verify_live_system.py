@@ -57,12 +57,29 @@ code, resp = request(f"{FASTAPI_URL}/api/ml/analyze-photo", method="POST", data=
 print(f"Facial Analysis (POST /api/ml/analyze-photo): HTTP {code}")
 face_json = json.loads(resp)
 analysis = face_json.get("analysis", {})
+print(f"  Status: {face_json.get('status')}")
+print(f"  Success: {face_json.get('success')}")
+print(f"  Message: {face_json.get('message')}")
 print(f"  Modality: {analysis.get('modality')}")
-print(f"  Dominant Emotion: {analysis.get('dominant_emotion')}")
-print(f"  Mood Summary: {analysis.get('mood_summary')}")
-print(f"  Confidence: {analysis.get('confidence')}")
-print(f"  Emotion Breakdown (%): {analysis.get('emotion_breakdown_percent')}")
-print(f"  Contributing Insight: {analysis.get('contributing_insight')}\n")
+print(f"  Is Active: {analysis.get('is_active')}\n")
+
+# 1.2b Colab-Trained ML Prediction Service endpoint
+code, resp = request(f"{FASTAPI_URL}/api/ml/predict-models", method="POST", data={
+    "resident_id": 101,
+    "questionnaire_score": 40.0,
+    "social_score": 35.0,
+    "vocal_score": 45.0,
+    "history_scores": [75.0, 60.0, 45.0]
+})
+print(f"Colab Models Direct Inference (POST /api/ml/predict-models): HTTP {code}")
+colab_json = json.loads(resp)
+if colab_json.get("success"):
+    cdata = colab_json.get("data", {})
+    hr_data = cdata.get("high_risk_prediction", {})
+    tr_data = cdata.get("trajectory_class_prediction", {})
+    print(f"  High Risk Prediction: {hr_data.get('classification_status')} (Prob: {hr_data.get('high_risk_probability')}, Threshold: {hr_data.get('threshold_used')})")
+    print(f"  Trajectory Prediction: {tr_data.get('predicted_trajectory_class')} (Confidence: {tr_data.get('confidence_score')})")
+    print(f"  Trajectory Probabilities: {tr_data.get('class_probabilities')}\n")
 
 # 1.3 Audio feature extraction endpoint
 audio_buf = io.BytesIO()

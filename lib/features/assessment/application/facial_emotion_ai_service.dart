@@ -90,6 +90,25 @@ class FacialEmotionAiService {
         if (streamedResponse.statusCode == 200) {
           final responseBody = await streamedResponse.stream.bytesToString();
           final jsonMap = jsonDecode(responseBody);
+          if (jsonMap['status'] == 'retired' || jsonMap['success'] == false) {
+            return FacialEmotionResult(
+              primaryEmotion: EmotionCategory.calmNeutral,
+              confidence: 0.0,
+              valenceScore: 0.0,
+              arousalScore: 0.0,
+              emotionProbabilities: const {
+                EmotionCategory.happy: 0.0,
+                EmotionCategory.calmNeutral: 1.0,
+                EmotionCategory.sadDepressed: 0.0,
+                EmotionCategory.confusedAgitated: 0.0,
+                EmotionCategory.anxious: 0.0,
+              },
+              clinicalObservation:
+                  'Facial Emotion Model Retired: Visual scanning is disabled in active pipeline. Assessment relies on structured clinical questionnaire, behavioral indicators, and acoustic vocal metrics.',
+              facialActionUnits: const ['AU0: Neutral Baseline (Model Retired)'],
+              analyzedAt: DateTime.now(),
+            );
+          }
           if (jsonMap['success'] == true && jsonMap['analysis'] != null) {
             final analysis = jsonMap['analysis'];
             final String dominant = (analysis['dominant_emotion'] ?? 'happy').toString().toLowerCase();
@@ -145,32 +164,32 @@ class FacialEmotionAiService {
               arousalScore: arousal,
               emotionProbabilities: probabilities,
               clinicalObservation:
-                  'Real PyTorch Model Inference (FER-2013): Face classified as ${dominant.toUpperCase()} with ${(conf * 100).toStringAsFixed(1)}% model confidence.',
+                  'Analysis completed: Face classified as ${dominant.toUpperCase()} with ${(conf * 100).toStringAsFixed(1)}% confidence.',
               facialActionUnits: actionUnits,
               analyzedAt: DateTime.now(),
             );
           }
         }
       } catch (e) {
-        debugPrint('PyTorch API live call fallback: $e');
+        debugPrint('Facial API call fallback: $e');
       }
 
-      // Transparent Fallback when AI Microservice is Offline
+      // Transparent Fallback when Facial Analysis is Retired / Unavailable
       return FacialEmotionResult(
-        primaryEmotion: preferredEmotionHint == 'Sad' ? EmotionCategory.sadDepressed : EmotionCategory.happy,
-        confidence: 0.70,
-        valenceScore: preferredEmotionHint == 'Sad' ? -0.70 : 0.70,
-        arousalScore: 0.35,
+        primaryEmotion: EmotionCategory.calmNeutral,
+        confidence: 0.0,
+        valenceScore: 0.0,
+        arousalScore: 0.0,
         emotionProbabilities: const {
-          EmotionCategory.happy: 0.50,
-          EmotionCategory.calmNeutral: 0.30,
-          EmotionCategory.sadDepressed: 0.15,
-          EmotionCategory.confusedAgitated: 0.03,
-          EmotionCategory.anxious: 0.02,
+          EmotionCategory.happy: 0.0,
+          EmotionCategory.calmNeutral: 1.0,
+          EmotionCategory.sadDepressed: 0.0,
+          EmotionCategory.confusedAgitated: 0.0,
+          EmotionCategory.anxious: 0.0,
         },
         clinicalObservation:
-            'Demo Fallback (AI Microservice Offline): Connect FastAPI on port 8000 for live PyTorch CNN inference.',
-        facialActionUnits: const ['AU6: Cheek Raiser (Simulated)'],
+            'Facial Emotion Recognition Retired: Visual scanning is disabled in active pipeline. Assessment relies on structured clinical questionnaire, behavioral indicators, and acoustic vocal metrics.',
+        facialActionUnits: const ['AU0: Neutral Baseline (Model Retired)'],
         analyzedAt: DateTime.now(),
       );
     }

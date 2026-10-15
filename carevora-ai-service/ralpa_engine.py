@@ -1,4 +1,5 @@
 import numpy as np
+from typing import Optional, List, Dict, Any
 
 class RALPAEngine:
     """
@@ -42,10 +43,22 @@ class RALPAEngine:
             except (ValueError, TypeError):
                 return default
 
-        q_score = _safe_float(current_scores.get('questionnaire') if current_scores else None, 85.0)
-        facial_score = _safe_float(current_scores.get('facial') if current_scores else None, 85.0)
-        vocal_score = _safe_float(current_scores.get('vocal') if current_scores else None, 80.0)
-        social_score = _safe_float(current_scores.get('social') if current_scores else None, 80.0)
+        q_score = _safe_float(
+            current_scores.get('questionnaire', current_scores.get('questionnaire_score'))
+            if current_scores else None, 85.0
+        )
+        facial_score = _safe_float(
+            current_scores.get('facial', current_scores.get('facial_score'))
+            if current_scores else None, 85.0
+        )
+        vocal_score = _safe_float(
+            current_scores.get('vocal', current_scores.get('vocal_score'))
+            if current_scores else None, 80.0
+        )
+        social_score = _safe_float(
+            current_scores.get('social', current_scores.get('social_score'))
+            if current_scores else None, 80.0
+        )
 
         # 1. Multimodal Feature Fusion
         fused_wellness = (
@@ -99,6 +112,7 @@ class RALPAEngine:
                 "baseline_score": current_risk_score,
                 "baseline_deviation": 0.0,
                 "baseline_deviation_percent": 0.0,
+                "longitudinal_slope": None,
                 "forecast_14_days": None,
                 "message": (
                     "Insufficient longitudinal history. Per RALPA specification Sec 3.1, "
@@ -167,38 +181,70 @@ class RALPAEngine:
             }
         }
 
-    def _calculate_contributing_factors(self, q_score: float, facial_score: float, vocal_score: float, social_score: float) -> list:
+    def _calculate_contributing_factors(self, q_score: float, facial_score: Optional[float], vocal_score: float, social_score: float) -> list:
         # Transparent feature contributions reflecting relative modality weights
-        return [
-            {
-                "title": "Questionnaire Self-Report",
-                "category": "Standardized Questionnaire",
-                "raw_score": round(q_score, 1),
-                "weight_percentage": 40.0,
-                "description": "Standardized loneliness and social connection assessment responses."
-            },
-            {
-                "title": "Social-Behavioral Participation",
-                "category": "Behavioral Indicators",
-                "raw_score": round(social_score, 1),
-                "weight_percentage": 25.0,
-                "description": "Interaction frequency, lounge presence, and group activity logs."
-            },
-            {
-                "title": "Facial Affect Expression",
-                "category": "Facial Affect (FER-2013)",
-                "raw_score": round(facial_score, 1),
-                "weight_percentage": 20.0,
-                "description": "PyTorch CNN affective valence and facial composure features."
-            },
-            {
-                "title": "Vocal Acoustic Modulation",
-                "category": "Vocal Prosody",
-                "raw_score": round(vocal_score, 1),
-                "weight_percentage": 15.0,
-                "description": "Speech rate, fundamental frequency variation, and conversational cadence."
-            }
-        ]
+        if facial_score is not None:
+            return [
+                {
+                    "title": "Questionnaire Self-Report",
+                    "category": "Standardized Questionnaire",
+                    "raw_score": round(q_score, 1),
+                    "weight_percentage": 40.0,
+                    "description": "Standardized loneliness and social connection assessment responses."
+                },
+                {
+                    "title": "Social-Behavioral Participation",
+                    "category": "Behavioral Indicators",
+                    "raw_score": round(social_score, 1),
+                    "weight_percentage": 25.0,
+                    "description": "Interaction frequency, lounge presence, and group activity logs."
+                },
+                {
+                    "title": "Facial Affect Expression",
+                    "category": "Facial Affect (FER-2013)",
+                    "raw_score": round(facial_score, 1),
+                    "weight_percentage": 20.0,
+                    "description": "Visual affective valence and composure features."
+                },
+                {
+                    "title": "Vocal Acoustic Modulation",
+                    "category": "Vocal Prosody",
+                    "raw_score": round(vocal_score, 1),
+                    "weight_percentage": 15.0,
+                    "description": "Speech rate, fundamental frequency variation, and conversational cadence."
+                }
+            ]
+        else:
+            return [
+                {
+                    "title": "Questionnaire Self-Report",
+                    "category": "Standardized Questionnaire",
+                    "raw_score": round(q_score, 1),
+                    "weight_percentage": 50.0,
+                    "description": "Standardized loneliness and social connection assessment responses."
+                },
+                {
+                    "title": "Social-Behavioral Participation",
+                    "category": "Behavioral Indicators",
+                    "raw_score": round(social_score, 1),
+                    "weight_percentage": 31.25,
+                    "description": "Interaction frequency, lounge presence, and group activity logs."
+                },
+                {
+                    "title": "Vocal Acoustic Modulation",
+                    "category": "Vocal Prosody",
+                    "raw_score": round(vocal_score, 1),
+                    "weight_percentage": 18.75,
+                    "description": "Speech rate, fundamental frequency variation, and conversational cadence."
+                },
+                {
+                    "title": "Facial Affect Expression",
+                    "category": "Facial Affect (Retired)",
+                    "raw_score": None,
+                    "weight_percentage": 0.0,
+                    "description": "Facial emotion recognition model has been retired from active pipeline."
+                }
+            ]
 
     def _generate_recommendations(self, risk_score: float) -> list:
         is_elevated = risk_score >= 60.0
