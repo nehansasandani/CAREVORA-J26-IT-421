@@ -12,10 +12,12 @@ class CarePlanResident {
   final int id;
   final String name;
   final int? age;
+  final int? educationYears;
   final String? gender;
   final String roomNumber;
   final String elderHomeName;
   final int elderHomeId;
+  final String? avatarUrl;
   final String? lastAssessmentDate;
   final String? riskLevel;
   final String? currentStatus;
@@ -24,10 +26,12 @@ class CarePlanResident {
     required this.id,
     required this.name,
     this.age,
+    this.educationYears,
     this.gender,
     required this.roomNumber,
     required this.elderHomeName,
     required this.elderHomeId,
+    this.avatarUrl,
     this.lastAssessmentDate,
     this.riskLevel,
     this.currentStatus,
@@ -38,10 +42,12 @@ class CarePlanResident {
       id: (json['id'] as num).toInt(),
       name: json['name'] as String? ?? 'Resident',
       age: (json['age'] as num?)?.toInt(),
+      educationYears: (json['educationYears'] as num?)?.toInt(),
       gender: json['gender'] as String?,
       roomNumber: json['roomNumber'] as String? ?? (json['roomNo'] as String? ?? 'Room 101'),
       elderHomeName: json['elderHomeName'] as String? ?? 'Care Facility',
       elderHomeId: (json['elderHomeId'] as num?)?.toInt() ?? 1,
+      avatarUrl: json['avatarUrl'] as String?,
       lastAssessmentDate: json['lastAssessmentDate'] as String?,
       riskLevel: json['riskLevel'] as String?,
       currentStatus: json['currentStatus'] as String?,

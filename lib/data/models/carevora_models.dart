@@ -14,6 +14,7 @@ class Resident {
   final double overallIndex;
   final double overallTrend;
   final double? socialScore;
+  final String? avatarUrl;
 
   const Resident({
     required this.id,
@@ -31,6 +32,7 @@ class Resident {
     required this.overallIndex,
     required this.overallTrend,
     this.socialScore,
+    this.avatarUrl,
   });
 
   @override

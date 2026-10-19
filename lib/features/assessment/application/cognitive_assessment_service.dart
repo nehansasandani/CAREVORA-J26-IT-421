@@ -10,6 +10,7 @@ class CognitiveResidentProfile {
   final int? educationYears;
   final String roomNumber;
   final String? gender;
+  final String? avatarUrl;
   final String? currentStatus;
   final String? riskLevel;
 
@@ -23,6 +24,7 @@ class CognitiveResidentProfile {
     this.educationYears,
     required this.roomNumber,
     this.gender,
+    this.avatarUrl,
     this.currentStatus,
     this.riskLevel,
     this.elderHomeId,
@@ -37,6 +39,7 @@ class CognitiveResidentProfile {
       educationYears: (json['educationYears'] as num?)?.toInt(),
       roomNumber: json['roomNumber'] as String? ?? 'Room 101',
       gender: json['gender'] as String?,
+      avatarUrl: json['avatarUrl'] as String?,
       currentStatus: json['currentStatus'] as String?,
       riskLevel: json['riskLevel'] as String?,
       elderHomeId: (json['elderHomeId'] as num?)?.toInt(),

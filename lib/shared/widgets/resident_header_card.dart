@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../data/models/carevora_models.dart';
+import 'carevora_avatar.dart';
 
 class ResidentHeaderCard extends StatelessWidget {
   final Resident resident;
@@ -33,17 +34,12 @@ class ResidentHeaderCard extends StatelessWidget {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              CircleAvatar(
+              CarevoraAvatar(
+                avatarUrl: resident.avatarUrl,
                 radius: 26,
-                backgroundColor: AppColors.primarySoft,
-                child: Text(
-                  'JP',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.primary,
-                  ),
-                ),
+                initials: resident.name.isNotEmpty
+                    ? resident.name.trim().split(' ').map((e) => e.isNotEmpty ? e[0] : '').take(2).join().toUpperCase()
+                    : 'R',
               ),
               const SizedBox(width: 14),
               Column(
