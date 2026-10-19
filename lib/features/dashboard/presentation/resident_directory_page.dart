@@ -10,6 +10,7 @@ import '../../auth/application/auth_controller.dart';
 import '../../assessment/application/cognitive_assessment_service.dart';
 import '../../assessment/application/memory_game_service.dart';
 import '../../assessment/domain/cognitive_scoring.dart';
+import '../../metabolic/application/metabolic_risk_service.dart';
 
 class ResidentItem {
   final int id;
@@ -87,6 +88,10 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
   MemoryGameProgressSummary? _memoryGameProgress;
   bool _isLoadingMemoryGames = false;
   String? _memoryGameError;
+  MetabolicAssessmentRecord? _latestMetabolic;
+  int _metabolicCount = 0;
+  bool _isLoadingMetabolic = false;
+  String? _metabolicError;
 
   final List<ResidentItem> _allEldersFallback = [
     const ResidentItem(
@@ -324,12 +329,48 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
       _memoryGameProgress = null;
       _isLoadingMemoryGames = true;
       _memoryGameError = null;
+      _latestMetabolic = null;
+      _metabolicCount = 0;
+      _isLoadingMetabolic = true;
+      _metabolicError = null;
     });
 
     await Future.wait([
       _loadResidentHistory(resident.id),
       _loadResidentMemoryGameProgress(resident.id),
+      _loadResidentMetabolicHistory(resident.id),
     ]);
+  }
+
+  Future<void> _loadResidentMetabolicHistory(int residentId) async {
+    final token = ref.read(authProvider).state.token;
+    setState(() {
+      _isLoadingMetabolic = true;
+      _metabolicError = null;
+    });
+
+    try {
+      // A one-item page gives the latest screening and the total count.
+      final page = await MetabolicRiskService.fetchHistoryPage(
+        residentId: residentId,
+        size: 1,
+        token: token,
+      );
+      if (mounted && _selectedResident?.id == residentId) {
+        setState(() {
+          _latestMetabolic = page.items.isNotEmpty ? page.items.first : null;
+          _metabolicCount = page.totalItems;
+          _isLoadingMetabolic = false;
+        });
+      }
+    } catch (err) {
+      if (mounted && _selectedResident?.id == residentId) {
+        setState(() {
+          _isLoadingMetabolic = false;
+          _metabolicError = err.toString();
+        });
+      }
+    }
   }
 
   Future<void> _loadResidentHistory(int residentId) async {
@@ -401,6 +442,10 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
       _memoryGameProgress = null;
       _isLoadingMemoryGames = false;
       _memoryGameError = null;
+      _latestMetabolic = null;
+      _metabolicCount = 0;
+      _isLoadingMetabolic = false;
+      _metabolicError = null;
     });
   }
 
@@ -1494,10 +1539,20 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
     );
   }
 
-  /// Card 3 — Metabolic Wellness (Display-only integration; clear empty state when unexposed)
+  /// Card 3 — Metabolic Wellness (latest metabolic risk screening; diabetes, CVD, fatty liver)
   Widget _buildMetabolicWellnessCard(ResidentItem r, [double? cardWidth]) {
-    // Metabolic data is not exposed in the existing backend
-    final double? metabolicScore = r.metabolicScore;
+    final latest = _latestMetabolic;
+    final tiers = latest?.outcomes.where((o) => o.isOk).map((o) => o.riskTier).toList() ?? const [];
+    final overall = tiers.contains('high')
+        ? 'high'
+        : tiers.contains('watch')
+            ? 'watch'
+            : tiers.contains('low')
+                ? 'low'
+                : null;
+    final (badgeFg, badgeBg, badgeText) = _metabolicTierStyle(overall,
+        emptyLabel: _isLoadingMetabolic ? 'Loading' : 'Not screened');
+    final dateDisplay = latest?.createdAt != null ? _formatDate(latest!.createdAt!.toIso8601String()) : 'None recorded';
 
     return Container(
       width: cardWidth ?? 340,
@@ -1537,38 +1592,39 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: AppColors.surfaceSecondary,
+                  color: badgeBg,
                   borderRadius: BorderRadius.circular(6),
                 ),
-                child: const Text(
-                  'Pending Integration',
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.muted),
+                child: Text(
+                  badgeText,
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: badgeFg),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 16),
-          const Text('Latest Score', style: TextStyle(fontSize: 12, color: AppColors.muted)),
-          const SizedBox(height: 2),
-          Text(
-            metabolicScore != null
-                ? '${metabolicScore.toStringAsFixed(1)}%'
-                : 'No metabolic wellness data available',
-            style: TextStyle(
-              fontSize: metabolicScore != null ? 24 : 15,
-              fontWeight: FontWeight.w800,
-              color: metabolicScore != null ? AppColors.navy : AppColors.muted,
-            ),
-          ),
+          const Text('Latest Screening', style: TextStyle(fontSize: 12, color: AppColors.muted)),
+          const SizedBox(height: 6),
+          if (_isLoadingMetabolic)
+            const Text('Loading screening history...', style: TextStyle(fontSize: 13, color: AppColors.muted))
+          else if (_metabolicError != null)
+            Text(_metabolicError!, style: const TextStyle(fontSize: 12, color: AppColors.riskHigh))
+          else if (latest == null)
+            const Text(
+              'No metabolic screening yet',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.muted),
+            )
+          else
+            for (final o in latest.outcomes) _buildMetabolicOutcomeRow(o),
           const SizedBox(height: 8),
           Row(
-            children: const [
-              Icon(LucideIcons.calendar, size: 13, color: AppColors.muted),
-              SizedBox(width: 5),
+            children: [
+              const Icon(LucideIcons.calendar, size: 13, color: AppColors.muted),
+              const SizedBox(width: 5),
               Expanded(
                 child: Text(
-                  'Date: None recorded',
-                  style: TextStyle(fontSize: 12, color: AppColors.body),
+                  'Date: $dateDisplay',
+                  style: const TextStyle(fontSize: 12, color: AppColors.body),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
@@ -1576,39 +1632,107 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
           ),
           const SizedBox(height: 4),
           Row(
-            children: const [
-              Icon(LucideIcons.activity, size: 13, color: AppColors.muted),
-              SizedBox(width: 5),
+            children: [
+              const Icon(LucideIcons.history, size: 13, color: AppColors.muted),
+              const SizedBox(width: 5),
               Expanded(
                 child: Text(
-                  'Telemetry: Vitals & Glycemic stability',
-                  style: TextStyle(fontSize: 12, color: AppColors.body),
+                  _isLoadingMetabolic
+                      ? 'Loading history count...'
+                      : '$_metabolicCount screening(s) completed',
+                  style: const TextStyle(fontSize: 12, color: AppColors.body),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 8),
+          const Text(
+            'Logistic regression risk tiers trained on NHANES survey data. Screening estimate, non-diagnostic.',
+            style: TextStyle(fontSize: 9, color: AppColors.muted, fontStyle: FontStyle.italic),
+          ),
+          const SizedBox(height: 14),
           const Divider(height: 1, color: AppColors.border),
           const SizedBox(height: 14),
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceSecondary,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              children: const [
-                Icon(LucideIcons.info, size: 14, color: AppColors.muted),
-                SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    'Metabolic health monitoring stream is not yet active on backend.',
-                    style: TextStyle(fontSize: 11, color: AppColors.muted),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () => context.go('/dashboard/metabolic?residentId=${r.id}&new=1'),
+                  icon: const Icon(LucideIcons.plus, size: 14),
+                  label: const Text('New Screening'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(vertical: 11),
                   ),
                 ),
-              ],
+              ),
+              const SizedBox(width: 10),
+              OutlinedButton(
+                onPressed: () => context.go('/dashboard/metabolic?residentId=${r.id}&history=1'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.primary,
+                  side: const BorderSide(color: AppColors.primary),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(LucideIcons.history, size: 14),
+                    SizedBox(width: 4),
+                    Text('History'),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  (Color, Color, String) _metabolicTierStyle(String? tier, {String emptyLabel = 'N/A'}) {
+    switch (tier) {
+      case 'high':
+        return (AppColors.riskHigh, AppColors.riskHighBg, 'High');
+      case 'watch':
+        return (AppColors.riskModerate, AppColors.riskModerateBg, 'Watch');
+      case 'low':
+        return (AppColors.riskLow, AppColors.riskLowBg, 'Low');
+      default:
+        return (AppColors.muted, AppColors.surfaceSecondary, emptyLabel);
+    }
+  }
+
+  Widget _buildMetabolicOutcomeRow(MetabolicOutcomeResult o) {
+    const names = {'diabetes': 'Diabetes', 'cvd': 'Heart disease & stroke', 'fatty_liver': 'Fatty liver'};
+    final (fg, bg, label) = _metabolicTierStyle(o.isOk ? o.riskTier : null, emptyLabel: 'No estimate');
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              names[o.key] ?? o.key,
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.navy),
+              overflow: TextOverflow.ellipsis,
             ),
+          ),
+          if (o.probability != null)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: Text(
+                '${(o.probability! * 100).round()} in 100',
+                style: const TextStyle(fontSize: 11, color: AppColors.body),
+              ),
+            ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(999)),
+            child: Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: fg)),
           ),
         ],
       ),

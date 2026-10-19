@@ -20,6 +20,7 @@ import '../../features/assessment/presentation/emotional_wellness_page.dart';
 import '../../features/assessment/presentation/caregiver_social_audit_dashboard_page.dart';
 import '../../features/assessment/presentation/resident_social_audit_detail_page.dart';
 import '../../features/splash/presentation/pages/splash_page.dart';
+import '../../features/metabolic/presentation/metabolic_health_page.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
 final GlobalKey<NavigatorState> _shellNavigatorKey = GlobalKey<NavigatorState>();
@@ -86,11 +87,15 @@ class AppRouter {
           ),
           GoRoute(
             path: '/dashboard/metabolic',
-            builder: (context, state) => const GenericPlaceholderTab(
-              title: 'Metabolic Health',
-              description: 'Vitals tracking, glucose regularity, and sleep rhythm',
-              icon: LucideIcons.activity,
-            ),
+            builder: (context, state) {
+              final idParam = state.uri.queryParameters['residentId'];
+              return MetabolicHealthPage(
+                key: ValueKey(state.uri.toString()),
+                initialResidentId: idParam != null ? int.tryParse(idParam) : null,
+                startNew: state.uri.queryParameters['new'] == '1',
+                showHistory: state.uri.queryParameters['history'] == '1',
+              );
+            },
           ),
           GoRoute(
             path: '/dashboard/alerts',
