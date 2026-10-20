@@ -62,11 +62,13 @@ public class UserService {
             String title = null;
             String dept = null;
 
+            Integer eduYears = null;
             if (resOpt.isPresent()) {
                 Resident r = resOpt.get();
                 resId = r.getId();
                 room = r.getRoomNumber();
                 age = r.getAge();
+                eduYears = r.getEducationYears();
                 status = r.getCurrentStatus();
                 risk = r.getRiskLevel();
                 if (r.getElderHome() != null) {
@@ -88,25 +90,27 @@ public class UserService {
                 dept = "Geriatric Clinical Care";
             }
 
-            return UserSummaryResponse.builder()
-                    .id(u.getId())
-                    .name(u.getFullName())
-                    .email(u.getEmail())
-                    .role(u.getRole())
-                    .active(u.getActive())
-                    .elderHomeId(homeId)
-                    .elderHomeName(homeName)
-                    .residentId(resId)
-                    .caregiverId(cgId)
-                    .roomNumber(room)
-                    .age(age)
-                    .currentStatus(status)
-                    .riskLevel(risk)
-                    .staffCode(staffCode)
-                    .title(title)
-                    .department(dept)
-                    .createdAt(u.getCreatedAt())
-                    .build();
+            UserSummaryResponse resp = new UserSummaryResponse();
+            resp.setId(u.getId());
+            resp.setName(u.getFullName());
+            resp.setEmail(u.getEmail());
+            resp.setRole(u.getRole());
+            resp.setActive(u.getActive());
+            resp.setAvatarUrl(u.getAvatarUrl());
+            resp.setElderHomeId(homeId);
+            resp.setElderHomeName(homeName);
+            resp.setResidentId(resId);
+            resp.setCaregiverId(cgId);
+            resp.setRoomNumber(room);
+            resp.setAge(age);
+            resp.setEducationYears(eduYears);
+            resp.setCurrentStatus(status);
+            resp.setRiskLevel(risk);
+            resp.setStaffCode(staffCode);
+            resp.setTitle(title);
+            resp.setDepartment(dept);
+            resp.setCreatedAt(u.getCreatedAt());
+            return resp;
         }).collect(Collectors.toList());
 
         return ApiResponse.ok(responses);

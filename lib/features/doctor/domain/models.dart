@@ -8,6 +8,7 @@ class Resident {
   final int age;
   final String gender;
   final List<String> allergies;
+  final String? avatarUrl;
 
   const Resident({
     required this.id,
@@ -16,6 +17,7 @@ class Resident {
     required this.age,
     required this.gender,
     required this.allergies,
+    this.avatarUrl,
   });
 
   Resident copyWith({
@@ -25,6 +27,7 @@ class Resident {
     int? age,
     String? gender,
     List<String>? allergies,
+    String? avatarUrl,
   }) {
     return Resident(
       id: id ?? this.id,
@@ -33,6 +36,7 @@ class Resident {
       age: age ?? this.age,
       gender: gender ?? this.gender,
       allergies: allergies ?? this.allergies,
+      avatarUrl: avatarUrl ?? this.avatarUrl,
     );
   }
 

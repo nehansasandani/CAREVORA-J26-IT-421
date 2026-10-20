@@ -26,6 +26,8 @@ public class UserSummaryResponse {
     private Long caregiverId;
     private String roomNumber;
     private Integer age;
+    private Integer educationYears;
+    private String avatarUrl;
     private WellnessStatus currentStatus;
     private RiskLevel riskLevel;
     private String staffCode;

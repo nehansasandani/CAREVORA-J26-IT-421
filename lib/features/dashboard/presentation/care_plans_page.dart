@@ -5,6 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../shared/widgets/carevora_avatar.dart';
 import '../../assessment/application/care_plans_service.dart';
 import '../../assessment/application/cognitive_assessment_service.dart';
 import '../../assessment/application/memory_game_service.dart';
@@ -73,6 +74,7 @@ class _CarePlansPageState extends ConsumerState<CarePlansPage> {
         roomNumber: 'Room 204',
         elderHomeName: auth.elderHomeName ?? 'Serene Valley Senior Living',
         elderHomeId: auth.elderHomeId ?? 1,
+        avatarUrl: auth.avatarUrl,
       );
       setState(() {
         _selectedResident = elderResident;
@@ -332,14 +334,25 @@ class _CarePlansPageState extends ConsumerState<CarePlansPage> {
       ),
       child: Row(
         children: [
-          const Icon(LucideIcons.search, color: AppColors.primary, size: 20),
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: AppColors.primarySoft.withValues(alpha: 0.7),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.lilac),
+            ),
+            child: const Center(
+              child: Text('🔍', style: TextStyle(fontSize: 16)),
+            ),
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: TextField(
               controller: _searchController,
               style: const TextStyle(fontSize: 14, color: AppColors.navy),
               decoration: const InputDecoration(
-                hintText: 'Search residents by name or resident ID...',
+                hintText: 'Search residents by name or resident ID...  📋',
                 hintStyle: TextStyle(fontSize: 14, color: AppColors.muted),
                 border: InputBorder.none,
                 isDense: true,
@@ -355,6 +368,33 @@ class _CarePlansPageState extends ConsumerState<CarePlansPage> {
                 setState(() => _searchQuery = '');
               },
               tooltip: 'Clear search',
+            )
+          else
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFF4F0FF), Color(0xFFEDE9FE)],
+                ),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.lilac.withValues(alpha: 0.8)),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('📋', style: TextStyle(fontSize: 13)),
+                  SizedBox(width: 5),
+                  Text(
+                    'Care Plans',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primaryDeep,
+                      letterSpacing: 0.2,
+                    ),
+                  ),
+                ],
+              ),
             ),
         ],
       ),
@@ -370,52 +410,144 @@ class _CarePlansPageState extends ConsumerState<CarePlansPage> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 24),
+      padding: const EdgeInsets.symmetric(vertical: 44, horizontal: 24),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.border, width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.04),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       child: Column(
         children: [
-          Container(
-            width: 64,
-            height: 64,
-            decoration: const BoxDecoration(
-              color: AppColors.primarySoft,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(LucideIcons.search, size: 28, color: AppColors.primary),
+          Stack(
+            clipBehavior: Clip.none,
+            alignment: Alignment.center,
+            children: [
+              Container(
+                width: 88,
+                height: 88,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFEDE9FE), Color(0xFFDDD6FE)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.16),
+                      blurRadius: 20,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: const Center(
+                  child: Text('📋', style: TextStyle(fontSize: 40)),
+                ),
+              ),
+              Positioned(
+                right: -4,
+                bottom: -2,
+                child: Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppColors.lilac, width: 2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.08),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: const Center(
+                    child: Text('🔍', style: TextStyle(fontSize: 16)),
+                  ),
+                ),
+              ),
+              Positioned(
+                left: -6,
+                top: -2,
+                child: Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppColors.lilac, width: 1.5),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.06),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: const Center(
+                    child: Text('✨', style: TextStyle(fontSize: 14)),
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 18),
-          const Text(
-            'Search to Select a Resident',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: AppColors.navy,
-            ),
+          const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Search to Select a Resident',
+                style: TextStyle(
+                  fontSize: 19,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.navy,
+                  letterSpacing: -0.3,
+                ),
+              ),
+              SizedBox(width: 6),
+              Text('✨', style: TextStyle(fontSize: 18)),
+            ],
           ),
           const SizedBox(height: 8),
           ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 480),
-            child: Text(
+            child: const Text(
               'Type a resident name or resident ID above to review their latest assessment results and personalized Care Plans.',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 13, color: AppColors.body, height: 1.4),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 10,
+            runSpacing: 8,
+            children: [
+              _buildCarePlanPill('🧠', 'Cognitive Wellness', const Color(0xFFEEF2FF), const Color(0xFF4338CA)),
+              _buildCarePlanPill('💖', 'Emotional State', const Color(0xFFFFF1F2), const Color(0xFFBE123C)),
+              _buildCarePlanPill('🥗', 'Metabolic Care', const Color(0xFFECFDF5), const Color(0xFF047857)),
+            ],
+          ),
+          const SizedBox(height: 18),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
             decoration: BoxDecoration(
               color: AppColors.lavenderBg,
               borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppColors.lilac),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(LucideIcons.building2, size: 14, color: AppColors.primaryDeep),
+                const Text('🏡', style: TextStyle(fontSize: 14)),
                 const SizedBox(width: 6),
                 Text(
                   '$facilityName ($count residents available)',
@@ -426,6 +558,44 @@ class _CarePlansPageState extends ConsumerState<CarePlansPage> {
                   ),
                 ),
               ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('💡', style: TextStyle(fontSize: 13)),
+              SizedBox(width: 6),
+              Text(
+                'Tip: Search by resident name or assigned room number',
+                style: TextStyle(fontSize: 12, color: AppColors.muted),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCarePlanPill(String emoji, String label, Color bg, Color textColor) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: textColor.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(emoji, style: const TextStyle(fontSize: 13)),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: textColor,
             ),
           ),
         ],
@@ -456,11 +626,29 @@ class _CarePlansPageState extends ConsumerState<CarePlansPage> {
         ),
         child: Column(
           children: [
-            const Icon(LucideIcons.userX, size: 36, color: AppColors.muted),
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF2F2),
+                shape: BoxShape.circle,
+                border: Border.all(color: const Color(0xFFFECACA)),
+              ),
+              child: const Center(
+                child: Text('🧐', style: TextStyle(fontSize: 26)),
+              ),
+            ),
             const SizedBox(height: 14),
-            const Text(
-              'No residents found',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.navy),
+            const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'No residents found',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.navy),
+                ),
+                SizedBox(width: 6),
+                Text('🔍', style: TextStyle(fontSize: 15)),
+              ],
             ),
             const SizedBox(height: 6),
             Text(
@@ -510,13 +698,10 @@ class _CarePlansPageState extends ConsumerState<CarePlansPage> {
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                   child: Row(
                     children: [
-                      CircleAvatar(
+                      CarevoraAvatar(
+                        avatarUrl: r.avatarUrl,
                         radius: 20,
-                        backgroundColor: AppColors.primarySoft,
-                        child: Text(
-                          r.name.isNotEmpty ? r.name.substring(0, 1).toUpperCase() : 'R',
-                          style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
-                        ),
+                        initials: r.name,
                       ),
                       const SizedBox(width: 14),
                       Expanded(
@@ -553,7 +738,7 @@ class _CarePlansPageState extends ConsumerState<CarePlansPage> {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              '${r.roomNumber} • ${r.elderHomeName}${r.age != null ? ' • Age ${r.age}' : ''}',
+                              '${r.roomNumber} • ${r.elderHomeName}${r.age != null ? ' • Age ${r.age}' : ''}${r.educationYears != null ? ' • Edu: ${r.educationYears} yrs' : ''}',
                               style: const TextStyle(fontSize: 12, color: AppColors.body),
                             ),
                           ],
@@ -599,17 +784,10 @@ class _CarePlansPageState extends ConsumerState<CarePlansPage> {
           ),
           child: Row(
             children: [
-              CircleAvatar(
+              CarevoraAvatar(
+                avatarUrl: resident.avatarUrl ?? (auth.isElder ? auth.avatarUrl : null),
                 radius: 26,
-                backgroundColor: AppColors.primarySoft,
-                child: Text(
-                  resident.name.isNotEmpty ? resident.name.substring(0, 1).toUpperCase() : 'R',
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.primary,
-                  ),
-                ),
+                initials: resident.name,
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -646,7 +824,7 @@ class _CarePlansPageState extends ConsumerState<CarePlansPage> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${resident.roomNumber} • ${resident.elderHomeName}${resident.age != null ? ' • Age ${resident.age}' : ''}${resident.gender != null ? ' • ${resident.gender}' : ''}',
+                      '${resident.roomNumber} • ${resident.elderHomeName}${resident.age != null ? ' • Age ${resident.age}' : ''}${resident.educationYears != null ? ' • Education: ${resident.educationYears} yrs' : ''}${resident.gender != null ? ' • ${resident.gender}' : ''}',
                       style: const TextStyle(fontSize: 13, color: AppColors.body),
                     ),
                   ],
@@ -2272,7 +2450,7 @@ class _CarePlansPageState extends ConsumerState<CarePlansPage> {
                       latestScore: seqSessions.isNotEmpty ? seqSessions.first.scorePercentage : null,
                       previousScore: seqSessions.length > 1 ? seqSessions[1].scorePercentage : null,
                       totalSessions: seqSessions.length,
-                      progressStatus: progress?.sequenceProgress ?? 'NO_DATA',
+                      progressStatus: progress.sequenceProgress,
                       width: cardWidth,
                     ),
                     _buildGameSummaryCard(
@@ -2282,7 +2460,7 @@ class _CarePlansPageState extends ConsumerState<CarePlansPage> {
                       latestScore: pairsSessions.isNotEmpty ? pairsSessions.first.scorePercentage : null,
                       previousScore: pairsSessions.length > 1 ? pairsSessions[1].scorePercentage : null,
                       totalSessions: pairsSessions.length,
-                      progressStatus: progress?.pairsProgress ?? 'NO_DATA',
+                      progressStatus: progress.pairsProgress,
                       width: cardWidth,
                     ),
                     _buildGameSummaryCard(
@@ -2292,7 +2470,7 @@ class _CarePlansPageState extends ConsumerState<CarePlansPage> {
                       latestScore: itemsSessions.isNotEmpty ? itemsSessions.first.scorePercentage : null,
                       previousScore: itemsSessions.length > 1 ? itemsSessions[1].scorePercentage : null,
                       totalSessions: itemsSessions.length,
-                      progressStatus: progress?.itemsProgress ?? 'NO_DATA',
+                      progressStatus: progress.itemsProgress,
                       width: cardWidth,
                     ),
                   ],

@@ -28,6 +28,7 @@ class AuthState {
   final String? elderHomeName;
   final int? residentId;
   final int? caregiverId;
+  final String? avatarUrl;
 
   const AuthState({
     this.isAuthenticated = false,
@@ -44,6 +45,7 @@ class AuthState {
     this.elderHomeName,
     this.residentId,
     this.caregiverId,
+    this.avatarUrl,
   });
 
   bool get isLockedOut => lockoutSecondsRemaining > 0;
@@ -67,6 +69,7 @@ class AuthState {
     String? elderHomeName,
     int? residentId,
     int? caregiverId,
+    String? avatarUrl,
   }) {
     return AuthState(
       isAuthenticated: isAuthenticated ?? this.isAuthenticated,
@@ -84,6 +87,7 @@ class AuthState {
       elderHomeName: elderHomeName ?? this.elderHomeName,
       residentId: residentId ?? this.residentId,
       caregiverId: caregiverId ?? this.caregiverId,
+      avatarUrl: avatarUrl ?? this.avatarUrl,
     );
   }
 }
@@ -115,6 +119,7 @@ class AuthNotifier extends ChangeNotifier {
     final elderHomeName = prefs.getString('carevora_elder_home_name');
     final residentId = prefs.getInt('carevora_resident_id');
     final caregiverId = prefs.getInt('carevora_caregiver_id');
+    final avatarUrl = prefs.getString('carevora_avatar_url');
     final token = prefs.getString('carevora_token');
 
     UserRole role = UserRole.caregiver;
@@ -135,6 +140,7 @@ class AuthNotifier extends ChangeNotifier {
       elderHomeName: elderHomeName,
       residentId: residentId,
       caregiverId: caregiverId,
+      avatarUrl: avatarUrl,
       token: token,
     );
     notifyListeners();
@@ -199,6 +205,7 @@ class AuthNotifier extends ChangeNotifier {
           final elderHomeName = data['elderHomeName'] as String?;
           final residentId = data['residentId'] as int?;
           final caregiverId = data['caregiverId'] as int?;
+          final avatarUrl = data['avatarUrl'] as String?;
 
           final prefs = await SharedPreferences.getInstance();
           if (rememberMe) {
@@ -211,6 +218,7 @@ class AuthNotifier extends ChangeNotifier {
             if (elderHomeName != null) await prefs.setString('carevora_elder_home_name', elderHomeName);
             if (residentId != null) await prefs.setInt('carevora_resident_id', residentId);
             if (caregiverId != null) await prefs.setInt('carevora_caregiver_id', caregiverId);
+            if (avatarUrl != null) await prefs.setString('carevora_avatar_url', avatarUrl);
           }
 
           _state = _state.copyWith(
@@ -223,6 +231,7 @@ class AuthNotifier extends ChangeNotifier {
             elderHomeName: elderHomeName,
             residentId: residentId,
             caregiverId: caregiverId,
+            avatarUrl: avatarUrl,
             isLoading: false,
             failedAttempts: 0,
           );
@@ -244,6 +253,7 @@ class AuthNotifier extends ChangeNotifier {
         role: UserRole.caregiver,
         elderHomeId: 2,
         elderHomeName: 'Golden Sunset Eldercare',
+        avatarUrl: 'assets/images/landing/testimonial_2.jpg',
       );
     } else if ((normalizedEmail == 'ps@gmail.com' || normalizedEmail == 'pasidi.sarangi@carevora.com' || normalizedEmail == 'pasidi@carevora.com') &&
         (password == '123456' || password == 'carevora123' || password == 'demo1234')) {
@@ -254,6 +264,7 @@ class AuthNotifier extends ChangeNotifier {
         role: UserRole.caregiver,
         elderHomeId: 3,
         elderHomeName: 'Serenity Elder Home',
+        avatarUrl: 'assets/images/landing/caregivers_team.jpg',
       );
     } else if (normalizedEmail == 'eleanor.vance@carevora.com' && (password == 'carevora_admin' || password == 'carevora123')) {
       fallbackState = const AuthState(
@@ -263,6 +274,7 @@ class AuthNotifier extends ChangeNotifier {
         role: UserRole.caregiver,
         elderHomeId: 1,
         elderHomeName: 'Serene Valley Senior Living',
+        avatarUrl: 'assets/images/landing/caregivers_team.jpg',
       );
     } else if (normalizedEmail == 'seetha@carevora.com' && password == 'demo1234') {
       fallbackState = const AuthState(
@@ -272,6 +284,7 @@ class AuthNotifier extends ChangeNotifier {
         role: UserRole.caregiver,
         elderHomeId: 1,
         elderHomeName: 'Serene Valley Senior Living',
+        avatarUrl: 'assets/images/landing/caregivers_team.jpg',
       );
     } else if ((normalizedEmail == 'dr.reed@carevora.com' || normalizedEmail == 'doctor@carevora.com' || normalizedEmail == 'nimal@carevora.com') &&
         (password == 'doctor123' || password == 'demo1234')) {
@@ -280,6 +293,7 @@ class AuthNotifier extends ChangeNotifier {
         email: 'dr.reed@carevora.com',
         userName: 'Dr. Samantha Reed',
         role: UserRole.doctor,
+        avatarUrl: 'assets/images/landing/hero_caregiver_hug.jpg',
       );
     } else if ((normalizedEmail == 'sarah.jenkins@carevora.com') && (password == 'carevora123' || password == 'demo1234')) {
       fallbackState = const AuthState(
@@ -290,6 +304,7 @@ class AuthNotifier extends ChangeNotifier {
         elderHomeId: 1,
         elderHomeName: 'Serene Valley Senior Living',
         residentId: 1,
+        avatarUrl: 'assets/images/landing/testimonial_1.jpg',
       );
     } else if ((normalizedEmail == 'margaret.c@carevora.com' || normalizedEmail == 'robert.h@carevora.com') && password == 'carevora123') {
       fallbackState = const AuthState(
@@ -300,6 +315,7 @@ class AuthNotifier extends ChangeNotifier {
         elderHomeId: 2,
         elderHomeName: 'Golden Sunset Eldercare',
         residentId: 3,
+        avatarUrl: 'assets/images/landing/testimonial_3.jpg',
       );
     } else if ((normalizedEmail == 'admin@carevora.com' || normalizedEmail == 'admin') && password == 'admin123') {
       fallbackState = const AuthState(
@@ -328,6 +344,9 @@ class AuthNotifier extends ChangeNotifier {
         }
         if (fallbackState.caregiverId != null) {
           await prefs.setInt('carevora_caregiver_id', fallbackState.caregiverId!);
+        }
+        if (fallbackState.avatarUrl != null) {
+          await prefs.setString('carevora_avatar_url', fallbackState.avatarUrl!);
         }
       }
       _state = fallbackState.copyWith(

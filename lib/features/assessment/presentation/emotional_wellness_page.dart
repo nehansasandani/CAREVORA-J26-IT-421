@@ -22,6 +22,7 @@ import '../application/social_audit_service.dart';
 import '../../auth/application/auth_controller.dart';
 import '../../../core/services/audio_player_service.dart';
 import '../../../core/services/url_launcher_service.dart';
+import '../../../shared/widgets/carevora_avatar.dart';
 
 class EmotionalWellnessPage extends ConsumerStatefulWidget {
   final String? initialResidentId;
@@ -5457,22 +5458,10 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: const BoxDecoration(
-                  color: AppColors.primarySoft,
-                  shape: BoxShape.circle,
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  initials.isNotEmpty ? initials : 'R',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.primary,
-                  ),
-                ),
+              CarevoraAvatar(
+                avatarUrl: _currentResident.avatarUrl ?? (authState.isElder ? authState.avatarUrl : null),
+                radius: 24,
+                initials: initials.isNotEmpty ? initials : 'R',
               ),
               const SizedBox(width: 14),
               Column(
