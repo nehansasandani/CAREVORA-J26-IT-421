@@ -22,6 +22,7 @@ import '../application/vocal_emotion_ai_service.dart';
 import '../application/social_audit_service.dart';
 import '../../auth/application/auth_controller.dart';
 import '../../../core/services/audio_player_service.dart';
+import '../../../core/services/live_voice_capture_service.dart';
 import '../../../core/services/url_launcher_service.dart';
 
 class EmotionalWellnessPage extends ConsumerStatefulWidget {
@@ -1209,6 +1210,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
     _aiChatScrollController.dispose();
     _conversationTimer?.cancel();
     AudioPlayerService.instance.stop();
+    LiveVoiceCaptureService.instance.stop();
     _flutterTts.stop();
     _speech.stop();
     super.dispose();
@@ -1234,6 +1236,28 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
       });
       _startRecordingTimer();
       _startContinuousListening();
+
+      // Start physical Web Audio API microphone stream for real-time acoustic & laughter detection
+      LiveVoiceCaptureService.instance.start(
+        onAcousticFrame: (frame) {
+          if (!mounted || !_isRecording) return;
+          setState(() {
+            _soundLevel = frame.volume;
+            // Real-time laughter / cheerful voice detection (e.g. speaking while smiling/laughing)
+            if (frame.isLaughing) {
+              _voiceEmotion = 'Happy';
+              _voiceConfidence = frame.confidence;
+              _commLevel = 'High';
+              _engagementLevel = 'High';
+              _responseTime = 'Normal';
+            } else if (frame.volume > 0.08 && _spokenText.isEmpty) {
+              _voiceEmotion = frame.suggestedEmotion;
+              _voiceConfidence = frame.confidence;
+            }
+          });
+        },
+      );
+
       if (consentGranted) {
         await _facialCaptureService.startCaptureForVoiceRecording();
       }
@@ -1245,6 +1269,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
       });
       _recordTimer?.cancel();
       _stopContinuousListening();
+      LiveVoiceCaptureService.instance.stop();
       _facialCaptureService.stopCapture();
       if (_spokenText.isNotEmpty) {
         _analyzeSpokenVoice(_spokenText);
@@ -6794,23 +6819,24 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                   children: List.generate(24, (i) {
                     final factor = (1 + 0.8 * ((i % 4 == 0) ? 1.0 : 0.4));
                     final waveValue = (_waveController.value * 6.28 + (i * 0.3)).abs();
-                    final soundBoost = (_soundLevel.abs() > 0.05) ? (_soundLevel.abs() * 1.5).clamp(0.0, 25.0) : 0.0;
+                    final soundBoost = (_soundLevel.abs() > 0.02) ? (_soundLevel.abs() * 50.0).clamp(0.0, 55.0) : 0.0;
                     final dynamicHeight = _isRecording
                         ? (12.0 + soundBoost + (35.0 * (0.3 + 0.7 * (1.0 - (waveValue % 1.0)))) * factor)
                             .clamp(8.0, 80.0)
                         : 6.0;
 
+                    final emotionColor = _getVoiceEmotionColor(_voiceEmotion);
                     return Container(
                       width: 4,
                       height: dynamicHeight,
                       decoration: BoxDecoration(
-                        color: _isRecording ? AppColors.primary : AppColors.border,
+                        color: _isRecording ? emotionColor : AppColors.border,
                         borderRadius: BorderRadius.circular(3),
                         gradient: _isRecording
                             ? LinearGradient(
                                 colors: [
-                                  AppColors.primary,
-                                  AppColors.primary.withValues(alpha: 0.5),
+                                  emotionColor,
+                                  emotionColor.withValues(alpha: 0.5),
                                 ],
                                 begin: Alignment.topCenter,
                                 end: Alignment.bottomCenter,

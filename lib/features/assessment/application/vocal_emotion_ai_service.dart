@@ -101,7 +101,20 @@ class VocalEmotionAiService {
           if (analysis != null) {
             _lastServiceFailureTime = null;
             final profile = (analysis['acoustic_profile'] ?? 'NEU').toString().toUpperCase();
-            final label = (analysis['profile_label'] ?? 'Calm / Steady Prosody').toString();
+            String label;
+            if (profile == 'HAP') {
+              label = 'Happy';
+            } else if (profile == 'SAD') {
+              label = 'Sad';
+            } else if (profile == 'ANG') {
+              label = 'Angry';
+            } else if (profile == 'FEA') {
+              label = 'Fear';
+            } else if (profile == 'DIS') {
+              label = 'Confused';
+            } else {
+              label = 'Calm';
+            }
             final score = (analysis['vocal_wellness_score'] is num)
                 ? (analysis['vocal_wellness_score'] as num).toDouble()
                 : 70.0;
