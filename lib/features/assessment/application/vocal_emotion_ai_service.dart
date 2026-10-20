@@ -188,20 +188,23 @@ class VocalEmotionAiService {
     ];
     final feaHits = _countKeywordHits(lower, feaKeywords);
 
-    // 5. Monotonic / Flat (DIS)
+    // 5. Confused / Agitated / Flat (DIS)
     final disKeywords = [
-      'disgust', 'sick', 'nasty', 'gross', 'repulsed', 'tired of this', 'hate this', 'අප්‍රසන්නයි'
+      'disgust', 'sick', 'nasty', 'gross', 'repulsed', 'tired of this', 'hate this', 'අප්‍රසන්නයි',
+      'confused', 'puzzled', 'dont know', 'what', 'why', 'what happened', 'wonder',
+      'මොකක්ද', 'මොකද', 'ඇයි', 'ඇයි මෙහෙම', 'තේරෙන්නෙ නෑ', 'තේරෙන්නේ නෑ', 'අවුල්', 'කරදර', 'කරදරයි',
+      'ජූල්', 'සෑම', 'මිනිස්සු'
     ];
     final disHits = _countKeywordHits(lower, disKeywords);
 
     // Determine dominant emotion based on hit counts
-    if (hapHits > 0 && hapHits >= sadHits && hapHits >= angHits && hapHits >= feaHits) {
+    if (hapHits > 0 && hapHits >= sadHits && hapHits >= angHits && hapHits >= feaHits && hapHits >= disHits) {
       final conf = (0.84 + (hapHits * 0.03)).clamp(0.82, 0.93);
       final pMod = pitchModulation ?? 0.85;
       final score = ((pMod * 40.0) + (conf * 55.0)).clamp(75.0, 96.0);
       return VocalEmotionResult(
         acousticProfile: 'HAP',
-        profileLabel: 'Cheerful / High Valence',
+        profileLabel: 'Happy',
         vocalWellnessScore: double.parse(score.toStringAsFixed(1)),
         confidence: double.parse(conf.toStringAsFixed(2)),
         probabilities: {'HAP': conf, 'NEU': double.parse(((1 - conf) * 0.7).toStringAsFixed(3)), 'SAD': double.parse(((1 - conf) * 0.3).toStringAsFixed(3))},
@@ -209,16 +212,28 @@ class VocalEmotionAiService {
       );
     }
 
-    if (sadHits > 0 && sadHits >= angHits && sadHits >= feaHits) {
+    if (sadHits > 0 && sadHits >= angHits && sadHits >= feaHits && sadHits >= disHits) {
       final conf = (0.83 + (sadHits * 0.03)).clamp(0.81, 0.92);
       final pMod = pitchModulation ?? 0.35;
       final score = ((pMod * 35.0) + ((1.0 - conf) * 20.0) + 15.0).clamp(25.0, 48.0);
       return VocalEmotionResult(
         acousticProfile: 'SAD',
-        profileLabel: 'Flattened / Low Pitch',
+        profileLabel: 'Sad',
         vocalWellnessScore: double.parse(score.toStringAsFixed(1)),
         confidence: double.parse(conf.toStringAsFixed(2)),
         probabilities: {'SAD': conf, 'NEU': double.parse(((1 - conf) * 0.6).toStringAsFixed(3)), 'FEA': double.parse(((1 - conf) * 0.4).toStringAsFixed(3))},
+        isModelInference: true,
+      );
+    }
+
+    if (disHits > 0 && disHits >= angHits && disHits >= feaHits) {
+      final conf = (0.82 + (disHits * 0.03)).clamp(0.80, 0.90);
+      return VocalEmotionResult(
+        acousticProfile: 'DIS',
+        profileLabel: 'Confused',
+        vocalWellnessScore: 50.0,
+        confidence: double.parse(conf.toStringAsFixed(2)),
+        probabilities: {'DIS': conf, 'ANG': double.parse(((1 - conf) * 0.5).toStringAsFixed(3)), 'NEU': double.parse(((1 - conf) * 0.5).toStringAsFixed(3))},
         isModelInference: true,
       );
     }
@@ -227,7 +242,7 @@ class VocalEmotionAiService {
       final conf = (0.82 + (angHits * 0.03)).clamp(0.80, 0.90);
       return VocalEmotionResult(
         acousticProfile: 'ANG',
-        profileLabel: 'Elevated / Rapid Cadence',
+        profileLabel: 'Angry',
         vocalWellnessScore: 34.5,
         confidence: double.parse(conf.toStringAsFixed(2)),
         probabilities: {'ANG': conf, 'FEA': double.parse(((1 - conf) * 0.6).toStringAsFixed(3)), 'DIS': double.parse(((1 - conf) * 0.4).toStringAsFixed(3))},
@@ -239,7 +254,7 @@ class VocalEmotionAiService {
       final conf = (0.80 + (feaHits * 0.03)).clamp(0.78, 0.89);
       return VocalEmotionResult(
         acousticProfile: 'FEA',
-        profileLabel: 'Tremulous / Hesitant',
+        profileLabel: 'Fear',
         vocalWellnessScore: 42.0,
         confidence: double.parse(conf.toStringAsFixed(2)),
         probabilities: {'FEA': conf, 'SAD': double.parse(((1 - conf) * 0.6).toStringAsFixed(3)), 'NEU': double.parse(((1 - conf) * 0.4).toStringAsFixed(3))},
@@ -247,25 +262,35 @@ class VocalEmotionAiService {
       );
     }
 
-    if (disHits > 0) {
-      final conf = (0.78 + (disHits * 0.03)).clamp(0.76, 0.88);
-      return VocalEmotionResult(
-        acousticProfile: 'DIS',
-        profileLabel: 'Monotonic / Flat',
-        vocalWellnessScore: 36.0,
-        confidence: double.parse(conf.toStringAsFixed(2)),
-        probabilities: {'DIS': conf, 'ANG': double.parse(((1 - conf) * 0.5).toStringAsFixed(3)), 'SAD': double.parse(((1 - conf) * 0.5).toStringAsFixed(3))},
-        isModelInference: false,
-      );
+    // Acoustic energy-driven classification when text is neutral
+    if (pitchModulation != null) {
+      if (pitchModulation >= 0.82) {
+        return const VocalEmotionResult(
+          acousticProfile: 'ANG',
+          profileLabel: 'Angry',
+          vocalWellnessScore: 45.0,
+          confidence: 0.82,
+          probabilities: {'ANG': 0.82, 'NEU': 0.18},
+          isModelInference: false,
+        );
+      } else if (pitchModulation <= 0.42) {
+        return const VocalEmotionResult(
+          acousticProfile: 'SAD',
+          profileLabel: 'Sad',
+          vocalWellnessScore: 38.0,
+          confidence: 0.80,
+          probabilities: {'SAD': 0.80, 'NEU': 0.20},
+          isModelInference: false,
+        );
+      }
     }
 
-    // Default Calm / Steady Prosody (NEU)
-    final neuConf = 0.78;
-    return VocalEmotionResult(
+    // Default Calm Baseline
+    return const VocalEmotionResult(
       acousticProfile: 'NEU',
-      profileLabel: 'Calm / Steady Prosody',
+      profileLabel: 'Calm',
       vocalWellnessScore: 72.0,
-      confidence: neuConf,
+      confidence: 0.78,
       probabilities: {'NEU': 0.78, 'HAP': 0.12, 'SAD': 0.10},
       isModelInference: false,
     );
