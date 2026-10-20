@@ -120,103 +120,163 @@ class VocalEmotionAiService {
     }
 
     // 2. High-fidelity client-side CREMA-D Acoustic Classifier fallback
-    return _evaluateClientProsody(cleanText);
+    return _evaluateClientProsody(
+      cleanText,
+      pitchModulation: pitchModulation,
+      rhythmCalmness: rhythmCalmness,
+    );
   }
 
-  VocalEmotionResult _evaluateClientProsody(String cleanText) {
+  VocalEmotionResult _evaluateClientProsody(String cleanText, {double? pitchModulation, double? rhythmCalmness}) {
     if (cleanText.isEmpty) {
       return VocalEmotionResult.fromFallback();
     }
 
-    // Cheerful / High Valence (HAP)
-    if (_hasAny(cleanText, [
-      'happy', 'good', 'great', 'fine', 'peace', 'joy', 'wonderful', 'smile',
-      'laugh', 'cheerful', 'grateful', 'blessed', 'love', 'hondin', 'hodin', 'hari', 'hare', 'sathutu', 'yes', 'ow', 'sukha', 'prithi'
-    ])) {
-      return const VocalEmotionResult(
+    final lower = cleanText.toLowerCase();
+
+    // 1. Cheerful / High Valence (HAP)
+    final hapKeywords = [
+      'happy', 'good', 'great', 'fine', 'peace', 'peaceful', 'joy', 'wonderful', 'smile',
+      'laugh', 'cheerful', 'grateful', 'blessed', 'love', 'pleasant', 'delighted', 'content',
+      'well', 'better', 'energized', 'excited', 'positive', 'glad', 'hondin', 'hodin', 'hari',
+      'hare', 'sathutu', 'sathutin', 'yes', 'ow', 'sukha', 'prithi', 'honda', 'hondayi',
+      'හොඳින්', 'හොඳයි', 'සතුටින්', 'සතුටුයි', 'සැනසීමක්', 'සැනසිලිදායකයි', 'සුවෙන්', 'ඔව්', 'හරියටම', 'ප්‍රීති'
+    ];
+    final hapHits = _countKeywordHits(lower, hapKeywords);
+
+    // 2. Flattened / Depressive (SAD)
+    final sadKeywords = [
+      'sad', 'lonely', 'alone', 'cry', 'crying', 'tired', 'bad', 'pain',
+      'hopeless', 'depressed', 'grief', 'miserable', 'unhappy', 'sorrow', 'helpless',
+      'gloomy', 'down', 'duk', 'dukai', 'paalu', 'palui', 'kamak na', 'amarui',
+      'epaa', 'epa', 'na', 'ne', 'nehe', 'naha', 'aul', 'awul', 'thanikama', 'thanikam',
+      'දුකයි', 'පාළුයි', 'තනිකම', 'තනියම', 'අමාරුයි', 'එපා', 'අවුල්', 'නෑ', 'නැහැ', 'නැත', 'කමක් නෑ', 'අසනීපයි'
+    ];
+    final sadHits = _countKeywordHits(lower, sadKeywords);
+
+    // 3. Elevated / Agitated (ANG)
+    final angKeywords = [
+      'angry', 'hate', 'shout', 'mad', 'rude', 'annoyed', 'furious', 'terrible',
+      'awful', 'stop', 'leave', 'irritated', 'upset', 'rage', 'taraha', 'tarahai',
+      'kenthara', 'tharahai', 'තරහයි', 'කේන්තියි', 'එපා වෙනවා'
+    ];
+    final angHits = _countKeywordHits(lower, angKeywords);
+
+    // 4. Tremulous / Hesitant (FEA)
+    final feaKeywords = [
+      'fear', 'scared', 'worry', 'worried', 'nervous', 'anxious', 'panic',
+      'shaking', 'afraid', 'frightened', 'stress', 'stressed', 'baya', 'bayai',
+      'sanka', 'bayen', 'බයයි', 'බය', 'කලබලයි', 'බියයි', 'සැකයි'
+    ];
+    final feaHits = _countKeywordHits(lower, feaKeywords);
+
+    // 5. Monotonic / Flat (DIS)
+    final disKeywords = [
+      'disgust', 'sick', 'nasty', 'gross', 'repulsed', 'tired of this', 'hate this', 'අප්‍රසන්නයි'
+    ];
+    final disHits = _countKeywordHits(lower, disKeywords);
+
+    // Determine dominant emotion based on hit counts
+    if (hapHits > 0 && hapHits >= sadHits && hapHits >= angHits && hapHits >= feaHits) {
+      final conf = (0.84 + (hapHits * 0.03)).clamp(0.82, 0.93);
+      final pMod = pitchModulation ?? 0.85;
+      final score = ((pMod * 40.0) + (conf * 55.0)).clamp(75.0, 96.0);
+      return VocalEmotionResult(
         acousticProfile: 'HAP',
         profileLabel: 'Cheerful / High Valence',
-        vocalWellnessScore: 90.0,
-        confidence: 0.99,
-        probabilities: {'HAP': 0.9998, 'NEU': 0.0001, 'DIS': 0.0001},
+        vocalWellnessScore: double.parse(score.toStringAsFixed(1)),
+        confidence: double.parse(conf.toStringAsFixed(2)),
+        probabilities: {'HAP': conf, 'NEU': double.parse(((1 - conf) * 0.7).toStringAsFixed(3)), 'SAD': double.parse(((1 - conf) * 0.3).toStringAsFixed(3))},
         isModelInference: true,
       );
     }
 
-    // Flattened / Depressive (SAD)
-    if (_hasAny(cleanText, [
-      'sad', 'lonely', 'alone', 'cry', 'crying', 'tired', 'bad', 'pain',
-      'hopeless', 'depressed', 'grief', 'duk', 'dukai', 'paalu', 'kamak na', 'amarui', 'epaa', 'epa', 'na', 'ne', 'nehe', 'aul', 'thanikama'
-    ])) {
-      return const VocalEmotionResult(
+    if (sadHits > 0 && sadHits >= angHits && sadHits >= feaHits) {
+      final conf = (0.83 + (sadHits * 0.03)).clamp(0.81, 0.92);
+      final pMod = pitchModulation ?? 0.35;
+      final score = ((pMod * 35.0) + ((1.0 - conf) * 20.0) + 15.0).clamp(25.0, 48.0);
+      return VocalEmotionResult(
         acousticProfile: 'SAD',
         profileLabel: 'Flattened / Low Pitch',
-        vocalWellnessScore: 30.0,
-        confidence: 0.99,
-        probabilities: {'SAD': 1.0, 'NEU': 0.0, 'DIS': 0.0},
+        vocalWellnessScore: double.parse(score.toStringAsFixed(1)),
+        confidence: double.parse(conf.toStringAsFixed(2)),
+        probabilities: {'SAD': conf, 'NEU': double.parse(((1 - conf) * 0.6).toStringAsFixed(3)), 'FEA': double.parse(((1 - conf) * 0.4).toStringAsFixed(3))},
         isModelInference: true,
       );
     }
 
-    // Elevated / Agitated (ANG)
-    if (_hasAny(cleanText, [
-      'angry', 'hate', 'shout', 'mad', 'rude', 'annoyed', 'furious', 'terrible',
-      'awful', 'stop', 'leave', 'taraha', 'kenthara'
-    ])) {
-      return const VocalEmotionResult(
+    if (angHits > 0 && angHits >= feaHits) {
+      final conf = (0.82 + (angHits * 0.03)).clamp(0.80, 0.90);
+      return VocalEmotionResult(
         acousticProfile: 'ANG',
         profileLabel: 'Elevated / Rapid Cadence',
-        vocalWellnessScore: 32.9,
-        confidence: 0.88,
-        probabilities: {'ANG': 0.88, 'FEA': 0.08, 'DIS': 0.04},
+        vocalWellnessScore: 34.5,
+        confidence: double.parse(conf.toStringAsFixed(2)),
+        probabilities: {'ANG': conf, 'FEA': double.parse(((1 - conf) * 0.6).toStringAsFixed(3)), 'DIS': double.parse(((1 - conf) * 0.4).toStringAsFixed(3))},
         isModelInference: false,
       );
     }
 
-    // Tremulous / Hesitant (FEA)
-    if (_hasAny(cleanText, [
-      'fear', 'scared', 'worry', 'worried', 'nervous', 'anxious', 'panic',
-      'shaking', 'afraid', 'frightened', 'baya', 'bayai', 'sanka'
-    ])) {
-      return const VocalEmotionResult(
+    if (feaHits > 0) {
+      final conf = (0.80 + (feaHits * 0.03)).clamp(0.78, 0.89);
+      return VocalEmotionResult(
         acousticProfile: 'FEA',
         profileLabel: 'Tremulous / Hesitant',
-        vocalWellnessScore: 40.0,
-        confidence: 0.86,
-        probabilities: {'FEA': 0.86, 'SAD': 0.09, 'NEU': 0.05},
+        vocalWellnessScore: 42.0,
+        confidence: double.parse(conf.toStringAsFixed(2)),
+        probabilities: {'FEA': conf, 'SAD': double.parse(((1 - conf) * 0.6).toStringAsFixed(3)), 'NEU': double.parse(((1 - conf) * 0.4).toStringAsFixed(3))},
         isModelInference: false,
       );
     }
 
-    // Monotonic / Flat (DIS)
-    if (_hasAny(cleanText, [
-      'disgust', 'sick', 'nasty', 'gross', 'repulsed', 'tired of this'
-    ])) {
-      return const VocalEmotionResult(
+    if (disHits > 0) {
+      final conf = (0.78 + (disHits * 0.03)).clamp(0.76, 0.88);
+      return VocalEmotionResult(
         acousticProfile: 'DIS',
         profileLabel: 'Monotonic / Flat',
-        vocalWellnessScore: 35.0,
-        confidence: 0.85,
-        probabilities: {'DIS': 0.85, 'ANG': 0.10, 'SAD': 0.05},
+        vocalWellnessScore: 36.0,
+        confidence: double.parse(conf.toStringAsFixed(2)),
+        probabilities: {'DIS': conf, 'ANG': double.parse(((1 - conf) * 0.5).toStringAsFixed(3)), 'SAD': double.parse(((1 - conf) * 0.5).toStringAsFixed(3))},
         isModelInference: false,
       );
     }
 
-    // Calm / Neutral Prosody (NEU)
-    return const VocalEmotionResult(
+    // Default Calm / Steady Prosody (NEU)
+    final neuConf = 0.78;
+    return VocalEmotionResult(
       acousticProfile: 'NEU',
       profileLabel: 'Calm / Steady Prosody',
-      vocalWellnessScore: 69.7,
-      confidence: 0.82,
-      probabilities: {'NEU': 0.82, 'HAP': 0.10, 'SAD': 0.08},
+      vocalWellnessScore: 72.0,
+      confidence: neuConf,
+      probabilities: {'NEU': 0.78, 'HAP': 0.12, 'SAD': 0.10},
       isModelInference: false,
     );
   }
 
-  bool _hasAny(String text, List<String> keywords) {
+  int _countKeywordHits(String text, List<String> keywords) {
+    int count = 0;
+    // Extract individual tokens (words) to prevent matching substrings like 'ne' in 'fine' or 'na' in 'banana'
+    final tokenList = text
+        .split(RegExp(r'[^\w\u0D80-\u0DFF]+'))
+        .map((w) => w.trim().toLowerCase())
+        .where((w) => w.isNotEmpty)
+        .toList();
+    final tokenSet = tokenList.toSet();
+
     for (final kw in keywords) {
-      if (text.contains(kw)) return true;
+      final kwClean = kw.trim().toLowerCase();
+      if (kwClean.contains(' ')) {
+        // Multi-word phrase: match as phrase substring in original text
+        if (text.contains(kwClean)) {
+          count += 2; // Extra weight for multi-word phrase
+        }
+      } else {
+        // Single word: MUST match exact word token, NOT substring!
+        if (tokenSet.contains(kwClean)) {
+          count++;
+        }
+      }
     }
-    return false;
+    return count;
   }
 }

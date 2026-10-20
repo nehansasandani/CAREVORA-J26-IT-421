@@ -81,40 +81,59 @@ def analyze_vocal_affect(audio_bytes: bytes = None, simulated_cues: dict = None,
         spoken_text = str(simulated_cues.get('spoken_text', '')).lower().strip()
         target_cue = 'NEU'
         if spoken_text:
-            if any(w in spoken_text for w in ['happy', 'good', 'great', 'fine', 'peace', 'joy', 'wonderful', 'hari', 'hare', 'hondin', 'hodin', 'sathutu', 'yes', 'ow', 'sukha', 'prithi']):
+            import re
+            words = set(re.findall(r'[\w\u0d80-\u0dff]+', spoken_text.lower()))
+            def has_match(kw_list):
+                for kw in kw_list:
+                    kw_lower = kw.lower()
+                    if ' ' in kw_lower:
+                        if kw_lower in spoken_text:
+                            return True
+                    else:
+                        if kw_lower in words:
+                            return True
+                return False
+
+            if has_match(['happy', 'good', 'great', 'fine', 'peace', 'joy', 'wonderful', 'smile', 'cheerful', 'grateful', 'blessed', 'love', 'hondin', 'hodin', 'hari', 'hare', 'sathutu', 'yes', 'ow', 'sukha', 'prithi', 'හොඳින්', 'හොඳයි', 'සතුටින්', 'සතුටුයි', 'ඔව්']):
                 target_cue = 'HAP'
                 default_pitch = 0.85
                 default_rhythm = 0.78
-            elif any(w in spoken_text for w in ['sad', 'lonely', 'alone', 'cry', 'tired', 'bad', 'duk', 'paalu', 'kamak na', 'amarui', 'na', 'ne', 'nehe', 'epa']):
+                confidence = 0.89
+            elif has_match(['sad', 'lonely', 'alone', 'cry', 'crying', 'tired', 'bad', 'pain', 'hopeless', 'depressed', 'grief', 'duk', 'dukai', 'paalu', 'kamak na', 'amarui', 'na', 'ne', 'nehe', 'naha', 'epa', 'epaa', 'aul', 'thanikama', 'දුකයි', 'පාළුයි', 'තනිකම', 'අමාරුයි', 'එපා', 'අවුල්', 'නෑ', 'නැහැ']):
                 target_cue = 'SAD'
                 default_pitch = 0.35
                 default_rhythm = 0.38
-            elif any(w in spoken_text for w in ['angry', 'hate', 'shout', 'rude', 'mad', 'taraha', 'kenthara']):
+                confidence = 0.88
+            elif has_match(['angry', 'hate', 'shout', 'rude', 'mad', 'annoyed', 'furious', 'taraha', 'tarahai', 'kenthara', 'තරහයි', 'කේන්තියි']):
                 target_cue = 'ANG'
                 default_pitch = 0.90
                 default_rhythm = 0.88
-            elif any(w in spoken_text for w in ['fear', 'scared', 'worry', 'nervous', 'baya', 'bayai', 'sanka']):
+                confidence = 0.85
+            elif has_match(['fear', 'scared', 'worry', 'worried', 'nervous', 'anxious', 'panic', 'afraid', 'baya', 'bayai', 'sanka', 'බයයි', 'බය']):
                 target_cue = 'FEA'
                 default_pitch = 0.75
                 default_rhythm = 0.82
-            elif any(w in spoken_text for w in ['disgust', 'nasty', 'gross', 'repulsed']):
+                confidence = 0.84
+            elif has_match(['disgust', 'nasty', 'gross', 'repulsed', 'tired of this']):
                 target_cue = 'DIS'
                 default_pitch = 0.50
                 default_rhythm = 0.45
+                confidence = 0.82
             else:
                 target_cue = 'NEU'
                 default_pitch = 0.65
                 default_rhythm = 0.60
+                confidence = 0.78
         else:
             target_cue = 'NEU'
             default_pitch = 0.65
             default_rhythm = 0.60
+            confidence = 0.75
 
         pitch_mod = float(simulated_cues.get('pitch_modulation', default_pitch))
         rhythm_calmness = float(simulated_cues.get('rhythm_calmness', default_rhythm))
         acoustic_score = (pitch_mod * 0.45 + rhythm_calmness * 0.55) * 100.0
         acoustic_score = float(np.clip(acoustic_score, 30.0, 95.0))
-        confidence = 0.88
         source = f"Acoustic Cues & Spoken Text Analysis ('{spoken_text[:30]}')" if spoken_text else "Simulated Acoustic Cues (Demo Mode)"
     else:
         # Default neutral baseline
