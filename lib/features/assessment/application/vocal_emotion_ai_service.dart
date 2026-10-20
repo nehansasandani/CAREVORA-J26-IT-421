@@ -50,6 +50,9 @@ class VocalEmotionAiService {
   static final VocalEmotionAiService _instance = VocalEmotionAiService();
   static VocalEmotionAiService get instance => _instance;
 
+  DateTime? _lastServiceFailureTime;
+  static const Duration _serviceRetryInterval = Duration(seconds: 30);
+
   /// Analyzes voice / speech transcription dynamically using the trained
   /// Carevora Vocal Emotion Model (CREMA-D Grounded 6-Class Classifier).
   static Future<VocalEmotionResult> analyzeSpokenSpeech({
@@ -70,56 +73,69 @@ class VocalEmotionAiService {
     double? rhythmCalmness,
   }) async {
     final cleanText = spokenText.trim().toLowerCase();
-
-    // 1. Attempt FastAPI Microservice inference with trained carevora_vocal_model.joblib
-    try {
-      final uri = Uri.parse('$_baseUrl/api/ml/analyze-audio-json');
-      final response = await _client.post(
-        uri,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'spoken_text': cleanText,
-          if (pitchModulation != null) 'pitch_modulation': pitchModulation,
-          if (rhythmCalmness != null) 'rhythm_calmness': rhythmCalmness,
-        }),
-      ).timeout(const Duration(milliseconds: 1800));
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body) as Map<String, dynamic>;
-        final analysis = data['analysis'] as Map<String, dynamic>?;
-        if (analysis != null) {
-          final profile = (analysis['acoustic_profile'] ?? 'NEU').toString().toUpperCase();
-          final label = (analysis['profile_label'] ?? 'Calm / Steady Prosody').toString();
-          final score = (analysis['vocal_wellness_score'] is num)
-              ? (analysis['vocal_wellness_score'] as num).toDouble()
-              : 70.0;
-          final conf = (analysis['confidence'] is num)
-              ? (analysis['confidence'] as num).toDouble()
-              : 0.85;
-
-          final rawProb = analysis['probabilities'] as Map<String, dynamic>?;
-          final Map<String, double> parsedProbs = {};
-          if (rawProb != null) {
-            rawProb.forEach((k, v) {
-              if (v is num) parsedProbs[k] = v.toDouble();
-            });
-          }
-
-          return VocalEmotionResult(
-            acousticProfile: profile,
-            profileLabel: label,
-            vocalWellnessScore: score,
-            confidence: conf,
-            probabilities: parsedProbs,
-            isModelInference: true,
-          );
-        }
-      }
-    } catch (e) {
-      debugPrint('Vocal AI Microservice request fallback: $e');
+    if (cleanText.isEmpty) {
+      return VocalEmotionResult.fromFallback();
     }
 
-    // 2. High-fidelity client-side CREMA-D Acoustic Classifier fallback
+    final now = DateTime.now();
+    final bool canTryService = _lastServiceFailureTime == null ||
+        now.difference(_lastServiceFailureTime!) > _serviceRetryInterval;
+
+    // 1. Snappy attempt at FastAPI Microservice inference if reachable
+    if (canTryService) {
+      try {
+        final uri = Uri.parse('$_baseUrl/api/ml/analyze-audio-json');
+        final response = await _client.post(
+          uri,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'spoken_text': cleanText,
+            if (pitchModulation != null) 'pitch_modulation': pitchModulation,
+            if (rhythmCalmness != null) 'rhythm_calmness': rhythmCalmness,
+          }),
+        ).timeout(const Duration(milliseconds: 600));
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body) as Map<String, dynamic>;
+          final analysis = data['analysis'] as Map<String, dynamic>?;
+          if (analysis != null) {
+            _lastServiceFailureTime = null;
+            final profile = (analysis['acoustic_profile'] ?? 'NEU').toString().toUpperCase();
+            final label = (analysis['profile_label'] ?? 'Calm / Steady Prosody').toString();
+            final score = (analysis['vocal_wellness_score'] is num)
+                ? (analysis['vocal_wellness_score'] as num).toDouble()
+                : 70.0;
+            final conf = (analysis['confidence'] is num)
+                ? (analysis['confidence'] as num).toDouble()
+                : 0.85;
+
+            final rawProb = analysis['probabilities'] as Map<String, dynamic>?;
+            final Map<String, double> parsedProbs = {};
+            if (rawProb != null) {
+              rawProb.forEach((k, v) {
+                if (v is num) parsedProbs[k] = v.toDouble();
+              });
+            }
+
+            return VocalEmotionResult(
+              acousticProfile: profile,
+              profileLabel: label,
+              vocalWellnessScore: score,
+              confidence: conf,
+              probabilities: parsedProbs,
+              isModelInference: true,
+            );
+          }
+        } else {
+          _lastServiceFailureTime = now;
+        }
+      } catch (e) {
+        _lastServiceFailureTime = now;
+        debugPrint('Vocal AI Microservice request fallback: $e');
+      }
+    }
+
+    // 2. High-fidelity client-side CREMA-D Acoustic Classifier fallback (0ms latency!)
     return _evaluateClientProsody(
       cleanText,
       pitchModulation: pitchModulation,
@@ -140,7 +156,8 @@ class VocalEmotionAiService {
       'laugh', 'cheerful', 'grateful', 'blessed', 'love', 'pleasant', 'delighted', 'content',
       'well', 'better', 'energized', 'excited', 'positive', 'glad', 'hondin', 'hodin', 'hari',
       'hare', 'sathutu', 'sathutin', 'yes', 'ow', 'sukha', 'prithi', 'honda', 'hondayi',
-      'හොඳින්', 'හොඳයි', 'සතුටින්', 'සතුටුයි', 'සැනසීමක්', 'සැනසිලිදායකයි', 'සුවෙන්', 'ඔව්', 'හරියටම', 'ප්‍රීති'
+      'හොඳින්', 'හොඳයි', 'සතුටින්', 'සතුටුයි', 'සැනසීමක්', 'සැනසිලිදායකයි', 'සුවෙන්', 'ඔව්', 'හරියටම', 'ප්‍රීති',
+      'හරි', 'සුවයි', 'සුවපත්', 'සතුට'
     ];
     final hapHits = _countKeywordHits(lower, hapKeywords);
 
@@ -150,7 +167,8 @@ class VocalEmotionAiService {
       'hopeless', 'depressed', 'grief', 'miserable', 'unhappy', 'sorrow', 'helpless',
       'gloomy', 'down', 'duk', 'dukai', 'paalu', 'palui', 'kamak na', 'amarui',
       'epaa', 'epa', 'na', 'ne', 'nehe', 'naha', 'aul', 'awul', 'thanikama', 'thanikam',
-      'දුකයි', 'පාළුයි', 'තනිකම', 'තනියම', 'අමාරුයි', 'එපා', 'අවුල්', 'නෑ', 'නැහැ', 'නැත', 'කමක් නෑ', 'අසනීපයි'
+      'දුකයි', 'පාළුයි', 'තනිකම', 'තනියම', 'අමාරුයි', 'එපා', 'අවුල්', 'නෑ', 'නැහැ', 'නැත', 'කමක් නෑ', 'අසනීපයි',
+      'අමාරු', 'වේදනයි', 'දුක්', 'දුක'
     ];
     final sadHits = _countKeywordHits(lower, sadKeywords);
 
@@ -158,7 +176,7 @@ class VocalEmotionAiService {
     final angKeywords = [
       'angry', 'hate', 'shout', 'mad', 'rude', 'annoyed', 'furious', 'terrible',
       'awful', 'stop', 'leave', 'irritated', 'upset', 'rage', 'taraha', 'tarahai',
-      'kenthara', 'tharahai', 'තරහයි', 'කේන්තියි', 'එපා වෙනවා'
+      'kenthara', 'tharahai', 'තරහයි', 'කේන්තියි', 'එපා වෙනවා', 'තරහ', 'කේන්ති', 'ගහන්න'
     ];
     final angHits = _countKeywordHits(lower, angKeywords);
 
@@ -166,7 +184,7 @@ class VocalEmotionAiService {
     final feaKeywords = [
       'fear', 'scared', 'worry', 'worried', 'nervous', 'anxious', 'panic',
       'shaking', 'afraid', 'frightened', 'stress', 'stressed', 'baya', 'bayai',
-      'sanka', 'bayen', 'බයයි', 'බය', 'කලබලයි', 'බියයි', 'සැකයි'
+      'sanka', 'bayen', 'බයයි', 'බය', 'කලබලයි', 'බියයි', 'සැකයි', 'බිය', 'භයයි'
     ];
     final feaHits = _countKeywordHits(lower, feaKeywords);
 
