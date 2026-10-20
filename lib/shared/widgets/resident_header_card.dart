@@ -8,12 +8,16 @@ class ResidentHeaderCard extends StatelessWidget {
   final Resident resident;
   final VoidCallback? onViewProfile;
   final VoidCallback? onViewDetailedReport;
+  final bool showViewProfile;
+  final bool showLastAssessment;
 
   const ResidentHeaderCard({
     super.key,
     required this.resident,
     this.onViewProfile,
     this.onViewDetailedReport,
+    this.showViewProfile = false,
+    this.showLastAssessment = false,
   });
 
   @override
@@ -75,18 +79,20 @@ class ResidentHeaderCard extends StatelessWidget {
                         'Age: ${resident.age} • ${resident.gender} • Room No: ${resident.roomNo}',
                         style: AppTextStyles.bodySmall,
                       ),
-                      const SizedBox(width: 8),
-                      InkWell(
-                        onTap: onViewProfile,
-                        child: Text(
-                          'View Profile →',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.primary,
+                      if (showViewProfile && onViewProfile != null) ...[
+                        const SizedBox(width: 8),
+                        InkWell(
+                          onTap: onViewProfile,
+                          child: const Text(
+                            'View Profile →',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.primary,
+                            ),
                           ),
                         ),
-                      ),
+                      ],
                     ],
                   ),
                 ],
@@ -97,14 +103,15 @@ class ResidentHeaderCard extends StatelessWidget {
             spacing: 12,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text('Last Assessment', style: AppTextStyles.caption),
-                  Text(resident.lastAssessmentDate,
-                      style: AppTextStyles.bodyMedium),
-                ],
-              ),
+              if (showLastAssessment)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text('Last Assessment', style: AppTextStyles.caption),
+                    Text(resident.lastAssessmentDate,
+                        style: AppTextStyles.bodyMedium),
+                  ],
+                ),
               ElevatedButton(
                 onPressed: onViewDetailedReport,
                 style: ElevatedButton.styleFrom(

@@ -1847,53 +1847,49 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Luxury Animated Avatar with portrait image & active status indicator
+              // Resident Avatar with portrait image & active status indicator
               Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  Container(
-                    width: 62,
-                    height: 62,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: const Color(0xFFDDD6FE), width: 2.5),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF6C3FC5).withValues(alpha: 0.28),
-                          blurRadius: 16,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: CarevoraAvatar(
-                      avatarUrl: res?.avatarUrl ?? (isElder ? ref.read(authProvider).state.avatarUrl : null),
-                      radius: 31,
-                      initials: initials,
+                  RepaintBoundary(
+                    child: Container(
+                      width: 62,
+                      height: 62,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: const Color(0xFFDDD6FE), width: 2.5),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF6C3FC5).withValues(alpha: 0.28),
+                            blurRadius: 16,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: CarevoraAvatar(
+                        key: const ValueKey('resident_session_banner_avatar'),
+                        avatarUrl: res?.avatarUrl ?? (isElder ? ref.read(authProvider).state.avatarUrl : null),
+                        radius: 31,
+                        initials: initials,
+                      ),
                     ),
                   ),
                   Positioned(
                     right: 0,
                     bottom: 0,
-                    child: AnimatedBuilder(
-                      animation: _ambientPulseAnimation,
-                      builder: (context, child) => Transform.scale(
-                        scale: _ambientPulseAnimation.value,
-                        child: child,
-                      ),
-                      child: Container(
-                        width: 16,
-                        height: 16,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF10B981),
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2.5),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFF10B981).withValues(alpha: 0.6),
-                              blurRadius: 6,
-                            ),
-                          ],
-                        ),
+                    child: Container(
+                      width: 16,
+                      height: 16,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF10B981),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2.5),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF10B981).withValues(alpha: 0.6),
+                            blurRadius: 6,
+                          ),
+                        ],
                       ),
                     ),
                   ),

@@ -98,11 +98,7 @@ class AppRouter {
           ),
           GoRoute(
             path: '/dashboard/reports',
-            builder: (context, state) => const GenericPlaceholderTab(
-              title: 'Reports & Clinical Analytics',
-              description: 'Comprehensive longitudinal healthcare reports',
-              icon: LucideIcons.barChart3,
-            ),
+            builder: (context, state) => const ResidentDirectoryPage(),
           ),
           GoRoute(
             path: '/dashboard/care-plans',

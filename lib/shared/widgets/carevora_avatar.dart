@@ -11,6 +11,10 @@ class CarevoraAvatar extends StatelessWidget {
   final Color? backgroundColor;
   final Color? foregroundColor;
 
+  // In-memory cache for decoded base64 image bytes to avoid re-decoding
+  // on every rebuild, which causes MemoryImage reference changes and image blinking.
+  static final Map<String, Uint8List> _base64Cache = {};
+
   const CarevoraAvatar({
     super.key,
     this.avatarUrl,
@@ -20,6 +24,32 @@ class CarevoraAvatar extends StatelessWidget {
     this.backgroundColor,
     this.foregroundColor,
   });
+
+  static Uint8List? _decodeBase64(String rawUrl) {
+    if (_base64Cache.containsKey(rawUrl)) {
+      return _base64Cache[rawUrl];
+    }
+    try {
+      String rawB64 = rawUrl;
+      if (rawB64.contains(',')) {
+        rawB64 = rawB64.substring(rawB64.indexOf(',') + 1);
+      }
+      final cleanBase64 = rawB64.replaceAll(RegExp(r'\s+'), '');
+      if (cleanBase64.isNotEmpty) {
+        final Uint8List bytes = base64Decode(cleanBase64);
+        if (bytes.isNotEmpty) {
+          if (_base64Cache.length >= 200) {
+            _base64Cache.remove(_base64Cache.keys.first);
+          }
+          _base64Cache[rawUrl] = bytes;
+          return bytes;
+        }
+      }
+    } catch (e) {
+      debugPrint('CarevoraAvatar base64 decode error: $e');
+    }
+    return null;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -37,6 +67,7 @@ class CarevoraAvatar extends StatelessWidget {
           width: size,
           height: size,
           fit: BoxFit.cover,
+          gaplessPlayback: true,
           errorBuilder: (context, error, stackTrace) => _buildFallback(fg),
         );
       } else if (url.startsWith('assets/')) {
@@ -45,31 +76,21 @@ class CarevoraAvatar extends StatelessWidget {
           width: size,
           height: size,
           fit: BoxFit.cover,
+          gaplessPlayback: true,
           errorBuilder: (context, error, stackTrace) => _buildFallback(fg),
         );
       } else {
         // Base64 data URL (e.g. data:image/jpeg;base64,...) or raw Base64 string
-        try {
-          String rawB64 = url;
-          if (rawB64.contains(',')) {
-            rawB64 = rawB64.substring(rawB64.indexOf(',') + 1);
-          }
-          final cleanBase64 = rawB64.replaceAll(RegExp(r'\s+'), '');
-          if (cleanBase64.isNotEmpty) {
-            final Uint8List bytes = base64Decode(cleanBase64);
-            if (bytes.isNotEmpty) {
-              imageContent = Image.memory(
-                bytes,
-                width: size,
-                height: size,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => _buildFallback(fg),
-              );
-            }
-          }
-        } catch (e) {
-          debugPrint('CarevoraAvatar base64 decode error: $e');
-          imageContent = null;
+        final bytes = _decodeBase64(url);
+        if (bytes != null && bytes.isNotEmpty) {
+          imageContent = Image.memory(
+            bytes,
+            width: size,
+            height: size,
+            fit: BoxFit.cover,
+            gaplessPlayback: true,
+            errorBuilder: (context, error, stackTrace) => _buildFallback(fg),
+          );
         }
       }
     }
