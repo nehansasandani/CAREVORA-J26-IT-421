@@ -269,13 +269,28 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
             final emoVal = (e['emotionalScore'] as num?)?.toDouble();
             final riskStr = e['riskLevel'] as String?;
             final double riskScore = riskStr == 'HIGH' ? 0.75 : (riskStr == 'MODERATE' ? 0.45 : 0.20);
+            final rawGender = e['gender'] as String?;
+            final nameStr = e['name'] as String? ?? 'Resident';
+            final isFemale = nameStr.contains('Mrs.') ||
+                nameStr.contains('Malini') ||
+                nameStr.contains('Sarah') ||
+                nameStr.contains('Margaret') ||
+                nameStr.contains('Seetha');
+            final isMale = nameStr.contains('Mr.') ||
+                nameStr.contains('Arthur') ||
+                nameStr.contains('Kamal') ||
+                nameStr.contains('James') ||
+                nameStr.contains('Robert');
+            final genderStr = (rawGender != null && rawGender.isNotEmpty && rawGender != 'Unknown')
+                ? rawGender
+                : (isFemale ? 'Female' : (isMale ? 'Male' : 'Senior Resident'));
 
             return ResidentItem(
               id: (e['id'] as num).toInt(),
-              name: e['name'] as String? ?? 'Resident',
+              name: nameStr,
               age: (e['age'] as num?)?.toInt() ?? 75,
               educationYears: (e['educationYears'] as num?)?.toInt(),
-              gender: e['gender'] as String? ?? 'Unknown',
+              gender: genderStr,
               roomNo: e['roomNumber'] as String? ?? 'Room',
               elderHomeName: e['elderHomeName'] as String? ?? 'Care Facility',
               elderHomeId: (e['elderHomeId'] as num?)?.toInt() ?? 1,
@@ -2771,9 +2786,24 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
     final allResidents = _liveResidents.isNotEmpty ? _liveResidents : _allEldersFallback;
 
     final myRecord = allResidents.firstWhere(
-      (r) => auth.userName != null && r.name.toLowerCase().contains(auth.userName!.toLowerCase().split(' ')[0]),
+      (r) => (auth.residentId != null && r.id == auth.residentId) ||
+             (auth.userName != null && r.name.toLowerCase().contains(auth.userName!.toLowerCase().split(' ')[0])),
       orElse: () => allResidents.first,
     );
+
+    final cleanGender = (myRecord.gender.isNotEmpty && myRecord.gender != 'Unknown')
+        ? myRecord.gender
+        : ((auth.userName ?? myRecord.name).contains('Malini') || (auth.userName ?? myRecord.name).contains('Sarah') || (auth.userName ?? myRecord.name).contains('Margaret')
+            ? 'Female'
+            : 'Senior Resident');
+
+    final rawRisk = (myRecord.riskLevel ?? '').toUpperCase();
+    final isHighRisk = rawRisk == 'HIGH' || myRecord.riskScore >= 0.70;
+    final isModRisk = rawRisk == 'MODERATE' || (!isHighRisk && myRecord.riskScore >= 0.35);
+    final String riskLabel = isHighRisk ? 'High Risk' : (isModRisk ? 'Moderate Risk' : 'Low Risk');
+    final Color riskColor = isHighRisk ? AppColors.riskHigh : (isModRisk ? AppColors.riskModerate : AppColors.riskLow);
+    final Color riskBg = isHighRisk ? AppColors.riskHighBg : (isModRisk ? AppColors.riskModerateBg : AppColors.riskLowBg);
+    final IconData riskIcon = isHighRisk ? LucideIcons.shieldAlert : LucideIcons.shieldCheck;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2854,24 +2884,53 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
                             ),
                           ),
                           Text(
-                            'Room ${myRecord.roomNo} • Age ${myRecord.age}${myRecord.educationYears != null ? ' • Education: ${myRecord.educationYears} Years' : ''} • ${myRecord.gender}',
+                            'Room ${myRecord.roomNo} • Age ${myRecord.age}${myRecord.educationYears != null ? ' • Education: ${myRecord.educationYears} Years' : ''} • $cleanGender',
                             style: const TextStyle(fontSize: 13, color: AppColors.body),
                           ),
-                          const SizedBox(height: 4),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: AppColors.primarySoft,
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              auth.elderHomeName ?? myRecord.elderHomeName,
-                              style: const TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.primary,
+                          const SizedBox(height: 6),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 6,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primarySoft,
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  auth.elderHomeName ?? myRecord.elderHomeName,
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
                               ),
-                            ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: riskBg,
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(color: riskColor.withValues(alpha: 0.3)),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(riskIcon, size: 12, color: riskColor),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      riskLabel,
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        color: riskColor,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -2879,9 +2938,29 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
                   ],
                 ),
                 const Divider(height: 32, color: AppColors.border),
-                const Text(
-                  'Your Wellness Tracking Scores',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.navy),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Your Wellness Tracking Scores',
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.navy),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
+                      decoration: BoxDecoration(
+                        color: riskBg,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        'Overall Risk: $riskLabel',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: riskColor,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 12),
                 _buildScoreBar('Cognitive Clarity', myRecord.cognitiveScore != null ? myRecord.cognitiveScore! / 100.0 : 0.0, const Color(0xFF6366F1)),

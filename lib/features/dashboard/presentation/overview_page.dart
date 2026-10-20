@@ -11,6 +11,7 @@ import '../../../shared/widgets/recent_assessments_table.dart';
 import '../../../shared/widgets/resident_header_card.dart';
 import '../../../shared/widgets/risk_trend_chart.dart';
 import '../../../shared/widgets/score_card.dart';
+import '../../assessment/application/cognitive_assessment_service.dart';
 import '../../auth/application/auth_controller.dart';
 
 class OverviewPage extends ConsumerStatefulWidget {
@@ -21,9 +22,123 @@ class OverviewPage extends ConsumerStatefulWidget {
 }
 
 class _OverviewPageState extends ConsumerState<OverviewPage> {
-  final Resident _resident = MockCarevoraData.defaultResident;
+  Resident? _liveResident;
   final List<AssessmentRecord> _assessments = MockCarevoraData.recentAssessments;
   final List<AlertItem> _alerts = MockCarevoraData.alerts;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadElderResident();
+    });
+  }
+
+  Future<void> _loadElderResident() async {
+    final authState = ref.read(authProvider).state;
+    if (authState.isElder) {
+      final resId = authState.residentId ?? 165;
+      try {
+        final profile = await CognitiveAssessmentService.fetchResident(
+          residentId: resId,
+          token: authState.token,
+        );
+        if (profile != null && mounted) {
+          final cleanRoom = profile.roomNumber
+              .replaceAll('Room No: ', '')
+              .replaceAll('Room No ', '')
+              .replaceAll('Room ', '')
+              .replaceAll('Suite ', '')
+              .trim();
+          final isFemale = profile.name.contains('Mrs.') ||
+              profile.name.contains('Malini') ||
+              profile.name.contains('Sarah') ||
+              profile.name.contains('Margaret') ||
+              profile.name.contains('Seetha');
+          final isMale = profile.name.contains('Mr.') ||
+              profile.name.contains('Arthur') ||
+              profile.name.contains('Kamal') ||
+              profile.name.contains('James') ||
+              profile.name.contains('Robert');
+          final genderStr = (profile.gender != null && profile.gender!.isNotEmpty && profile.gender != 'Unknown')
+              ? profile.gender!
+              : (isFemale ? 'Female' : (isMale ? 'Male' : 'Senior Resident'));
+
+          setState(() {
+            _liveResident = Resident(
+              id: profile.id.toString(),
+              name: profile.name,
+              age: profile.age ?? (profile.name.contains('Malini') ? 65 : 75),
+              gender: genderStr,
+              roomNo: cleanRoom.isNotEmpty ? cleanRoom : '30',
+              lastAssessmentDate: 'Today, 10:30 AM',
+              cognitiveScore: MockCarevoraData.defaultResident.cognitiveScore,
+              cognitiveTrend: MockCarevoraData.defaultResident.cognitiveTrend,
+              emotionalScore: MockCarevoraData.defaultResident.emotionalScore,
+              emotionalTrend: MockCarevoraData.defaultResident.emotionalTrend,
+              metabolicScore: MockCarevoraData.defaultResident.metabolicScore,
+              metabolicTrend: MockCarevoraData.defaultResident.metabolicTrend,
+              overallIndex: MockCarevoraData.defaultResident.overallIndex,
+              overallTrend: MockCarevoraData.defaultResident.overallTrend,
+              avatarUrl: profile.avatarUrl ?? authState.avatarUrl,
+            );
+          });
+        }
+      } catch (_) {}
+    }
+  }
+
+  Resident _resolveResident(AuthState authState) {
+    if (_liveResident != null) {
+      return _liveResident!;
+    }
+    if (authState.isElder) {
+      final bId = authState.residentId ?? 165;
+      final userName = authState.userName?.trim();
+      final isFemale = userName != null &&
+          (userName.contains('Mrs.') ||
+              userName.contains('Malini') ||
+              userName.contains('Sarah') ||
+              userName.contains('Margaret') ||
+              userName.contains('Seetha') ||
+              userName.contains('Nanda'));
+      final isMale = userName != null &&
+          (userName.contains('Mr.') ||
+              userName.contains('Arthur') ||
+              userName.contains('Kamal') ||
+              userName.contains('James') ||
+              userName.contains('Robert') ||
+              userName.contains('Senarath'));
+      final detectedGender = isFemale ? 'Female' : (isMale ? 'Male' : 'Senior Resident');
+      final defaultAge = (bId == 165 || (userName != null && userName.contains('Malini')))
+          ? 65
+          : (bId == 1 || (userName != null && userName.contains('Sarah')) ? 78 : 75);
+      final defaultRoom = (bId == 165 || (userName != null && userName.contains('Malini')))
+          ? '30'
+          : (bId == 1 || (userName != null && userName.contains('Sarah')) ? '204' : '101');
+
+      return Resident(
+        id: bId.toString(),
+        name: (userName != null && userName.isNotEmpty)
+            ? userName
+            : (bId == 165 ? 'Malini Bandara' : 'Senior Resident'),
+        age: defaultAge,
+        gender: detectedGender,
+        roomNo: defaultRoom,
+        lastAssessmentDate: 'Today, 10:30 AM',
+        cognitiveScore: MockCarevoraData.defaultResident.cognitiveScore,
+        cognitiveTrend: MockCarevoraData.defaultResident.cognitiveTrend,
+        emotionalScore: MockCarevoraData.defaultResident.emotionalScore,
+        emotionalTrend: MockCarevoraData.defaultResident.emotionalTrend,
+        metabolicScore: MockCarevoraData.defaultResident.metabolicScore,
+        metabolicTrend: MockCarevoraData.defaultResident.metabolicTrend,
+        overallIndex: MockCarevoraData.defaultResident.overallIndex,
+        overallTrend: MockCarevoraData.defaultResident.overallTrend,
+        avatarUrl: authState.avatarUrl,
+      );
+    }
+    return MockCarevoraData.defaultResident;
+  }
 
   void _showRecordDetails(AssessmentRecord record) {
     showModalBottomSheet(
@@ -119,6 +234,7 @@ class _OverviewPageState extends ConsumerState<OverviewPage> {
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider).state;
     final isElder = authState.isElder;
+    final resident = _resolveResident(authState);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
@@ -127,9 +243,10 @@ class _OverviewPageState extends ConsumerState<OverviewPage> {
         children: [
           // 1. Resident Identity Top Card
           ResidentHeaderCard(
-            resident: _resident,
-            onViewProfile: () => context.go('/dashboard/residents'),
-            onViewDetailedReport: () => context.go('/dashboard/cognitive/session'),
+            resident: resident,
+            showViewProfile: false,
+            showLastAssessment: false,
+            onViewDetailedReport: () => context.go('/dashboard/reports'),
           ),
           const SizedBox(height: 16),
 
@@ -188,8 +305,8 @@ class _OverviewPageState extends ConsumerState<OverviewPage> {
                     width: 260,
                     child: ScoreCard(
                       title: 'Cognitive Health',
-                      score: _resident.cognitiveScore,
-                      delta: _resident.cognitiveTrend,
+                      score: resident.cognitiveScore,
+                      delta: resident.cognitiveTrend,
                       onTap: () => context.go('/dashboard/cognitive/session'),
                     ),
                   ),
@@ -198,8 +315,8 @@ class _OverviewPageState extends ConsumerState<OverviewPage> {
                     width: 260,
                     child: ScoreCard(
                       title: 'Emotional Wellness',
-                      score: _resident.emotionalScore,
-                      delta: _resident.emotionalTrend,
+                      score: resident.emotionalScore,
+                      delta: resident.emotionalTrend,
                       onTap: () => context.go('/dashboard/emotional'),
                     ),
                   ),
@@ -208,8 +325,8 @@ class _OverviewPageState extends ConsumerState<OverviewPage> {
                     width: 260,
                     child: ScoreCard(
                       title: 'Metabolic Health',
-                      score: _resident.metabolicScore,
-                      delta: _resident.metabolicTrend,
+                      score: resident.metabolicScore,
+                      delta: resident.metabolicTrend,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -217,8 +334,8 @@ class _OverviewPageState extends ConsumerState<OverviewPage> {
                     width: 260,
                     child: ScoreCard(
                       title: 'Overall Wellness Index',
-                      score: _resident.overallIndex,
-                      delta: _resident.overallTrend,
+                      score: resident.overallIndex,
+                      delta: resident.overallTrend,
                       isGauge: true,
                     ),
                   ),
@@ -232,8 +349,8 @@ class _OverviewPageState extends ConsumerState<OverviewPage> {
                     Expanded(
                       child: ScoreCard(
                         title: 'Cognitive Health',
-                        score: _resident.cognitiveScore,
-                        delta: _resident.cognitiveTrend,
+                        score: resident.cognitiveScore,
+                        delta: resident.cognitiveTrend,
                         onTap: () => context.go('/dashboard/cognitive/session'),
                       ),
                     ),
@@ -241,8 +358,8 @@ class _OverviewPageState extends ConsumerState<OverviewPage> {
                     Expanded(
                       child: ScoreCard(
                         title: 'Emotional Wellness',
-                        score: _resident.emotionalScore,
-                        delta: _resident.emotionalTrend,
+                        score: resident.emotionalScore,
+                        delta: resident.emotionalTrend,
                         onTap: () => context.go('/dashboard/emotional'),
                       ),
                     ),
@@ -250,16 +367,16 @@ class _OverviewPageState extends ConsumerState<OverviewPage> {
                     Expanded(
                       child: ScoreCard(
                         title: 'Metabolic Health',
-                        score: _resident.metabolicScore,
-                        delta: _resident.metabolicTrend,
+                        score: resident.metabolicScore,
+                        delta: resident.metabolicTrend,
                       ),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
                       child: ScoreCard(
                         title: 'Overall Wellness Index',
-                        score: _resident.overallIndex,
-                        delta: _resident.overallTrend,
+                        score: resident.overallIndex,
+                        delta: resident.overallTrend,
                         isGauge: true,
                       ),
                     ),

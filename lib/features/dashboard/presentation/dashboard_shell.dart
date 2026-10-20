@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -130,29 +131,8 @@ class DashboardShell extends ConsumerWidget {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Live Date Chip
-              if (!isMobile)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceSecondary,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(LucideIcons.calendar, size: 14, color: AppColors.muted),
-                      const SizedBox(width: 6),
-                      Text(
-                        'Today, 12 May 2025',
-                        style: AppTextStyles.caption.copyWith(
-                          fontWeight: FontWeight.w500,
-                          color: AppColors.navy,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+              // Live Date and Time Chip
+              if (!isMobile) const _LiveDateTimeChip(),
               if (!isMobile) const SizedBox(width: 8),
               // Bell Notification Icon with Badge (Caregivers/Staff only)
               if (!authState.isElder)
@@ -196,3 +176,110 @@ class DashboardShell extends ConsumerWidget {
     );
   }
 }
+
+class _LiveDateTimeChip extends StatefulWidget {
+  const _LiveDateTimeChip();
+
+  @override
+  State<_LiveDateTimeChip> createState() => _LiveDateTimeChipState();
+}
+
+class _LiveDateTimeChipState extends State<_LiveDateTimeChip> {
+  late DateTime _now;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _now = DateTime.now();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) {
+        setState(() {
+          _now = DateTime.now();
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  static const _months = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+  ];
+
+  String _formatDate(DateTime dt) {
+    return 'Today, ${dt.day} ${_months[dt.month - 1]} ${dt.year}';
+  }
+
+  String _formatTime(DateTime dt) {
+    final hour = dt.hour % 12 == 0 ? 12 : dt.hour % 12;
+    final minute = dt.minute.toString().padLeft(2, '0');
+    final period = dt.hour >= 12 ? 'PM' : 'AM';
+    return '${hour.toString().padLeft(2, '0')}:$minute $period';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final dateStr = _formatDate(_now);
+    final timeStr = _formatTime(_now);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceSecondary,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.border, width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.navy.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            LucideIcons.calendar,
+            size: 14,
+            color: AppColors.primary,
+          ),
+          const SizedBox(width: 7),
+          Text(
+            dateStr,
+            style: AppTextStyles.caption.copyWith(
+              fontWeight: FontWeight.w600,
+              color: AppColors.navy,
+            ),
+          ),
+          Container(
+            width: 1,
+            height: 13,
+            margin: const EdgeInsets.symmetric(horizontal: 10),
+            color: AppColors.border,
+          ),
+          const Icon(
+            LucideIcons.clock,
+            size: 14,
+            color: AppColors.primary,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            timeStr,
+            style: AppTextStyles.caption.copyWith(
+              fontWeight: FontWeight.w600,
+              color: AppColors.navy,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
