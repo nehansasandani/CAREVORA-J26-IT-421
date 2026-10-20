@@ -6,6 +6,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../shared/widgets/carevora_avatar.dart';
+import '../../../shared/widgets/cognitive_shap_explanation_card.dart';
 import '../../assessment/application/care_plans_service.dart';
 import '../../assessment/application/cognitive_assessment_service.dart';
 import '../../assessment/application/memory_game_service.dart';
@@ -1512,7 +1513,15 @@ class _CarePlansPageState extends ConsumerState<CarePlansPage> {
 
                 // Sub-Domain Accuracy Bar
                 _buildDomainScoresRow(latest),
-                const SizedBox(height: 20),
+                const SizedBox(height: 18),
+
+                // Explainable AI: SHAP Feature Attribution
+                CognitiveShapExplanationCard(
+                  riskLevel: rec.categoryLabel,
+                  acrfScore: cog.taskAccuracyScore,
+                  isCompact: false,
+                ),
+                const SizedBox(height: 18),
 
                 // Risk-Based Recommendations Block
                 Container(
