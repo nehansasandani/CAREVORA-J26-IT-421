@@ -116,6 +116,7 @@ public class AuthService {
                 .firstName(firstName)
                 .lastName(lastName)
                 .role(request.getRole())
+                .avatarUrl(request.getAvatarUrl())
                 .active(true)
                 .build();
         userRepository.save(user);
@@ -135,6 +136,7 @@ public class AuthService {
                     .elderHome(elderHome)
                     .roomNumber(request.getRoomNumber() != null ? request.getRoomNumber() : "Unassigned")
                     .age(request.getAge() != null ? request.getAge() : 75)
+                    .educationYears(request.getEducationYears() != null ? request.getEducationYears() : 12)
                     .emergencyContact(request.getEmergencyContact())
                     .currentStatus(WellnessStatus.LOOKING_GOOD)
                     .riskLevel(RiskLevel.LOW)
@@ -165,6 +167,7 @@ public class AuthService {
                 .email(user.getEmail())
                 .name(user.getFullName())
                 .role(user.getRole())
+                .avatarUrl(user.getAvatarUrl())
                 .residentId(residentId)
                 .caregiverId(caregiverId)
                 .elderHomeId(elderHome != null ? elderHome.getId() : null)

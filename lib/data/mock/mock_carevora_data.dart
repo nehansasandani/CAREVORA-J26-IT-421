@@ -18,6 +18,7 @@ class MockCarevoraData {
     metabolicTrend: 0.04,
     overallIndex: 0.62,
     overallTrend: 0.06,
+    avatarUrl: 'assets/images/landing/testimonial_2.jpg',
   );
 
   static final List<AssessmentRecord> recentAssessments = [

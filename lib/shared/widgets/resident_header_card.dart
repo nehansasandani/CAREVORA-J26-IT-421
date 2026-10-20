@@ -2,17 +2,22 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../data/models/carevora_models.dart';
+import 'carevora_avatar.dart';
 
 class ResidentHeaderCard extends StatelessWidget {
   final Resident resident;
   final VoidCallback? onViewProfile;
   final VoidCallback? onViewDetailedReport;
+  final bool showViewProfile;
+  final bool showLastAssessment;
 
   const ResidentHeaderCard({
     super.key,
     required this.resident,
     this.onViewProfile,
     this.onViewDetailedReport,
+    this.showViewProfile = false,
+    this.showLastAssessment = false,
   });
 
   @override
@@ -33,17 +38,12 @@ class ResidentHeaderCard extends StatelessWidget {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              CircleAvatar(
+              CarevoraAvatar(
+                avatarUrl: resident.avatarUrl,
                 radius: 26,
-                backgroundColor: AppColors.primarySoft,
-                child: Text(
-                  'JP',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.primary,
-                  ),
-                ),
+                initials: resident.name.isNotEmpty
+                    ? resident.name.trim().split(' ').map((e) => e.isNotEmpty ? e[0] : '').take(2).join().toUpperCase()
+                    : 'R',
               ),
               const SizedBox(width: 14),
               Column(
@@ -79,18 +79,20 @@ class ResidentHeaderCard extends StatelessWidget {
                         'Age: ${resident.age} • ${resident.gender} • Room No: ${resident.roomNo}',
                         style: AppTextStyles.bodySmall,
                       ),
-                      const SizedBox(width: 8),
-                      InkWell(
-                        onTap: onViewProfile,
-                        child: Text(
-                          'View Profile →',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.primary,
+                      if (showViewProfile && onViewProfile != null) ...[
+                        const SizedBox(width: 8),
+                        InkWell(
+                          onTap: onViewProfile,
+                          child: const Text(
+                            'View Profile →',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.primary,
+                            ),
                           ),
                         ),
-                      ),
+                      ],
                     ],
                   ),
                 ],
@@ -101,14 +103,15 @@ class ResidentHeaderCard extends StatelessWidget {
             spacing: 12,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text('Last Assessment', style: AppTextStyles.caption),
-                  Text(resident.lastAssessmentDate,
-                      style: AppTextStyles.bodyMedium),
-                ],
-              ),
+              if (showLastAssessment)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text('Last Assessment', style: AppTextStyles.caption),
+                    Text(resident.lastAssessmentDate,
+                        style: AppTextStyles.bodyMedium),
+                  ],
+                ),
               ElevatedButton(
                 onPressed: onViewDetailedReport,
                 style: ElevatedButton.styleFrom(

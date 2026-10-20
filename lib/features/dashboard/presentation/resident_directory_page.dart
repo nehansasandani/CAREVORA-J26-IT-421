@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../core/config/app_config.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../shared/widgets/carevora_avatar.dart';
 import '../../auth/application/auth_controller.dart';
 import '../../assessment/application/cognitive_assessment_service.dart';
 import '../../assessment/application/memory_game_service.dart';
@@ -19,6 +20,8 @@ class ResidentItem {
   final String roomNo;
   final String elderHomeName;
   final int elderHomeId;
+  final String? avatarUrl;
+  final int? educationYears;
   final double? cognitiveScore;
   final double? emotionalScore;
   final double? metabolicScore;
@@ -36,6 +39,8 @@ class ResidentItem {
     required this.roomNo,
     required this.elderHomeName,
     required this.elderHomeId,
+    this.avatarUrl,
+    this.educationYears,
     this.cognitiveScore,
     this.emotionalScore,
     this.metabolicScore,
@@ -53,6 +58,10 @@ class UserDirectoryItem {
   final String email;
   final String role;
   final String? elderHomeName;
+  final String? avatarUrl;
+  final int? age;
+  final int? educationYears;
+  final String? roomNumber;
 
   const UserDirectoryItem({
     required this.id,
@@ -60,6 +69,10 @@ class UserDirectoryItem {
     required this.email,
     required this.role,
     this.elderHomeName,
+    this.avatarUrl,
+    this.age,
+    this.educationYears,
+    this.roomNumber,
   });
 }
 
@@ -256,15 +269,32 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
             final emoVal = (e['emotionalScore'] as num?)?.toDouble();
             final riskStr = e['riskLevel'] as String?;
             final double riskScore = riskStr == 'HIGH' ? 0.75 : (riskStr == 'MODERATE' ? 0.45 : 0.20);
+            final rawGender = e['gender'] as String?;
+            final nameStr = e['name'] as String? ?? 'Resident';
+            final isFemale = nameStr.contains('Mrs.') ||
+                nameStr.contains('Malini') ||
+                nameStr.contains('Sarah') ||
+                nameStr.contains('Margaret') ||
+                nameStr.contains('Seetha');
+            final isMale = nameStr.contains('Mr.') ||
+                nameStr.contains('Arthur') ||
+                nameStr.contains('Kamal') ||
+                nameStr.contains('James') ||
+                nameStr.contains('Robert');
+            final genderStr = (rawGender != null && rawGender.isNotEmpty && rawGender != 'Unknown')
+                ? rawGender
+                : (isFemale ? 'Female' : (isMale ? 'Male' : 'Senior Resident'));
 
             return ResidentItem(
               id: (e['id'] as num).toInt(),
-              name: e['name'] as String? ?? 'Resident',
+              name: nameStr,
               age: (e['age'] as num?)?.toInt() ?? 75,
-              gender: e['gender'] as String? ?? 'Unknown',
+              educationYears: (e['educationYears'] as num?)?.toInt(),
+              gender: genderStr,
               roomNo: e['roomNumber'] as String? ?? 'Room',
               elderHomeName: e['elderHomeName'] as String? ?? 'Care Facility',
               elderHomeId: (e['elderHomeId'] as num?)?.toInt() ?? 1,
+              avatarUrl: e['avatarUrl'] as String?,
               cognitiveScore: cogVal,
               emotionalScore: emoVal,
               metabolicScore: null, // Metabolic data not exposed on backend
@@ -296,6 +326,10 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
                 email: u['email'] as String? ?? '',
                 role: u['role'] as String? ?? 'USER',
                 elderHomeName: u['elderHomeName'] as String?,
+                avatarUrl: u['avatarUrl'] as String?,
+                age: (u['age'] as num?)?.toInt(),
+                educationYears: (u['educationYears'] as num?)?.toInt(),
+                roomNumber: u['roomNumber'] as String?,
               );
             }).toList();
           }
@@ -584,14 +618,25 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
           ),
           child: Row(
             children: [
-              const Icon(LucideIcons.search, color: AppColors.primary, size: 20),
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: AppColors.primarySoft.withValues(alpha: 0.7),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.lilac),
+                ),
+                child: const Center(
+                  child: Text('🔍', style: TextStyle(fontSize: 16)),
+                ),
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: TextField(
                   controller: _searchController,
                   style: const TextStyle(fontSize: 14, color: AppColors.navy),
                   decoration: const InputDecoration(
-                    hintText: 'Search residents by name or resident ID',
+                    hintText: 'Search residents by name or resident ID...  🧓',
                     hintStyle: TextStyle(fontSize: 14, color: AppColors.muted),
                     border: InputBorder.none,
                     isDense: true,
@@ -607,6 +652,33 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
                     setState(() => _searchQuery = '');
                   },
                   tooltip: 'Clear search',
+                )
+              else
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFF4F0FF), Color(0xFFEDE9FE)],
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.lilac.withValues(alpha: 0.8)),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('👥', style: TextStyle(fontSize: 13)),
+                      SizedBox(width: 5),
+                      Text(
+                        'Directory',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primaryDeep,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
             ],
           ),
@@ -630,37 +702,117 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
   Widget _buildEmptySearchState(int residentCount, String facilityName) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 24),
+      padding: const EdgeInsets.symmetric(vertical: 44, horizontal: 24),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.border, width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.04),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              color: AppColors.primarySoft,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(LucideIcons.search, size: 28, color: AppColors.primary),
+          Stack(
+            clipBehavior: Clip.none,
+            alignment: Alignment.center,
+            children: [
+              Container(
+                width: 88,
+                height: 88,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFEDE9FE), Color(0xFFDDD6FE)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.16),
+                      blurRadius: 20,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: const Center(
+                  child: Text('🧓', style: TextStyle(fontSize: 40)),
+                ),
+              ),
+              Positioned(
+                right: -4,
+                bottom: -2,
+                child: Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppColors.lilac, width: 2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.08),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: const Center(
+                    child: Text('🔍', style: TextStyle(fontSize: 16)),
+                  ),
+                ),
+              ),
+              Positioned(
+                left: -6,
+                top: -2,
+                child: Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppColors.lilac, width: 1.5),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.06),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: const Center(
+                    child: Text('✨', style: TextStyle(fontSize: 14)),
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 18),
-          const Text(
-            'Search to Select a Resident',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: AppColors.navy,
-            ),
+          const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Search to Select a Resident',
+                style: TextStyle(
+                  fontSize: 19,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.navy,
+                  letterSpacing: -0.3,
+                ),
+              ),
+              SizedBox(width: 6),
+              Text('✨', style: TextStyle(fontSize: 18)),
+            ],
           ),
           const SizedBox(height: 8),
           ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 480),
-            child: Text(
+            child: const Text(
               'Type a resident name or resident ID in the search bar above to view their cognitive, emotional, and metabolic wellness cards.',
               textAlign: TextAlign.center,
               style: TextStyle(
@@ -670,17 +822,29 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
               ),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 10,
+            runSpacing: 8,
+            children: [
+              _buildDirectoryTag('🧓', 'Senior Profiles', const Color(0xFFF3E8FF), const Color(0xFF6B21A8)),
+              _buildDirectoryTag('📊', 'Wellness Tracking', const Color(0xFFEFF6FF), const Color(0xFF1D4ED8)),
+              _buildDirectoryTag('🩺', 'Clinical History', const Color(0xFFECFDF5), const Color(0xFF047857)),
+            ],
+          ),
+          const SizedBox(height: 18),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
             decoration: BoxDecoration(
               color: AppColors.lavenderBg,
               borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppColors.lilac),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(LucideIcons.building2, size: 14, color: AppColors.primaryDeep),
+                const Text('🏡', style: TextStyle(fontSize: 14)),
                 const SizedBox(width: 6),
                 Flexible(
                   child: Text(
@@ -694,6 +858,44 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
                   ),
                 ),
               ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('💡', style: TextStyle(fontSize: 13)),
+              SizedBox(width: 6),
+              Text(
+                'Tip: Search by resident name or assigned room number',
+                style: TextStyle(fontSize: 12, color: AppColors.muted),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDirectoryTag(String emoji, String label, Color bg, Color textColor) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: textColor.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(emoji, style: const TextStyle(fontSize: 13)),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: textColor,
             ),
           ),
         ],
@@ -722,11 +924,29 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
         ),
         child: Column(
           children: [
-            const Icon(LucideIcons.userX, size: 36, color: AppColors.muted),
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF2F2),
+                shape: BoxShape.circle,
+                border: Border.all(color: const Color(0xFFFECACA)),
+              ),
+              child: const Center(
+                child: Text('🧐', style: TextStyle(fontSize: 26)),
+              ),
+            ),
             const SizedBox(height: 14),
-            const Text(
-              'No residents found',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.navy),
+            const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'No residents found',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.navy),
+                ),
+                SizedBox(width: 6),
+                Text('🔍', style: TextStyle(fontSize: 15)),
+              ],
             ),
             const SizedBox(height: 6),
             Text(
@@ -777,13 +997,10 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                   child: Row(
                     children: [
-                      CircleAvatar(
+                      CarevoraAvatar(
+                        avatarUrl: r.avatarUrl,
                         radius: 20,
-                        backgroundColor: AppColors.primarySoft,
-                        child: Text(
-                          r.name.isNotEmpty ? r.name.substring(0, 1) : 'R',
-                          style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
-                        ),
+                        initials: r.name,
                       ),
                       const SizedBox(width: 14),
                       Expanded(
@@ -796,7 +1013,7 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              'Room ${r.roomNo} • Age ${r.age} • ${r.gender}',
+                              'Room ${r.roomNo} • Age ${r.age}${r.educationYears != null ? ' • Edu: ${r.educationYears} yrs' : ''} • ${r.gender}',
                               style: const TextStyle(fontSize: 12, color: AppColors.body),
                             ),
                           ],
@@ -857,13 +1074,10 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
                   children: [
                     Row(
                       children: [
-                        CircleAvatar(
+                        CarevoraAvatar(
+                          avatarUrl: r.avatarUrl,
                           radius: 22,
-                          backgroundColor: AppColors.primarySoft,
-                          child: Text(
-                            r.name.isNotEmpty ? r.name.substring(0, 1) : 'R',
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.primary),
-                          ),
+                          initials: r.name,
                         ),
                         const SizedBox(width: 12),
                         Expanded(
@@ -890,7 +1104,7 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      'Room ${r.roomNo} • Age ${r.age} (${r.gender}) • Facility: ${r.elderHomeName}',
+                      'Room ${r.roomNo} • Age ${r.age}${r.educationYears != null ? ' • Edu: ${r.educationYears} yrs' : ''} (${r.gender}) • Facility: ${r.elderHomeName}',
                       style: const TextStyle(fontSize: 12, color: AppColors.body),
                     ),
                     const SizedBox(height: 12),
@@ -910,13 +1124,10 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
               }
               return Row(
                 children: [
-                  CircleAvatar(
+                  CarevoraAvatar(
+                    avatarUrl: r.avatarUrl,
                     radius: 26,
-                    backgroundColor: AppColors.primarySoft,
-                    child: Text(
-                      r.name.isNotEmpty ? r.name.substring(0, 1) : 'R',
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primary),
-                    ),
+                    initials: r.name,
                   ),
                   const SizedBox(width: 16),
                   Expanded(
@@ -952,7 +1163,7 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Room ${r.roomNo} • Age ${r.age} (${r.gender}) • Facility: ${r.elderHomeName}',
+                          'Room ${r.roomNo} • Age ${r.age}${r.educationYears != null ? ' • Education: ${r.educationYears} yrs' : ''} (${r.gender}) • Facility: ${r.elderHomeName}',
                           style: const TextStyle(fontSize: 13, color: AppColors.body),
                         ),
                       ],
@@ -2575,9 +2786,24 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
     final allResidents = _liveResidents.isNotEmpty ? _liveResidents : _allEldersFallback;
 
     final myRecord = allResidents.firstWhere(
-      (r) => auth.userName != null && r.name.toLowerCase().contains(auth.userName!.toLowerCase().split(' ')[0]),
+      (r) => (auth.residentId != null && r.id == auth.residentId) ||
+             (auth.userName != null && r.name.toLowerCase().contains(auth.userName!.toLowerCase().split(' ')[0])),
       orElse: () => allResidents.first,
     );
+
+    final cleanGender = (myRecord.gender.isNotEmpty && myRecord.gender != 'Unknown')
+        ? myRecord.gender
+        : ((auth.userName ?? myRecord.name).contains('Malini') || (auth.userName ?? myRecord.name).contains('Sarah') || (auth.userName ?? myRecord.name).contains('Margaret')
+            ? 'Female'
+            : 'Senior Resident');
+
+    final rawRisk = (myRecord.riskLevel ?? '').toUpperCase();
+    final isHighRisk = rawRisk == 'HIGH' || myRecord.riskScore >= 0.70;
+    final isModRisk = rawRisk == 'MODERATE' || (!isHighRisk && myRecord.riskScore >= 0.35);
+    final String riskLabel = isHighRisk ? 'High Risk' : (isModRisk ? 'Moderate Risk' : 'Low Risk');
+    final Color riskColor = isHighRisk ? AppColors.riskHigh : (isModRisk ? AppColors.riskModerate : AppColors.riskLow);
+    final Color riskBg = isHighRisk ? AppColors.riskHighBg : (isModRisk ? AppColors.riskModerateBg : AppColors.riskLowBg);
+    final IconData riskIcon = isHighRisk ? LucideIcons.shieldAlert : LucideIcons.shieldCheck;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2639,10 +2865,10 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
               children: [
                 Row(
                   children: [
-                    CircleAvatar(
+                    CarevoraAvatar(
+                      avatarUrl: auth.avatarUrl ?? myRecord.avatarUrl,
                       radius: 30,
-                      backgroundColor: AppColors.primarySoft,
-                      child: const Icon(LucideIcons.user, size: 30, color: AppColors.primary),
+                      initials: auth.userName ?? myRecord.name,
                     ),
                     const SizedBox(width: 16),
                     Expanded(
@@ -2658,24 +2884,53 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
                             ),
                           ),
                           Text(
-                            'Room ${myRecord.roomNo} • Age ${myRecord.age} • ${myRecord.gender}',
+                            'Room ${myRecord.roomNo} • Age ${myRecord.age}${myRecord.educationYears != null ? ' • Education: ${myRecord.educationYears} Years' : ''} • $cleanGender',
                             style: const TextStyle(fontSize: 13, color: AppColors.body),
                           ),
-                          const SizedBox(height: 4),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: AppColors.primarySoft,
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              auth.elderHomeName ?? myRecord.elderHomeName,
-                              style: const TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.primary,
+                          const SizedBox(height: 6),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 6,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primarySoft,
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  auth.elderHomeName ?? myRecord.elderHomeName,
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
                               ),
-                            ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: riskBg,
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(color: riskColor.withValues(alpha: 0.3)),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(riskIcon, size: 12, color: riskColor),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      riskLabel,
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        color: riskColor,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -2683,9 +2938,29 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
                   ],
                 ),
                 const Divider(height: 32, color: AppColors.border),
-                const Text(
-                  'Your Wellness Tracking Scores',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.navy),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Your Wellness Tracking Scores',
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.navy),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
+                      decoration: BoxDecoration(
+                        color: riskBg,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        'Overall Risk: $riskLabel',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: riskColor,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 12),
                 _buildScoreBar('Cognitive Clarity', myRecord.cognitiveScore != null ? myRecord.cognitiveScore! / 100.0 : 0.0, const Color(0xFF6366F1)),
@@ -2740,13 +3015,10 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
         children: [
           Row(
             children: [
-              CircleAvatar(
+              CarevoraAvatar(
+                avatarUrl: r.avatarUrl,
                 radius: 22,
-                backgroundColor: AppColors.primarySoft,
-                child: Text(
-                  r.name.isNotEmpty ? r.name.substring(0, 1) : 'R',
-                  style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
-                ),
+                initials: r.name,
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -2760,7 +3032,7 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
                       overflow: TextOverflow.ellipsis,
                     ),
                     Text(
-                      'Room ${r.roomNo} • Age ${r.age} (${r.gender})',
+                      'Room ${r.roomNo} • Age ${r.age}${r.educationYears != null ? ' • Edu: ${r.educationYears} yrs' : ''} (${r.gender})',
                       style: const TextStyle(fontSize: 12, color: AppColors.body),
                     ),
                   ],
@@ -2895,16 +3167,16 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
           if (u.role == 'ELDER') roleColor = const Color(0xFFD97706);
 
           return ListTile(
-            leading: CircleAvatar(
+            leading: CarevoraAvatar(
+              avatarUrl: u.avatarUrl,
+              radius: 20,
+              initials: u.name,
               backgroundColor: roleColor.withValues(alpha: 0.15),
-              child: Text(
-                u.name.isNotEmpty ? u.name.substring(0, 1) : 'U',
-                style: TextStyle(fontWeight: FontWeight.bold, color: roleColor),
-              ),
+              foregroundColor: roleColor,
             ),
             title: Text(u.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
             subtitle: Text(
-              '${u.email} • ${u.elderHomeName ?? "No Home"}',
+              '${u.email} • ${u.elderHomeName ?? "No Home"}${u.roomNumber != null ? " • Room ${u.roomNumber}" : ""}${u.age != null ? " • Age ${u.age}" : ""}',
               style: const TextStyle(fontSize: 12, color: AppColors.muted),
             ),
             trailing: Container(

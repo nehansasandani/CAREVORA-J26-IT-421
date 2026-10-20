@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../../core/config/app_config.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -25,6 +27,12 @@ class _RegisterDialogState extends State<RegisterDialog> {
   final _newFacilityNameController = TextEditingController();
   final _newFacilityAddressController = TextEditingController();
   final _roomNumberController = TextEditingController();
+  final _ageController = TextEditingController(text: '75');
+  final _educationYearsController = TextEditingController(text: '12');
+
+  Uint8List? _avatarBytes;
+  String? _avatarBase64;
+  final ImagePicker _imagePicker = ImagePicker();
 
   String _selectedRole = 'CAREGIVER'; // CAREGIVER, ELDER, DOCTOR
   bool _isNewFacility = false;
@@ -85,7 +93,348 @@ class _RegisterDialogState extends State<RegisterDialog> {
     _newFacilityNameController.dispose();
     _newFacilityAddressController.dispose();
     _roomNumberController.dispose();
+    _ageController.dispose();
+    _educationYearsController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickAvatar([ImageSource source = ImageSource.gallery]) async {
+    try {
+      final XFile? image = await _imagePicker.pickImage(
+        source: source,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 85,
+      );
+      if (image != null) {
+        final bytes = await image.readAsBytes();
+        setState(() {
+          _avatarBytes = bytes;
+          _avatarBase64 = 'data:image/jpeg;base64,${base64Encode(bytes)}';
+        });
+      }
+    } catch (e) {
+      debugPrint('Error picking avatar image: $e');
+    }
+  }
+
+  void _clearAvatar() {
+    setState(() {
+      _avatarBytes = null;
+      _avatarBase64 = null;
+    });
+  }
+
+  void _showImageSourceModal() {
+    showModalBottomSheet(
+      context: context,
+      useRootNavigator: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 18),
+                decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const Text(
+                'Upload Profile Picture',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.navy,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Select a photo for your ${_selectedRole.toLowerCase()} profile',
+                style: const TextStyle(fontSize: 12, color: AppColors.body),
+              ),
+              const SizedBox(height: 18),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primarySoft,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(LucideIcons.image, color: AppColors.primary, size: 20),
+                ),
+                title: const Text(
+                  'Choose from Gallery / Files',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                ),
+                subtitle: const Text('Select a JPG, PNG image', style: TextStyle(fontSize: 11)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _pickAvatar(ImageSource.gallery);
+                },
+              ),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primarySoft,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(LucideIcons.camera, color: AppColors.primary, size: 20),
+                ),
+                title: const Text(
+                  'Take Photo with Camera',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                ),
+                subtitle: const Text('Capture live portrait', style: TextStyle(fontSize: 11)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _pickAvatar(ImageSource.camera);
+                },
+              ),
+              if (_avatarBytes != null) ...[
+                const Divider(),
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.riskHighBg,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(LucideIcons.trash2, color: AppColors.riskHigh, size: 20),
+                  ),
+                  title: const Text(
+                    'Remove Photo',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      color: AppColors.riskHigh,
+                    ),
+                  ),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _clearAvatar();
+                  },
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAvatarPickerSection() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.lavenderBg.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: _avatarBytes != null
+              ? AppColors.primary.withValues(alpha: 0.5)
+              : AppColors.lilac.withValues(alpha: 0.6),
+          width: 1.2,
+        ),
+      ),
+      child: Row(
+        children: [
+          InkWell(
+            onTap: _showImageSourceModal,
+            borderRadius: BorderRadius.circular(40),
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: _avatarBytes == null
+                        ? const LinearGradient(
+                            colors: [AppColors.primarySoft, Colors.white],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          )
+                        : null,
+                    border: Border.all(
+                      color: _avatarBytes != null ? AppColors.primary : AppColors.lilac,
+                      width: 2,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primary.withValues(alpha: 0.15),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: ClipOval(
+                    child: _avatarBytes != null
+                        ? Image.memory(
+                            _avatarBytes!,
+                            width: 64,
+                            height: 64,
+                            fit: BoxFit.cover,
+                          )
+                        : Icon(
+                            _selectedRole == 'DOCTOR'
+                                ? LucideIcons.stethoscope
+                                : (_selectedRole == 'ELDER' ? LucideIcons.user : LucideIcons.heartHandshake),
+                            size: 28,
+                            color: AppColors.primary,
+                          ),
+                  ),
+                ),
+                Positioned(
+                  bottom: -2,
+                  right: -2,
+                  child: Container(
+                    padding: const EdgeInsets.all(5),
+                    decoration: BoxDecoration(
+                      color: _avatarBytes != null ? AppColors.riskLow : AppColors.primary,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
+                    child: Icon(
+                      _avatarBytes != null ? LucideIcons.check : LucideIcons.camera,
+                      size: 11,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    const Text(
+                      'Profile Picture',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.navy,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: _avatarBytes != null
+                            ? AppColors.riskLowBg
+                            : AppColors.primarySoft,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        _avatarBytes != null ? 'Uploaded' : 'Optional',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: _avatarBytes != null
+                              ? AppColors.riskLow
+                              : AppColors.primary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  _avatarBytes != null
+                      ? 'Photo ready for registration'
+                      : 'Upload photo for your ${_selectedRole.toLowerCase()} profile',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.body,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    InkWell(
+                      onTap: _showImageSourceModal,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              _avatarBytes != null ? LucideIcons.refreshCw : LucideIcons.uploadCloud,
+                              size: 12,
+                              color: Colors.white,
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              _avatarBytes != null ? 'Change Photo' : 'Upload Photo',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    if (_avatarBytes != null) ...[
+                      const SizedBox(width: 8),
+                      InkWell(
+                        onTap: _clearAvatar,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppColors.riskHighBg,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: AppColors.riskHigh.withValues(alpha: 0.3),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: const [
+                              Icon(LucideIcons.trash2, size: 12, color: AppColors.riskHigh),
+                              SizedBox(width: 4),
+                              Text(
+                                'Remove',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.riskHigh,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _handleRegister() async {
@@ -135,6 +484,10 @@ class _RegisterDialogState extends State<RegisterDialog> {
         'role': _selectedRole,
       };
 
+      if (_avatarBase64 != null && _avatarBase64!.isNotEmpty) {
+        reqBody['avatarUrl'] = _avatarBase64;
+      }
+
       if (_selectedRole == 'CAREGIVER' || _selectedRole == 'ELDER') {
         reqBody['elderHomeId'] = elderHomeIdToAssign;
       }
@@ -142,7 +495,10 @@ class _RegisterDialogState extends State<RegisterDialog> {
         reqBody['roomNumber'] = _roomNumberController.text.trim().isEmpty
             ? '101'
             : _roomNumberController.text.trim();
-        reqBody['age'] = 75;
+        final ageVal = int.tryParse(_ageController.text.trim());
+        reqBody['age'] = ageVal ?? 75;
+        final eduVal = int.tryParse(_educationYearsController.text.trim());
+        reqBody['educationYears'] = eduVal ?? 12;
       }
 
       await http
@@ -289,7 +645,10 @@ class _RegisterDialogState extends State<RegisterDialog> {
               _buildRolePill('DOCTOR', 'Doctor', LucideIcons.stethoscope),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
+
+          // Profile Picture Upload Section
+          _buildAvatarPickerSection(),
 
           // Elder Home Section (Required for Caregiver and Elder)
           if (_selectedRole == 'CAREGIVER' || _selectedRole == 'ELDER') ...[
@@ -494,6 +853,57 @@ class _RegisterDialogState extends State<RegisterDialog> {
               label: 'Room Number (Optional)',
               hintText: 'e.g. 104',
               leadingIcon: LucideIcons.bed,
+              textInputAction: TextInputAction.next,
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: AppTextField(
+                    controller: _ageController,
+                    label: 'Age (Years)',
+                    hintText: 'e.g. 75',
+                    leadingIcon: LucideIcons.calendar,
+                    keyboardType: TextInputType.number,
+                    textInputAction: TextInputAction.next,
+                    validator: (v) {
+                      if (_selectedRole == 'ELDER') {
+                        if (v == null || v.trim().isEmpty) {
+                          return 'Enter age.';
+                        }
+                        final val = int.tryParse(v.trim());
+                        if (val == null || val < 1 || val > 130) {
+                          return 'Valid age: 1-130.';
+                        }
+                      }
+                      return null;
+                    },
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: AppTextField(
+                    controller: _educationYearsController,
+                    label: 'Education (Years)',
+                    hintText: 'e.g. 12',
+                    leadingIcon: LucideIcons.graduationCap,
+                    keyboardType: TextInputType.number,
+                    textInputAction: TextInputAction.done,
+                    validator: (v) {
+                      if (_selectedRole == 'ELDER') {
+                        if (v == null || v.trim().isEmpty) {
+                          return 'Enter years.';
+                        }
+                        final val = int.tryParse(v.trim());
+                        if (val == null || val < 0 || val > 40) {
+                          return 'Valid years: 0-40.';
+                        }
+                      }
+                      return null;
+                    },
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 12),
           ],
@@ -682,16 +1092,35 @@ class _RegisterDialogState extends State<RegisterDialog> {
             color: AppColors.primarySoft,
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Column(
+          child: Row(
             children: [
-              Text(
-                'Email: ${_emailController.text.trim()}',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Role: $_selectedRole',
-                style: const TextStyle(fontSize: 12, color: AppColors.primaryDeep),
+              if (_avatarBytes != null) ...[
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(24),
+                  child: Image.memory(
+                    _avatarBytes!,
+                    width: 44,
+                    height: 44,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                const SizedBox(width: 12),
+              ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Email: ${_emailController.text.trim()}',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Role: $_selectedRole',
+                      style: const TextStyle(fontSize: 12, color: AppColors.primaryDeep),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
