@@ -67,6 +67,8 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
   String _spokenText = '';
   double _soundLevel = 0.0;
   String _micStatusNotice = '';
+  String _selectedVoiceLocale = 'si-LK';
+  String get _selectedVoiceLocaleLabel => _selectedVoiceLocale == 'si-LK' ? 'සිංහල' : 'English';
 
   // Automatic Facial Affect Capture & Consent
   late final AutomaticFacialCaptureService _facialCaptureService;
@@ -1032,11 +1034,9 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
     try {
       _speechEnabled = await _speech.initialize(
         onError: (err) {
-          debugPrint('STT Error: $err');
+          debugPrint('STT Error: ${err.errorMsg}');
           if (mounted) {
-            setState(() {
-              _micStatusNotice = 'Microphone notice: ${err.errorMsg}';
-            });
+            _onSpeechError(err);
           }
         },
         onStatus: _onSpeechStatus,
@@ -1047,16 +1047,49 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
     }
   }
 
+  void _onSpeechError(dynamic err) {
+    debugPrint('STT Error: ${err?.errorMsg ?? err}');
+    if (!mounted) return;
+    if (_isRecording) {
+      // Auto recover and restart listen loop if error is silence/timeout/no-match
+      _micStatusNotice = '🎙️ Listening... (Speak now in $_selectedVoiceLocaleLabel)';
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (mounted && _isRecording && !_speech.isListening) {
+          _listenLoop();
+        }
+      });
+    } else {
+      setState(() {
+        _micStatusNotice = 'Microphone notice: ${err?.errorMsg ?? err}';
+      });
+    }
+  }
+
+  void _switchVoiceLocale(String locale) {
+    if (_selectedVoiceLocale == locale) return;
+    setState(() {
+      _selectedVoiceLocale = locale;
+      _micStatusNotice = 'Language switched to $_selectedVoiceLocaleLabel';
+    });
+    if (_isRecording) {
+      _speech.stop().then((_) {
+        Future.delayed(const Duration(milliseconds: 250), () {
+          if (mounted && _isRecording) {
+            _listenLoop();
+          }
+        });
+      });
+    }
+  }
+
   Future<void> _startContinuousListening() async {
     if (!_speechEnabled) {
       try {
         final enabled = await _speech.initialize(
           onError: (err) {
-            debugPrint('STT Error: $err');
+            debugPrint('STT Error: ${err.errorMsg}');
             if (mounted) {
-              setState(() {
-                _micStatusNotice = 'Microphone notice: ${err.errorMsg}';
-              });
+              _onSpeechError(err);
             }
           },
           onStatus: _onSpeechStatus,
@@ -1093,17 +1126,30 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
           if (mounted && _isRecording) {
             setState(() {
               _soundLevel = level;
+              if (level.abs() > 0.08 && _spokenText.isEmpty) {
+                _micStatusNotice = '🎙️ Hearing elder voice... analyzing affect';
+              }
             });
           }
         },
         listenOptions: stt.SpeechListenOptions(
-          listenMode: stt.ListenMode.confirmation,
+          listenMode: stt.ListenMode.dictation,
           cancelOnError: false,
           partialResults: true,
+          localeId: _selectedVoiceLocale,
+          pauseFor: const Duration(seconds: 15),
+          listenFor: const Duration(minutes: 60),
         ),
       );
     } catch (e) {
       debugPrint('Speech listen error: $e');
+      if (_isRecording) {
+        Future.delayed(const Duration(milliseconds: 400), () {
+          if (mounted && _isRecording && !_speech.isListening) {
+            _listenLoop();
+          }
+        });
+      }
     }
   }
 
@@ -1113,7 +1159,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
     if (status == 'listening') {
       setState(() {
         if (_spokenText.isEmpty) {
-          _micStatusNotice = '🎙️ Listening... (Speak in English or Sinhala)';
+          _micStatusNotice = '🎙️ Listening... (Speak in $_selectedVoiceLocaleLabel)';
         }
       });
     } else if ((status == 'done' || status == 'notListening') && _isRecording) {
@@ -1133,6 +1179,22 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
     } catch (e) {
       debugPrint('Speech stop error: $e');
     }
+  }
+
+  Color _getVoiceEmotionColor(String emotion) {
+    final lower = emotion.toLowerCase();
+    if (lower.contains('cheerful') || lower.contains('high valence') || lower.contains('happy')) {
+      return AppColors.riskLow;
+    } else if (lower.contains('flattened') || lower.contains('melancholic') || lower.contains('low pitch') || lower.contains('sad')) {
+      return AppColors.riskHigh;
+    } else if (lower.contains('elevated') || lower.contains('rapid') || lower.contains('cadence') || lower.contains('angry')) {
+      return const Color(0xFFEA580C);
+    } else if (lower.contains('tremulous') || lower.contains('hesitant') || lower.contains('fear') || lower.contains('apprehensive') || lower.contains('puzzled')) {
+      return AppColors.primary;
+    } else if (lower.contains('listening')) {
+      return Colors.blueAccent;
+    }
+    return const Color(0xFF0284C7);
   }
 
   Future<void> _analyzeSpokenVoice(String text) async {
@@ -1333,9 +1395,9 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
         _recordSeconds = 0;
         _spokenText = '';
         _soundLevel = 0.0;
-        _micStatusNotice = '🎙️ Listening... (Speak in English or Sinhala)';
-        _voiceEmotion = 'Listening... (Speak now)';
-        _voiceConfidence = 0.70;
+        _micStatusNotice = '🎙️ Listening... (Speak in $_selectedVoiceLocaleLabel)';
+        _voiceEmotion = 'Listening live...';
+        _voiceConfidence = 0.65;
       });
       _startRecordingTimer();
       _startContinuousListening();
@@ -6891,7 +6953,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header with recording blinker
+          // Header with recording blinker & Language Selector
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -6901,6 +6963,23 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
               ),
               Row(
                 children: [
+                  // Language Switcher: Sinhala / English
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    padding: const EdgeInsets.all(2),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _buildLangToggleItem('si-LK', '🇱🇰 සිංහල'),
+                        _buildLangToggleItem('en-US', '🇺🇸 English'),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
@@ -7050,7 +7129,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                     _spokenText.isNotEmpty
                         ? _spokenText
                         : (_isRecording
-                            ? (_micStatusNotice.isNotEmpty ? _micStatusNotice : '🎙️ Listening... (Speak in English or Sinhala)')
+                            ? (_micStatusNotice.isNotEmpty ? _micStatusNotice : '🎙️ Listening... (Speak in $_selectedVoiceLocaleLabel)')
                             : 'Tap the microphone to speak your response...'),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -7076,6 +7155,41 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
               ],
             ),
           ),
+          if (_isRecording || _spokenText.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+              decoration: BoxDecoration(
+                color: _getVoiceEmotionColor(_voiceEmotion).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: _getVoiceEmotionColor(_voiceEmotion).withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    _isRecording ? Icons.sensors : LucideIcons.checkCircle2,
+                    size: 14,
+                    color: _getVoiceEmotionColor(_voiceEmotion),
+                  ),
+                  const SizedBox(width: 6),
+                  const Text(
+                    'Elder Voice Emotion: ',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.navy),
+                  ),
+                  Expanded(
+                    child: Text(
+                      '$_voiceEmotion (${(_voiceConfidence * 100).toInt()}%)',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: _getVoiceEmotionColor(_voiceEmotion),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 10),
 
           // Quick Voice Test Prompts
@@ -7092,6 +7206,29 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildLangToggleItem(String locale, String label) {
+    final isSelected = _selectedVoiceLocale == locale;
+    return InkWell(
+      onTap: () => _switchVoiceLocale(locale),
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.primary : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+            color: isSelected ? Colors.white : AppColors.muted,
+          ),
+        ),
       ),
     );
   }
@@ -7350,10 +7487,39 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Voice Emotion', style: TextStyle(fontSize: 12, color: AppColors.muted)),
+              Row(
+                children: [
+                  const Text('Voice Emotion', style: TextStyle(fontSize: 12, color: AppColors.muted)),
+                  if (_isRecording) ...[
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                      decoration: BoxDecoration(
+                        color: AppColors.riskHighBg,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: const [
+                          Icon(Icons.fiber_manual_record, size: 7, color: AppColors.riskHigh),
+                          SizedBox(width: 3),
+                          Text(
+                            'LIVE',
+                            style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppColors.riskHigh),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
+              ),
               Text(
                 '$_voiceEmotion  ${(_voiceConfidence * 100).toInt()}%',
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blueAccent),
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: _getVoiceEmotionColor(_voiceEmotion),
+                ),
               ),
             ],
           ),
@@ -7364,7 +7530,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
               value: _voiceConfidence,
               minHeight: 6,
               backgroundColor: AppColors.border,
-              color: Colors.blueAccent,
+              color: _getVoiceEmotionColor(_voiceEmotion),
             ),
           ),
           const SizedBox(height: 18),
