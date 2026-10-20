@@ -23,6 +23,7 @@ import '../application/social_audit_service.dart';
 import '../application/cognitive_assessment_service.dart';
 import '../../auth/application/auth_controller.dart';
 import '../../../core/services/audio_player_service.dart';
+import '../../../core/services/live_voice_capture_service.dart';
 import '../../../core/services/url_launcher_service.dart';
 import '../../../shared/widgets/carevora_avatar.dart';
 
@@ -1183,13 +1184,13 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
 
   Color _getVoiceEmotionColor(String emotion) {
     final lower = emotion.toLowerCase();
-    if (lower.contains('cheerful') || lower.contains('high valence') || lower.contains('happy')) {
+    if (lower.contains('happy') || lower.contains('cheerful')) {
       return AppColors.riskLow;
-    } else if (lower.contains('flattened') || lower.contains('melancholic') || lower.contains('low pitch') || lower.contains('sad')) {
+    } else if (lower.contains('sad') || lower.contains('depressed')) {
       return AppColors.riskHigh;
-    } else if (lower.contains('elevated') || lower.contains('rapid') || lower.contains('cadence') || lower.contains('angry')) {
+    } else if (lower.contains('angry') || lower.contains('confus') || lower.contains('agitated')) {
       return const Color(0xFFEA580C);
-    } else if (lower.contains('tremulous') || lower.contains('hesitant') || lower.contains('fear') || lower.contains('apprehensive') || lower.contains('puzzled')) {
+    } else if (lower.contains('fear') || lower.contains('anxious') || lower.contains('tremulous')) {
       return AppColors.primary;
     } else if (lower.contains('listening')) {
       return Colors.blueAccent;
@@ -1199,9 +1200,16 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
 
   Future<void> _analyzeSpokenVoice(String text) async {
     final clean = text.trim();
-    if (clean.isEmpty) return;
     try {
-      final res = await VocalEmotionAiService.analyzeSpokenSpeech(spokenText: clean);
+      final soundNorm = (_soundLevel.abs() * 2.5).clamp(0.0, 1.0);
+      final double pitchMod = (0.35 + (soundNorm * 0.55)).clamp(0.25, 0.95);
+      final double rhythmCalm = (0.80 - (soundNorm * 0.40)).clamp(0.30, 0.90);
+
+      final res = await VocalEmotionAiService.analyzeSpokenSpeech(
+        spokenText: clean,
+        pitchModulation: pitchMod,
+        rhythmCalmness: rhythmCalm,
+      );
       if (!mounted) return;
       setState(() {
         _voiceEmotion = res.profileLabel;
@@ -1216,7 +1224,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
           _commLevel = 'Low';
           _engagementLevel = 'Low';
           _responseTime = 'Delayed';
-        } else if (res.acousticProfile == 'ANG') {
+        } else if (res.acousticProfile == 'ANG' || res.acousticProfile == 'DIS') {
           _commLevel = 'Elevated';
           _engagementLevel = 'High';
           _responseTime = 'Rapid';
@@ -1243,7 +1251,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
           setState(() {
             _recordSeconds++;
           });
-          if (_spokenText.isNotEmpty && _recordSeconds % 2 == 0) {
+          if (_isRecording) {
             _analyzeSpokenVoice(_spokenText);
           }
         }
@@ -1376,6 +1384,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
     _aiChatScrollController.dispose();
     _conversationTimer?.cancel();
     AudioPlayerService.instance.stop();
+    LiveVoiceCaptureService.instance.stop();
     _flutterTts.stop();
     _speech.stop();
     super.dispose();
@@ -1401,6 +1410,28 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
       });
       _startRecordingTimer();
       _startContinuousListening();
+
+      // Start physical Web Audio API microphone stream for real-time acoustic & laughter detection
+      LiveVoiceCaptureService.instance.start(
+        onAcousticFrame: (frame) {
+          if (!mounted || !_isRecording) return;
+          setState(() {
+            _soundLevel = frame.volume;
+            // Real-time laughter / cheerful voice detection (e.g. speaking while smiling/laughing)
+            if (frame.isLaughing) {
+              _voiceEmotion = 'Happy';
+              _voiceConfidence = frame.confidence;
+              _commLevel = 'High';
+              _engagementLevel = 'High';
+              _responseTime = 'Normal';
+            } else if (frame.volume > 0.08 && _spokenText.isEmpty) {
+              _voiceEmotion = frame.suggestedEmotion;
+              _voiceConfidence = frame.confidence;
+            }
+          });
+        },
+      );
+
       if (consentGranted) {
         await _facialCaptureService.startCaptureForVoiceRecording();
       }
@@ -1412,6 +1443,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
       });
       _recordTimer?.cancel();
       _stopContinuousListening();
+      LiveVoiceCaptureService.instance.stop();
       _facialCaptureService.stopCapture();
       if (_spokenText.isNotEmpty) {
         _analyzeSpokenVoice(_spokenText);
@@ -6953,7 +6985,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header with recording blinker & Language Selector
+          // Header with recording blinker
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -6962,26 +6994,10 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                 style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.navy),
               ),
               Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Language Switcher: Sinhala / English
                   Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    padding: const EdgeInsets.all(2),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _buildLangToggleItem('si-LK', '🇱🇰 සිංහල'),
-                        _buildLangToggleItem('en-US', '🇺🇸 English'),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                     decoration: BoxDecoration(
                       color: _isRecording ? AppColors.riskHighBg : AppColors.border,
                       borderRadius: BorderRadius.circular(12),
@@ -6998,7 +7014,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                         Text(
                           _isRecording ? 'Recording...' : 'Paused',
                           style: TextStyle(
-                            fontSize: 11,
+                            fontSize: 10,
                             fontWeight: FontWeight.bold,
                             color: _isRecording ? AppColors.riskHigh : AppColors.muted,
                           ),
@@ -7006,7 +7022,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                       ],
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 6),
                   Text(
                     _formatTimer(_recordSeconds),
                     style: const TextStyle(
@@ -7016,6 +7032,33 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                     ),
                   ),
                 ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+
+          // Speech Language selection bar
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Speech Language:',
+                style: TextStyle(fontSize: 11, color: AppColors.muted, fontWeight: FontWeight.w500),
+              ),
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.border),
+                ),
+                padding: const EdgeInsets.all(2),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildLangToggleItem('si-LK', '🇱🇰 සිංහල'),
+                    _buildLangToggleItem('en-US', '🇺🇸 English'),
+                  ],
+                ),
               ),
             ],
           ),
@@ -7038,23 +7081,24 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                   children: List.generate(24, (i) {
                     final factor = (1 + 0.8 * ((i % 4 == 0) ? 1.0 : 0.4));
                     final waveValue = (_waveController.value * 6.28 + (i * 0.3)).abs();
-                    final soundBoost = (_soundLevel.abs() > 0.05) ? (_soundLevel.abs() * 1.5).clamp(0.0, 25.0) : 0.0;
+                    final soundBoost = (_soundLevel.abs() > 0.02) ? (_soundLevel.abs() * 50.0).clamp(0.0, 55.0) : 0.0;
                     final dynamicHeight = _isRecording
                         ? (12.0 + soundBoost + (35.0 * (0.3 + 0.7 * (1.0 - (waveValue % 1.0)))) * factor)
                             .clamp(8.0, 80.0)
                         : 6.0;
 
+                    final emotionColor = _getVoiceEmotionColor(_voiceEmotion);
                     return Container(
                       width: 4,
                       height: dynamicHeight,
                       decoration: BoxDecoration(
-                        color: _isRecording ? AppColors.primary : AppColors.border,
+                        color: _isRecording ? emotionColor : AppColors.border,
                         borderRadius: BorderRadius.circular(3),
                         gradient: _isRecording
                             ? LinearGradient(
                                 colors: [
-                                  AppColors.primary,
-                                  AppColors.primary.withValues(alpha: 0.5),
+                                  emotionColor,
+                                  emotionColor.withValues(alpha: 0.5),
                                 ],
                                 begin: Alignment.topCenter,
                                 end: Alignment.bottomCenter,
@@ -7513,12 +7557,18 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                   ],
                 ],
               ),
-              Text(
-                '$_voiceEmotion  ${(_voiceConfidence * 100).toInt()}%',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: _getVoiceEmotionColor(_voiceEmotion),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  '$_voiceEmotion  ${(_voiceConfidence * 100).toInt()}%',
+                  textAlign: TextAlign.end,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: _getVoiceEmotionColor(_voiceEmotion),
+                  ),
                 ),
               ),
             ],

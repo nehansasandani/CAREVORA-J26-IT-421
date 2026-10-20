@@ -9,12 +9,12 @@ os.environ["OMP_NUM_THREADS"] = "1"
 
 # CREMA-D Emotion Acoustic Reference Norms: ANG, DIS, FEA, HAP, NEU, SAD
 ACOUSTIC_PROFILES = {
-    'HAP': {'pitch_variability': 0.85, 'speech_rate': 0.78, 'valence': 0.90, 'label': 'Cheerful / High Valence'},
-    'NEU': {'pitch_variability': 0.65, 'speech_rate': 0.60, 'valence': 0.70, 'label': 'Calm / Neutral Prosody'},
-    'SAD': {'pitch_variability': 0.35, 'speech_rate': 0.38, 'valence': 0.30, 'label': 'Flattened / Low Pitch'},
-    'FEA': {'pitch_variability': 0.75, 'speech_rate': 0.82, 'valence': 0.40, 'label': 'Tremulous / Hesitant'},
-    'ANG': {'pitch_variability': 0.90, 'speech_rate': 0.88, 'valence': 0.25, 'label': 'Elevated / Rapid Cadence'},
-    'DIS': {'pitch_variability': 0.50, 'speech_rate': 0.45, 'valence': 0.20, 'label': 'Monotonic / Flat'},
+    'HAP': {'pitch_variability': 0.85, 'speech_rate': 0.78, 'valence': 0.90, 'label': 'Happy'},
+    'NEU': {'pitch_variability': 0.65, 'speech_rate': 0.60, 'valence': 0.70, 'label': 'Calm'},
+    'SAD': {'pitch_variability': 0.35, 'speech_rate': 0.38, 'valence': 0.30, 'label': 'Sad'},
+    'FEA': {'pitch_variability': 0.75, 'speech_rate': 0.82, 'valence': 0.40, 'label': 'Fear'},
+    'ANG': {'pitch_variability': 0.90, 'speech_rate': 0.88, 'valence': 0.25, 'label': 'Angry'},
+    'DIS': {'pitch_variability': 0.50, 'speech_rate': 0.45, 'valence': 0.20, 'label': 'Confused'},
 }
 
 # CREMA-D grounded 30-dim centroids directly derived from train.csv
@@ -94,41 +94,70 @@ def analyze_vocal_affect(audio_bytes: bytes = None, simulated_cues: dict = None,
                             return True
                 return False
 
-            if has_match(['happy', 'good', 'great', 'fine', 'peace', 'joy', 'wonderful', 'smile', 'cheerful', 'grateful', 'blessed', 'love', 'hondin', 'hodin', 'hari', 'hare', 'sathutu', 'yes', 'ow', 'sukha', 'prithi', 'හොඳින්', 'හොඳයි', 'සතුටින්', 'සතුටුයි', 'ඔව්']):
+            if has_match(['happy', 'good', 'great', 'fine', 'peace', 'joy', 'wonderful', 'smile', 'cheerful', 'grateful', 'blessed', 'love', 'hondin', 'hodin', 'hari', 'hare', 'sathutu', 'sathutin', 'yes', 'ow', 'sukha', 'prithi', 'හොඳින්', 'හොඳයි', 'සතුටින්', 'සතුටුයි', 'සැනසීමක්', 'සැනසිලිදායකයි', 'සුවෙන්', 'ඔව්', 'හරියටම', 'ප්‍රීති', 'හරි', 'සුවයි']):
                 target_cue = 'HAP'
                 default_pitch = 0.85
                 default_rhythm = 0.78
                 confidence = 0.89
-            elif has_match(['sad', 'lonely', 'alone', 'cry', 'crying', 'tired', 'bad', 'pain', 'hopeless', 'depressed', 'grief', 'duk', 'dukai', 'paalu', 'kamak na', 'amarui', 'na', 'ne', 'nehe', 'naha', 'epa', 'epaa', 'aul', 'thanikama', 'දුකයි', 'පාළුයි', 'තනිකම', 'අමාරුයි', 'එපා', 'අවුල්', 'නෑ', 'නැහැ']):
+            elif has_match(['sad', 'lonely', 'alone', 'cry', 'crying', 'tired', 'bad', 'pain', 'hopeless', 'depressed', 'grief', 'duk', 'dukai', 'paalu', 'kamak na', 'amarui', 'na', 'ne', 'nehe', 'naha', 'epa', 'epaa', 'aul', 'thanikama', 'දුකයි', 'දුක', 'පාළුයි', 'පාළු', 'තනිකම', 'තනියම', 'අමාරුයි', 'අමාරු', 'එපා', 'අවුල්', 'නෑ', 'නැහැ', 'නැත', 'කමක් නෑ', 'අසනීපයි', 'වේදනයි', 'බැහැ', 'බෑ']):
                 target_cue = 'SAD'
                 default_pitch = 0.35
                 default_rhythm = 0.38
                 confidence = 0.88
-            elif has_match(['angry', 'hate', 'shout', 'rude', 'mad', 'annoyed', 'furious', 'taraha', 'tarahai', 'kenthara', 'තරහයි', 'කේන්තියි']):
+            elif has_match(['angry', 'hate', 'shout', 'rude', 'mad', 'annoyed', 'furious', 'taraha', 'tarahai', 'kenthara', 'තරහයි', 'කේන්තියි', 'තරහ', 'කේන්ති', 'එපා වෙනවා']):
                 target_cue = 'ANG'
                 default_pitch = 0.90
                 default_rhythm = 0.88
-                confidence = 0.85
-            elif has_match(['fear', 'scared', 'worry', 'worried', 'nervous', 'anxious', 'panic', 'afraid', 'baya', 'bayai', 'sanka', 'බයයි', 'බය']):
+                confidence = 0.86
+            elif has_match(['confused', 'puzzled', 'dont know', 'what happened', 'wonder', 'මොකක්ද', 'මොකද', 'ඇයි', 'ඇයි මෙහෙම', 'තේරෙන්නෙ නෑ', 'තේරෙන්නේ නෑ', 'අවුල්', 'කරදර', 'කරදරයි', 'ජූල්', 'සෑම', 'මිනිස්සු']):
+                target_cue = 'DIS'
+                default_pitch = 0.55
+                default_rhythm = 0.45
+                confidence = 0.84
+            elif has_match(['fear', 'scared', 'worry', 'worried', 'nervous', 'anxious', 'panic', 'afraid', 'baya', 'bayai', 'sanka', 'බයයි', 'බය', 'බිය', 'බියයි', 'භයයි', 'කලබලයි', 'ගැහෙනවා', 'සැකයි']):
                 target_cue = 'FEA'
                 default_pitch = 0.75
                 default_rhythm = 0.82
-                confidence = 0.84
+                confidence = 0.85
             elif has_match(['disgust', 'nasty', 'gross', 'repulsed', 'tired of this']):
                 target_cue = 'DIS'
                 default_pitch = 0.50
                 default_rhythm = 0.45
                 confidence = 0.82
             else:
+                p_in = float(simulated_cues.get('pitch_modulation', 0.60))
+                if p_in >= 0.82:
+                    target_cue = 'ANG'
+                    default_pitch = 0.88
+                    default_rhythm = 0.85
+                    confidence = 0.82
+                elif p_in <= 0.42:
+                    target_cue = 'SAD'
+                    default_pitch = 0.35
+                    default_rhythm = 0.38
+                    confidence = 0.80
+                else:
+                    target_cue = 'NEU'
+                    default_pitch = 0.65
+                    default_rhythm = 0.60
+                    confidence = 0.78
+        else:
+            p_in = float(simulated_cues.get('pitch_modulation', 0.60))
+            if p_in >= 0.82:
+                target_cue = 'ANG'
+                default_pitch = 0.88
+                default_rhythm = 0.85
+                confidence = 0.80
+            elif p_in <= 0.42:
+                target_cue = 'SAD'
+                default_pitch = 0.35
+                default_rhythm = 0.38
+                confidence = 0.78
+            else:
                 target_cue = 'NEU'
                 default_pitch = 0.65
                 default_rhythm = 0.60
-                confidence = 0.78
-        else:
-            target_cue = 'NEU'
-            default_pitch = 0.65
-            default_rhythm = 0.60
-            confidence = 0.75
+                confidence = 0.75
 
         pitch_mod = float(simulated_cues.get('pitch_modulation', default_pitch))
         rhythm_calmness = float(simulated_cues.get('rhythm_calmness', default_rhythm))
