@@ -13,6 +13,7 @@ class CognitiveResidentProfile {
   final String? avatarUrl;
   final String? currentStatus;
   final String? riskLevel;
+  final double? cognitiveScore;
 
   final int? elderHomeId;
   final String? elderHomeName;
@@ -27,6 +28,7 @@ class CognitiveResidentProfile {
     this.avatarUrl,
     this.currentStatus,
     this.riskLevel,
+    this.cognitiveScore,
     this.elderHomeId,
     this.elderHomeName,
   });
@@ -42,6 +44,7 @@ class CognitiveResidentProfile {
       avatarUrl: json['avatarUrl'] as String?,
       currentStatus: json['currentStatus'] as String?,
       riskLevel: json['riskLevel'] as String?,
+      cognitiveScore: (json['cognitiveScore'] as num?)?.toDouble(),
       elderHomeId: (json['elderHomeId'] as num?)?.toInt(),
       elderHomeName: json['elderHomeName'] as String?,
     );

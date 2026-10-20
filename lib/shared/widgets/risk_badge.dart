@@ -4,24 +4,30 @@ import '../../core/utils/risk_utils.dart';
 class RiskBadge extends StatelessWidget {
   final double score;
   final String? customLabel;
+  final Color? customColor;
+  final Color? customBgColor;
 
   const RiskBadge({
     super.key,
     required this.score,
     this.customLabel,
+    this.customColor,
+    this.customBgColor,
   });
 
   @override
   Widget build(BuildContext context) {
     final tier = RiskUtils.getTier(score);
     final text = customLabel ?? tier.label;
+    final color = customColor ?? tier.color;
+    final bgColor = customBgColor ?? tier.bgColor;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: tier.bgColor,
+        color: bgColor,
         borderRadius: BorderRadius.circular(9999),
-        border: Border.all(color: tier.color.withValues(alpha: 0.3), width: 1),
+        border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -30,7 +36,7 @@ class RiskBadge extends StatelessWidget {
             width: 6,
             height: 6,
             decoration: BoxDecoration(
-              color: tier.color,
+              color: color,
               shape: BoxShape.circle,
             ),
           ),
@@ -40,7 +46,7 @@ class RiskBadge extends StatelessWidget {
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: tier.color,
+              color: color,
             ),
           ),
         ],

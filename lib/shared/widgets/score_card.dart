@@ -11,6 +11,10 @@ class ScoreCard extends StatelessWidget {
   final double delta;
   final bool isGauge;
   final VoidCallback? onTap;
+  final String? customBadgeLabel;
+  final Color? customBadgeColor;
+  final Color? customBadgeBgColor;
+  final Color? customDeltaColor;
 
   const ScoreCard({
     super.key,
@@ -19,6 +23,10 @@ class ScoreCard extends StatelessWidget {
     required this.delta,
     this.isGauge = false,
     this.onTap,
+    this.customBadgeLabel,
+    this.customBadgeColor,
+    this.customBadgeBgColor,
+    this.customDeltaColor,
   });
 
   @override
@@ -54,7 +62,12 @@ class ScoreCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              RiskBadge(score: score),
+              RiskBadge(
+                score: score,
+                customLabel: customBadgeLabel,
+                customColor: customBadgeColor,
+                customBgColor: customBadgeBgColor,
+              ),
             ],
           ),
           const SizedBox(height: 14),
@@ -98,14 +111,14 @@ class ScoreCard extends StatelessWidget {
               Icon(
                 delta >= 0 ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
                 size: 14,
-                color: delta >= 0 ? AppColors.riskHigh : AppColors.riskLow,
+                color: customDeltaColor ?? (delta >= 0 ? AppColors.riskHigh : AppColors.riskLow),
               ),
               const SizedBox(width: 4),
               Text(
                 '${(delta.abs()).toStringAsFixed(2)} vs previous test',
                 style: AppTextStyles.caption.copyWith(
                   fontSize: 12,
-                  color: delta >= 0 ? AppColors.riskHigh : AppColors.riskLow,
+                  color: customDeltaColor ?? (delta >= 0 ? AppColors.riskHigh : AppColors.riskLow),
                   fontWeight: FontWeight.w600,
                 ),
               ),
