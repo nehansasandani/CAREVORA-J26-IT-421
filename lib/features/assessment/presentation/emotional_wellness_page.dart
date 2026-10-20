@@ -18,6 +18,7 @@ import '../../../data/models/carevora_models.dart';
 import '../application/facial_emotion_ai_service.dart';
 import '../application/automatic_facial_capture_service.dart';
 import '../application/emotional_assessment_service.dart';
+import '../application/vocal_emotion_ai_service.dart';
 import '../application/social_audit_service.dart';
 import '../application/cognitive_assessment_service.dart';
 import '../../auth/application/auth_controller.dart';
@@ -48,6 +49,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
   double _facialConfidence = 0.85;
   String _voiceEmotion = 'Neutral';
   double _voiceConfidence = 0.72;
+  double _vocalWellnessScore = 75.0;
 
   // Scores
   int _lonelinessScore = 67;
@@ -1029,16 +1031,110 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
     try {
       _speechEnabled = await _speech.initialize(
         onError: (err) => debugPrint('STT Error: $err'),
-        onStatus: (status) {
-          if (status == 'done' || status == 'notListening') {
-            if (mounted && _isRecording) {
-              // keep state synced
-            }
-          }
-        },
+        onStatus: _onSpeechStatus,
       );
     } catch (e) {
       debugPrint('Speech init fallback: $e');
+    }
+  }
+
+  void _startContinuousListening() {
+    if (!_speechEnabled) {
+      _speech.initialize(
+        onError: (err) => debugPrint('STT Error: $err'),
+        onStatus: _onSpeechStatus,
+      ).then((enabled) {
+        _speechEnabled = enabled;
+        if (enabled && _isRecording) {
+          _listenLoop();
+        }
+      });
+      return;
+    }
+    _listenLoop();
+  }
+
+  void _listenLoop() {
+    if (!_isRecording) return;
+    try {
+      _speech.listen(
+        onResult: (result) {
+          if (!mounted) return;
+          final words = result.recognizedWords.trim();
+          if (words.isNotEmpty) {
+            setState(() {
+              _spokenText = words;
+            });
+            _analyzeSpokenVoice(words);
+          }
+        },
+        listenFor: const Duration(minutes: 5),
+        pauseFor: const Duration(seconds: 4),
+        listenMode: stt.ListenMode.dictation,
+        cancelOnError: false,
+        partialResults: true,
+      );
+    } catch (e) {
+      debugPrint('Speech listen error: $e');
+    }
+  }
+
+  void _onSpeechStatus(String status) {
+    debugPrint('STT Status: $status');
+    if ((status == 'done' || status == 'notListening') && mounted && _isRecording) {
+      Future.delayed(const Duration(milliseconds: 250), () {
+        if (mounted && _isRecording && !_speech.isListening) {
+          _listenLoop();
+        }
+      });
+    }
+  }
+
+  void _stopContinuousListening() async {
+    try {
+      if (_speech.isListening) {
+        await _speech.stop();
+      }
+    } catch (e) {
+      debugPrint('Speech stop error: $e');
+    }
+  }
+
+  Future<void> _analyzeSpokenVoice(String text) async {
+    final clean = text.trim();
+    if (clean.isEmpty) return;
+    try {
+      final res = await VocalEmotionAiService.analyzeSpokenSpeech(spokenText: clean);
+      if (!mounted) return;
+      setState(() {
+        _voiceEmotion = res.profileLabel;
+        _voiceConfidence = res.confidence;
+        _vocalWellnessScore = res.vocalWellnessScore;
+
+        if (res.acousticProfile == 'HAP') {
+          _commLevel = 'High';
+          _engagementLevel = 'High';
+          _responseTime = 'Normal';
+        } else if (res.acousticProfile == 'SAD') {
+          _commLevel = 'Low';
+          _engagementLevel = 'Low';
+          _responseTime = 'Delayed';
+        } else if (res.acousticProfile == 'ANG') {
+          _commLevel = 'Elevated';
+          _engagementLevel = 'High';
+          _responseTime = 'Rapid';
+        } else if (res.acousticProfile == 'FEA') {
+          _commLevel = 'Guarded';
+          _engagementLevel = 'Low';
+          _responseTime = 'Variable';
+        } else {
+          _commLevel = 'Moderate';
+          _engagementLevel = 'Moderate';
+          _responseTime = 'Normal';
+        }
+      });
+    } catch (e) {
+      debugPrint('Vocal analysis error: $e');
     }
   }
 
@@ -1050,6 +1146,9 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
           setState(() {
             _recordSeconds++;
           });
+          if (_spokenText.isNotEmpty && _recordSeconds % 2 == 0) {
+            _analyzeSpokenVoice(_spokenText);
+          }
         }
       });
     }
@@ -1198,15 +1297,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
         _isRecording = true;
       });
       _startRecordingTimer();
-      if (_speechEnabled) {
-        _speech.listen(onResult: (result) {
-          if (mounted) {
-            setState(() {
-              _spokenText = result.recognizedWords;
-            });
-          }
-        });
-      }
+      _startContinuousListening();
       if (consentGranted) {
         await _facialCaptureService.startCaptureForVoiceRecording();
       }
@@ -1215,10 +1306,11 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
         _isRecording = false;
       });
       _recordTimer?.cancel();
-      if (_speechEnabled) {
-        await _speech.stop();
-      }
+      _stopContinuousListening();
       _facialCaptureService.stopCapture();
+      if (_spokenText.isNotEmpty) {
+        _analyzeSpokenVoice(_spokenText);
+      }
     }
   }
 
@@ -4826,7 +4918,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
     }
 
     final bool hasVoiceSession = _recordSeconds > 0;
-    final double? vocalScore = hasVoiceSession ? 78.0 : null;
+    final double? vocalScore = hasVoiceSession ? _vocalWellnessScore : null;
 
     showDialog(
       context: context,

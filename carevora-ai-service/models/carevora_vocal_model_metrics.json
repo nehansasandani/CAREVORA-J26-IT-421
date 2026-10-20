@@ -1,0 +1,67 @@
+{
+  "model_name": "Carevora Vocal Affect Classifier",
+  "model_type": "StandardScaler + Multiclass Calibrated Classifier",
+  "accuracy": 0.9494,
+  "macro_f1": 0.9494,
+  "weighted_f1": 0.9494,
+  "classification_report": {
+    "ANG": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 900.0
+    },
+    "DIS": {
+      "precision": 0.8984198645598194,
+      "recall": 0.8844444444444445,
+      "f1-score": 0.8913773796192609,
+      "support": 900.0
+    },
+    "FEA": {
+      "precision": 0.9292817679558011,
+      "recall": 0.9344444444444444,
+      "f1-score": 0.9318559556786704,
+      "support": 900.0
+    },
+    "HAP": {
+      "precision": 0.9764044943820225,
+      "recall": 0.9655555555555555,
+      "f1-score": 0.9709497206703911,
+      "support": 900.0
+    },
+    "NEU": {
+      "precision": 0.9095860566448801,
+      "recall": 0.9277777777777778,
+      "f1-score": 0.9185918591859186,
+      "support": 900.0
+    },
+    "SAD": {
+      "precision": 0.9833518312985572,
+      "recall": 0.9844444444444445,
+      "f1-score": 0.9838978345363687,
+      "support": 900.0
+    },
+    "accuracy": 0.9494444444444444,
+    "macro avg": {
+      "precision": 0.9495073358068468,
+      "recall": 0.9494444444444445,
+      "f1-score": 0.9494454582817683,
+      "support": 5400.0
+    },
+    "weighted avg": {
+      "precision": 0.9495073358068469,
+      "recall": 0.9494444444444444,
+      "f1-score": 0.9494454582817682,
+      "support": 5400.0
+    }
+  },
+  "classes": [
+    "ANG",
+    "DIS",
+    "FEA",
+    "HAP",
+    "NEU",
+    "SAD"
+  ],
+  "dataset": "Carevora Synthetic Vocal Emotion Dataset v1 (CREMA-D SEP=3.0)"
+}
