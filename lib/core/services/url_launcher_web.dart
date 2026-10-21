@@ -11,3 +11,18 @@ void launchTelUrl(String phoneNumber) {
     // Graceful fallback
   }
 }
+
+void launchWhatsAppUrl(String phoneNumber, [String? message]) {
+  try {
+    var cleanPhone = phoneNumber.replaceAll(RegExp(r'[^\d]'), '');
+    if (cleanPhone.startsWith('0') && cleanPhone.length == 10) {
+      cleanPhone = '94${cleanPhone.substring(1)}';
+    }
+    final textParam = message != null && message.isNotEmpty ? '?text=${Uri.encodeComponent(message)}' : '';
+    final anchor = html.AnchorElement(href: 'https://wa.me/$cleanPhone$textParam')
+      ..target = '_blank';
+    anchor.click();
+  } catch (e) {
+    // Graceful fallback
+  }
+}

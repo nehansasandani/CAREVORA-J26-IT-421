@@ -158,11 +158,13 @@ class _GlassLoginCardState extends ConsumerState<GlassLoginCard> {
       setState(() => _showSuccessCheck = true);
       await Future.delayed(const Duration(milliseconds: 400));
       if (mounted) {
-        final isAdmin = ref.read(authProvider).state.isAdmin;
-        if (isAdmin) {
+        final authState = ref.read(authProvider).state;
+        if (authState.isAdmin) {
           context.go('/admin/dashboard');
-        } else {
+        } else if (authState.isElder) {
           context.go('/dashboard');
+        } else {
+          context.go('/dashboard/residents');
         }
       }
     } else {

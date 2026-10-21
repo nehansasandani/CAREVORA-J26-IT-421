@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/register_page.dart';
 import '../../features/landing/presentation/pages/landing_page.dart';
 import '../../features/dashboard/presentation/dashboard_shell.dart';
 import '../../features/dashboard/presentation/overview_page.dart';
 import '../../features/dashboard/presentation/resident_directory_page.dart';
-import '../../features/dashboard/presentation/generic_placeholder_tab.dart';
 import '../../features/dashboard/presentation/alerts_notifications_page.dart';
 import '../../features/dashboard/presentation/care_plans_page.dart';
 import '../../features/dashboard/presentation/memory_games_page.dart';
+import '../../features/dashboard/presentation/settings_page.dart';
+import '../../features/dashboard/presentation/care_station_help_page.dart';
 import '../../features/admin/presentation/pages/admin_dashboard_page.dart';
 import '../../features/doctor/presentation/pages/doctor_dashboard_page.dart';
 import '../../features/medicine/presentation/pages/live_medicine_board_page.dart';
@@ -22,15 +22,38 @@ import '../../features/assessment/presentation/resident_social_audit_detail_page
 import '../../features/splash/presentation/pages/splash_page.dart';
 import '../../features/metabolic/presentation/metabolic_health_page.dart';
 
-final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
-final GlobalKey<NavigatorState> _shellNavigatorKey = GlobalKey<NavigatorState>();
+GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
+GlobalKey<NavigatorState> _shellNavigatorKey = GlobalKey<NavigatorState>();
 
 class AppRouter {
   AppRouter._();
 
-  static final GoRouter router = GoRouter(
+  static GoRouter? _router;
+
+  static GoRouter get router => _router ??= _createRouter();
+
+  static void reload() {
+    _rootNavigatorKey = GlobalKey<NavigatorState>();
+    _shellNavigatorKey = GlobalKey<NavigatorState>();
+    _router = _createRouter();
+  }
+
+  static GoRouter _createRouter() => GoRouter(
     navigatorKey: _rootNavigatorKey,
     initialLocation: '/',
+    errorBuilder: (context, state) {
+      if (state.uri.toString().contains('station-help')) {
+        return const DashboardShell(child: CareStationHelpPage());
+      }
+      return Scaffold(
+        body: Center(
+          child: Text(
+            'Page Not Found: ${state.uri}',
+            style: const TextStyle(fontSize: 16, color: Colors.red),
+          ),
+        ),
+      );
+    },
     routes: [
       GoRoute(
         path: '/',
@@ -141,12 +164,12 @@ class AppRouter {
             builder: (context, state) => const MemoryGamesPage(),
           ),
           GoRoute(
+            path: '/dashboard/station-help',
+            builder: (context, state) => const CareStationHelpPage(),
+          ),
+          GoRoute(
             path: '/dashboard/settings',
-            builder: (context, state) => const GenericPlaceholderTab(
-              title: 'Facility Settings',
-              description: 'Accessibility, text sizing, and clinical telemetry configurations',
-              icon: LucideIcons.settings,
-            ),
+            builder: (context, state) => const SettingsPage(),
           ),
         ],
       ),
