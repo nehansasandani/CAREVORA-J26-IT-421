@@ -146,7 +146,7 @@ void main() {
       expect(find.textContaining('+94 76 037 6031'), findsNothing);
     });
 
-    testWidgets('2. Caregiver view displays resident calling, doctor calling, search, and intercom tabs', (tester) async {
+    testWidgets('2. Caregiver view displays resident calling, colleague caregivers, doctor calling, search, and intercom tabs', (tester) async {
       await tester.binding.setSurfaceSize(const Size(1440, 1200));
 
       await tester.pumpWidget(
@@ -166,31 +166,49 @@ void main() {
       // Verify Caregiver Header
       expect(find.text('Care Station & Emergency Calls'), findsOneWidget);
 
-      // Verify Tabs
+      // Verify Tabs (Residents, Team Caregivers, Doctors, Stations)
       expect(find.text('Call Residents (Elders)'), findsOneWidget);
+      expect(find.text('Team Caregivers'), findsOneWidget);
       expect(find.text('Call Doctors'), findsOneWidget);
       expect(find.text('Duty Stations'), findsOneWidget);
 
-      // Verify Residents are listed by default
-      expect(find.text('Sarah Jenkins'), findsOneWidget);
+      // Verify ONLY Residents belonging to Serenity Elder Home (Home 3) are listed by default
       expect(find.text('James Perera'), findsOneWidget);
-      expect(find.text('Arthur Pendelton'), findsOneWidget);
+      expect(find.text('Malini Bandara'), findsOneWidget);
 
-      // Test Search
+      // Verify residents belonging to other homes are NOT shown
+      expect(find.text('Sarah Jenkins'), findsNothing);
+      expect(find.text('Arthur Pendelton'), findsNothing);
+
+      // Test Search in Residents tab
       await tester.enterText(find.byType(TextField), 'James Perera');
       await tester.pumpAndSettle();
 
       expect(find.text('Room 105 • North Wing'), findsOneWidget);
-      expect(find.text('Sarah Jenkins'), findsNothing);
+      expect(find.text('Malini Bandara'), findsNothing);
 
-      // Switch to Call Doctors tab
-      await tester.tap(find.text('Call Doctors'));
+      // Clear search
+      await tester.enterText(find.byType(TextField), '');
       await tester.pumpAndSettle();
 
-      expect(find.text('Dr. Nimal Fernando'), findsOneWidget);
-      expect(find.text('Dr. Aris Thorne'), findsOneWidget);
+      // Switch to Team Caregivers tab (Colleagues in the same elder home)
+      await tester.tap(find.text('Team Caregivers'));
+      await tester.pumpAndSettle();
 
-      // Test Calling Doctor
+      // Verify other caregivers in Serenity Elder Home are displayed
+      expect(find.text('Caregiver Sarangi'), findsOneWidget);
+      expect(find.text('Caregiver Maya Ekanayaka'), findsOneWidget);
+      expect(find.text('Caregiver Indika Perera'), findsOneWidget);
+      expect(find.text('Caregiver Malini Silva'), findsOneWidget);
+
+      // Verify logged-in caregiver is excluded from colleague call list
+      expect(find.text('Caregiver Pasidi Sarangi'), findsNothing);
+
+      // Verify caregivers of other elder homes are NOT displayed
+      expect(find.text('Caregiver Eleanor Vance'), findsNothing);
+      expect(find.text('Caregiver David Silva'), findsNothing);
+
+      // Test Calling a colleague caregiver
       final voiceCallButtons = find.text('Voice Call');
       expect(voiceCallButtons, findsWidgets);
 
@@ -198,7 +216,7 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 200));
 
-      // Active dialog
+      // Active dialog opened
       expect(find.byIcon(LucideIcons.phoneOff), findsOneWidget);
 
       // End call
@@ -206,6 +224,62 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byIcon(LucideIcons.phoneOff), findsNothing);
+
+      // Switch to Call Doctors tab
+      await tester.tap(find.text('Call Doctors'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Dr. Nimal Fernando'), findsOneWidget);
+      expect(find.text('Dr. Aris Thorne'), findsOneWidget);
+    });
+
+    testWidgets('3. Serene Valley caregiver sees only Serene Valley residents and fellow caregivers', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1440, 1200));
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            authProvider.overrideWith((ref) => MockSereneCaregiverAuthNotifier()),
+          ],
+          child: const MaterialApp(
+            home: Scaffold(
+              body: CareStationHelpPage(),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Verify Serene Valley residents are displayed
+      expect(find.text('Sarah Jenkins'), findsOneWidget);
+      expect(find.text('Arthur Pendelton'), findsOneWidget);
+      expect(find.text('James Perera'), findsNothing);
+      expect(find.text('Malini Bandara'), findsNothing);
+
+      // Switch to Team Caregivers tab
+      await tester.tap(find.text('Team Caregivers'));
+      await tester.pumpAndSettle();
+
+      // Fellow Serene Valley caregivers displayed
+      expect(find.text('Caregiver Florence Nightingale'), findsOneWidget);
+      expect(find.text('Caregiver Clara Barton'), findsOneWidget);
+
+      // Logged-in caregiver and other facilities' caregivers excluded
+      expect(find.text('Caregiver Eleanor Vance'), findsNothing);
+      expect(find.text('Caregiver Pasidi Sarangi'), findsNothing);
+      expect(find.text('Caregiver David Silva'), findsNothing);
     });
   });
+}
+
+class MockSereneCaregiverAuthNotifier extends AuthNotifier {
+  @override
+  AuthState get state => const AuthState(
+        isAuthenticated: true,
+        userName: 'Eleanor Vance',
+        role: UserRole.caregiver,
+        elderHomeId: 1,
+        elderHomeName: 'Serene Valley Senior Living',
+        token: 'test-serene-caregiver-token',
+      );
 }
