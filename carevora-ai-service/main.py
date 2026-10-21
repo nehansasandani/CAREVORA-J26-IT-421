@@ -1,21 +1,28 @@
 import os
 import json
 import math
-from typing import List, Optional, Dict, Any
+from pathlib import Path
+from typing import List, Literal, Optional, Dict, Any, Union
 
 from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+# LightGBM must load its OpenMP runtime before torch does; importing torch first makes the
+# RALPA LightGBM models segfault on load on macOS (two libomp copies in one process).
+import lightgbm  # noqa: F401  pyrefly: ignore [missing-import]
 
 from vision_analyzer import analyze_facial_affect
 from audio_analyzer import analyze_vocal_affect
 from ralpa_engine import RALPAEngine
 from cognitive_engine import CognitiveEngine, CognitiveValidationError
+from carevora_risk.predictor import RiskPredictor
 
 app = FastAPI(
     title="CAREVORA AI/ML Microservice",
-    description="Multimodal Emotion Recognition, RALPA Trajectory Forecasting & ACRF Cognitive Scoring Engine",
-    version="1.1.0"
+    description="Multimodal Emotion Recognition, RALPA Trajectory Forecasting, ACRF Cognitive Scoring "
+                "& Metabolic Risk Tiers Engine",
+    version="1.2.0"
 )
 
 # Enable CORS for Flutter Web & Mobile Clients (localhost, 127.0.0.1, and Android emulators)
@@ -30,6 +37,17 @@ app.add_middleware(
 
 ralpa = RALPAEngine()
 cognitive_engine = CognitiveEngine()
+
+# Metabolic risk tiers: logistic regression models trained on NHANES 2013-2018 (see ML/README.md),
+# shipped as portable JSON and scored without scikit-learn.
+METABOLIC_MODEL_DIR = Path(os.environ.get(
+    "CAREVORA_METABOLIC_MODEL_DIR", Path(__file__).resolve().parent / "models" / "metabolic"))
+try:
+    metabolic_predictor: Optional[RiskPredictor] = RiskPredictor(METABOLIC_MODEL_DIR)
+    metabolic_load_error: Optional[str] = None
+except (OSError, ValueError, KeyError) as exc:
+    metabolic_predictor = None
+    metabolic_load_error = f"Metabolic models could not be loaded from {METABOLIC_MODEL_DIR}: {exc}"
 
 
 # ============================================================================
@@ -161,6 +179,56 @@ class CognitiveAssessmentResponse(BaseModel):
 
 
 # ============================================================================
+# Request Schema: Metabolic Health Risk Tiers
+# ============================================================================
+
+class MetabolicRiskRequest(BaseModel):
+    """Inputs for the metabolic risk models. Every field is optional: the service picks the
+    highest tier (home < clinic < extended) whose inputs are complete and says what is missing.
+    Out-of-range values are ignored and reported in `input_warnings`."""
+    model_config = ConfigDict(extra="allow")   # unknown keys are returned in `inputs_not_used`
+
+    resident_id: Optional[int] = Field(None, description="Resident identifier (not used by the model)")
+
+    # Home tier
+    age: Optional[float] = Field(None, description="Years")
+    sex: Optional[Literal["male", "female"]] = None
+    height_cm: Optional[float] = None
+    weight_kg: Optional[float] = None
+    bmi: Optional[float] = Field(None, description="kg/m2")
+    waist_cm: Optional[float] = None
+    systolic_bp: Optional[Union[float, List[float]]] = Field(None, description="mmHg; one reading or several")
+    diastolic_bp: Optional[Union[float, List[float]]] = Field(None, description="mmHg; one reading or several")
+    resting_hr: Optional[float] = Field(None, description="Beats per minute")
+    resting_hr_avg: Optional[float] = Field(None, description="Wearable alias of resting_hr")
+    smoking_status: Optional[Literal["never", "former", "current"]] = None
+    drinks_per_week: Optional[float] = None
+    vigorous_min_week: Optional[float] = None
+    moderate_min_week: Optional[float] = Field(None, description="Includes walking and cycling")
+    sedentary_hours: Optional[float] = Field(None, description="Hours per day sitting")
+    on_bp_meds: Optional[bool] = None
+    on_cholesterol_meds: Optional[bool] = None
+    on_diabetes_meds: Optional[bool] = None
+    told_hypertension: Optional[bool] = None
+    told_high_cholesterol: Optional[bool] = None
+    told_diabetes: Optional[bool] = None
+
+    # Clinic tier
+    fasting_glucose: Optional[float] = Field(None, description="mg/dL")
+    hba1c: Optional[float] = Field(None, description="%")
+    hdl: Optional[float] = Field(None, description="mg/dL")
+    ldl: Optional[float] = Field(None, description="mg/dL")
+    total_cholesterol: Optional[float] = Field(None, description="mg/dL")
+    triglycerides: Optional[float] = Field(None, description="mg/dL")
+
+    # Extended tier
+    alt: Optional[float] = Field(None, description="U/L")
+    ast: Optional[float] = Field(None, description="U/L")
+    ggt: Optional[float] = Field(None, description="U/L")
+    creatinine: Optional[float] = Field(None, description="mg/dL")
+
+
+# ============================================================================
 # API Endpoints
 # ============================================================================
 
@@ -174,7 +242,9 @@ def root():
             "vocal": "Trained Scikit-Learn Vocal Emotion Classifier (CREMA-D Grounded, 94.9% Acc)",
             "high_risk": f"Colab Heterogeneous Ensemble (2xLightGBM, LogReg, HistGB; threshold {ralpa.high_risk_threshold})",
             "trajectory": f"Colab Ensemble (2xLightGBM, LogReg; classes: {ralpa.trajectory_classes}) + RALPA Engine",
-            "cognitive": "ACRF Engine & Random Forest Model (Trained on Synthetic Data - Experimental)"
+            "cognitive": "ACRF Engine & Random Forest Model (Trained on Synthetic Data - Experimental)",
+            "metabolic": ("Logistic regression risk tiers (diabetes, cardiovascular disease, fatty liver; "
+                          "NHANES 2013-2018)" if metabolic_predictor else "unavailable")
         }
     }
 
@@ -353,6 +423,35 @@ def predict_cognitive(req: CognitiveAssessmentRequest):
         "success": True,
         "data": result
     }
+
+
+def _require_metabolic_predictor() -> RiskPredictor:
+    if metabolic_predictor is None:
+        raise HTTPException(status_code=503, detail=metabolic_load_error)
+    return metabolic_predictor
+
+
+@app.post("/api/ml/predict-metabolic", tags=["Metabolic Health"],
+          summary="Metabolic risk tiers (low / watch / high) with top reasons. Non-diagnostic.")
+def predict_metabolic(req: MetabolicRiskRequest):
+    """
+    Estimates current-status risk of diabetes, cardiovascular disease and fatty liver.
+    Uses the highest input tier whose inputs are complete (home, clinic, extended), and returns
+    for each outcome the tier, probability, a plain-language range, the top three reasons,
+    suggestions and the inputs that would improve the estimate.
+    """
+    predictor = _require_metabolic_predictor()
+    payload = req.model_dump(exclude_none=True)
+    payload.pop("resident_id", None)
+    result = predictor.predict_risk(payload)
+    return {"success": True, "data": {"resident_id": req.resident_id, **result}}
+
+
+@app.get("/api/ml/metabolic/model-info", tags=["Metabolic Health"],
+         summary="Metabolic model versions, required inputs, thresholds and test performance")
+def metabolic_model_info():
+    predictor = _require_metabolic_predictor()
+    return {"success": True, "data": predictor.manifest}
 
 
 if __name__ == "__main__":

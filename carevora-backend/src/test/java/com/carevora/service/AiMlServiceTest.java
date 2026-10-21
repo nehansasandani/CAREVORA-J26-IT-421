@@ -212,4 +212,28 @@ class AiMlServiceTest {
         assertFalse(sentHistory.get(0).containsKey("memory_response_time"));
         assertFalse(sentHistory.get(1).containsKey("memory_response_time"));
     }
+
+    @Test
+    void predictMetabolicPostsPayloadAndReturnsData() {
+        Map<String, Object> data = Map.of("model_version", "carevora_risk_v1", "results", Map.of());
+        when(restTemplate.postForEntity(eq("http://127.0.0.1:8000/api/ml/predict-metabolic"), any(), eq(Map.class)))
+                .thenReturn(new ResponseEntity<>(Map.of("success", true, "data", data), HttpStatus.OK));
+
+        Map<String, Object> payload = Map.of("age", 70.0, "sex", "male");
+        Map<String, Object> result = aiMlService.predictMetabolic(payload);
+
+        assertEquals("carevora_risk_v1", result.get("model_version"));
+        verify(restTemplate).postForEntity(eq("http://127.0.0.1:8000/api/ml/predict-metabolic"), eq(payload), eq(Map.class));
+    }
+
+    @Test
+    void predictMetabolicMapsValidationErrorsAndOutages() {
+        when(restTemplate.postForEntity(eq("http://127.0.0.1:8000/api/ml/predict-metabolic"), any(), eq(Map.class)))
+                .thenThrow(org.springframework.web.client.HttpClientErrorException.create(
+                        HttpStatus.UNPROCESSABLE_ENTITY, "Unprocessable", null, "{\"detail\":\"sex\"}".getBytes(), null))
+                .thenThrow(new org.springframework.web.client.ResourceAccessException("Connection refused"));
+
+        assertThrows(com.carevora.exception.BadRequestException.class, () -> aiMlService.predictMetabolic(Map.of()));
+        assertThrows(com.carevora.exception.AiServiceException.class, () -> aiMlService.predictMetabolic(Map.of()));
+    }
 }

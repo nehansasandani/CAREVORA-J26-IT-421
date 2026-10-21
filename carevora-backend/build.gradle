@@ -56,4 +56,6 @@ dependencies {
 
 tasks.named('test') {
     useJUnitPlatform()
+    // Tests run against an in-memory H2 database (src/test/resources/application-test.properties)
+    systemProperty 'spring.profiles.active', 'test'
 }

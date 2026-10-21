@@ -1,0 +1,154 @@
+{
+  "disclaimer": "This is a screening estimate based on survey data, not a diagnosis. It describes how common the condition is among people with similar measurements. Please discuss any concerns with a doctor or nurse.",
+  "risk_phrase": "about {lo} to {hi} in 100 people with similar measurements have {condition}",
+  "conditions": {
+    "diabetes": "diabetes",
+    "cvd": "heart disease or have had a stroke",
+    "fatty_liver": "signs of a fatty liver"
+  },
+  "tier_text": {
+    "low": "Low: lower than most people of a similar age group.",
+    "watch": "Watch: worth keeping an eye on and discussing at your next check-up.",
+    "high": "High: worth discussing with a doctor or nurse soon."
+  },
+  "already_diagnosed": {
+    "diabetes": "You reported a diabetes diagnosis, so this screening estimate does not apply. Keep following your care plan."
+  },
+  "features": {
+    "age": {
+      "high": "Your age (risk rises with age)",
+      "low": "Your age",
+      "suggestion": "Keep up regular health check-ups."
+    },
+    "female": {
+      "yes": "Being female",
+      "no": "Being male",
+      "suggestion": "Keep up regular health check-ups."
+    },
+    "waist_to_height": {
+      "high": "Your waist size is large relative to your height",
+      "low": "Your waist size is small relative to your height",
+      "suggestion": "Ask about a healthy-weight plan; even a few centimetres off the waist helps."
+    },
+    "bmi": {
+      "high": "Your body mass index is above the typical range",
+      "low": "Your body mass index is low",
+      "suggestion": "Ask about a healthy-weight plan."
+    },
+    "sbp": {
+      "high": "Your systolic (top) blood pressure is higher than typical",
+      "low": "Your systolic (top) blood pressure is lower than typical",
+      "suggestion": "Recheck your blood pressure and share the readings with your doctor."
+    },
+    "dbp": {
+      "high": "Your diastolic (bottom) blood pressure is higher than typical",
+      "low": "Your diastolic (bottom) blood pressure is lower than typical",
+      "suggestion": "Recheck your blood pressure and share the readings with your doctor."
+    },
+    "resting_hr": {
+      "high": "Your resting heart rate is higher than typical",
+      "low": "Your resting heart rate is lower than typical",
+      "suggestion": "Regular walking can lower resting heart rate over time."
+    },
+    "smoking_former": {
+      "yes": "Past smoking",
+      "no": "Never having smoked",
+      "suggestion": "Staying smoke-free keeps lowering your risk."
+    },
+    "smoking_current": {
+      "yes": "Current smoking",
+      "no": "Not smoking",
+      "suggestion": "Ask about free support to stop smoking."
+    },
+    "log_drinks_week": {
+      "high": "Your alcohol intake",
+      "low": "Drinking little or no alcohol",
+      "suggestion": "Keep alcohol within recommended limits."
+    },
+    "log_met_min_week": {
+      "high": "Your activity level",
+      "low": "Low weekly physical activity",
+      "suggestion": "Build up to 30 minutes of brisk walking most days."
+    },
+    "sedentary_hours": {
+      "high": "Many hours spent sitting each day",
+      "low": "Few hours spent sitting",
+      "suggestion": "Break up long sitting periods with short walks."
+    },
+    "bp_meds": {
+      "yes": "Taking blood pressure medication",
+      "no": "Not taking blood pressure medication",
+      "suggestion": "Keep taking medication as prescribed and attend reviews."
+    },
+    "chol_meds": {
+      "yes": "Taking cholesterol medication",
+      "no": "Not taking cholesterol medication",
+      "suggestion": "Keep taking medication as prescribed and attend reviews."
+    },
+    "diab_meds": {
+      "yes": "Taking diabetes medication",
+      "no": "Not taking diabetes medication",
+      "suggestion": "Keep taking medication as prescribed and attend reviews."
+    },
+    "htn_dx": {
+      "yes": "A past high blood pressure diagnosis",
+      "no": "No high blood pressure diagnosis",
+      "suggestion": "Keep your blood pressure checks up to date."
+    },
+    "high_chol_dx": {
+      "yes": "A past high cholesterol diagnosis",
+      "no": "No high cholesterol diagnosis",
+      "suggestion": "Ask whether a cholesterol re-test is due."
+    },
+    "diabetes_dx": {
+      "yes": "A past diabetes diagnosis",
+      "no": "No diabetes diagnosis",
+      "suggestion": "Keep up your diabetes reviews."
+    },
+    "fasting_glucose": {
+      "high": "Your fasting blood sugar is higher than typical",
+      "low": "Your fasting blood sugar is low",
+      "suggestion": "Discuss a repeat blood sugar test with your doctor."
+    },
+    "hba1c": {
+      "high": "Your HbA1c (average blood sugar) is higher than typical",
+      "low": "Your HbA1c is lower than typical",
+      "suggestion": "Discuss a repeat HbA1c test with your doctor."
+    },
+    "hdl": {
+      "high": "Your HDL ('good') cholesterol is high",
+      "low": "Your HDL ('good') cholesterol is low",
+      "suggestion": "Regular activity can raise HDL cholesterol; discuss a lipid check."
+    },
+    "ldl": {
+      "high": "Your LDL ('bad') cholesterol is higher than typical",
+      "low": "Your LDL ('bad') cholesterol is lower than typical",
+      "suggestion": "Discuss your cholesterol results at your next check-up."
+    },
+    "log_triglycerides": {
+      "high": "Your triglycerides are higher than typical",
+      "low": "Your triglycerides are low",
+      "suggestion": "Discuss a repeat fasting lipid test; less sugar and alcohol can lower triglycerides."
+    },
+    "log_alt": {
+      "high": "Your liver enzyme ALT is higher than typical",
+      "low": "Your liver enzyme ALT is low",
+      "suggestion": "Discuss your liver blood test results with your doctor."
+    },
+    "log_ast": {
+      "high": "Your liver enzyme AST is higher than typical",
+      "low": "Your liver enzyme AST is low",
+      "suggestion": "Discuss your liver blood test results with your doctor."
+    },
+    "log_ggt": {
+      "high": "Your liver enzyme GGT is higher than typical",
+      "low": "Your liver enzyme GGT is low",
+      "suggestion": "Discuss your liver blood test results with your doctor."
+    },
+    "egfr": {
+      "high": "Your kidney function (eGFR) is high",
+      "low": "Your kidney function (eGFR) is lower than typical",
+      "suggestion": "Discuss a kidney function re-test with your doctor."
+    }
+  }
+}

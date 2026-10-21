@@ -69,3 +69,15 @@ __pycache__/
 *.mv.db
 *.trace.db
 *.lock.db
+
+# Python virtual environments
+.venv/
+**/.venv/
+
+# AI/ML model binaries & checkpoints
+*.pth
+*.pt
+*.joblib
+*.pkl
+*.h5
+*.onnx

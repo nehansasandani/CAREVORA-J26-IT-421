@@ -8,6 +8,7 @@ import com.carevora.entity.CognitiveAssessment;
 import com.carevora.entity.Resident;
 import com.carevora.entity.SocialAudit;
 import com.carevora.exception.AiServiceException;
+import com.carevora.exception.BadRequestException;
 import com.carevora.repository.AssessmentRepository;
 import com.carevora.repository.CognitiveAssessmentRepository;
 import com.carevora.repository.ResidentRepository;
@@ -16,6 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.slf4j.Logger;
@@ -310,6 +312,48 @@ public class AiMlService {
             return parseCognitiveAiResponse(data);
         } catch (RestClientException ex) {
             throw new AiServiceException("Failed to reach AI microservice at " + cognitiveUrl + ": " + ex.getMessage(), ex);
+        }
+    }
+
+    /**
+     * Calls FastAPI AI Microservice endpoint POST /api/ml/predict-metabolic.
+     * The payload uses the service's snake_case input names (e.g. waist_cm, systolic_bp).
+     * Returns the "data" object: disclaimer, input warnings and per-outcome risk tiers.
+     */
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> predictMetabolic(Map<String, Object> payload) {
+        String metabolicUrl = aiServiceBaseUrl + "/api/ml/predict-metabolic";
+        try {
+            ResponseEntity<Map> response = restTemplate.postForEntity(metabolicUrl, payload, Map.class);
+            Map body = response.getBody();
+            if (!response.getStatusCode().is2xxSuccessful() || body == null
+                    || !Boolean.TRUE.equals(body.get("success")) || !(body.get("data") instanceof Map)) {
+                throw new AiServiceException("AI microservice returned an invalid metabolic risk response");
+            }
+            return (Map<String, Object>) body.get("data");
+        } catch (HttpClientErrorException ex) {
+            throw new BadRequestException("Metabolic risk inputs were rejected by the AI service: "
+                    + ex.getResponseBodyAsString());
+        } catch (RestClientException ex) {
+            throw new AiServiceException("Failed to reach AI microservice at " + metabolicUrl + ": " + ex.getMessage(), ex);
+        }
+    }
+
+    /**
+     * Calls FastAPI AI Microservice endpoint GET /api/ml/metabolic/model-info
+     * (model version, required inputs, tier thresholds and test-set performance).
+     */
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> getMetabolicModelInfo() {
+        String infoUrl = aiServiceBaseUrl + "/api/ml/metabolic/model-info";
+        try {
+            Map<String, Object> body = restTemplate.getForObject(infoUrl, Map.class);
+            if (body == null || !(body.get("data") instanceof Map)) {
+                throw new AiServiceException("AI microservice returned an invalid metabolic model-info response");
+            }
+            return (Map<String, Object>) body.get("data");
+        } catch (RestClientException ex) {
+            throw new AiServiceException("Failed to reach AI microservice at " + infoUrl + ": " + ex.getMessage(), ex);
         }
     }
 

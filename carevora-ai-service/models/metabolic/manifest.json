@@ -1,0 +1,2148 @@
+{
+  "version": "carevora_risk_v1",
+  "created": "2026-10-19",
+  "performance_split": "test",
+  "tier_order": [
+    "home",
+    "clinic",
+    "extended"
+  ],
+  "outcomes": {
+    "diabetes": {
+      "title": "Diabetes (current status)",
+      "tiers": {
+        "home": {
+          "file": "diabetes_home.json",
+          "features": [
+            {
+              "name": "age",
+              "unit": "years"
+            },
+            {
+              "name": "female",
+              "unit": "1 = female"
+            },
+            {
+              "name": "waist_to_height",
+              "unit": "ratio"
+            },
+            {
+              "name": "sbp",
+              "unit": "mmHg"
+            },
+            {
+              "name": "dbp",
+              "unit": "mmHg"
+            },
+            {
+              "name": "resting_hr",
+              "unit": "bpm"
+            },
+            {
+              "name": "smoking_former",
+              "unit": "1 = former smoker (ref. never)"
+            },
+            {
+              "name": "smoking_current",
+              "unit": "1 = current smoker (ref. never)"
+            },
+            {
+              "name": "log_drinks_week",
+              "unit": "log(1 + drinks/week)"
+            },
+            {
+              "name": "log_met_min_week",
+              "unit": "log(1 + MET-min/week)"
+            },
+            {
+              "name": "sedentary_hours",
+              "unit": "hours/day"
+            },
+            {
+              "name": "bp_meds",
+              "unit": "1 = taking"
+            },
+            {
+              "name": "chol_meds",
+              "unit": "1 = taking"
+            },
+            {
+              "name": "htn_dx",
+              "unit": "1 = told"
+            },
+            {
+              "name": "high_chol_dx",
+              "unit": "1 = told"
+            }
+          ],
+          "required_inputs": [
+            {
+              "name": "age",
+              "unit": "years",
+              "plausible_range": [
+                18,
+                120
+              ]
+            },
+            {
+              "name": "diastolic_bp",
+              "unit": "mmHg",
+              "plausible_range": [
+                30,
+                150
+              ]
+            },
+            {
+              "name": "drinks_per_week",
+              "unit": "alcoholic drinks per week",
+              "plausible_range": [
+                0,
+                140
+              ]
+            },
+            {
+              "name": "height_cm",
+              "unit": "cm",
+              "plausible_range": [
+                120,
+                210
+              ]
+            },
+            {
+              "name": "moderate_min_week",
+              "unit": "minutes per week of moderate activity incl. walking",
+              "plausible_range": [
+                0,
+                5040
+              ]
+            },
+            {
+              "name": "on_bp_meds",
+              "unit": "true/false",
+              "plausible_range": null
+            },
+            {
+              "name": "on_cholesterol_meds",
+              "unit": "true/false",
+              "plausible_range": null
+            },
+            {
+              "name": "resting_hr",
+              "unit": "beats per minute",
+              "plausible_range": [
+                30,
+                200
+              ]
+            },
+            {
+              "name": "sedentary_hours",
+              "unit": "hours per day sitting",
+              "plausible_range": [
+                0,
+                24
+              ]
+            },
+            {
+              "name": "sex",
+              "unit": "'male' or 'female'",
+              "plausible_range": null
+            },
+            {
+              "name": "smoking_status",
+              "unit": "'never', 'former' or 'current'",
+              "plausible_range": null
+            },
+            {
+              "name": "systolic_bp",
+              "unit": "mmHg",
+              "plausible_range": [
+                70,
+                260
+              ]
+            },
+            {
+              "name": "told_high_cholesterol",
+              "unit": "true/false",
+              "plausible_range": null
+            },
+            {
+              "name": "told_hypertension",
+              "unit": "true/false",
+              "plausible_range": null
+            },
+            {
+              "name": "vigorous_min_week",
+              "unit": "minutes per week of vigorous activity",
+              "plausible_range": [
+                0,
+                5040
+              ]
+            },
+            {
+              "name": "waist_cm",
+              "unit": "cm",
+              "plausible_range": [
+                40,
+                200
+              ]
+            }
+          ],
+          "model_form": "logistic regression with cubic splines",
+          "missing_data": "impute",
+          "penalty": "L1",
+          "C": 100,
+          "calibration": "none (well calibrated on validation)",
+          "thresholds": {
+            "low_to_watch": 0.1669,
+            "watch_to_high": 0.3424
+          },
+          "metrics": {
+            "auc": 0.7723,
+            "auprc": 0.5731,
+            "brier": 0.1606,
+            "cal_slope": 1.0271,
+            "cal_intercept": 0.019,
+            "prevalence": 0.2733,
+            "auc_ci": "0.745-0.795",
+            "n": 1610
+          }
+        },
+        "clinic": {
+          "file": "diabetes_clinic.json",
+          "features": [
+            {
+              "name": "age",
+              "unit": "years"
+            },
+            {
+              "name": "female",
+              "unit": "1 = female"
+            },
+            {
+              "name": "waist_to_height",
+              "unit": "ratio"
+            },
+            {
+              "name": "sbp",
+              "unit": "mmHg"
+            },
+            {
+              "name": "dbp",
+              "unit": "mmHg"
+            },
+            {
+              "name": "resting_hr",
+              "unit": "bpm"
+            },
+            {
+              "name": "smoking_former",
+              "unit": "1 = former smoker (ref. never)"
+            },
+            {
+              "name": "smoking_current",
+              "unit": "1 = current smoker (ref. never)"
+            },
+            {
+              "name": "log_drinks_week",
+              "unit": "log(1 + drinks/week)"
+            },
+            {
+              "name": "log_met_min_week",
+              "unit": "log(1 + MET-min/week)"
+            },
+            {
+              "name": "sedentary_hours",
+              "unit": "hours/day"
+            },
+            {
+              "name": "bp_meds",
+              "unit": "1 = taking"
+            },
+            {
+              "name": "chol_meds",
+              "unit": "1 = taking"
+            },
+            {
+              "name": "htn_dx",
+              "unit": "1 = told"
+            },
+            {
+              "name": "high_chol_dx",
+              "unit": "1 = told"
+            },
+            {
+              "name": "hdl",
+              "unit": "mg/dL"
+            },
+            {
+              "name": "ldl",
+              "unit": "mg/dL"
+            },
+            {
+              "name": "log_triglycerides",
+              "unit": "log(mg/dL)"
+            }
+          ],
+          "required_inputs": [
+            {
+              "name": "age",
+              "unit": "years",
+              "plausible_range": [
+                18,
+                120
+              ]
+            },
+            {
+              "name": "diastolic_bp",
+              "unit": "mmHg",
+              "plausible_range": [
+                30,
+                150
+              ]
+            },
+            {
+              "name": "drinks_per_week",
+              "unit": "alcoholic drinks per week",
+              "plausible_range": [
+                0,
+                140
+              ]
+            },
+            {
+              "name": "hdl",
+              "unit": "mg/dL",
+              "plausible_range": [
+                10,
+                200
+              ]
+            },
+            {
+              "name": "height_cm",
+              "unit": "cm",
+              "plausible_range": [
+                120,
+                210
+              ]
+            },
+            {
+              "name": "ldl",
+              "unit": "mg/dL",
+              "plausible_range": [
+                10,
+                400
+              ]
+            },
+            {
+              "name": "moderate_min_week",
+              "unit": "minutes per week of moderate activity incl. walking",
+              "plausible_range": [
+                0,
+                5040
+              ]
+            },
+            {
+              "name": "on_bp_meds",
+              "unit": "true/false",
+              "plausible_range": null
+            },
+            {
+              "name": "on_cholesterol_meds",
+              "unit": "true/false",
+              "plausible_range": null
+            },
+            {
+              "name": "resting_hr",
+              "unit": "beats per minute",
+              "plausible_range": [
+                30,
+                200
+              ]
+            },
+            {
+              "name": "sedentary_hours",
+              "unit": "hours per day sitting",
+              "plausible_range": [
+                0,
+                24
+              ]
+            },
+            {
+              "name": "sex",
+              "unit": "'male' or 'female'",
+              "plausible_range": null
+            },
+            {
+              "name": "smoking_status",
+              "unit": "'never', 'former' or 'current'",
+              "plausible_range": null
+            },
+            {
+              "name": "systolic_bp",
+              "unit": "mmHg",
+              "plausible_range": [
+                70,
+                260
+              ]
+            },
+            {
+              "name": "told_high_cholesterol",
+              "unit": "true/false",
+              "plausible_range": null
+            },
+            {
+              "name": "told_hypertension",
+              "unit": "true/false",
+              "plausible_range": null
+            },
+            {
+              "name": "triglycerides",
+              "unit": "mg/dL",
+              "plausible_range": [
+                20,
+                2000
+              ]
+            },
+            {
+              "name": "vigorous_min_week",
+              "unit": "minutes per week of vigorous activity",
+              "plausible_range": [
+                0,
+                5040
+              ]
+            },
+            {
+              "name": "waist_cm",
+              "unit": "cm",
+              "plausible_range": [
+                40,
+                200
+              ]
+            }
+          ],
+          "model_form": "logistic regression with cubic splines",
+          "missing_data": "impute",
+          "penalty": "L1",
+          "C": 1,
+          "calibration": "none (well calibrated on validation)",
+          "thresholds": {
+            "low_to_watch": 0.1696,
+            "watch_to_high": 0.3317
+          },
+          "metrics": {
+            "auc": 0.7897,
+            "auprc": 0.6025,
+            "brier": 0.155,
+            "cal_slope": 1.0687,
+            "cal_intercept": -0.0085,
+            "prevalence": 0.2733,
+            "auc_ci": "0.764-0.814",
+            "n": 1610
+          }
+        },
+        "extended": {
+          "file": "diabetes_extended.json",
+          "features": [
+            {
+              "name": "age",
+              "unit": "years"
+            },
+            {
+              "name": "female",
+              "unit": "1 = female"
+            },
+            {
+              "name": "waist_to_height",
+              "unit": "ratio"
+            },
+            {
+              "name": "sbp",
+              "unit": "mmHg"
+            },
+            {
+              "name": "dbp",
+              "unit": "mmHg"
+            },
+            {
+              "name": "resting_hr",
+              "unit": "bpm"
+            },
+            {
+              "name": "smoking_former",
+              "unit": "1 = former smoker (ref. never)"
+            },
+            {
+              "name": "smoking_current",
+              "unit": "1 = current smoker (ref. never)"
+            },
+            {
+              "name": "log_drinks_week",
+              "unit": "log(1 + drinks/week)"
+            },
+            {
+              "name": "log_met_min_week",
+              "unit": "log(1 + MET-min/week)"
+            },
+            {
+              "name": "sedentary_hours",
+              "unit": "hours/day"
+            },
+            {
+              "name": "bp_meds",
+              "unit": "1 = taking"
+            },
+            {
+              "name": "chol_meds",
+              "unit": "1 = taking"
+            },
+            {
+              "name": "htn_dx",
+              "unit": "1 = told"
+            },
+            {
+              "name": "high_chol_dx",
+              "unit": "1 = told"
+            },
+            {
+              "name": "hdl",
+              "unit": "mg/dL"
+            },
+            {
+              "name": "ldl",
+              "unit": "mg/dL"
+            },
+            {
+              "name": "log_triglycerides",
+              "unit": "log(mg/dL)"
+            },
+            {
+              "name": "log_alt",
+              "unit": "log(U/L)"
+            },
+            {
+              "name": "log_ast",
+              "unit": "log(U/L)"
+            },
+            {
+              "name": "log_ggt",
+              "unit": "log(U/L)"
+            },
+            {
+              "name": "egfr",
+              "unit": "mL/min/1.73m2"
+            }
+          ],
+          "required_inputs": [
+            {
+              "name": "age",
+              "unit": "years",
+              "plausible_range": [
+                18,
+                120
+              ]
+            },
+            {
+              "name": "alt",
+              "unit": "U/L",
+              "plausible_range": [
+                3,
+                2000
+              ]
+            },
+            {
+              "name": "ast",
+              "unit": "U/L",
+              "plausible_range": [
+                3,
+                2000
+              ]
+            },
+            {
+              "name": "creatinine",
+              "unit": "mg/dL",
+              "plausible_range": [
+                0.2,
+                15
+              ]
+            },
+            {
+              "name": "diastolic_bp",
+              "unit": "mmHg",
+              "plausible_range": [
+                30,
+                150
+              ]
+            },
+            {
+              "name": "drinks_per_week",
+              "unit": "alcoholic drinks per week",
+              "plausible_range": [
+                0,
+                140
+              ]
+            },
+            {
+              "name": "ggt",
+              "unit": "U/L",
+              "plausible_range": [
+                2,
+                3000
+              ]
+            },
+            {
+              "name": "hdl",
+              "unit": "mg/dL",
+              "plausible_range": [
+                10,
+                200
+              ]
+            },
+            {
+              "name": "height_cm",
+              "unit": "cm",
+              "plausible_range": [
+                120,
+                210
+              ]
+            },
+            {
+              "name": "ldl",
+              "unit": "mg/dL",
+              "plausible_range": [
+                10,
+                400
+              ]
+            },
+            {
+              "name": "moderate_min_week",
+              "unit": "minutes per week of moderate activity incl. walking",
+              "plausible_range": [
+                0,
+                5040
+              ]
+            },
+            {
+              "name": "on_bp_meds",
+              "unit": "true/false",
+              "plausible_range": null
+            },
+            {
+              "name": "on_cholesterol_meds",
+              "unit": "true/false",
+              "plausible_range": null
+            },
+            {
+              "name": "resting_hr",
+              "unit": "beats per minute",
+              "plausible_range": [
+                30,
+                200
+              ]
+            },
+            {
+              "name": "sedentary_hours",
+              "unit": "hours per day sitting",
+              "plausible_range": [
+                0,
+                24
+              ]
+            },
+            {
+              "name": "sex",
+              "unit": "'male' or 'female'",
+              "plausible_range": null
+            },
+            {
+              "name": "smoking_status",
+              "unit": "'never', 'former' or 'current'",
+              "plausible_range": null
+            },
+            {
+              "name": "systolic_bp",
+              "unit": "mmHg",
+              "plausible_range": [
+                70,
+                260
+              ]
+            },
+            {
+              "name": "told_high_cholesterol",
+              "unit": "true/false",
+              "plausible_range": null
+            },
+            {
+              "name": "told_hypertension",
+              "unit": "true/false",
+              "plausible_range": null
+            },
+            {
+              "name": "triglycerides",
+              "unit": "mg/dL",
+              "plausible_range": [
+                20,
+                2000
+              ]
+            },
+            {
+              "name": "vigorous_min_week",
+              "unit": "minutes per week of vigorous activity",
+              "plausible_range": [
+                0,
+                5040
+              ]
+            },
+            {
+              "name": "waist_cm",
+              "unit": "cm",
+              "plausible_range": [
+                40,
+                200
+              ]
+            }
+          ],
+          "model_form": "logistic regression with cubic splines",
+          "missing_data": "impute",
+          "penalty": "L2",
+          "C": 1,
+          "calibration": "none (well calibrated on validation)",
+          "thresholds": {
+            "low_to_watch": 0.1676,
+            "watch_to_high": 0.3131
+          },
+          "metrics": {
+            "auc": 0.8026,
+            "auprc": 0.6238,
+            "brier": 0.1505,
+            "cal_slope": 1.0749,
+            "cal_intercept": -0.0168,
+            "prevalence": 0.2733,
+            "auc_ci": "0.778-0.825",
+            "n": 1610
+          }
+        }
+      }
+    },
+    "cvd": {
+      "title": "Cardiovascular disease (history)",
+      "tiers": {
+        "home": {
+          "file": "cvd_home.json",
+          "features": [
+            {
+              "name": "age",
+              "unit": "years"
+            },
+            {
+              "name": "female",
+              "unit": "1 = female"
+            },
+            {
+              "name": "waist_to_height",
+              "unit": "ratio"
+            },
+            {
+              "name": "sbp",
+              "unit": "mmHg"
+            },
+            {
+              "name": "dbp",
+              "unit": "mmHg"
+            },
+            {
+              "name": "resting_hr",
+              "unit": "bpm"
+            },
+            {
+              "name": "smoking_former",
+              "unit": "1 = former smoker (ref. never)"
+            },
+            {
+              "name": "smoking_current",
+              "unit": "1 = current smoker (ref. never)"
+            },
+            {
+              "name": "log_drinks_week",
+              "unit": "log(1 + drinks/week)"
+            },
+            {
+              "name": "log_met_min_week",
+              "unit": "log(1 + MET-min/week)"
+            },
+            {
+              "name": "sedentary_hours",
+              "unit": "hours/day"
+            },
+            {
+              "name": "bp_meds",
+              "unit": "1 = taking"
+            },
+            {
+              "name": "chol_meds",
+              "unit": "1 = taking"
+            },
+            {
+              "name": "diab_meds",
+              "unit": "1 = taking"
+            },
+            {
+              "name": "htn_dx",
+              "unit": "1 = told"
+            },
+            {
+              "name": "high_chol_dx",
+              "unit": "1 = told"
+            },
+            {
+              "name": "diabetes_dx",
+              "unit": "1 = told"
+            }
+          ],
+          "required_inputs": [
+            {
+              "name": "age",
+              "unit": "years",
+              "plausible_range": [
+                18,
+                120
+              ]
+            },
+            {
+              "name": "diastolic_bp",
+              "unit": "mmHg",
+              "plausible_range": [
+                30,
+                150
+              ]
+            },
+            {
+              "name": "drinks_per_week",
+              "unit": "alcoholic drinks per week",
+              "plausible_range": [
+                0,
+                140
+              ]
+            },
+            {
+              "name": "height_cm",
+              "unit": "cm",
+              "plausible_range": [
+                120,
+                210
+              ]
+            },
+            {
+              "name": "moderate_min_week",
+              "unit": "minutes per week of moderate activity incl. walking",
+              "plausible_range": [
+                0,
+                5040
+              ]
+            },
+            {
+              "name": "on_bp_meds",
+              "unit": "true/false",
+              "plausible_range": null
+            },
+            {
+              "name": "on_cholesterol_meds",
+              "unit": "true/false",
+              "plausible_range": null
+            },
+            {
+              "name": "on_diabetes_meds",
+              "unit": "true/false",
+              "plausible_range": null
+            },
+            {
+              "name": "resting_hr",
+              "unit": "beats per minute",
+              "plausible_range": [
+                30,
+                200
+              ]
+            },
+            {
+              "name": "sedentary_hours",
+              "unit": "hours per day sitting",
+              "plausible_range": [
+                0,
+                24
+              ]
+            },
+            {
+              "name": "sex",
+              "unit": "'male' or 'female'",
+              "plausible_range": null
+            },
+            {
+              "name": "smoking_status",
+              "unit": "'never', 'former' or 'current'",
+              "plausible_range": null
+            },
+            {
+              "name": "systolic_bp",
+              "unit": "mmHg",
+              "plausible_range": [
+                70,
+                260
+              ]
+            },
+            {
+              "name": "told_diabetes",
+              "unit": "true/false",
+              "plausible_range": null
+            },
+            {
+              "name": "told_high_cholesterol",
+              "unit": "true/false",
+              "plausible_range": null
+            },
+            {
+              "name": "told_hypertension",
+              "unit": "true/false",
+              "plausible_range": null
+            },
+            {
+              "name": "vigorous_min_week",
+              "unit": "minutes per week of vigorous activity",
+              "plausible_range": [
+                0,
+                5040
+              ]
+            },
+            {
+              "name": "waist_cm",
+              "unit": "cm",
+              "plausible_range": [
+                40,
+                200
+              ]
+            }
+          ],
+          "model_form": "logistic regression",
+          "missing_data": "impute",
+          "penalty": "L1",
+          "C": 0.3,
+          "calibration": "none (well calibrated on validation)",
+          "thresholds": {
+            "low_to_watch": 0.0737,
+            "watch_to_high": 0.1602
+          },
+          "metrics": {
+            "auc": 0.7963,
+            "auprc": 0.4061,
+            "brier": 0.1072,
+            "cal_slope": 0.9624,
+            "cal_intercept": -0.0015,
+            "prevalence": 0.1493,
+            "auc_ci": "0.769-0.825",
+            "n": 1708
+          }
+        },
+        "clinic": {
+          "file": "cvd_clinic.json",
+          "features": [
+            {
+              "name": "age",
+              "unit": "years"
+            },
+            {
+              "name": "female",
+              "unit": "1 = female"
+            },
+            {
+              "name": "waist_to_height",
+              "unit": "ratio"
+            },
+            {
+              "name": "sbp",
+              "unit": "mmHg"
+            },
+            {
+              "name": "dbp",
+              "unit": "mmHg"
+            },
+            {
+              "name": "resting_hr",
+              "unit": "bpm"
+            },
+            {
+              "name": "smoking_former",
+              "unit": "1 = former smoker (ref. never)"
+            },
+            {
+              "name": "smoking_current",
+              "unit": "1 = current smoker (ref. never)"
+            },
+            {
+              "name": "log_drinks_week",
+              "unit": "log(1 + drinks/week)"
+            },
+            {
+              "name": "log_met_min_week",
+              "unit": "log(1 + MET-min/week)"
+            },
+            {
+              "name": "sedentary_hours",
+              "unit": "hours/day"
+            },
+            {
+              "name": "bp_meds",
+              "unit": "1 = taking"
+            },
+            {
+              "name": "chol_meds",
+              "unit": "1 = taking"
+            },
+            {
+              "name": "diab_meds",
+              "unit": "1 = taking"
+            },
+            {
+              "name": "htn_dx",
+              "unit": "1 = told"
+            },
+            {
+              "name": "high_chol_dx",
+              "unit": "1 = told"
+            },
+            {
+              "name": "diabetes_dx",
+              "unit": "1 = told"
+            },
+            {
+              "name": "fasting_glucose",
+              "unit": "mg/dL"
+            },
+            {
+              "name": "hba1c",
+              "unit": "%"
+            },
+            {
+              "name": "hdl",
+              "unit": "mg/dL"
+            },
+            {
+              "name": "ldl",
+              "unit": "mg/dL"
+            },
+            {
+              "name": "log_triglycerides",
+              "unit": "log(mg/dL)"
+            }
+          ],
+          "required_inputs": [
+            {
+              "name": "age",
+              "unit": "years",
+              "plausible_range": [
+                18,
+                120
+              ]
+            },
+            {
+              "name": "diastolic_bp",
+              "unit": "mmHg",
+              "plausible_range": [
+                30,
+                150
+              ]
+            },
+            {
+              "name": "drinks_per_week",
+              "unit": "alcoholic drinks per week",
+              "plausible_range": [
+                0,
+                140
+              ]
+            },
+            {
+              "name": "fasting_glucose",
+              "unit": "mg/dL",
+              "plausible_range": [
+                40,
+                600
+              ]
+            },
+            {
+              "name": "hba1c",
+              "unit": "%",
+              "plausible_range": [
+                3,
+                18
+              ]
+            },
+            {
+              "name": "hdl",
+              "unit": "mg/dL",
+              "plausible_range": [
+                10,
+                200
+              ]
+            },
+            {
+              "name": "height_cm",
+              "unit": "cm",
+              "plausible_range": [
+                120,
+                210
+              ]
+            },
+            {
+              "name": "ldl",
+              "unit": "mg/dL",
+              "plausible_range": [
+                10,
+                400
+              ]
+            },
+            {
+              "name": "moderate_min_week",
+              "unit": "minutes per week of moderate activity incl. walking",
+              "plausible_range": [
+                0,
+                5040
+              ]
+            },
+            {
+              "name": "on_bp_meds",
+              "unit": "true/false",
+              "plausible_range": null
+            },
+            {
+              "name": "on_cholesterol_meds",
+              "unit": "true/false",
+              "plausible_range": null
+            },
+            {
+              "name": "on_diabetes_meds",
+              "unit": "true/false",
+              "plausible_range": null
+            },
+            {
+              "name": "resting_hr",
+              "unit": "beats per minute",
+              "plausible_range": [
+                30,
+                200
+              ]
+            },
+            {
+              "name": "sedentary_hours",
+              "unit": "hours per day sitting",
+              "plausible_range": [
+                0,
+                24
+              ]
+            },
+            {
+              "name": "sex",
+              "unit": "'male' or 'female'",
+              "plausible_range": null
+            },
+            {
+              "name": "smoking_status",
+              "unit": "'never', 'former' or 'current'",
+              "plausible_range": null
+            },
+            {
+              "name": "systolic_bp",
+              "unit": "mmHg",
+              "plausible_range": [
+                70,
+                260
+              ]
+            },
+            {
+              "name": "told_diabetes",
+              "unit": "true/false",
+              "plausible_range": null
+            },
+            {
+              "name": "told_high_cholesterol",
+              "unit": "true/false",
+              "plausible_range": null
+            },
+            {
+              "name": "told_hypertension",
+              "unit": "true/false",
+              "plausible_range": null
+            },
+            {
+              "name": "triglycerides",
+              "unit": "mg/dL",
+              "plausible_range": [
+                20,
+                2000
+              ]
+            },
+            {
+              "name": "vigorous_min_week",
+              "unit": "minutes per week of vigorous activity",
+              "plausible_range": [
+                0,
+                5040
+              ]
+            },
+            {
+              "name": "waist_cm",
+              "unit": "cm",
+              "plausible_range": [
+                40,
+                200
+              ]
+            }
+          ],
+          "model_form": "logistic regression with cubic splines",
+          "missing_data": "impute",
+          "penalty": "L2",
+          "C": 1,
+          "calibration": "none (well calibrated on validation)",
+          "thresholds": {
+            "low_to_watch": 0.0777,
+            "watch_to_high": 0.1388
+          },
+          "metrics": {
+            "auc": 0.7998,
+            "auprc": 0.43,
+            "brier": 0.1055,
+            "cal_slope": 0.934,
+            "cal_intercept": -0.0129,
+            "prevalence": 0.1493,
+            "auc_ci": "0.773-0.830",
+            "n": 1708
+          }
+        },
+        "extended": {
+          "file": "cvd_extended.json",
+          "features": [
+            {
+              "name": "age",
+              "unit": "years"
+            },
+            {
+              "name": "female",
+              "unit": "1 = female"
+            },
+            {
+              "name": "waist_to_height",
+              "unit": "ratio"
+            },
+            {
+              "name": "sbp",
+              "unit": "mmHg"
+            },
+            {
+              "name": "dbp",
+              "unit": "mmHg"
+            },
+            {
+              "name": "resting_hr",
+              "unit": "bpm"
+            },
+            {
+              "name": "smoking_former",
+              "unit": "1 = former smoker (ref. never)"
+            },
+            {
+              "name": "smoking_current",
+              "unit": "1 = current smoker (ref. never)"
+            },
+            {
+              "name": "log_drinks_week",
+              "unit": "log(1 + drinks/week)"
+            },
+            {
+              "name": "log_met_min_week",
+              "unit": "log(1 + MET-min/week)"
+            },
+            {
+              "name": "sedentary_hours",
+              "unit": "hours/day"
+            },
+            {
+              "name": "bp_meds",
+              "unit": "1 = taking"
+            },
+            {
+              "name": "chol_meds",
+              "unit": "1 = taking"
+            },
+            {
+              "name": "diab_meds",
+              "unit": "1 = taking"
+            },
+            {
+              "name": "htn_dx",
+              "unit": "1 = told"
+            },
+            {
+              "name": "high_chol_dx",
+              "unit": "1 = told"
+            },
+            {
+              "name": "diabetes_dx",
+              "unit": "1 = told"
+            },
+            {
+              "name": "fasting_glucose",
+              "unit": "mg/dL"
+            },
+            {
+              "name": "hba1c",
+              "unit": "%"
+            },
+            {
+              "name": "hdl",
+              "unit": "mg/dL"
+            },
+            {
+              "name": "ldl",
+              "unit": "mg/dL"
+            },
+            {
+              "name": "log_triglycerides",
+              "unit": "log(mg/dL)"
+            },
+            {
+              "name": "log_alt",
+              "unit": "log(U/L)"
+            },
+            {
+              "name": "log_ast",
+              "unit": "log(U/L)"
+            },
+            {
+              "name": "log_ggt",
+              "unit": "log(U/L)"
+            },
+            {
+              "name": "egfr",
+              "unit": "mL/min/1.73m2"
+            }
+          ],
+          "required_inputs": [
+            {
+              "name": "age",
+              "unit": "years",
+              "plausible_range": [
+                18,
+                120
+              ]
+            },
+            {
+              "name": "alt",
+              "unit": "U/L",
+              "plausible_range": [
+                3,
+                2000
+              ]
+            },
+            {
+              "name": "ast",
+              "unit": "U/L",
+              "plausible_range": [
+                3,
+                2000
+              ]
+            },
+            {
+              "name": "creatinine",
+              "unit": "mg/dL",
+              "plausible_range": [
+                0.2,
+                15
+              ]
+            },
+            {
+              "name": "diastolic_bp",
+              "unit": "mmHg",
+              "plausible_range": [
+                30,
+                150
+              ]
+            },
+            {
+              "name": "drinks_per_week",
+              "unit": "alcoholic drinks per week",
+              "plausible_range": [
+                0,
+                140
+              ]
+            },
+            {
+              "name": "fasting_glucose",
+              "unit": "mg/dL",
+              "plausible_range": [
+                40,
+                600
+              ]
+            },
+            {
+              "name": "ggt",
+              "unit": "U/L",
+              "plausible_range": [
+                2,
+                3000
+              ]
+            },
+            {
+              "name": "hba1c",
+              "unit": "%",
+              "plausible_range": [
+                3,
+                18
+              ]
+            },
+            {
+              "name": "hdl",
+              "unit": "mg/dL",
+              "plausible_range": [
+                10,
+                200
+              ]
+            },
+            {
+              "name": "height_cm",
+              "unit": "cm",
+              "plausible_range": [
+                120,
+                210
+              ]
+            },
+            {
+              "name": "ldl",
+              "unit": "mg/dL",
+              "plausible_range": [
+                10,
+                400
+              ]
+            },
+            {
+              "name": "moderate_min_week",
+              "unit": "minutes per week of moderate activity incl. walking",
+              "plausible_range": [
+                0,
+                5040
+              ]
+            },
+            {
+              "name": "on_bp_meds",
+              "unit": "true/false",
+              "plausible_range": null
+            },
+            {
+              "name": "on_cholesterol_meds",
+              "unit": "true/false",
+              "plausible_range": null
+            },
+            {
+              "name": "on_diabetes_meds",
+              "unit": "true/false",
+              "plausible_range": null
+            },
+            {
+              "name": "resting_hr",
+              "unit": "beats per minute",
+              "plausible_range": [
+                30,
+                200
+              ]
+            },
+            {
+              "name": "sedentary_hours",
+              "unit": "hours per day sitting",
+              "plausible_range": [
+                0,
+                24
+              ]
+            },
+            {
+              "name": "sex",
+              "unit": "'male' or 'female'",
+              "plausible_range": null
+            },
+            {
+              "name": "smoking_status",
+              "unit": "'never', 'former' or 'current'",
+              "plausible_range": null
+            },
+            {
+              "name": "systolic_bp",
+              "unit": "mmHg",
+              "plausible_range": [
+                70,
+                260
+              ]
+            },
+            {
+              "name": "told_diabetes",
+              "unit": "true/false",
+              "plausible_range": null
+            },
+            {
+              "name": "told_high_cholesterol",
+              "unit": "true/false",
+              "plausible_range": null
+            },
+            {
+              "name": "told_hypertension",
+              "unit": "true/false",
+              "plausible_range": null
+            },
+            {
+              "name": "triglycerides",
+              "unit": "mg/dL",
+              "plausible_range": [
+                20,
+                2000
+              ]
+            },
+            {
+              "name": "vigorous_min_week",
+              "unit": "minutes per week of vigorous activity",
+              "plausible_range": [
+                0,
+                5040
+              ]
+            },
+            {
+              "name": "waist_cm",
+              "unit": "cm",
+              "plausible_range": [
+                40,
+                200
+              ]
+            }
+          ],
+          "model_form": "logistic regression",
+          "missing_data": "impute",
+          "penalty": "L1",
+          "C": 0.3,
+          "calibration": "none (well calibrated on validation)",
+          "thresholds": {
+            "low_to_watch": 0.081,
+            "watch_to_high": 0.1376
+          },
+          "metrics": {
+            "auc": 0.8089,
+            "auprc": 0.435,
+            "brier": 0.1046,
+            "cal_slope": 0.9715,
+            "cal_intercept": -0.0237,
+            "prevalence": 0.1493,
+            "auc_ci": "0.783-0.836",
+            "n": 1708
+          }
+        }
+      }
+    },
+    "fatty_liver": {
+      "title": "Fatty liver (estimated)",
+      "tiers": {
+        "home": {
+          "file": "fatty_liver_home.json",
+          "features": [
+            {
+              "name": "age",
+              "unit": "years"
+            },
+            {
+              "name": "sbp",
+              "unit": "mmHg"
+            },
+            {
+              "name": "dbp",
+              "unit": "mmHg"
+            },
+            {
+              "name": "resting_hr",
+              "unit": "bpm"
+            },
+            {
+              "name": "smoking_former",
+              "unit": "1 = former smoker (ref. never)"
+            },
+            {
+              "name": "smoking_current",
+              "unit": "1 = current smoker (ref. never)"
+            },
+            {
+              "name": "log_drinks_week",
+              "unit": "log(1 + drinks/week)"
+            },
+            {
+              "name": "log_met_min_week",
+              "unit": "log(1 + MET-min/week)"
+            },
+            {
+              "name": "sedentary_hours",
+              "unit": "hours/day"
+            },
+            {
+              "name": "bp_meds",
+              "unit": "1 = taking"
+            },
+            {
+              "name": "chol_meds",
+              "unit": "1 = taking"
+            },
+            {
+              "name": "htn_dx",
+              "unit": "1 = told"
+            },
+            {
+              "name": "high_chol_dx",
+              "unit": "1 = told"
+            }
+          ],
+          "required_inputs": [
+            {
+              "name": "age",
+              "unit": "years",
+              "plausible_range": [
+                18,
+                120
+              ]
+            },
+            {
+              "name": "diastolic_bp",
+              "unit": "mmHg",
+              "plausible_range": [
+                30,
+                150
+              ]
+            },
+            {
+              "name": "drinks_per_week",
+              "unit": "alcoholic drinks per week",
+              "plausible_range": [
+                0,
+                140
+              ]
+            },
+            {
+              "name": "moderate_min_week",
+              "unit": "minutes per week of moderate activity incl. walking",
+              "plausible_range": [
+                0,
+                5040
+              ]
+            },
+            {
+              "name": "on_bp_meds",
+              "unit": "true/false",
+              "plausible_range": null
+            },
+            {
+              "name": "on_cholesterol_meds",
+              "unit": "true/false",
+              "plausible_range": null
+            },
+            {
+              "name": "resting_hr",
+              "unit": "beats per minute",
+              "plausible_range": [
+                30,
+                200
+              ]
+            },
+            {
+              "name": "sedentary_hours",
+              "unit": "hours per day sitting",
+              "plausible_range": [
+                0,
+                24
+              ]
+            },
+            {
+              "name": "smoking_status",
+              "unit": "'never', 'former' or 'current'",
+              "plausible_range": null
+            },
+            {
+              "name": "systolic_bp",
+              "unit": "mmHg",
+              "plausible_range": [
+                70,
+                260
+              ]
+            },
+            {
+              "name": "told_high_cholesterol",
+              "unit": "true/false",
+              "plausible_range": null
+            },
+            {
+              "name": "told_hypertension",
+              "unit": "true/false",
+              "plausible_range": null
+            },
+            {
+              "name": "vigorous_min_week",
+              "unit": "minutes per week of vigorous activity",
+              "plausible_range": [
+                0,
+                5040
+              ]
+            }
+          ],
+          "model_form": "logistic regression with cubic splines",
+          "missing_data": "impute",
+          "penalty": "L1",
+          "C": 1,
+          "calibration": "none (well calibrated on validation)",
+          "thresholds": {
+            "low_to_watch": 0.4547,
+            "watch_to_high": 0.7273
+          },
+          "metrics": {
+            "auc": 0.6776,
+            "auprc": 0.7896,
+            "brier": 0.2118,
+            "cal_slope": 0.9098,
+            "cal_intercept": 0.0325,
+            "prevalence": 0.636,
+            "auc_ci": "0.638-0.715",
+            "n": 695
+          }
+        },
+        "clinic": {
+          "file": "fatty_liver_clinic.json",
+          "features": [
+            {
+              "name": "age",
+              "unit": "years"
+            },
+            {
+              "name": "sbp",
+              "unit": "mmHg"
+            },
+            {
+              "name": "dbp",
+              "unit": "mmHg"
+            },
+            {
+              "name": "resting_hr",
+              "unit": "bpm"
+            },
+            {
+              "name": "smoking_former",
+              "unit": "1 = former smoker (ref. never)"
+            },
+            {
+              "name": "smoking_current",
+              "unit": "1 = current smoker (ref. never)"
+            },
+            {
+              "name": "log_drinks_week",
+              "unit": "log(1 + drinks/week)"
+            },
+            {
+              "name": "log_met_min_week",
+              "unit": "log(1 + MET-min/week)"
+            },
+            {
+              "name": "sedentary_hours",
+              "unit": "hours/day"
+            },
+            {
+              "name": "bp_meds",
+              "unit": "1 = taking"
+            },
+            {
+              "name": "chol_meds",
+              "unit": "1 = taking"
+            },
+            {
+              "name": "htn_dx",
+              "unit": "1 = told"
+            },
+            {
+              "name": "high_chol_dx",
+              "unit": "1 = told"
+            },
+            {
+              "name": "fasting_glucose",
+              "unit": "mg/dL"
+            },
+            {
+              "name": "hba1c",
+              "unit": "%"
+            },
+            {
+              "name": "hdl",
+              "unit": "mg/dL"
+            },
+            {
+              "name": "ldl",
+              "unit": "mg/dL"
+            }
+          ],
+          "required_inputs": [
+            {
+              "name": "age",
+              "unit": "years",
+              "plausible_range": [
+                18,
+                120
+              ]
+            },
+            {
+              "name": "diastolic_bp",
+              "unit": "mmHg",
+              "plausible_range": [
+                30,
+                150
+              ]
+            },
+            {
+              "name": "drinks_per_week",
+              "unit": "alcoholic drinks per week",
+              "plausible_range": [
+                0,
+                140
+              ]
+            },
+            {
+              "name": "fasting_glucose",
+              "unit": "mg/dL",
+              "plausible_range": [
+                40,
+                600
+              ]
+            },
+            {
+              "name": "hba1c",
+              "unit": "%",
+              "plausible_range": [
+                3,
+                18
+              ]
+            },
+            {
+              "name": "hdl",
+              "unit": "mg/dL",
+              "plausible_range": [
+                10,
+                200
+              ]
+            },
+            {
+              "name": "ldl",
+              "unit": "mg/dL",
+              "plausible_range": [
+                10,
+                400
+              ]
+            },
+            {
+              "name": "moderate_min_week",
+              "unit": "minutes per week of moderate activity incl. walking",
+              "plausible_range": [
+                0,
+                5040
+              ]
+            },
+            {
+              "name": "on_bp_meds",
+              "unit": "true/false",
+              "plausible_range": null
+            },
+            {
+              "name": "on_cholesterol_meds",
+              "unit": "true/false",
+              "plausible_range": null
+            },
+            {
+              "name": "resting_hr",
+              "unit": "beats per minute",
+              "plausible_range": [
+                30,
+                200
+              ]
+            },
+            {
+              "name": "sedentary_hours",
+              "unit": "hours per day sitting",
+              "plausible_range": [
+                0,
+                24
+              ]
+            },
+            {
+              "name": "smoking_status",
+              "unit": "'never', 'former' or 'current'",
+              "plausible_range": null
+            },
+            {
+              "name": "systolic_bp",
+              "unit": "mmHg",
+              "plausible_range": [
+                70,
+                260
+              ]
+            },
+            {
+              "name": "told_high_cholesterol",
+              "unit": "true/false",
+              "plausible_range": null
+            },
+            {
+              "name": "told_hypertension",
+              "unit": "true/false",
+              "plausible_range": null
+            },
+            {
+              "name": "vigorous_min_week",
+              "unit": "minutes per week of vigorous activity",
+              "plausible_range": [
+                0,
+                5040
+              ]
+            }
+          ],
+          "model_form": "logistic regression with cubic splines",
+          "missing_data": "impute",
+          "penalty": "L1",
+          "C": 1,
+          "calibration": "none (well calibrated on validation)",
+          "thresholds": {
+            "low_to_watch": 0.4324,
+            "watch_to_high": 0.6887
+          },
+          "metrics": {
+            "auc": 0.7493,
+            "auprc": 0.8343,
+            "brier": 0.1923,
+            "cal_slope": 0.894,
+            "cal_intercept": -0.0011,
+            "prevalence": 0.636,
+            "auc_ci": "0.714-0.786",
+            "n": 695
+          }
+        },
+        "extended": {
+          "file": "fatty_liver_extended.json",
+          "features": [
+            {
+              "name": "age",
+              "unit": "years"
+            },
+            {
+              "name": "sbp",
+              "unit": "mmHg"
+            },
+            {
+              "name": "dbp",
+              "unit": "mmHg"
+            },
+            {
+              "name": "resting_hr",
+              "unit": "bpm"
+            },
+            {
+              "name": "smoking_former",
+              "unit": "1 = former smoker (ref. never)"
+            },
+            {
+              "name": "smoking_current",
+              "unit": "1 = current smoker (ref. never)"
+            },
+            {
+              "name": "log_drinks_week",
+              "unit": "log(1 + drinks/week)"
+            },
+            {
+              "name": "log_met_min_week",
+              "unit": "log(1 + MET-min/week)"
+            },
+            {
+              "name": "sedentary_hours",
+              "unit": "hours/day"
+            },
+            {
+              "name": "bp_meds",
+              "unit": "1 = taking"
+            },
+            {
+              "name": "chol_meds",
+              "unit": "1 = taking"
+            },
+            {
+              "name": "htn_dx",
+              "unit": "1 = told"
+            },
+            {
+              "name": "high_chol_dx",
+              "unit": "1 = told"
+            },
+            {
+              "name": "fasting_glucose",
+              "unit": "mg/dL"
+            },
+            {
+              "name": "hba1c",
+              "unit": "%"
+            },
+            {
+              "name": "hdl",
+              "unit": "mg/dL"
+            },
+            {
+              "name": "ldl",
+              "unit": "mg/dL"
+            }
+          ],
+          "required_inputs": [
+            {
+              "name": "age",
+              "unit": "years",
+              "plausible_range": [
+                18,
+                120
+              ]
+            },
+            {
+              "name": "diastolic_bp",
+              "unit": "mmHg",
+              "plausible_range": [
+                30,
+                150
+              ]
+            },
+            {
+              "name": "drinks_per_week",
+              "unit": "alcoholic drinks per week",
+              "plausible_range": [
+                0,
+                140
+              ]
+            },
+            {
+              "name": "fasting_glucose",
+              "unit": "mg/dL",
+              "plausible_range": [
+                40,
+                600
+              ]
+            },
+            {
+              "name": "hba1c",
+              "unit": "%",
+              "plausible_range": [
+                3,
+                18
+              ]
+            },
+            {
+              "name": "hdl",
+              "unit": "mg/dL",
+              "plausible_range": [
+                10,
+                200
+              ]
+            },
+            {
+              "name": "ldl",
+              "unit": "mg/dL",
+              "plausible_range": [
+                10,
+                400
+              ]
+            },
+            {
+              "name": "moderate_min_week",
+              "unit": "minutes per week of moderate activity incl. walking",
+              "plausible_range": [
+                0,
+                5040
+              ]
+            },
+            {
+              "name": "on_bp_meds",
+              "unit": "true/false",
+              "plausible_range": null
+            },
+            {
+              "name": "on_cholesterol_meds",
+              "unit": "true/false",
+              "plausible_range": null
+            },
+            {
+              "name": "resting_hr",
+              "unit": "beats per minute",
+              "plausible_range": [
+                30,
+                200
+              ]
+            },
+            {
+              "name": "sedentary_hours",
+              "unit": "hours per day sitting",
+              "plausible_range": [
+                0,
+                24
+              ]
+            },
+            {
+              "name": "smoking_status",
+              "unit": "'never', 'former' or 'current'",
+              "plausible_range": null
+            },
+            {
+              "name": "systolic_bp",
+              "unit": "mmHg",
+              "plausible_range": [
+                70,
+                260
+              ]
+            },
+            {
+              "name": "told_high_cholesterol",
+              "unit": "true/false",
+              "plausible_range": null
+            },
+            {
+              "name": "told_hypertension",
+              "unit": "true/false",
+              "plausible_range": null
+            },
+            {
+              "name": "vigorous_min_week",
+              "unit": "minutes per week of vigorous activity",
+              "plausible_range": [
+                0,
+                5040
+              ]
+            }
+          ],
+          "model_form": "logistic regression with cubic splines",
+          "missing_data": "impute",
+          "penalty": "L1",
+          "C": 1,
+          "calibration": "none (well calibrated on validation)",
+          "thresholds": {
+            "low_to_watch": 0.4333,
+            "watch_to_high": 0.6882
+          },
+          "metrics": {
+            "auc": 0.7495,
+            "auprc": 0.8344,
+            "brier": 0.1923,
+            "cal_slope": 0.8944,
+            "cal_intercept": -0.0014,
+            "prevalence": 0.636,
+            "auc_ci": "0.714-0.786",
+            "n": 695
+          }
+        }
+      }
+    }
+  },
+  "wearable_aliases": {
+    "resting_hr_avg": "resting_hr",
+    "sedentary_hours": "sedentary_hours",
+    "steps_per_day": null,
+    "sleep_hours": null
+  }
+}
