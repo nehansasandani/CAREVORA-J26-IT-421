@@ -8,6 +8,7 @@ import '../../../core/config/app_config.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../shared/widgets/carevora_avatar.dart';
 import '../../../shared/widgets/cognitive_shap_explanation_card.dart';
+import '../../../shared/widgets/emotional_shap_explanation_card.dart';
 import '../../auth/application/auth_controller.dart';
 import '../../assessment/application/cognitive_assessment_service.dart';
 import '../../assessment/application/memory_game_service.dart';
@@ -1718,23 +1719,65 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
               ),
             ],
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           Row(
             children: [
-              const Icon(LucideIcons.shieldAlert, size: 13, color: AppColors.muted),
+              const Icon(LucideIcons.shieldAlert, size: 14, color: AppColors.muted),
               const SizedBox(width: 5),
-              Expanded(
+              const Text('Risk Level: ', style: TextStyle(fontSize: 12, color: AppColors.body)),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: (r.riskLevel ?? 'Low').toUpperCase().contains('HIGH')
+                      ? const Color(0xFFFEE2E2)
+                      : ((r.riskLevel ?? 'Low').toUpperCase().contains('MODERATE')
+                          ? const Color(0xFFFEF3C7)
+                          : const Color(0xFFDCFCE7)),
+                  borderRadius: BorderRadius.circular(6),
+                ),
                 child: Text(
-                  'Risk Level: ${r.riskLevel ?? "Low"}',
-                  style: const TextStyle(fontSize: 12, color: AppColors.body),
-                  overflow: TextOverflow.ellipsis,
+                  '${r.riskLevel ?? "Low"} Risk',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: (r.riskLevel ?? 'Low').toUpperCase().contains('HIGH')
+                        ? const Color(0xFFDC2626)
+                        : ((r.riskLevel ?? 'Low').toUpperCase().contains('MODERATE')
+                            ? const Color(0xFFD97706)
+                            : const Color(0xFF166534)),
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 18),
-          const Divider(height: 1, color: AppColors.border),
           const SizedBox(height: 14),
+          // SHAP Feature Attribution for Emotional Wellness
+          EmotionalShapExplanationCard(
+            riskLevel: r.riskLevel ?? 'Low',
+            wellnessScore: emoScore,
+            isCompact: true,
+          ),
+          const SizedBox(height: 12),
+          // Caregiver Action Button to Care Plans (Emotional Wellness Domain)
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              icon: const Icon(LucideIcons.clipboardList, size: 14),
+              label: const Text('Care Plan (Emotional Wellness)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFFDB2777),
+                side: const BorderSide(color: Color(0xFFF472B6)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+              ),
+              onPressed: () {
+                context.go('/dashboard/care-plans?residentId=${r.id}&domain=1');
+              },
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Divider(height: 1, color: AppColors.border),
+          const SizedBox(height: 10),
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(

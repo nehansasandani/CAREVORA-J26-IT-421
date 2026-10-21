@@ -26,6 +26,7 @@ import '../../../core/services/audio_player_service.dart';
 import '../../../core/services/live_voice_capture_service.dart';
 import '../../../core/services/url_launcher_service.dart';
 import '../../../shared/widgets/carevora_avatar.dart';
+import '../../../shared/widgets/emotional_shap_explanation_card.dart';
 
 class EmotionalWellnessPage extends ConsumerStatefulWidget {
   final String? initialResidentId;
@@ -42,6 +43,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
   int _currentIndex = 0;
   final List<AssessmentQuestion> _questions = MockCarevoraData.emotionalQuestions;
   final Map<int, bool?> _answers = {};
+  final Set<int> _skippedQuestions = {};
   bool _isSubmittingAssessment = false;
   String? _submissionError;
 
@@ -1570,16 +1572,23 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
   }
 
   void _skipQuestion() {
+    final currentQ = _questions[_currentIndex];
+    setState(() {
+      _skippedQuestions.add(currentQ.id);
+    });
     if (_currentIndex < _questions.length - 1) {
       setState(() {
         _currentIndex++;
         _updateQuestionContext();
       });
+    } else {
+      _showEndAssessmentDialog();
     }
   }
 
   void _selectYesNoAnswer(int questionId, bool answer) {
     setState(() {
+      _skippedQuestions.remove(questionId);
       _answers[questionId] = answer;
       _updateQuestionContext();
       final isReversePolarityQ = questionId == 4 || questionId == 5;
@@ -3075,6 +3084,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
     if (feelBetter) {
       final isReversePolarityQ = _questions[_currentIndex].id == 4 || _questions[_currentIndex].id == 5;
       setState(() {
+        _skippedQuestions.remove(_questions[_currentIndex].id);
         _answers[_questions[_currentIndex].id] = isReversePolarityQ ? false : true;
         _showClapAnimation = true;
         _interventionStage = 0;
@@ -3143,11 +3153,11 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
         SnackBar(
           content: Row(
             children: [
-              const Icon(LucideIcons.bellRing, color: Colors.white, size: 20),
+              const Icon(LucideIcons.circleCheck, color: Colors.white, size: 20),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  'Caregiver ට මේ ගැන සාර්ථකව දැනුම් දෙන ලදී! ($elderName - Room $roomNumber)',
+                  'Caregiver ට මේ ගැන සාර්ථකව දැනුම් දෙන ලදී! ප්‍රශ්නය සම්පූර්ණයි (Question ${_currentIndex + 1} Completed)',
                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                 ),
               ),
@@ -3162,7 +3172,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
     }
 
     _flutterTts.stop();
-    _flutterTts.speak('Your caregiver has been notified. They are coming to Room $roomNumber to assist and comfort you shortly.');
+    _flutterTts.speak('Your caregiver has been notified. Question ${_currentIndex + 1} completed. They are coming to Room $roomNumber to assist and comfort you shortly.');
   }
 
   Widget _buildSongChip(String title) {
@@ -3981,7 +3991,9 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                 style: const TextStyle(fontSize: 13, color: Color(0xFF4338CA)),
               ),
               const SizedBox(height: 14),
-              Row(
+              Wrap(
+                spacing: 12,
+                runSpacing: 10,
                 children: [
                   ElevatedButton.icon(
                     onPressed: () => _handlePostInterventionAnswer(true),
@@ -4006,7 +4018,6 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     ),
                   ),
-                  const SizedBox(width: 12),
                   ElevatedButton.icon(
                     onPressed: () => _handlePostInterventionAnswer(false),
                     icon: const Icon(LucideIcons.frown, size: 18),
@@ -4076,7 +4087,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                           Icon(LucideIcons.circleCheck, size: 14, color: Color(0xFF16A34A)),
                           SizedBox(width: 4),
                           Text(
-                            'දැනුම් දෙන ලදී (Notified)',
+                            'ප්‍රශ්නය සම්පූර්ණයි • දැනුම් දෙන ලදී (Completed)',
                             style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF166534)),
                           ),
                         ],
@@ -4114,7 +4125,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              '✓ $elderName වෙනුවෙන් Caregiver ට මේ ගැන සාර්ථකව දැනුම් දුන්නා!',
+                              '✓ $elderName වෙනුවෙන් Caregiver ට මේ ගැන සාර්ථකව දැනුම් දුන්නා! මෙම ප්‍රශ්නය සම්පූර්ණ කරන ලදී (Question ${currentQ.id} Completed).',
                               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF166534)),
                             ),
                             const SizedBox(height: 2),
@@ -4143,7 +4154,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                     ),
                     label: Text(
                       _caregiverNotified
-                          ? '✓ Caregiver ට දැනුම් දෙන ලදී'
+                          ? '✓ Caregiver ට දැනුම් දෙන ලදී (Completed)'
                           : '🚨 Caregiver ට මේ ගැන දන්වන්න ඕනේ',
                       style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
                     ),
@@ -4158,7 +4169,29 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                     ),
                   ),
                   ElevatedButton.icon(
-                    onPressed: _nextQuestion,
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Row(
+                            children: [
+                              const Icon(LucideIcons.circleCheck, color: Colors.white, size: 20),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  'ප්‍රශ්නය සම්පූර්ණයි (Question ${_currentIndex + 1} Completed). ඊළඟ ප්‍රශ්නයට යොමු කෙරේ...',
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                ),
+                              ),
+                            ],
+                          ),
+                          backgroundColor: const Color(0xFF15803D),
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          duration: const Duration(seconds: 2),
+                        ),
+                      );
+                      _nextQuestion();
+                    },
                     icon: const Icon(LucideIcons.arrowRight, size: 16),
                     label: const Text(
                       'ඊළඟ ප්‍රශ්නයට යන්න (Next Question)',
@@ -5023,7 +5056,6 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
       _toggleRecording();
     }
     final allAnswered = EmotionalAssessmentService.areAllQuestionsAnswered(_answers);
-    final missingQuestions = EmotionalAssessmentService.getUnansweredQuestions(_answers);
     final calculatedWellness = EmotionalAssessmentService.calculateWellnessScore(_answers);
     final calculatedRisk = EmotionalAssessmentService.calculateLonelinessRiskScore(calculatedWellness);
 
@@ -5057,6 +5089,25 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
     final bool hasVoiceSession = _recordSeconds > 0;
     final double? vocalScore = hasVoiceSession ? _vocalWellnessScore : null;
 
+    // Itemized counts for scoring breakdown
+    int favorableCount = 0;
+    int adverseCount = 0;
+    for (int i = 1; i <= _questions.length; i++) {
+      final ans = _answers[i];
+      if (ans != null) {
+        final isReverse = EmotionalAssessmentService.negativeQuestionIds.contains(i);
+        final isFavorable = isReverse ? (ans == false) : (ans == true);
+        if (isFavorable) {
+          favorableCount++;
+        } else {
+          adverseCount++;
+        }
+      }
+    }
+    final skippedCount = _questions.where((q) => _answers[q.id] == null && _skippedQuestions.contains(q.id)).length;
+    final unreachedQuestions = _questions.where((q) => _answers[q.id] == null && !_skippedQuestions.contains(q.id)).map((q) => q.id).toList();
+    final isFullyAccounted = _answers.length + skippedCount == _questions.length;
+
     showDialog(
       context: context,
       barrierDismissible: !_isSubmittingAssessment,
@@ -5067,21 +5118,23 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
             title: Row(
               children: [
                 Icon(
-                  allAnswered ? LucideIcons.clipboardCheck : LucideIcons.alertTriangle,
-                  color: allAnswered ? AppColors.primary : AppColors.riskModerate,
+                  allAnswered || isFullyAccounted ? LucideIcons.clipboardCheck : LucideIcons.alertTriangle,
+                  color: allAnswered ? AppColors.primary : (isFullyAccounted ? AppColors.accentTeal : AppColors.riskModerate),
                   size: 22,
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    allAnswered ? 'Assessment Summary & Submission' : 'Incomplete Assessment Warning',
+                    allAnswered
+                        ? 'Assessment Summary & Submission'
+                        : (isFullyAccounted ? 'Assessment Summary & Submission (Skipped Questions)' : 'Assessment Incomplete Warning'),
                     style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                 ),
               ],
             ),
             content: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 500),
+              constraints: const BoxConstraints(maxWidth: 620),
               child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -5089,33 +5142,49 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                   children: [
                     // Resident & Session header
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                       decoration: BoxDecoration(
                         color: AppColors.lavenderBg,
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
                       ),
                       child: Row(
                         children: [
-                          const Icon(LucideIcons.user, size: 16, color: AppColors.primary),
+                          const Icon(LucideIcons.user, size: 18, color: AppColors.primary),
                           const SizedBox(width: 8),
                           Expanded(
-                            child: Text(
-                              'Resident: ${_currentResident.name} (ID: ${_resolveBackendResidentId()})',
-                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.navy),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Resident: ${_currentResident.name}',
+                                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.navy),
+                                ),
+                                Text(
+                                  'Resident ID: ${_resolveBackendResidentId()} • Risk: $riskTier',
+                                  style: const TextStyle(fontSize: 11, color: AppColors.muted),
+                                ),
+                              ],
                             ),
                           ),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                             decoration: BoxDecoration(
-                              color: allAnswered ? const Color(0xFFDCFCE7) : const Color(0xFFFEF3C7),
-                              borderRadius: BorderRadius.circular(6),
+                              color: allAnswered
+                                  ? const Color(0xFFDCFCE7)
+                                  : (isFullyAccounted ? const Color(0xFFEFF6FF) : const Color(0xFFFEF3C7)),
+                              borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
-                              allAnswered ? 'Validated 10/10' : 'Incomplete (${10 - missingQuestions.length}/10)',
+                              allAnswered
+                                  ? 'Validated 10/10'
+                                  : (isFullyAccounted ? '${_answers.length} Ans • $skippedCount Skipped' : 'Incomplete (${_answers.length}/10)'),
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold,
-                                color: allAnswered ? const Color(0xFF166534) : const Color(0xFF92400E),
+                                color: allAnswered
+                                    ? const Color(0xFF166534)
+                                    : (isFullyAccounted ? const Color(0xFF1D4ED8) : const Color(0xFF92400E)),
                               ),
                             ),
                           ),
@@ -5124,290 +5193,464 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                     ),
                     const SizedBox(height: 14),
 
-                    if (!allAnswered) ...[
-                      // Incomplete warning container
-                      Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFFF7ED),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFF97316)),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: const [
-                                Icon(LucideIcons.alertCircle, color: Color(0xFFF97316), size: 20),
-                                SizedBox(width: 8),
-                                Text(
-                                  'Missing Questionnaire Responses',
-                                  style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFC2410C), fontSize: 14),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            const Text(
-                              'All 10 standardized questions must be completed before submitting. Tap any question below to jump directly to it:',
-                              style: TextStyle(fontSize: 12, color: Color(0xFF9A3412), height: 1.4),
-                            ),
-                            const SizedBox(height: 10),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: missingQuestions.map((qNum) {
-                                return ActionChip(
-                                  avatar: const Icon(LucideIcons.arrowRightCircle, size: 16, color: Color(0xFFC2410C)),
-                                  label: Text('Question $qNum', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF9A3412))),
-                                  backgroundColor: const Color(0xFFFFEDD5),
-                                  side: const BorderSide(color: Color(0xFFFDBA74)),
-                                  onPressed: () {
-                                    Navigator.pop(dialogCtx);
-                                    setState(() {
-                                      _currentIndex = qNum - 1;
-                                    });
-                                  },
-                                );
-                              }).toList(),
-                            ),
-                          ],
-                        ),
+                    // Clinical Scores
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.border),
                       ),
-                      const SizedBox(height: 14),
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: AppColors.surfaceSecondary,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: AppColors.border),
-                        ),
-                        child: Row(
-                          children: const [
-                            Icon(LucideIcons.lock, size: 18, color: AppColors.muted),
-                            SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                'Provisional scoring and submission are locked until all 10 questions are answered.',
-                                style: TextStyle(fontSize: 12, color: AppColors.muted, fontStyle: FontStyle.italic),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Clinical Scores', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.navy)),
+                          const Divider(height: 16),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text('Questionnaire Wellness Score:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                              Text(
+                                '${calculatedWellness.toStringAsFixed(1)}% (Higher is Better)',
+                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.riskLow),
                               ),
-                            ),
-                          ],
-                        ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('Loneliness Risk:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                                  Text('Questionnaire inverse proxy (non-diagnostic)', style: TextStyle(fontSize: 10, color: AppColors.muted)),
+                                ],
+                              ),
+                              Text(
+                                '${calculatedRisk.toStringAsFixed(1)}% ($riskTier)',
+                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: riskColor),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('Social-Isolation Risk:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                                  Text('Requires caregiver social audit', style: TextStyle(fontSize: 10, color: AppColors.muted)),
+                                ],
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFEF3C7),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: const Text(
+                                  'Unassessed (No Staff Audit)',
+                                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF92400E)),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
-                    ] else ...[
-                      // Validated Complete Assessment Summary
-                      Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: AppColors.surfaceSecondary,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppColors.border),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('Clinical Scores', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.navy)),
-                            const Divider(height: 16),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                const Text('Questionnaire Wellness Score:', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                                Text(
-                                  '${calculatedWellness.toStringAsFixed(1)}% (Higher is Better)',
-                                  style: const TextStyle(color: AppColors.riskLow, fontWeight: FontWeight.bold, fontSize: 13),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: const [
-                                    Text('Loneliness Risk:', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                                    Text('Questionnaire inverse proxy (non-diagnostic)', style: TextStyle(fontSize: 10, color: AppColors.muted)),
-                                  ],
-                                ),
-                                Text(
-                                  '${calculatedRisk.toStringAsFixed(1)}% ($riskTier)',
-                                  style: TextStyle(color: riskColor, fontWeight: FontWeight.bold, fontSize: 13),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: const [
-                                    Text('Social-Isolation Risk:', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                                    Text('Requires caregiver social audit', style: TextStyle(fontSize: 10, color: AppColors.muted)),
-                                  ],
-                                ),
-                                if (_currentResident.socialScore != null)
-                                  Text(
-                                    '${(100.0 - _currentResident.socialScore!).toStringAsFixed(1)}%',
-                                    style: TextStyle(color: riskColor, fontWeight: FontWeight.bold, fontSize: 13),
-                                  )
-                                else
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFFEF3C7),
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: const Text(
-                                      'Unassessed (No Staff Audit)',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.bold,
-                                        color: Color(0xFF92400E),
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 12),
+                    ),
+                    const SizedBox(height: 14),
 
-                      // Multimodal Sensor & AI Modality Breakdown
-                      Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppColors.border),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('Multimodal AI Inferences', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.navy)),
-                            const Divider(height: 16),
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Icon(LucideIcons.camera, size: 16, color: AppColors.primary),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        hasFacialInference
-                                            ? 'Facial Affect: $dominantFaceEmotion (${(facialConf! * 100).toStringAsFixed(1)}% conf)'
-                                            : 'Facial Affect: Camera active (FER-2013 ready)',
-                                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                                      ),
-                                      Text(
-                                        hasFacialInference
-                                            ? '${facialAggregate.validCount} valid frames analyzed via PyTorch CNN'
-                                            : 'No valid facial frame captured or consent not granted',
-                                        style: const TextStyle(fontSize: 11, color: AppColors.muted),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: hasFacialInference ? const Color(0xFFDCFCE7) : AppColors.surfaceSecondary,
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: Text(
-                                    hasFacialInference ? 'Inferred' : 'Standby',
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                      color: hasFacialInference ? const Color(0xFF166534) : AppColors.muted,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 10),
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Icon(LucideIcons.mic, size: 16, color: AppColors.accentTeal),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        hasVoiceSession
-                                            ? 'Voice: Acoustic Prosody Analyzed (${_recordSeconds}s)'
-                                            : 'Voice: Not recorded in this session',
-                                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                                      ),
-                                      Text(
-                                        hasVoiceSession
-                                            ? 'RMS energy & zero-crossing extracted (CREMA-D norms; non-neural)'
-                                            : 'Audio recording was not started',
-                                        style: const TextStyle(fontSize: 11, color: AppColors.muted),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: hasVoiceSession ? const Color(0xFFDCFCE7) : AppColors.surfaceSecondary,
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: Text(
-                                    hasVoiceSession ? 'Acoustic' : 'None',
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                      color: hasVoiceSession ? const Color(0xFF166534) : AppColors.muted,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 10),
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Icon(LucideIcons.trendingUp, size: 16, color: AppColors.primary),
-                                const SizedBox(width: 8),
-                                const Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'RALPA Longitudinal Trajectory Engine',
-                                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                                      ),
-                                      Text(
-                                        'Applies 149-feature ensemble upon submission to forecast risk drift',
-                                        style: TextStyle(fontSize: 11, color: AppColors.muted),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFEFF6FF),
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: const Text(
-                                    'Active',
-                                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF1D4ED8)),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
+                    // SCORE CALCULATION BREAKDOWN CONTAINER ("ewata score eka hadapu heti")
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.border),
                       ),
-                    ],
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: const [
+                              Icon(LucideIcons.calculator, size: 16, color: AppColors.primary),
+                              SizedBox(width: 8),
+                              Text(
+                                'Score Calculation Breakdown (ලකුණු ගණනය කළ ආකාරය)',
+                                style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.navy),
+                              ),
+                            ],
+                          ),
+                          const Divider(height: 16),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              _buildMiniAuditBadge('Total Questions', '10', AppColors.navy, AppColors.surfaceSecondary),
+                              _buildMiniAuditBadge('Answered', '${_answers.length}', AppColors.primary, const Color(0xFFEFF6FF)),
+                              _buildMiniAuditBadge('Favorable (+10% ea)', '+$favorableCount (+${favorableCount * 10}%)', const Color(0xFF166534), const Color(0xFFDCFCE7)),
+                              _buildMiniAuditBadge('Adverse Choice', '$adverseCount (0%)', const Color(0xFFDC2626), const Color(0xFFFEE2E2)),
+                              _buildMiniAuditBadge('Skipped by Elder', '$skippedCount (0%)', const Color(0xFFD97706), const Color(0xFFFEF3C7)),
+                              if (unreachedQuestions.isNotEmpty)
+                                _buildMiniAuditBadge('Unanswered', '${unreachedQuestions.length} (0%)', AppColors.muted, AppColors.surfaceSecondary),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: const Color(0xFFE2E8F0)),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Text('Wellness Score Formula:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                                    Text(
+                                      '($favorableCount Favorable / 10) × 100% = ${calculatedWellness.toStringAsFixed(1)}%',
+                                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.riskLow),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Text('Loneliness Risk Formula:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                                    Text(
+                                      '100% - ${calculatedWellness.toStringAsFixed(1)}% = ${calculatedRisk.toStringAsFixed(1)}% ($riskTier)',
+                                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: riskColor),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // QUESTION AUDIT LIST ("elder answer dunnama eke elder skip karala danna answer ehema monawada answer dunne nethi qustion monawada")
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: const [
+                              Icon(LucideIcons.listChecks, size: 16, color: AppColors.primary),
+                              SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Elder Responses & Question Audit (පිළිතුරු සහ ස්කිප් කළ ප්‍රශ්න)',
+                                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.navy),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          ..._questions.map((q) {
+                            final ans = _answers[q.id];
+                            final isSkipped = ans == null && _skippedQuestions.contains(q.id);
+                            final isReverse = EmotionalAssessmentService.negativeQuestionIds.contains(q.id);
+                            final isFavorable = ans != null ? (isReverse ? (ans == false) : (ans == true)) : false;
+
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: ans != null
+                                    ? (isFavorable ? const Color(0xFFF0FDF4) : const Color(0xFFFFF1F2))
+                                    : (isSkipped ? const Color(0xFFFFFBEB) : AppColors.surfaceSecondary),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: ans != null
+                                      ? (isFavorable ? const Color(0xFFBBF7D0) : const Color(0xFFFECDD3))
+                                      : (isSkipped ? const Color(0xFFFDE68A) : AppColors.border),
+                                ),
+                              ),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  CircleAvatar(
+                                    radius: 11,
+                                    backgroundColor: ans != null
+                                        ? (isFavorable ? const Color(0xFF16A34A) : const Color(0xFFE11D48))
+                                        : (isSkipped ? const Color(0xFFD97706) : AppColors.muted),
+                                    child: Text(
+                                      '${q.id}',
+                                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          q.prompt,
+                                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.navy),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        if (ans != null)
+                                          Text(
+                                            'Elder Answered: ${ans ? "ඔව් (Yes)" : "නැහැ (No)"}',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w600,
+                                              color: isFavorable ? const Color(0xFF15803D) : const Color(0xFFBE123C),
+                                            ),
+                                          )
+                                        else if (isSkipped)
+                                          const Text(
+                                            'Skipped by Elder (වැඩිහිටියා විසින් මගහරින ලදී)',
+                                            style: TextStyle(fontSize: 11, color: Color(0xFFB45309), fontStyle: FontStyle.italic),
+                                          )
+                                        else
+                                          const Text(
+                                            'Not Yet Reached (පිළිතුරු සපයා නැත)',
+                                            style: TextStyle(fontSize: 11, color: AppColors.muted, fontStyle: FontStyle.italic),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  if (ans != null)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: isFavorable ? const Color(0xFFDCFCE7) : const Color(0xFFFEE2E2),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Text(
+                                        isFavorable ? '+10% Favorable' : '0% Adverse Risk',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                          color: isFavorable ? const Color(0xFF166534) : const Color(0xFF991B1B),
+                                        ),
+                                      ),
+                                    )
+                                  else if (isSkipped)
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFFEF3C7),
+                                            borderRadius: BorderRadius.circular(6),
+                                          ),
+                                          child: const Text(
+                                            'Skipped (0 pts)',
+                                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF92400E)),
+                                          ),
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(LucideIcons.arrowRightCircle, size: 16, color: Color(0xFFD97706)),
+                                          tooltip: 'Jump to Q${q.id}',
+                                          padding: EdgeInsets.zero,
+                                          constraints: const BoxConstraints(),
+                                          onPressed: () {
+                                            Navigator.pop(dialogCtx);
+                                            setState(() {
+                                              _currentIndex = q.id - 1;
+                                            });
+                                          },
+                                        ),
+                                      ],
+                                    )
+                                  else
+                                    InkWell(
+                                      onTap: () {
+                                        Navigator.pop(dialogCtx);
+                                        setState(() {
+                                          _currentIndex = q.id - 1;
+                                        });
+                                      },
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFFFEDD5),
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: const Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              'Jump to Q',
+                                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFFC2410C)),
+                                            ),
+                                            Icon(LucideIcons.chevronRight, size: 12, color: Color(0xFFC2410C)),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            );
+                          }),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // SHAP EXPLAINABILITY CARD ("SHAP eken eke use karan hadala denna")
+                    EmotionalShapExplanationCard(
+                      riskLevel: riskTier,
+                      lonelinessScore: calculatedRisk,
+                      wellnessScore: calculatedWellness,
+                      sessionAnswers: _answers,
+                      skippedQuestions: _skippedQuestions,
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Multimodal AI Inferences
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Multimodal AI Inferences', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.navy)),
+                          const Divider(height: 16),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Icon(LucideIcons.camera, size: 16, color: AppColors.primary),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      hasFacialInference
+                                          ? 'Facial Affect: $dominantFaceEmotion (${(facialConf! * 100).toStringAsFixed(1)}% conf)'
+                                          : 'Facial Affect: Camera active (FER-2013 ready)',
+                                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                                    ),
+                                    Text(
+                                      hasFacialInference
+                                          ? '${facialAggregate.validCount} valid frames analyzed via PyTorch CNN'
+                                          : 'No valid facial frame captured or consent not granted',
+                                      style: const TextStyle(fontSize: 11, color: AppColors.muted),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: hasFacialInference ? const Color(0xFFDCFCE7) : AppColors.surfaceSecondary,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  hasFacialInference ? 'Inferred' : 'Standby',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: hasFacialInference ? const Color(0xFF166534) : AppColors.muted,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Icon(LucideIcons.mic, size: 16, color: AppColors.accentTeal),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      hasVoiceSession
+                                          ? 'Voice: Acoustic Prosody Analyzed (${_recordSeconds}s)'
+                                          : 'Voice: Not recorded in this session',
+                                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                                    ),
+                                    Text(
+                                      hasVoiceSession
+                                          ? 'RMS energy & zero-crossing extracted (CREMA-D norms; non-neural)'
+                                          : 'Audio recording was not started',
+                                      style: const TextStyle(fontSize: 11, color: AppColors.muted),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: hasVoiceSession ? const Color(0xFFDCFCE7) : AppColors.surfaceSecondary,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  hasVoiceSession ? 'Acoustic' : 'None',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: hasVoiceSession ? const Color(0xFF166534) : AppColors.muted,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Icon(LucideIcons.trendingUp, size: 16, color: AppColors.primary),
+                              const SizedBox(width: 8),
+                              const Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'RALPA Longitudinal Trajectory Engine',
+                                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                                    ),
+                                    Text(
+                                      'Applies 149-feature ensemble upon submission to forecast risk drift',
+                                      style: TextStyle(fontSize: 11, color: AppColors.muted),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFEFF6FF),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: const Text(
+                                  'Active',
+                                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF1D4ED8)),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
 
                     if (_submissionError != null) ...[
                       const SizedBox(height: 12),
@@ -5439,20 +5682,20 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
             actions: [
               TextButton(
                 onPressed: _isSubmittingAssessment ? null : () => Navigator.pop(context),
-                child: Text(allAnswered ? 'Review Answers' : 'Continue Questionnaire'),
+                child: Text(allAnswered || isFullyAccounted ? 'Review Answers' : 'Continue Questionnaire'),
               ),
-              if (!allAnswered && missingQuestions.isNotEmpty)
+              if (unreachedQuestions.isNotEmpty)
                 TextButton(
                   onPressed: () {
                     Navigator.pop(context);
                     setState(() {
-                      _currentIndex = missingQuestions.first - 1;
+                      _currentIndex = unreachedQuestions.first - 1;
                     });
                   },
-                  child: Text('Jump to Q${missingQuestions.first}'),
+                  child: Text('Jump to Q${unreachedQuestions.first}'),
                 ),
               ElevatedButton(
-                onPressed: (!allAnswered || _isSubmittingAssessment)
+                onPressed: ((_answers.isEmpty && _skippedQuestions.isEmpty) || _isSubmittingAssessment)
                     ? null
                     : () async {
                         setDialogState(() {
@@ -5541,6 +5784,23 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
     );
   }
 
+  Widget _buildMiniAuditBadge(String label, String value, Color textColor, Color bgColor) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('$label: ', style: const TextStyle(fontSize: 11, color: AppColors.muted)),
+          Text(value, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: textColor)),
+        ],
+      ),
+    );
+  }
+
   String _formatTimer(int seconds) {
     final m = (seconds ~/ 60).toString().padLeft(2, '0');
     final s = (seconds % 60).toString().padLeft(2, '0');
@@ -5551,8 +5811,8 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
     final currentQ = _questions[_currentIndex];
-    final completedCount = _currentIndex;
-    final remainingCount = _questions.length - (_currentIndex + 1);
+    final completedCount = _currentIndex + (_caregiverNotified ? 1 : 0);
+    final remainingCount = (_questions.length - (_currentIndex + 1) - (_caregiverNotified ? 1 : 0)).clamp(0, _questions.length);
 
     // When logged in as an Elder resident, display the full emotional wellness dashboard
     // matching the caregiver experience, with an option to toggle the accessible conversation view.
@@ -6141,20 +6401,51 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                   style: AppTextStyles.h3.copyWith(fontSize: 17, fontWeight: FontWeight.w700),
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: AppColors.primarySoft,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  'Question ${_currentIndex + 1} of ${_questions.length}',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.primary,
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppColors.primarySoft,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      'Question ${_currentIndex + 1} of ${_questions.length}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primary,
+                      ),
+                    ),
                   ),
-                ),
+                  if (_caregiverNotified) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFDCFCE7),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: const Color(0xFF86EFAC)),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(LucideIcons.circleCheck, size: 13, color: Color(0xFF16A34A)),
+                          SizedBox(width: 4),
+                          Text(
+                            'Completed (සම්පූර්ණයි)',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF166534),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ],
           ),
