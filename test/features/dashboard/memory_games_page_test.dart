@@ -370,8 +370,12 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('start_sequence_input_button')));
       await tester.pumpAndSettle();
 
-      // Tap the wrong tile (tile 3 instead of 0)
+      // Tap tiles completing the sequence with an incorrect tile (tile 3 instead of 0, then 1, then 2)
       await tester.tap(find.byKey(const ValueKey('sequence_tile_3')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('sequence_tile_1')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('sequence_tile_2')));
       await tester.pumpAndSettle();
 
       // Encouraging message
