@@ -1776,21 +1776,21 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
       return {
         'caregiverName': 'Nurse Kamani Silva',
         'role': 'Senior Resident Caregiver',
-        'phone': '+94 77 567 8901',
+        'phone': '0760506500',
         'home': home,
       };
     } else if (home.toLowerCase().contains('lotus care')) {
       return {
         'caregiverName': 'Caregiver Priyantha Perera',
         'role': 'Lead Elder Caregiver',
-        'phone': '+94 71 234 5678',
+        'phone': '0760506500',
         'home': home,
       };
     } else {
       return {
         'caregiverName': 'Nurse Sandamali Dias',
         'role': 'Assigned Primary Caregiver',
-        'phone': '+94 77 345 6789',
+        'phone': '0760506500',
         'home': home,
       };
     }
@@ -1802,56 +1802,388 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
     required double qScore,
     required double fScore,
     required double vScore,
+    String? dominantFaceEmotion,
+    double? facialConf,
+    String? voiceEmotion,
+    double? voiceConf,
+    int? favorableCount,
+    int? adverseCount,
+    int? skippedCount,
   }) {
     _caregiverNotified = true;
     final elderName = _currentResident.name.isNotEmpty ? _currentResident.name : 'Senior Resident';
     final roomNumber = _currentResident.roomNo.isNotEmpty ? _currentResident.roomNo : '101';
-    final docInfo = _getAssignedDoctorDetails();
     final caregiverInfo = _getAssignedCaregiverDetails();
+    final caregiverPhone = caregiverInfo['phone'] ?? '0760506500';
+    final caregiverName = caregiverInfo['caregiverName'] ?? 'Caregiver';
 
-    // 1. Critical High Risk Alert for Caregiver
+    // 1. Dispatch Critical High Risk Alert for Caregiver to Alerts & Notifications Dashboard with ALL details
     MockCarevoraData.alerts.insert(
       0,
       AlertItem(
         id: 'ALT-CG-HIGH-${DateTime.now().millisecondsSinceEpoch}',
-        title: '🚨 CRITICAL HIGH RISK: $elderName (Room $roomNumber)',
-        description: 'Multimodal AI detected high emotional distress risk (${finalRisk.toStringAsFixed(1)}%). Clinical scores: Questionnaire ${qScore.toStringAsFixed(0)}%, Facial Affect ${fScore.toStringAsFixed(0)}%, Voice Prosody ${vScore.toStringAsFixed(0)}%. Urgent caregiver room visit dispatched to ${caregiverInfo['caregiverName']}.',
+        title: '🚨 CRITICAL HIGH RISK ALERT: $elderName (Room $roomNumber)',
+        description:
+            'Multimodal AI Risk Assessment: HIGH RISK (${finalRisk.toStringAsFixed(1)}%)\n'
+            '• Final Composite Wellness Score: ${finalWellness.toStringAsFixed(1)}%\n'
+            '• Adverse Loneliness Risk: ${finalRisk.toStringAsFixed(1)}%\n'
+            '• Modality Breakdown:\n'
+            '  - Questionnaire Responses: ${qScore.toStringAsFixed(1)}% (${favorableCount ?? 0} Favorable, ${adverseCount ?? 0} Adverse, ${skippedCount ?? 0} Skipped)\n'
+            '  - Real-Time Facial Affect (FER): ${fScore.toStringAsFixed(1)}% (Dominant: ${dominantFaceEmotion ?? 'N/A'}, Conf: ${((facialConf ?? 0.75) * 100).toStringAsFixed(0)}%)\n'
+            '  - Real-Time Voice Prosody & Emotion: ${vScore.toStringAsFixed(1)}% (Acoustic Tone: ${voiceEmotion ?? 'N/A'}, Conf: ${((voiceConf ?? 0.75) * 100).toStringAsFixed(0)}%)\n'
+            '• Assigned Caregiver: $caregiverName ($caregiverPhone)\n'
+            '• Facility: ${caregiverInfo['home']}\n'
+            '• Emergency SLA Window: 10 minutes active. If unacknowledged within 10 minutes, system automatically triggers WhatsApp Call to Caregiver ($caregiverPhone) and escalates to Doctor (0774548743) via WhatsApp Call & Message.',
         severity: 'High',
         timestamp: 'Just now',
         residentName: elderName,
         roomNo: roomNumber,
         residentAge: _currentResident.age,
         residentGender: _currentResident.gender,
-        currentStatus: 'High Risk Caregiver Dispatched',
+        currentStatus: 'Awaiting Caregiver Response (10 min SLA)',
         cognitiveScore: _currentResident.cognitiveScore,
       ),
     );
 
-    // 2. Urgent Medical Alert for Attending Physician / Doctor
-    MockCarevoraData.alerts.insert(
-      0,
-      AlertItem(
-        id: 'ALT-DOC-HIGH-${DateTime.now().millisecondsSinceEpoch + 1}',
-        title: '🚨 URGENT MEDICAL REVIEW: $elderName (Room $roomNumber) - ${docInfo['doctorName']}',
-        description: 'Resident $elderName evaluated with High Risk (${finalRisk.toStringAsFixed(1)}% loneliness risk). Urgent clinical consultation and physician review routed to ${docInfo['doctorName']} (${docInfo['phone']}).',
-        severity: 'High',
-        timestamp: 'Just now',
-        residentName: elderName,
-        roomNo: roomNumber,
-        residentAge: _currentResident.age,
-        residentGender: _currentResident.gender,
-        currentStatus: 'Doctor Clinical Review Escalated',
-        cognitiveScore: _currentResident.cognitiveScore,
-      ),
-    );
-
-    // 3. Automatically launch caregiver call dialer if available
-    if (caregiverInfo['phone'] != null && caregiverInfo['phone']!.isNotEmpty) {
-      UrlLauncherService.launchTel(caregiverInfo['phone']!);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: const Color(0xFFDC2626),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          content: Row(
+            children: [
+              const Icon(LucideIcons.shieldAlert, color: Colors.white, size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  '🚨 High Risk Detected: Detailed Alert sent to Caregiver ($caregiverPhone). 10-minute response window is active.',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                ),
+              ),
+            ],
+          ),
+          duration: const Duration(seconds: 5),
+        ),
+      );
     }
 
     _flutterTts.stop();
-    _flutterTts.speak('High risk emotional distress detected. An urgent call and notification have been dispatched to your assigned caregiver and attending doctor. Please remain calm, assistance is on the way.');
+    _flutterTts.speak('High risk emotional distress detected for resident $elderName in Room $roomNumber. An urgent notification with full clinical breakdown has been sent to caregiver $caregiverName at 0760506500. A 10-minute response window is now active.');
+  }
+
+  void _showCaregiverWhatsAppCallDialog({
+    required String caregiverName,
+    required String role,
+    required String phone,
+    required String roomNo,
+    required String home,
+    required VoidCallback onAnswered,
+    required VoidCallback onUnanswered,
+    double? finalWellness,
+    double? finalRisk,
+    double? qScore,
+    double? fScore,
+    double? vScore,
+    String? dominantFaceEmotion,
+    String? voiceEmotion,
+  }) {
+    final elderName = _currentResident.name.isNotEmpty ? _currentResident.name : 'Resident';
+    final emergencyMsg = '🚨 CAREVORA EMERGENCY ALERT: HIGH RISK RESIDENTIAL DISTRESS\n'
+        'Resident: $elderName (Room $roomNo, $home)\n'
+        'Age: ${_currentResident.age} | Gender: ${_currentResident.gender}\n'
+        'Multimodal Adverse Risk: ${finalRisk != null ? '${finalRisk.toStringAsFixed(1)}%' : 'High Risk'}\n'
+        'Composite Wellness: ${finalWellness != null ? '${finalWellness.toStringAsFixed(1)}%' : 'Critical'}\n'
+        'Modality Breakdown:\n'
+        '• Questionnaire: ${qScore?.toStringAsFixed(0) ?? 'N/A'}%\n'
+        '• Facial Affect (FER): ${fScore?.toStringAsFixed(0) ?? 'N/A'}% ($dominantFaceEmotion)\n'
+        '• Voice Prosody & Emotion: ${vScore?.toStringAsFixed(0) ?? 'N/A'}% ($voiceEmotion)\n\n'
+        '⚠️ Caregiver response urgently required for Room $roomNo!\n'
+        '10-minute SLA window exceeded. WhatsApp Emergency Call initiated to Caregiver ($phone).\n'
+        'If unanswered, system will immediately escalate to Attending Doctor (0774548743).';
+
+    // 1. Immediately launch WhatsApp with prefilled emergency alert
+    UrlLauncherService.launchWhatsApp(phone, emergencyMsg);
+
+    Timer? ringingTimer;
+    int ringingSeconds = 0;
+    const int maxRingingSeconds = 25; // 25s WhatsApp ringing before auto-escalating to Doctor
+    bool isAnswered = false;
+
+    _flutterTts.stop();
+    _flutterTts.speak('Calling caregiver $caregiverName via WhatsApp at 0760506500. If unanswered, the system will immediately escalate to the doctor at 0774548743.');
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          ringingTimer ??= Timer.periodic(const Duration(seconds: 1), (timer) {
+            setDialogState(() {
+              ringingSeconds++;
+              if (ringingSeconds >= maxRingingSeconds && !isAnswered) {
+                timer.cancel();
+                Navigator.pop(ctx);
+                onUnanswered();
+              }
+            });
+          });
+
+          final remainingSeconds = (maxRingingSeconds - ringingSeconds).clamp(0, maxRingingSeconds);
+
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            backgroundColor: Colors.white,
+            contentPadding: const EdgeInsets.all(24),
+            content: SizedBox(
+              width: 440,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFDCFCE7),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: const Color(0xFF22C55E)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Icon(LucideIcons.phoneCall, size: 14, color: Color(0xFF15803D)),
+                        SizedBox(width: 6),
+                        Text(
+                          'WHATSAPP CALL • 10-MIN UNRESPONSIVE ESCALATION',
+                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF15803D)),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Container(
+                        width: 90,
+                        height: 90,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Color(0xFFDCFCE7),
+                        ),
+                      ),
+                      Container(
+                        width: 74,
+                        height: 74,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: const Color(0xFF25D366),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF25D366).withValues(alpha: 0.4),
+                              blurRadius: 16,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(LucideIcons.phone, color: Colors.white, size: 34),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    caregiverName,
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'WhatsApp Call: $phone • $role',
+                    style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF0FDF4),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFF86EFAC)),
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF16A34A)),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'WhatsApp Ringing... ($remainingSeconds s before Doctor Escalation)',
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF166534)),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          '10 මිනිත්තුවක් තුළ Caregiver ප්‍රතිචාර නොදැක්වූ බැවින් 0760506500 අංකයට WhatsApp Call මඟින් අමතමින් පවතී. පිළිතුරු නොලැබුණහොත් වහාම Doctor (0774548743) වෙත WhatsApp Call & Message යොමු වේ.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 11, color: Color(0xFF15803D)),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            isAnswered = true;
+                            ringingTimer?.cancel();
+                            Navigator.pop(ctx);
+                            onAnswered();
+                          },
+                          icon: const Icon(LucideIcons.phoneIncoming, size: 16),
+                          label: const Text('Answered', style: TextStyle(fontWeight: FontWeight.bold)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF16A34A),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            ringingTimer?.cancel();
+                            Navigator.pop(ctx);
+                            onUnanswered();
+                          },
+                          icon: const Icon(LucideIcons.stethoscope, size: 16),
+                          label: const Text('No Answer (Call Doctor 0774548743)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFDC2626),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  TextButton.icon(
+                    onPressed: () => UrlLauncherService.launchWhatsApp(phone, emergencyMsg),
+                    icon: const Icon(LucideIcons.externalLink, size: 14, color: Color(0xFF25D366)),
+                    label: const Text('Open WhatsApp Web / App Again (0760506500)', style: TextStyle(color: Color(0xFF15803D), fontSize: 12)),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  void _escalateToDoctorCall({
+    required Map<String, String> doctorDetails,
+    required String reason,
+    double? finalWellness,
+    double? finalRisk,
+    double? qScore,
+    double? fScore,
+    double? vScore,
+    String? dominantFaceEmotion,
+    String? voiceEmotion,
+  }) {
+    final elderName = _currentResident.name.isNotEmpty ? _currentResident.name : 'Senior Resident';
+    final roomNumber = _currentResident.roomNo.isNotEmpty ? _currentResident.roomNo : '101';
+    final docName = doctorDetails['doctorName'] ?? 'Attending Doctor';
+    final docPhone = doctorDetails['phone'] ?? '0774548743';
+    final docSpecialty = doctorDetails['specialty'] ?? 'Geriatric Specialist';
+    final home = doctorDetails['home'] ?? 'Care Home';
+
+    final doctorEmergencyMsg = '🚨 CLINICAL EMERGENCY ESCALATION - ATTENDING PHYSICIAN 🚨\n'
+        'Dear Dr. $docName ($docPhone),\n'
+        'Urgent medical review required for resident in Room $roomNumber at $home.\n\n'
+        '• Resident Name: $elderName\n'
+        '• Room No: $roomNumber ($home)\n'
+        '• Age: ${_currentResident.age} | Gender: ${_currentResident.gender}\n'
+        '• Status: HIGH RISK EMOTIONAL DISTRESS & LONELINESS\n'
+        '• Multimodal Risk Level: ${finalRisk != null ? '${finalRisk.toStringAsFixed(1)}%' : 'HIGH RISK'}\n'
+        '• Composite Wellness: ${finalWellness != null ? '${finalWellness.toStringAsFixed(1)}%' : 'Critical'}\n'
+        '• Modality Breakdown: Q-Score: ${qScore?.toStringAsFixed(0) ?? 'N/A'}% | Facial FER: ${fScore?.toStringAsFixed(0) ?? 'N/A'}% ($dominantFaceEmotion) | Voice Prosody: ${vScore?.toStringAsFixed(0) ?? 'N/A'}% ($voiceEmotion)\n\n'
+        '⚠️ CRITICAL REASON FOR ESCALATION:\n'
+        'Primary Caregiver (0760506500) was unresponsive after the 10-minute SLA window and did not answer the emergency WhatsApp call ($reason).\n'
+        'Immediate attending physician review, WhatsApp consultation, and room visit requested for Room $roomNumber.';
+
+    // 1. Critical secondary escalation alert in dashboard for Doctor
+    MockCarevoraData.alerts.insert(
+      0,
+      AlertItem(
+        id: 'ALT-DOC-ESCALATED-${DateTime.now().millisecondsSinceEpoch}',
+        title: '🚨 SECONDARY EMERGENCY ESCALATION: $elderName (Room $roomNumber)',
+        description: 'Caregiver (0760506500) was unresponsive after 10-minute window and unanswered WhatsApp call ($reason). High emotional distress escalated directly to attending physician $docName ($docPhone) via WhatsApp Call & WhatsApp Message.',
+        severity: 'High',
+        timestamp: 'Just now',
+        residentName: elderName,
+        roomNo: roomNumber,
+        residentAge: _currentResident.age,
+        residentGender: _currentResident.gender,
+        currentStatus: 'Doctor WhatsApp Call & Message Dispatched',
+        cognitiveScore: _currentResident.cognitiveScore,
+      ),
+    );
+
+    // 2. Immediately launch WhatsApp message to Doctor at 0774548743
+    UrlLauncherService.launchWhatsApp(docPhone, doctorEmergencyMsg);
+
+    _flutterTts.stop();
+    _flutterTts.speak('Caregiver at 0760506500 did not answer WhatsApp call. Escalating immediately and calling doctor $docName at 0774548743 with WhatsApp message.');
+
+    // 3. Open Doctor Call Screen & Tel Launcher
+    _showDoctorCallDialog(
+      docName,
+      docSpecialty,
+      docPhone,
+      roomNumber,
+      home,
+      doctorEmergencyMsg,
+    );
+  }
+
+  Widget _buildEscalationStepBadge(int step, String label, bool isActive, Color color) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 18,
+          height: 18,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: isActive ? color : const Color(0xFFCBD5E1),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            '$step',
+            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+          ),
+        ),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
+            color: isActive ? color : const Color(0xFF64748B),
+          ),
+        ),
+      ],
+    );
   }
 
   void _showCaregiverCallDialog(String caregiverName, String role, String phone, String roomNo, String home) {
@@ -2135,21 +2467,21 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
       return {
         'doctorName': 'Dr. Aris Thorne',
         'specialty': 'Neurology & Geriatric Specialist',
-        'phone': '+94 71 987 6543',
+        'phone': '0774548743',
         'home': home,
       };
     } else if (home.toLowerCase().contains('lotus care')) {
       return {
         'doctorName': 'Dr. Sarah Jenkins',
         'specialty': 'General Physician & Senior Health',
-        'phone': '+94 75 456 7890',
+        'phone': '0774548743',
         'home': home,
       };
     } else {
       return {
         'doctorName': 'Dr. Nimal Fernando',
         'specialty': 'Geriatric Specialist & Medical Lead',
-        'phone': '+94 77 123 4567',
+        'phone': '0774548743',
         'home': home,
       };
     }
@@ -2218,7 +2550,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
     );
   }
 
-  void _showDoctorCallDialog(String doctorName, String specialty, String phone, String roomNo, String home) {
+  void _showDoctorCallDialog(String doctorName, String specialty, String phone, String roomNo, String home, [String? emergencyMsg]) {
     // 1. Immediately trigger real device native phone dialer (tel:+94...)
     UrlLauncherService.launchTel(phone);
 
@@ -2423,6 +2755,37 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                       ),
                     ),
                     const SizedBox(height: 14),
+                  ],
+
+                  if (emergencyMsg != null && emergencyMsg.isNotEmpty) ...[
+                    InkWell(
+                      onTap: () => UrlLauncherService.launchWhatsApp(phone, emergencyMsg),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFDCFCE7),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFF22C55E)),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: const [
+                            Icon(LucideIcons.messageCircle, size: 15, color: Color(0xFF15803D)),
+                            SizedBox(width: 8),
+                            Text(
+                              '💬 WhatsApp Message & Call (0774548743)',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF15803D),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
                   ],
 
                   // Action Button to explicitly trigger device Phone App dialer
@@ -5488,20 +5851,6 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
     final String riskTier = isHighRisk ? 'High Risk' : (isModerateRisk ? 'Moderate Risk' : 'Low Risk');
     final Color riskColor = isHighRisk ? AppColors.riskHigh : (isModerateRisk ? AppColors.riskModerate : AppColors.riskLow);
 
-    final caregiverDetails = _getAssignedCaregiverDetails();
-    final doctorDetails = _getAssignedDoctorDetails();
-
-    // 6. Automatic High Risk Escalation: Alert Caregiver & Doctor
-    if (isHighRisk) {
-      _dispatchHighRiskAlertsToCaregiverAndDoctor(
-        finalWellness: calculatedWellness,
-        finalRisk: calculatedRisk,
-        qScore: questionnaireWellness,
-        fScore: facialScore,
-        vScore: voiceScore,
-      );
-    }
-
     // Itemized counts for scoring breakdown
     int favorableCount = 0;
     int adverseCount = 0;
@@ -5521,11 +5870,88 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
     final unreachedQuestions = _questions.where((q) => _answers[q.id] == null && !_skippedQuestions.contains(q.id)).map((q) => q.id).toList();
     final isFullyAccounted = _answers.length + skippedCount == _questions.length;
 
+    final caregiverDetails = _getAssignedCaregiverDetails();
+    final doctorDetails = _getAssignedDoctorDetails();
+
+    // 6. Automatic High Risk Escalation: Alert Caregiver & Doctor with ALL details
+    if (isHighRisk) {
+      _dispatchHighRiskAlertsToCaregiverAndDoctor(
+        finalWellness: calculatedWellness,
+        finalRisk: calculatedRisk,
+        qScore: questionnaireWellness,
+        fScore: facialScore,
+        vScore: voiceScore,
+        dominantFaceEmotion: dominantFaceEmotion,
+        facialConf: facialConf,
+        voiceEmotion: _voiceEmotion,
+        voiceConf: voiceConf,
+        favorableCount: favorableCount,
+        adverseCount: adverseCount,
+        skippedCount: skippedCount,
+      );
+    }
+
+    // 10-Minute Caregiver Response SLA Tracking
+    int caregiverCountdownSeconds = 600; // 10 minutes = 600s
+    Timer? caregiverCountdownTimer;
+    bool caregiverResponded = false;
+    bool isWhatsAppTriggered = false;
+
     showDialog(
       context: context,
       barrierDismissible: !_isSubmittingAssessment,
       builder: (dialogCtx) => StatefulBuilder(
         builder: (context, setDialogState) {
+          if (isHighRisk && caregiverCountdownTimer == null && !caregiverResponded && !isWhatsAppTriggered) {
+            caregiverCountdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+              if (caregiverResponded) {
+                timer.cancel();
+                return;
+              }
+              setDialogState(() {
+                if (caregiverCountdownSeconds > 0) {
+                  caregiverCountdownSeconds--;
+                } else {
+                  timer.cancel();
+                  if (!isWhatsAppTriggered) {
+                    isWhatsAppTriggered = true;
+                    _showCaregiverWhatsAppCallDialog(
+                      caregiverName: caregiverDetails['caregiverName']!,
+                      role: caregiverDetails['role']!,
+                      phone: caregiverDetails['phone']!,
+                      roomNo: _currentResident.roomNo.isNotEmpty ? _currentResident.roomNo : '101',
+                      home: caregiverDetails['home']!,
+                      finalWellness: calculatedWellness,
+                      finalRisk: calculatedRisk,
+                      qScore: questionnaireWellness,
+                      fScore: facialScore,
+                      vScore: voiceScore,
+                      dominantFaceEmotion: dominantFaceEmotion,
+                      voiceEmotion: _voiceEmotion,
+                      onAnswered: () {
+                        setDialogState(() {
+                          caregiverResponded = true;
+                        });
+                      },
+                      onUnanswered: () {
+                        _escalateToDoctorCall(
+                          doctorDetails: doctorDetails,
+                          reason: 'Caregiver did not answer WhatsApp emergency call after 10-minute timeout',
+                          finalWellness: calculatedWellness,
+                          finalRisk: calculatedRisk,
+                          qScore: questionnaireWellness,
+                          fScore: facialScore,
+                          vScore: voiceScore,
+                          dominantFaceEmotion: dominantFaceEmotion,
+                          voiceEmotion: _voiceEmotion,
+                        );
+                      },
+                    );
+                  }
+                }
+              });
+            });
+          }
           return AlertDialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             title: Row(
@@ -5645,156 +6071,237 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                                 const SizedBox(width: 8),
                                 const Expanded(
                                   child: Text(
-                                    '🚨 High Risk Clinical Escalation (අධි අවදානම් හදිසි පියවර)',
+                                    '🚨 High Risk Clinical Escalation Protocol (හදිසි පියවර)',
                                     style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF991B1B)),
                                   ),
                                 ),
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                   decoration: BoxDecoration(color: const Color(0xFFFEE2E2), borderRadius: BorderRadius.circular(6)),
-                                  child: const Text('Emergency Active', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFFDC2626))),
+                                  child: Text(
+                                    caregiverResponded ? 'Resolved' : 'Active Protocol',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: caregiverResponded ? const Color(0xFF16A34A) : const Color(0xFFDC2626),
+                                    ),
+                                  ),
                                 ),
                               ],
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              'වැඩිහිටියාගේ හැඟීම් අවදානම් මට්ටම High Risk (${calculatedRisk.toStringAsFixed(1)}%) ලෙස හඳුනාගත් බැවින්, භාරකාර Caregiver ට සහ Attending Doctor ට සෘජු දැනුම්දීම් හා ඇමතුම් වහාම ක්‍රියාත්මක කරන ලදී.',
+                              'වැඩිහිටියාගේ හැඟීම් අවදානම් මට්ටම High Risk (${calculatedRisk.toStringAsFixed(1)}%) ලෙස හඳුනාගත් බැවින්, Caregiver සහ Doctor සඳහා ස්වයංක්‍රීය පියවර 3ක හදිසි ක්‍රියාදාමයක් සක්‍රිය කර ඇත.',
                               style: const TextStyle(fontSize: 11, color: Color(0xFF7F1D1D), height: 1.4),
                             ),
                             const SizedBox(height: 12),
-                            Row(
-                              children: [
-                                // Caregiver Call Card
-                                Expanded(
-                                  child: Container(
-                                    padding: const EdgeInsets.all(10),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(10),
-                                      border: Border.all(color: const Color(0xFFFCA5A5)),
-                                    ),
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Row(
-                                          children: [
-                                            const Icon(LucideIcons.userCheck, size: 14, color: Color(0xFFDB2777)),
-                                            const SizedBox(width: 5),
-                                            Expanded(
-                                              child: Text(
-                                                caregiverDetails['caregiverName'] ?? 'Assigned Caregiver',
-                                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.navy),
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          '${caregiverDetails['phone']}',
-                                          style: const TextStyle(fontSize: 10, color: AppColors.muted),
-                                        ),
-                                        const SizedBox(height: 6),
-                                        Row(
-                                          children: const [
-                                            Icon(LucideIcons.circleCheck, size: 11, color: Color(0xFF16A34A)),
-                                            SizedBox(width: 4),
-                                            Text('Alert Sent & Ringing', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFF16A34A))),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 8),
-                                        SizedBox(
-                                          width: double.infinity,
-                                          child: ElevatedButton.icon(
-                                            onPressed: () => _showCaregiverCallDialog(
-                                              caregiverDetails['caregiverName']!,
-                                              caregiverDetails['role']!,
-                                              caregiverDetails['phone']!,
-                                              _currentResident.roomNo.isNotEmpty ? _currentResident.roomNo : '101',
-                                              caregiverDetails['home']!,
-                                            ),
-                                            icon: const Icon(LucideIcons.phoneCall, size: 12),
-                                            label: const Text('Call Caregiver', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor: const Color(0xFFDB2777),
-                                              foregroundColor: Colors.white,
-                                              padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 8),
-                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-                                // Doctor Call Card
-                                Expanded(
-                                  child: Container(
-                                    padding: const EdgeInsets.all(10),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(10),
-                                      border: Border.all(color: const Color(0xFFFCA5A5)),
-                                    ),
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Row(
-                                          children: [
-                                            const Icon(LucideIcons.stethoscope, size: 14, color: Color(0xFF0284C7)),
-                                            const SizedBox(width: 5),
-                                            Expanded(
-                                              child: Text(
-                                                doctorDetails['doctorName'] ?? 'Attending Doctor',
-                                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.navy),
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          '${doctorDetails['phone']}',
-                                          style: const TextStyle(fontSize: 10, color: AppColors.muted),
-                                        ),
-                                        const SizedBox(height: 6),
-                                        Row(
-                                          children: const [
-                                            Icon(LucideIcons.circleCheck, size: 11, color: Color(0xFF0284C7)),
-                                            SizedBox(width: 4),
-                                            Text('Consult Dispatched', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFF0284C7))),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 8),
-                                        SizedBox(
-                                          width: double.infinity,
-                                          child: ElevatedButton.icon(
-                                            onPressed: () => _showDoctorCallDialog(
-                                              doctorDetails['doctorName']!,
-                                              doctorDetails['specialty']!,
-                                              doctorDetails['phone']!,
-                                              _currentResident.roomNo.isNotEmpty ? _currentResident.roomNo : '101',
-                                              doctorDetails['home']!,
-                                            ),
-                                            icon: const Icon(LucideIcons.phoneCall, size: 12),
-                                            label: const Text('Call Doctor', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor: const Color(0xFF0284C7),
-                                              foregroundColor: Colors.white,
-                                              padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 8),
-                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ],
+
+                            // 3-Stage Progress Tracker
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: const Color(0xFFFECDD3)),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  _buildEscalationStepBadge(1, 'Dashboard Alert', true, const Color(0xFF16A34A)),
+                                  const Icon(LucideIcons.chevronRight, size: 14, color: Color(0xFF94A3B8)),
+                                  _buildEscalationStepBadge(2, '10-Min SLA', !caregiverResponded, const Color(0xFFD97706)),
+                                  const Icon(LucideIcons.chevronRight, size: 14, color: Color(0xFF94A3B8)),
+                                  _buildEscalationStepBadge(3, 'WhatsApp Call', isWhatsAppTriggered, const Color(0xFF25D366)),
+                                  const Icon(LucideIcons.chevronRight, size: 14, color: Color(0xFF94A3B8)),
+                                  _buildEscalationStepBadge(4, 'Doctor Call', false, const Color(0xFF0284C7)),
+                                ],
+                              ),
                             ),
+                            const SizedBox(height: 12),
+
+                            // Dynamic Status / Countdown Container
+                            if (caregiverResponded) ...[
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF0FDF4),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: const Color(0xFF86EFAC)),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(LucideIcons.circleCheck, size: 18, color: Color(0xFF16A34A)),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        '✅ භාරකාර Caregiver (${caregiverDetails['caregiverName']}) විසින් ප්‍රතිචාර දක්වා කාමරය වෙත පැමිණෙන බව තහවුරු කළා. හදිසි පියවර සාර්ථකව අවසන් විය.',
+                                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF15803D)),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ] else ...[
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFFFBEB),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: const Color(0xFFFDE68A)),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        const Icon(LucideIcons.timer, size: 16, color: Color(0xFFD97706)),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          'Caregiver Response Window: ${(caregiverCountdownSeconds ~/ 60).toString().padLeft(2, '0')}:${(caregiverCountdownSeconds % 60).toString().padLeft(2, '0')} ඉතිරිව ඇත',
+                                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF92400E)),
+                                        ),
+                                        const Spacer(),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(color: const Color(0xFFFDE68A), borderRadius: BorderRadius.circular(4)),
+                                          child: const Text('10 Min SLA', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFF78350F))),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '${caregiverDetails['caregiverName']} (${caregiverDetails['phone']}) වෙත Alerts Dashboard ඔස්සේ දැනුම්දී ඇත. විනාඩි 10ක් ඇතුළත ප්‍රතිචාරයක් නොදක්වන්නේ නම් ස්වයංක්‍රීයව WhatsApp Call එකක් ක්‍රියාත්මක වේ. එයටද ප්‍රතිචාර නොලැබුණහොත් Doctor (${doctorDetails['doctorName']}) වෙත Call එක යොමු වේ.',
+                                      style: const TextStyle(fontSize: 10, color: Color(0xFF78350F)),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+
+                              // Interactive Action Row
+                              Row(
+                                children: [
+                                  Expanded(
+                                    flex: 3,
+                                    child: ElevatedButton.icon(
+                                      onPressed: () {
+                                        caregiverCountdownTimer?.cancel();
+                                        setDialogState(() {
+                                          caregiverResponded = true;
+                                        });
+                                        if (MockCarevoraData.alerts.isNotEmpty) {
+                                          final old = MockCarevoraData.alerts[0];
+                                          MockCarevoraData.alerts[0] = AlertItem(
+                                            id: old.id,
+                                            title: old.title,
+                                            description: old.description,
+                                            severity: old.severity,
+                                            timestamp: old.timestamp,
+                                            residentName: old.residentName,
+                                            roomNo: old.roomNo,
+                                            residentAge: old.residentAge,
+                                            residentGender: old.residentGender,
+                                            currentStatus: 'Caregiver Visited & Attended',
+                                            cognitiveScore: old.cognitiveScore,
+                                          );
+                                        }
+                                        _flutterTts.stop();
+                                        _flutterTts.speak('Caregiver response recorded. Emergency escalation marked as attended.');
+                                      },
+                                      icon: const Icon(LucideIcons.checkCheck, size: 14),
+                                      label: const Text('Caregiver Responded', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: const Color(0xFF16A34A),
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(vertical: 8),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    flex: 4,
+                                    child: ElevatedButton.icon(
+                                      onPressed: () {
+                                        caregiverCountdownTimer?.cancel();
+                                        setDialogState(() {
+                                          isWhatsAppTriggered = true;
+                                        });
+                                        _showCaregiverWhatsAppCallDialog(
+                                          caregiverName: caregiverDetails['caregiverName']!,
+                                          role: caregiverDetails['role']!,
+                                          phone: caregiverDetails['phone']!,
+                                          roomNo: _currentResident.roomNo.isNotEmpty ? _currentResident.roomNo : '101',
+                                          home: caregiverDetails['home']!,
+                                          finalWellness: calculatedWellness,
+                                          finalRisk: calculatedRisk,
+                                          qScore: questionnaireWellness,
+                                          fScore: facialScore,
+                                          vScore: voiceScore,
+                                          dominantFaceEmotion: dominantFaceEmotion,
+                                          voiceEmotion: _voiceEmotion,
+                                          onAnswered: () {
+                                            setDialogState(() {
+                                              caregiverResponded = true;
+                                            });
+                                          },
+                                          onUnanswered: () {
+                                            _escalateToDoctorCall(
+                                              doctorDetails: doctorDetails,
+                                              reason: 'Caregiver did not answer WhatsApp emergency call.',
+                                              finalWellness: calculatedWellness,
+                                              finalRisk: calculatedRisk,
+                                              qScore: questionnaireWellness,
+                                              fScore: facialScore,
+                                              vScore: voiceScore,
+                                              dominantFaceEmotion: dominantFaceEmotion,
+                                              voiceEmotion: _voiceEmotion,
+                                            );
+                                          },
+                                        );
+                                      },
+                                      icon: const Icon(LucideIcons.phoneCall, size: 14),
+                                      label: const Text('WhatsApp Call (0760506500)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: const Color(0xFF25D366),
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(vertical: 8),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    flex: 3,
+                                    child: OutlinedButton.icon(
+                                      onPressed: () {
+                                        caregiverCountdownTimer?.cancel();
+                                        _escalateToDoctorCall(
+                                          doctorDetails: doctorDetails,
+                                          reason: 'Manual immediate escalation to Doctor requested',
+                                          finalWellness: calculatedWellness,
+                                          finalRisk: calculatedRisk,
+                                          qScore: questionnaireWellness,
+                                          fScore: facialScore,
+                                          vScore: voiceScore,
+                                          dominantFaceEmotion: dominantFaceEmotion,
+                                          voiceEmotion: _voiceEmotion,
+                                        );
+                                      },
+                                      icon: const Icon(LucideIcons.stethoscope, size: 14, color: Color(0xFF0284C7)),
+                                      label: const Text('Doctor (0774548743)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF0284C7))),
+                                      style: OutlinedButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(vertical: 8),
+                                        side: const BorderSide(color: Color(0xFF0284C7)),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ],
                         ),
                       ),
@@ -6441,12 +6948,16 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
             ),
             actions: [
               TextButton(
-                onPressed: _isSubmittingAssessment ? null : () => Navigator.pop(context),
+                onPressed: _isSubmittingAssessment ? null : () {
+                  caregiverCountdownTimer?.cancel();
+                  Navigator.pop(context);
+                },
                 child: Text(allAnswered || isFullyAccounted ? 'Review Answers' : 'Continue Questionnaire'),
               ),
               if (unreachedQuestions.isNotEmpty)
                 TextButton(
                   onPressed: () {
+                    caregiverCountdownTimer?.cancel();
                     Navigator.pop(context);
                     setState(() {
                       _currentIndex = unreachedQuestions.first - 1;
@@ -6494,6 +7005,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                             _isSubmittingAssessment = false;
                           });
 
+                          caregiverCountdownTimer?.cancel();
                           navigator.pop();
 
                           messenger.showSnackBar(
