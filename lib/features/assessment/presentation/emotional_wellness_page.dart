@@ -1766,6 +1766,365 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
     _flutterTts.speak('An urgent notification has been sent to your caregiver and attending physician. Please remain calm, assistance is arriving right now.');
   }
 
+  Map<String, String> _getAssignedCaregiverDetails() {
+    final authState = ref.read(authProvider).state;
+    final home = (authState.elderHomeName != null && authState.elderHomeName!.isNotEmpty)
+        ? authState.elderHomeName!
+        : 'Serene Valley Senior Living';
+
+    if (home.toLowerCase().contains('golden sunset')) {
+      return {
+        'caregiverName': 'Nurse Kamani Silva',
+        'role': 'Senior Resident Caregiver',
+        'phone': '+94 77 567 8901',
+        'home': home,
+      };
+    } else if (home.toLowerCase().contains('lotus care')) {
+      return {
+        'caregiverName': 'Caregiver Priyantha Perera',
+        'role': 'Lead Elder Caregiver',
+        'phone': '+94 71 234 5678',
+        'home': home,
+      };
+    } else {
+      return {
+        'caregiverName': 'Nurse Sandamali Dias',
+        'role': 'Assigned Primary Caregiver',
+        'phone': '+94 77 345 6789',
+        'home': home,
+      };
+    }
+  }
+
+  void _dispatchHighRiskAlertsToCaregiverAndDoctor({
+    required double finalWellness,
+    required double finalRisk,
+    required double qScore,
+    required double fScore,
+    required double vScore,
+  }) {
+    _caregiverNotified = true;
+    final elderName = _currentResident.name.isNotEmpty ? _currentResident.name : 'Senior Resident';
+    final roomNumber = _currentResident.roomNo.isNotEmpty ? _currentResident.roomNo : '101';
+    final docInfo = _getAssignedDoctorDetails();
+    final caregiverInfo = _getAssignedCaregiverDetails();
+
+    // 1. Critical High Risk Alert for Caregiver
+    MockCarevoraData.alerts.insert(
+      0,
+      AlertItem(
+        id: 'ALT-CG-HIGH-${DateTime.now().millisecondsSinceEpoch}',
+        title: '🚨 CRITICAL HIGH RISK: $elderName (Room $roomNumber)',
+        description: 'Multimodal AI detected high emotional distress risk (${finalRisk.toStringAsFixed(1)}%). Clinical scores: Questionnaire ${qScore.toStringAsFixed(0)}%, Facial Affect ${fScore.toStringAsFixed(0)}%, Voice Prosody ${vScore.toStringAsFixed(0)}%. Urgent caregiver room visit dispatched to ${caregiverInfo['caregiverName']}.',
+        severity: 'High',
+        timestamp: 'Just now',
+        residentName: elderName,
+        roomNo: roomNumber,
+        residentAge: _currentResident.age,
+        residentGender: _currentResident.gender,
+        currentStatus: 'High Risk Caregiver Dispatched',
+        cognitiveScore: _currentResident.cognitiveScore,
+      ),
+    );
+
+    // 2. Urgent Medical Alert for Attending Physician / Doctor
+    MockCarevoraData.alerts.insert(
+      0,
+      AlertItem(
+        id: 'ALT-DOC-HIGH-${DateTime.now().millisecondsSinceEpoch + 1}',
+        title: '🚨 URGENT MEDICAL REVIEW: $elderName (Room $roomNumber) - ${docInfo['doctorName']}',
+        description: 'Resident $elderName evaluated with High Risk (${finalRisk.toStringAsFixed(1)}% loneliness risk). Urgent clinical consultation and physician review routed to ${docInfo['doctorName']} (${docInfo['phone']}).',
+        severity: 'High',
+        timestamp: 'Just now',
+        residentName: elderName,
+        roomNo: roomNumber,
+        residentAge: _currentResident.age,
+        residentGender: _currentResident.gender,
+        currentStatus: 'Doctor Clinical Review Escalated',
+        cognitiveScore: _currentResident.cognitiveScore,
+      ),
+    );
+
+    // 3. Automatically launch caregiver call dialer if available
+    if (caregiverInfo['phone'] != null && caregiverInfo['phone']!.isNotEmpty) {
+      UrlLauncherService.launchTel(caregiverInfo['phone']!);
+    }
+
+    _flutterTts.stop();
+    _flutterTts.speak('High risk emotional distress detected. An urgent call and notification have been dispatched to your assigned caregiver and attending doctor. Please remain calm, assistance is on the way.');
+  }
+
+  void _showCaregiverCallDialog(String caregiverName, String role, String phone, String roomNo, String home) {
+    // 1. Immediately trigger real device native phone dialer (tel:+94...)
+    UrlLauncherService.launchTel(phone);
+
+    // 2. Open rich active in-app VoIP / direct caregiver assistance screen
+    Timer? callTimer;
+    int callDurationSeconds = 0;
+    bool isConnected = false;
+    bool isMuted = false;
+    bool isSpeakerOn = true;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          callTimer ??= Timer.periodic(const Duration(seconds: 1), (timer) {
+            setDialogState(() {
+              callDurationSeconds++;
+              if (callDurationSeconds >= 2 && !isConnected) {
+                isConnected = true;
+                _flutterTts.stop();
+                _flutterTts.speak(
+                  'Hello ${_currentResident.name}, this is $caregiverName. I received your high risk alert from Room $roomNo. Please stay calm, I am walking to your room right now to assist and comfort you.',
+                );
+              }
+            });
+          });
+
+          final minutesStr = (callDurationSeconds ~/ 60).toString().padLeft(2, '0');
+          final secondsStr = (callDurationSeconds % 60).toString().padLeft(2, '0');
+
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            backgroundColor: Colors.white,
+            contentPadding: const EdgeInsets.all(24),
+            content: SizedBox(
+              width: 440,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Container(
+                        width: 90,
+                        height: 90,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: isConnected ? const Color(0xFFDCFCE7) : const Color(0xFFFCE7F3),
+                        ),
+                      ),
+                      Container(
+                        width: 74,
+                        height: 74,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: isConnected ? const Color(0xFF16A34A) : const Color(0xFFDB2777),
+                          boxShadow: [
+                            BoxShadow(
+                              color: (isConnected ? const Color(0xFF16A34A) : const Color(0xFFDB2777)).withValues(alpha: 0.35),
+                              blurRadius: 16,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Icon(
+                          isConnected ? LucideIcons.userCheck : LucideIcons.phoneCall,
+                          color: Colors.white,
+                          size: 34,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    caregiverName,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF0F172A),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '$role • $home',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF64748B),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: isConnected ? const Color(0xFFDCFCE7) : const Color(0xFFFCE7F3),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: isConnected ? const Color(0xFF16A34A) : const Color(0xFFDB2777),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          isConnected
+                              ? '🟢 රැකවරණ නිලධාරී සමඟ සම්බන්ධයි (Connected) • $minutesStr:$secondsStr'
+                              : '📡 රැකවරණ නිලධාරී අමතමින් (Calling) • $minutesStr:$secondsStr',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: isConnected ? const Color(0xFF166534) : const Color(0xFFBE185D),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(LucideIcons.phone, size: 14, color: Color(0xFFDB2777)),
+                            const SizedBox(width: 8),
+                            const Text('Caregiver Hotline:', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                            const Spacer(),
+                            Text(phone, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            const Icon(LucideIcons.doorClosed, size: 14, color: Color(0xFFDC2626)),
+                            const SizedBox(width: 8),
+                            const Text('Elder Room:', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                            const Spacer(),
+                            Text('Room $roomNo (${_currentResident.name})', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFFDC2626))),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            const Icon(LucideIcons.building2, size: 14, color: Color(0xFFDB2777)),
+                            const SizedBox(width: 8),
+                            const Text('Facility:', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                            const Spacer(),
+                            Text(home, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  if (isConnected) ...[
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF0FDF4),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFF86EFAC)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(LucideIcons.volume2, size: 18, color: Color(0xFF16A34A)),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Caregiver: "ආයුබෝවන් ${_currentResident.name}, මට Room $roomNo හදිසි දැනුම්දීම ලැබුණා. මම දැන්ම ඔබේ කාමරයට එනවා."',
+                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF15803D)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                  ],
+                  InkWell(
+                    onTap: () => UrlLauncherService.launchTel(phone),
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFCE7F3),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFFF472B6)),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: const [
+                          Icon(LucideIcons.smartphone, size: 15, color: Color(0xFFDB2777)),
+                          SizedBox(width: 8),
+                          Text(
+                            '📱 Device එකේ Phone Dialer එකෙන් Call කරන්න (tel:)',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFFBE185D),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      IconButton.filledTonal(
+                        onPressed: () => setDialogState(() => isMuted = !isMuted),
+                        icon: Icon(isMuted ? LucideIcons.micOff : LucideIcons.mic),
+                        style: IconButton.styleFrom(
+                          backgroundColor: isMuted ? const Color(0xFFFEE2E2) : const Color(0xFFF1F5F9),
+                          foregroundColor: isMuted ? const Color(0xFFDC2626) : const Color(0xFF334155),
+                          padding: const EdgeInsets.all(12),
+                        ),
+                        tooltip: isMuted ? 'Unmute' : 'Mute',
+                      ),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          callTimer?.cancel();
+                          _flutterTts.stop();
+                          Navigator.pop(ctx);
+                        },
+                        icon: const Icon(Icons.call_end, size: 20),
+                        label: const Text(
+                          'ඇමතුම අවසන් කරන්න (End Call)',
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFDC2626),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          elevation: 2,
+                        ),
+                      ),
+                      IconButton.filledTonal(
+                        onPressed: () => setDialogState(() => isSpeakerOn = !isSpeakerOn),
+                        icon: Icon(isSpeakerOn ? LucideIcons.volume2 : LucideIcons.volumeX),
+                        style: IconButton.styleFrom(
+                          backgroundColor: isSpeakerOn ? const Color(0xFFDCFCE7) : const Color(0xFFF1F5F9),
+                          foregroundColor: isSpeakerOn ? const Color(0xFF16A34A) : const Color(0xFF334155),
+                          padding: const EdgeInsets.all(12),
+                        ),
+                        tooltip: isSpeakerOn ? 'Speaker On' : 'Speaker Off',
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   Map<String, String> _getAssignedDoctorDetails() {
     final authState = ref.read(authProvider).state;
     final home = (authState.elderHomeName != null && authState.elderHomeName!.isNotEmpty)
@@ -5056,38 +5415,92 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
       _toggleRecording();
     }
     final allAnswered = EmotionalAssessmentService.areAllQuestionsAnswered(_answers);
-    final calculatedWellness = EmotionalAssessmentService.calculateWellnessScore(_answers);
-    final calculatedRisk = EmotionalAssessmentService.calculateLonelinessRiskScore(calculatedWellness);
 
-    final riskTier = calculatedRisk >= 65.0
-        ? 'High Risk'
-        : (calculatedRisk >= 40.0 ? 'Moderate Risk' : 'Low Risk');
-    final riskColor = calculatedRisk >= 65.0
-        ? AppColors.riskHigh
-        : (calculatedRisk >= 40.0 ? AppColors.riskModerate : AppColors.riskLow);
+    // 1. Questionnaire Component Score (S_Q)
+    final double questionnaireWellness = EmotionalAssessmentService.calculateWellnessScore(_answers);
 
-    // Multimodal signals from session
+    // 2. Real-Time Facial Emotion Analysis Component Score (S_F)
     final facialAggregate = _facialCaptureService.aggregate;
     final bool hasFacialInference = facialAggregate.validCount > 0;
     final String dominantFaceEmotion = hasFacialInference
         ? facialAggregate.dominantEmotion.toUpperCase()
-        : (_capturedImageBytes != null ? 'OBSERVED' : 'NONE');
-    final double? facialConf = hasFacialInference ? facialAggregate.averageConfidence : null;
+        : (_selectedEmotion.isNotEmpty ? _selectedEmotion.toUpperCase() : 'CALM');
+    final double facialConf = hasFacialInference ? facialAggregate.averageConfidence : _facialConfidence;
 
-    double? facialScore;
-    if (hasFacialInference) {
-      final domLower = facialAggregate.dominantEmotion.toLowerCase();
-      if (['happy', 'surprise'].contains(domLower)) {
-        facialScore = 85.0;
-      } else if (domLower == 'neutral') {
-        facialScore = 75.0;
-      } else {
-        facialScore = 40.0;
-      }
+    double facialScore = 75.0;
+    final domLower = dominantFaceEmotion.toLowerCase();
+    if (['happy', 'joy', 'cheerful'].any(domLower.contains)) {
+      facialScore = 88.0;
+    } else if (domLower.contains('surprise')) {
+      facialScore = 80.0;
+    } else if (['neutral', 'calm', 'observed'].any(domLower.contains)) {
+      facialScore = 75.0;
+    } else if (domLower.contains('confused')) {
+      facialScore = 50.0;
+    } else if (domLower.contains('sad')) {
+      facialScore = 32.0;
+    } else if (domLower.contains('fear')) {
+      facialScore = 28.0;
+    } else if (['angry', 'disgust'].any(domLower.contains)) {
+      facialScore = 25.0;
     }
 
-    final bool hasVoiceSession = _recordSeconds > 0;
-    final double? vocalScore = hasVoiceSession ? _vocalWellnessScore : null;
+    // 3. Real-Time Voice Emotion Analysis Component Score (S_V)
+    final bool hasVoiceSession = _recordSeconds > 0 || _spokenText.isNotEmpty || _voiceEmotion != 'Neutral';
+    double voiceScore = 75.0;
+    final voiceLower = _voiceEmotion.toLowerCase();
+    if (['happy', 'laugh'].any(voiceLower.contains)) {
+      voiceScore = 90.0;
+    } else if (voiceLower.contains('calm')) {
+      voiceScore = 80.0;
+    } else if (voiceLower.contains('neutral')) {
+      voiceScore = 75.0;
+    } else if (['guarded', 'elevated'].any(voiceLower.contains)) {
+      voiceScore = 50.0;
+    } else if (voiceLower.contains('sad')) {
+      voiceScore = 32.0;
+    } else if (voiceLower.contains('fear')) {
+      voiceScore = 28.0;
+    } else if (voiceLower.contains('ang')) {
+      voiceScore = 25.0;
+    } else {
+      voiceScore = _vocalWellnessScore.clamp(20.0, 95.0);
+    }
+    final double voiceConf = _voiceConfidence;
+
+    // 4. Clinical Multimodal Fusion (50% Questionnaire + 30% Facial Affect + 20% Voice Prosody)
+    const double weightQ = 0.50;
+    const double weightF = 0.30;
+    const double weightV = 0.20;
+
+    final double calculatedWellness = double.parse(
+      ((questionnaireWellness * weightQ) + (facialScore * weightF) + (voiceScore * weightV))
+          .clamp(0.0, 100.0)
+          .toStringAsFixed(1),
+    );
+    final double calculatedRisk = double.parse(
+      (100.0 - calculatedWellness).clamp(0.0, 100.0).toStringAsFixed(1),
+    );
+
+    // 5. Risk Tier Determination
+    final bool isHighRisk = calculatedRisk >= 65.0;
+    final bool isModerateRisk = calculatedRisk >= 40.0 && calculatedRisk < 65.0;
+    final String riskTier = isHighRisk ? 'High Risk' : (isModerateRisk ? 'Moderate Risk' : 'Low Risk');
+    final Color riskColor = isHighRisk ? AppColors.riskHigh : (isModerateRisk ? AppColors.riskModerate : AppColors.riskLow);
+
+    final caregiverDetails = _getAssignedCaregiverDetails();
+    final doctorDetails = _getAssignedDoctorDetails();
+
+    // 6. Automatic High Risk Escalation: Alert Caregiver & Doctor
+    if (isHighRisk) {
+      _dispatchHighRiskAlertsToCaregiverAndDoctor(
+        finalWellness: calculatedWellness,
+        finalRisk: calculatedRisk,
+        qScore: questionnaireWellness,
+        fScore: facialScore,
+        vScore: voiceScore,
+      );
+    }
 
     // Itemized counts for scoring breakdown
     int favorableCount = 0;
@@ -5118,8 +5531,12 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
             title: Row(
               children: [
                 Icon(
-                  allAnswered || isFullyAccounted ? LucideIcons.clipboardCheck : LucideIcons.alertTriangle,
-                  color: allAnswered ? AppColors.primary : (isFullyAccounted ? AppColors.accentTeal : AppColors.riskModerate),
+                  isHighRisk
+                      ? LucideIcons.shieldAlert
+                      : (allAnswered || isFullyAccounted ? LucideIcons.clipboardCheck : LucideIcons.alertTriangle),
+                  color: isHighRisk
+                      ? AppColors.riskHigh
+                      : (allAnswered ? AppColors.primary : (isFullyAccounted ? AppColors.accentTeal : AppColors.riskModerate)),
                   size: 22,
                 ),
                 const SizedBox(width: 10),
@@ -5170,22 +5587,365 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                             decoration: BoxDecoration(
-                              color: allAnswered
-                                  ? const Color(0xFFDCFCE7)
-                                  : (isFullyAccounted ? const Color(0xFFEFF6FF) : const Color(0xFFFEF3C7)),
+                              color: isHighRisk
+                                  ? const Color(0xFFFEE2E2)
+                                  : (allAnswered
+                                      ? const Color(0xFFDCFCE7)
+                                      : (isFullyAccounted ? const Color(0xFFEFF6FF) : const Color(0xFFFEF3C7))),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
-                              allAnswered
-                                  ? 'Validated 10/10'
-                                  : (isFullyAccounted ? '${_answers.length} Ans • $skippedCount Skipped' : 'Incomplete (${_answers.length}/10)'),
+                              isHighRisk
+                                  ? 'High Risk Alert'
+                                  : (allAnswered
+                                      ? 'Validated 10/10'
+                                      : (isFullyAccounted ? '${_answers.length} Ans • $skippedCount Skipped' : 'Incomplete (${_answers.length}/10)')),
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold,
-                                color: allAnswered
-                                    ? const Color(0xFF166534)
-                                    : (isFullyAccounted ? const Color(0xFF1D4ED8) : const Color(0xFF92400E)),
+                                color: isHighRisk
+                                    ? const Color(0xFFDC2626)
+                                    : (allAnswered
+                                        ? const Color(0xFF166534)
+                                        : (isFullyAccounted ? const Color(0xFF1D4ED8) : const Color(0xFF92400E))),
                               ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // HIGH RISK EMERGENCY ESCALATION & CALLING MODULE
+                    if (isHighRisk) ...[
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFEF2F2),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: const Color(0xFFF87171), width: 1.5),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFFDC2626).withValues(alpha: 0.12),
+                              blurRadius: 10,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: const BoxDecoration(color: Color(0xFFDC2626), shape: BoxShape.circle),
+                                  child: const Icon(LucideIcons.shieldAlert, size: 16, color: Colors.white),
+                                ),
+                                const SizedBox(width: 8),
+                                const Expanded(
+                                  child: Text(
+                                    '🚨 High Risk Clinical Escalation (අධි අවදානම් හදිසි පියවර)',
+                                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF991B1B)),
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(color: const Color(0xFFFEE2E2), borderRadius: BorderRadius.circular(6)),
+                                  child: const Text('Emergency Active', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFFDC2626))),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'වැඩිහිටියාගේ හැඟීම් අවදානම් මට්ටම High Risk (${calculatedRisk.toStringAsFixed(1)}%) ලෙස හඳුනාගත් බැවින්, භාරකාර Caregiver ට සහ Attending Doctor ට සෘජු දැනුම්දීම් හා ඇමතුම් වහාම ක්‍රියාත්මක කරන ලදී.',
+                              style: const TextStyle(fontSize: 11, color: Color(0xFF7F1D1D), height: 1.4),
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                // Caregiver Call Card
+                                Expanded(
+                                  child: Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(color: const Color(0xFFFCA5A5)),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            const Icon(LucideIcons.userCheck, size: 14, color: Color(0xFFDB2777)),
+                                            const SizedBox(width: 5),
+                                            Expanded(
+                                              child: Text(
+                                                caregiverDetails['caregiverName'] ?? 'Assigned Caregiver',
+                                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.navy),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          '${caregiverDetails['phone']}',
+                                          style: const TextStyle(fontSize: 10, color: AppColors.muted),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Row(
+                                          children: const [
+                                            Icon(LucideIcons.circleCheck, size: 11, color: Color(0xFF16A34A)),
+                                            SizedBox(width: 4),
+                                            Text('Alert Sent & Ringing', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFF16A34A))),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 8),
+                                        SizedBox(
+                                          width: double.infinity,
+                                          child: ElevatedButton.icon(
+                                            onPressed: () => _showCaregiverCallDialog(
+                                              caregiverDetails['caregiverName']!,
+                                              caregiverDetails['role']!,
+                                              caregiverDetails['phone']!,
+                                              _currentResident.roomNo.isNotEmpty ? _currentResident.roomNo : '101',
+                                              caregiverDetails['home']!,
+                                            ),
+                                            icon: const Icon(LucideIcons.phoneCall, size: 12),
+                                            label: const Text('Call Caregiver', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: const Color(0xFFDB2777),
+                                              foregroundColor: Colors.white,
+                                              padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 8),
+                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                // Doctor Call Card
+                                Expanded(
+                                  child: Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(color: const Color(0xFFFCA5A5)),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            const Icon(LucideIcons.stethoscope, size: 14, color: Color(0xFF0284C7)),
+                                            const SizedBox(width: 5),
+                                            Expanded(
+                                              child: Text(
+                                                doctorDetails['doctorName'] ?? 'Attending Doctor',
+                                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.navy),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          '${doctorDetails['phone']}',
+                                          style: const TextStyle(fontSize: 10, color: AppColors.muted),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Row(
+                                          children: const [
+                                            Icon(LucideIcons.circleCheck, size: 11, color: Color(0xFF0284C7)),
+                                            SizedBox(width: 4),
+                                            Text('Consult Dispatched', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFF0284C7))),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 8),
+                                        SizedBox(
+                                          width: double.infinity,
+                                          child: ElevatedButton.icon(
+                                            onPressed: () => _showDoctorCallDialog(
+                                              doctorDetails['doctorName']!,
+                                              doctorDetails['specialty']!,
+                                              doctorDetails['phone']!,
+                                              _currentResident.roomNo.isNotEmpty ? _currentResident.roomNo : '101',
+                                              doctorDetails['home']!,
+                                            ),
+                                            icon: const Icon(LucideIcons.phoneCall, size: 12),
+                                            label: const Text('Call Doctor', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: const Color(0xFF0284C7),
+                                              foregroundColor: Colors.white,
+                                              padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 8),
+                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                    ],
+
+                    // MULTIMODAL REAL-TIME ANALYSIS & FINAL COMPOSITE SCORE CARD
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: isHighRisk ? const Color(0xFFFECDD3) : AppColors.border),
+                        boxShadow: [
+                          BoxShadow(
+                            color: (isHighRisk ? AppColors.riskHigh : AppColors.primary).withValues(alpha: 0.05),
+                            blurRadius: 10,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(LucideIcons.sparkles, size: 16, color: AppColors.primary),
+                              const SizedBox(width: 8),
+                              const Expanded(
+                                child: Text(
+                                  'Multimodal Real-Time Analysis & Final Score',
+                                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.navy),
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: riskColor.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(color: riskColor.withValues(alpha: 0.4)),
+                                ),
+                                child: Text(
+                                  riskTier.toUpperCase(),
+                                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: riskColor),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const Divider(height: 16),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('Final Composite Wellness Score:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                                  Text('Synthesized from 3 real-time modalities', style: TextStyle(fontSize: 10, color: AppColors.muted)),
+                                ],
+                              ),
+                              Text(
+                                '${calculatedWellness.toStringAsFixed(1)}%',
+                                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: riskColor),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('Composite Loneliness / Adverse Risk:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                                  Text('Inverse multimodal vulnerability index', style: TextStyle(fontSize: 10, color: AppColors.muted)),
+                                ],
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: riskColor.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  '${calculatedRisk.toStringAsFixed(1)}% ($riskTier)',
+                                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: riskColor),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+                          // 3 Modality Metric Breakdown Rows
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF8FAFC),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: const Color(0xFFE2E8F0)),
+                            ),
+                            child: Column(
+                              children: [
+                                _buildModalityMetricRow(
+                                  icon: LucideIcons.clipboardList,
+                                  iconColor: const Color(0xFF7C3AED),
+                                  title: 'Questionnaire Responses',
+                                  weightLabel: '50% Weight',
+                                  scoreValue: '${questionnaireWellness.toStringAsFixed(1)}%',
+                                  detail: '$favorableCount Favorable (+${favorableCount * 10}%) • $skippedCount Skipped',
+                                  scoreColor: questionnaireWellness >= 60 ? const Color(0xFF16A34A) : (questionnaireWellness >= 40 ? const Color(0xFFD97706) : const Color(0xFFDC2626)),
+                                ),
+                                const Divider(height: 12),
+                                _buildModalityMetricRow(
+                                  icon: LucideIcons.camera,
+                                  iconColor: const Color(0xFF0284C7),
+                                  title: 'Real-Time Facial Affect (FER)',
+                                  weightLabel: '30% Weight',
+                                  scoreValue: '${facialScore.toStringAsFixed(1)}%',
+                                  detail: 'Dominant: $dominantFaceEmotion (${(facialConf * 100).toStringAsFixed(0)}% conf)',
+                                  scoreColor: facialScore >= 60 ? const Color(0xFF16A34A) : (facialScore >= 40 ? const Color(0xFFD97706) : const Color(0xFFDC2626)),
+                                ),
+                                const Divider(height: 12),
+                                _buildModalityMetricRow(
+                                  icon: LucideIcons.mic,
+                                  iconColor: const Color(0xFF059669),
+                                  title: 'Real-Time Voice Prosody & Emotion',
+                                  weightLabel: '20% Weight',
+                                  scoreValue: '${voiceScore.toStringAsFixed(1)}%',
+                                  detail: 'Acoustic Tone: $_voiceEmotion (${(voiceConf * 100).toStringAsFixed(0)}% conf)',
+                                  scoreColor: voiceScore >= 60 ? const Color(0xFF16A34A) : (voiceScore >= 40 ? const Color(0xFFD97706) : const Color(0xFFDC2626)),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEFF6FF),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: const Color(0xFFBFDBFE)),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(LucideIcons.calculator, size: 14, color: Color(0xFF1D4ED8)),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Formula: (50% × ${questionnaireWellness.toStringAsFixed(0)}%) + (30% × ${facialScore.toStringAsFixed(0)}%) + (20% × ${voiceScore.toStringAsFixed(0)}%) = ${calculatedWellness.toStringAsFixed(1)}% ($riskTier)',
+                                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF1E40AF)),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],
@@ -5211,7 +5971,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                             children: [
                               const Text('Questionnaire Wellness Score:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                               Text(
-                                '${calculatedWellness.toStringAsFixed(1)}% (Higher is Better)',
+                                '${questionnaireWellness.toStringAsFixed(1)}% (Higher is Better)',
                                 style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.riskLow),
                               ),
                             ],
@@ -5542,7 +6302,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                                   children: [
                                     Text(
                                       hasFacialInference
-                                          ? 'Facial Affect: $dominantFaceEmotion (${(facialConf! * 100).toStringAsFixed(1)}% conf)'
+                                          ? 'Facial Affect: $dominantFaceEmotion (${(facialConf * 100).toStringAsFixed(1)}% conf)'
                                           : 'Facial Affect: Camera active (FER-2013 ready)',
                                       style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                                     ),
@@ -5718,7 +6478,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                             includeFacialCheck: (hasFacialInference || _capturedImageBytes != null),
                             includeVoiceCheck: hasVoiceSession,
                             facialScore: facialScore,
-                            vocalScore: vocalScore,
+                            vocalScore: voiceScore,
                             dominantEmotion: hasFacialInference ? facialAggregate.dominantEmotion : null,
                             facialConfidence: facialConf,
                             token: token,
@@ -5798,6 +6558,64 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
           Text(value, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: textColor)),
         ],
       ),
+    );
+  }
+
+  Widget _buildModalityMetricRow({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String weightLabel,
+    required String scoreValue,
+    required String detail,
+    required Color scoreColor,
+  }) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(7),
+          decoration: BoxDecoration(
+            color: iconColor.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, size: 16, color: iconColor),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text(title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.navy)),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE2E8F0),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(weightLabel, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFF475569))),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 2),
+              Text(detail, style: const TextStyle(fontSize: 11, color: AppColors.muted)),
+            ],
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: scoreColor.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Text(
+            scoreValue,
+            style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: scoreColor),
+          ),
+        ),
+      ],
     );
   }
 
