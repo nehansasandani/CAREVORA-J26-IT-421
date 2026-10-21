@@ -128,7 +128,14 @@ class _LoginFormCardState extends ConsumerState<LoginFormCard> {
       setState(() => _showSuccessCheck = true);
       await Future.delayed(const Duration(milliseconds: 400));
       if (mounted) {
-        context.go('/dashboard');
+        final authState = ref.read(authProvider).state;
+        if (authState.isAdmin) {
+          context.go('/admin/dashboard');
+        } else if (authState.isElder) {
+          context.go('/dashboard');
+        } else {
+          context.go('/dashboard/residents');
+        }
       }
     } else if (mounted) {
       _shakeKey.currentState?.shake();

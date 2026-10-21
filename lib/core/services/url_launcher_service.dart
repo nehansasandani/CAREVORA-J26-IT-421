@@ -7,4 +7,8 @@ class UrlLauncherService {
   static void launchTel(String phoneNumber) {
     launchTelUrl(phoneNumber);
   }
+
+  static void launchWhatsApp(String phoneNumber, [String? message]) {
+    launchWhatsAppUrl(phoneNumber, message);
+  }
 }

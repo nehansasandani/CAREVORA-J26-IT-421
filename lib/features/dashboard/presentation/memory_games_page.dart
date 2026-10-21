@@ -1626,24 +1626,32 @@ class _SequenceGameViewState extends State<_SequenceGameView> {
     final nextIndex = _userTaps.length;
     if (nextIndex >= _targetSequence.length) return;
 
-    final expected = _targetSequence[nextIndex];
     final updatedTaps = List<int>.from(_userTaps)..add(tileId);
 
-    if (tileId != expected) {
+    // If user has not yet selected all numbers in the sequence, keep accepting taps
+    if (updatedTaps.length < _targetSequence.length) {
       setState(() {
         _userTaps = updatedTaps;
-        _wrongTapsInRound++;
-        _roundAttempts++;
-        _phase = _SeqPhase.retry;
       });
       return;
     }
 
-    if (updatedTaps.length == _targetSequence.length) {
-      final correctCount = _targetSequence.length;
-      final totalTaps = correctCount + _wrongTapsInRound;
+    // All numbers in the sequence have now been selected by the user
+    int correctCount = 0;
+    bool isAllCorrect = true;
+    for (int i = 0; i < _targetSequence.length; i++) {
+      if (updatedTaps[i] == _targetSequence[i]) {
+        correctCount++;
+      } else {
+        isAllCorrect = false;
+      }
+    }
+
+    if (isAllCorrect) {
+      final totalTaps = _targetSequence.length + _wrongTapsInRound;
       final accuracy =
-          ((correctCount.toDouble() / totalTaps.toDouble()) * 100.0).clamp(0.0, 100.0);
+          ((_targetSequence.length.toDouble() / totalTaps.toDouble()) * 100.0)
+              .clamp(0.0, 100.0);
       final roundedScore = (accuracy * 10).round() / 10.0;
       final attemptsCount = _roundAttempts;
 
@@ -1652,13 +1660,13 @@ class _SequenceGameViewState extends State<_SequenceGameView> {
         _phase = _SeqPhase.success;
         _lastScore = roundedScore;
         _lastAttempts = attemptsCount;
-        _lastCorrectCount = correctCount;
+        _lastCorrectCount = _targetSequence.length;
       });
 
       _saveSession(
         score: roundedScore,
         attempts: attemptsCount,
-        correctAnswers: correctCount,
+        correctAnswers: _targetSequence.length,
         totalItems: _targetSequence.length,
       );
 
@@ -1668,8 +1676,12 @@ class _SequenceGameViewState extends State<_SequenceGameView> {
         }
       });
     } else {
+      final wrongCount = _targetSequence.length - correctCount;
       setState(() {
         _userTaps = updatedTaps;
+        _wrongTapsInRound += (wrongCount > 0 ? wrongCount : 1);
+        _roundAttempts++;
+        _phase = _SeqPhase.retry;
       });
     }
   }

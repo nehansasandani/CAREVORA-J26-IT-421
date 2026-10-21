@@ -12,6 +12,7 @@ import 'package:carevora/features/dashboard/presentation/dashboard_shell.dart';
 import 'package:carevora/features/dashboard/presentation/overview_page.dart';
 import 'package:carevora/shared/widgets/alerts_list_widget.dart';
 import 'package:carevora/shared/widgets/desktop_sidebar.dart';
+import 'package:carevora/shared/widgets/mobile_bottom_nav.dart';
 
 class MockElderAuthNotifier extends AuthNotifier {
   @override
@@ -384,5 +385,88 @@ void main() {
       expect(find.text('Room 25'), findsOneWidget);
       expect(find.text('Cognitive Score: 48.8 / 100'), findsOneWidget);
     });
+
+    testWidgets('11. DesktopSidebar hides Cognitive Assessment, Emotional Wellness, and Metabolic Health for caregivers', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1440, 900));
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            authProvider.overrideWith((ref) => MockCaregiverAuthNotifier()),
+          ],
+          child: const MaterialApp(
+            home: Scaffold(
+              body: DesktopSidebar(currentRoute: '/dashboard/residents', isCollapsed: false),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Overview'), findsNothing);
+      expect(find.text('Cognitive Assessment'), findsNothing);
+      expect(find.text('Emotional Wellness'), findsNothing);
+      expect(find.text('Metabolic Health'), findsNothing);
+      expect(find.text('Resident Directory'), findsOneWidget);
+    });
+
+    testWidgets('12. DesktopSidebar displays Cognitive Assessment, Emotional Wellness, and Metabolic Health for elders', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1440, 900));
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            authProvider.overrideWith((ref) => MockElderAuthNotifier()),
+          ],
+          child: const MaterialApp(
+            home: Scaffold(
+              body: DesktopSidebar(currentRoute: '/dashboard', isCollapsed: false),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Overview'), findsOneWidget);
+      expect(find.text('Cognitive Assessment'), findsOneWidget);
+      expect(find.text('Emotional Wellness'), findsOneWidget);
+      expect(find.text('Metabolic Health'), findsOneWidget);
+    });
+
+    testWidgets('13. MobileBottomNav hides Assess for caregivers and shows for elders', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(375, 667));
+
+      // Caregiver check
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            bottomNavigationBar: MobileBottomNav(
+              currentRoute: '/dashboard/residents',
+              isElder: false,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Assess'), findsNothing);
+      expect(find.text('Residents'), findsOneWidget);
+
+      // Elder check
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            bottomNavigationBar: MobileBottomNav(
+              currentRoute: '/dashboard',
+              isElder: true,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Assess'), findsOneWidget);
+    });
   });
 }
+

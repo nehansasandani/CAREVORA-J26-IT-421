@@ -45,7 +45,7 @@ class DesktopSidebar extends ConsumerWidget {
         children: [
           // Logo & Brand Header
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 18),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             child: isCollapsed
                 ? const CarevoraLogo(variant: LogoVariant.iconOnly, size: 36)
                 : const CarevoraLogo(variant: LogoVariant.full, size: 36),
@@ -54,14 +54,15 @@ class DesktopSidebar extends ConsumerWidget {
           // Navigation Items
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
               children: [
-                _buildNavItem(
-                  context,
-                  icon: LucideIcons.layoutDashboard,
-                  label: 'Overview',
-                  route: '/dashboard',
-                ),
+                if (authState.isElder)
+                  _buildNavItem(
+                    context,
+                    icon: LucideIcons.layoutDashboard,
+                    label: 'Overview',
+                    route: '/dashboard',
+                  ),
                 if (!authState.isElder)
                   _buildNavItem(
                     context,
@@ -69,24 +70,26 @@ class DesktopSidebar extends ConsumerWidget {
                     label: authState.isElder ? 'My Health Record' : 'Resident Directory',
                     route: '/dashboard/residents',
                   ),
-                _buildNavItem(
-                  context,
-                  icon: LucideIcons.brain,
-                  label: 'Cognitive Assessment',
-                  route: '/dashboard/cognitive/session',
-                ),
-                _buildNavItem(
-                  context,
-                  icon: LucideIcons.heartPulse,
-                  label: 'Emotional Wellness',
-                  route: '/dashboard/emotional',
-                ),
-                _buildNavItem(
-                  context,
-                  icon: LucideIcons.activity,
-                  label: 'Metabolic Health',
-                  route: '/dashboard/metabolic',
-                ),
+                if (authState.isElder) ...[
+                  _buildNavItem(
+                    context,
+                    icon: LucideIcons.brain,
+                    label: 'Cognitive Assessment',
+                    route: '/dashboard/cognitive/session',
+                  ),
+                  _buildNavItem(
+                    context,
+                    icon: LucideIcons.heartPulse,
+                    label: 'Emotional Wellness',
+                    route: '/dashboard/emotional',
+                  ),
+                  _buildNavItem(
+                    context,
+                    icon: LucideIcons.activity,
+                    label: 'Metabolic Health',
+                    route: '/dashboard/metabolic',
+                  ),
+                ],
                 if (!authState.isElder)
                   _buildNavItem(
                     context,
@@ -135,6 +138,12 @@ class DesktopSidebar extends ConsumerWidget {
                     route: '/dashboard/memory-games',
                   ),
                 ],
+                _buildNavItem(
+                  context,
+                  icon: LucideIcons.phoneCall,
+                  label: 'Station Help & Calls',
+                  route: '/dashboard/station-help',
+                ),
                 _buildNavItem(
                   context,
                   icon: LucideIcons.settings,
@@ -257,12 +266,12 @@ class DesktopSidebar extends ConsumerWidget {
         (route != '/dashboard' && currentRoute.startsWith(route));
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.only(bottom: 2),
       child: InkWell(
         onTap: () => context.go(route),
         borderRadius: BorderRadius.circular(10),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
             color: isActive ? AppColors.primarySoft : Colors.transparent,
             borderRadius: BorderRadius.circular(10),

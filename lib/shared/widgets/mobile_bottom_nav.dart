@@ -79,16 +79,14 @@ class MobileBottomNav extends StatelessWidget {
     }
 
     int currentIndex = 0;
-    if (currentRoute == '/dashboard') {
+    if (currentRoute.startsWith('/dashboard/residents')) {
       currentIndex = 0;
-    } else if (currentRoute.startsWith('/dashboard/residents')) {
-      currentIndex = 1;
-    } else if (currentRoute.startsWith('/dashboard/cognitive')) {
-      currentIndex = 2;
     } else if (currentRoute.startsWith('/dashboard/alerts')) {
-      currentIndex = 3;
+      currentIndex = 1;
+    } else if (currentRoute.startsWith('/dashboard/settings')) {
+      currentIndex = 2;
     } else {
-      currentIndex = 4;
+      currentIndex = 0;
     }
 
     return Container(
@@ -107,34 +105,20 @@ class MobileBottomNav extends StatelessWidget {
         onTap: (index) {
           switch (index) {
             case 0:
-              context.go('/dashboard');
-              break;
-            case 1:
               context.go('/dashboard/residents');
               break;
-            case 2:
-              context.go('/dashboard/cognitive/session');
-              break;
-            case 3:
+            case 1:
               context.go('/dashboard/alerts');
               break;
-            case 4:
+            case 2:
               context.go('/dashboard/settings');
               break;
           }
         },
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(LucideIcons.layoutDashboard, size: 20),
-            label: 'Overview',
-          ),
-          BottomNavigationBarItem(
             icon: Icon(LucideIcons.users, size: 20),
             label: 'Residents',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(LucideIcons.brain, size: 20),
-            label: 'Assess',
           ),
           BottomNavigationBarItem(
             icon: Icon(LucideIcons.bell, size: 20),
