@@ -3125,6 +3125,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
   ) {
     final bool hasStatus = _speechStatusMessage != null;
     final bool statusOk = hasStatus && _speechStatusMessage!.contains('captured');
+    final bool isLastQuestion = !(_currentIndex < _questions.length - 1);
 
     return Container(
       padding: const EdgeInsets.all(22),
@@ -3166,36 +3167,46 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                 ),
               ),
               const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  _isListening
-                      ? 'Listening to speech...'
-                      : (isElder ? 'Your Answer' : 'Response Capture'),
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.navy,
-                    letterSpacing: -0.2,
-                  ),
+              Text(
+                _isListening
+                    ? 'Listening to speech...'
+                    : (isElder ? 'Your Answer' : 'Response Capture'),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.navy,
+                  letterSpacing: -0.2,
                 ),
               ),
-              Flexible(
-                child: Wrap(
-                  alignment: WrapAlignment.end,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  spacing: 8,
-                  runSpacing: 4,
-                  children: [
-                    _buildAnimatedAnswerSavedChip(currentQ.id),
-                    Text(
-                      isElder ? 'Voice or Keyboard' : 'Voice & Clinical Grading',
-                      style: const TextStyle(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.muted,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: Wrap(
+                    alignment: WrapAlignment.end,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 12,
+                    runSpacing: 8,
+                    children: [
+                      _buildAnimatedAnswerSavedChip(currentQ.id),
+                      Text(
+                        isElder ? 'Voice or Keyboard' : 'Voice & Clinical Grading',
+                        style: const TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.muted,
+                        ),
                       ),
-                    ),
-                  ],
+                      _buildPrimaryActionButton(
+                        label: isLastQuestion
+                            ? (isElder ? 'Finish & Submit' : 'Finish Assessment')
+                            : 'Next Question →',
+                        icon: isLastQuestion ? LucideIcons.send : LucideIcons.arrowRight,
+                        onTap: () => _nextQuestion(isElder),
+                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -3532,13 +3543,6 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                   style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800),
                 ),
               ),
-            _buildPrimaryActionButton(
-              label: isLastQuestion
-                  ? (isElder ? 'Finish & Submit' : 'Finish Assessment')
-                  : 'Next Question →',
-              icon: isLastQuestion ? LucideIcons.send : LucideIcons.arrowRight,
-              onTap: () => _nextQuestion(isElder),
-            ),
           ],
         ),
       ],
@@ -3549,6 +3553,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
     required String label,
     required IconData icon,
     required VoidCallback onTap,
+    EdgeInsetsGeometry? padding,
   }) {
     return AnimatedBuilder(
       animation: _ambientPulseAnimation,
@@ -3578,7 +3583,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
             onTap: onTap,
             borderRadius: BorderRadius.circular(16),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 15),
+              padding: padding ?? const EdgeInsets.symmetric(horizontal: 26, vertical: 15),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
