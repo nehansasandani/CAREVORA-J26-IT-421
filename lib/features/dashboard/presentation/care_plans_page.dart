@@ -7,6 +7,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../shared/widgets/carevora_avatar.dart';
 import '../../../shared/widgets/cognitive_shap_explanation_card.dart';
+import '../../../shared/widgets/emotional_shap_explanation_card.dart';
 import '../../assessment/application/care_plans_service.dart';
 import '../../assessment/application/cognitive_assessment_service.dart';
 import '../../assessment/application/memory_game_service.dart';
@@ -14,8 +15,13 @@ import '../../auth/application/auth_controller.dart';
 
 class CarePlansPage extends ConsumerStatefulWidget {
   final int? initialResidentId;
+  final int? initialDomain;
 
-  const CarePlansPage({super.key, this.initialResidentId});
+  const CarePlansPage({
+    super.key,
+    this.initialResidentId,
+    this.initialDomain,
+  });
 
   @override
   ConsumerState<CarePlansPage> createState() => _CarePlansPageState();
@@ -49,6 +55,9 @@ class _CarePlansPageState extends ConsumerState<CarePlansPage> {
   @override
   void initState() {
     super.initState();
+    if (widget.initialDomain != null) {
+      _selectedDomainIndex = widget.initialDomain!;
+    }
     _searchController.addListener(() {
       setState(() {
         _searchQuery = _searchController.text;
@@ -79,6 +88,9 @@ class _CarePlansPageState extends ConsumerState<CarePlansPage> {
       );
       setState(() {
         _selectedResident = elderResident;
+        if (widget.initialDomain != null) {
+          _selectedDomainIndex = widget.initialDomain!;
+        }
       });
       await _loadResidentWellness(elderResident);
       return;
@@ -116,7 +128,7 @@ class _CarePlansPageState extends ConsumerState<CarePlansPage> {
               elderHomeId: auth.elderHomeId ?? 1,
             ),
           );
-          await _selectResident(target);
+          await _selectResident(target, domainIndex: widget.initialDomain);
         }
       }
     } catch (e) {
@@ -129,10 +141,10 @@ class _CarePlansPageState extends ConsumerState<CarePlansPage> {
     }
   }
 
-  Future<void> _selectResident(CarePlanResident resident) async {
+  Future<void> _selectResident(CarePlanResident resident, {int? domainIndex}) async {
     setState(() {
       _selectedResident = resident;
-      _selectedDomainIndex = 0;
+      _selectedDomainIndex = domainIndex ?? (widget.initialDomain ?? 0);
       _showCognitiveHistory = false;
       _showSessionHistory = false;
     });
@@ -1995,6 +2007,14 @@ class _CarePlansPageState extends ConsumerState<CarePlansPage> {
                   ),
                   const SizedBox(height: 16),
                 ],
+
+                // Explainable AI: SHAP Feature Attribution for Loneliness & Emotional Wellness
+                EmotionalShapExplanationCard(
+                  riskLevel: emo?.riskLevel ?? 'LOW',
+                  wellnessScore: emo?.overallScore,
+                  lonelinessScore: emo?.overallScore != null ? (100.0 - emo!.overallScore!).clamp(0.0, 100.0) : null,
+                ),
+                const SizedBox(height: 18),
 
                 // Personalized Activities, Games, Books, Songs, Social Engagement
                 if (hasData && emo.recommendations.isNotEmpty) ...[

@@ -155,8 +155,12 @@ class EmotionalAssessmentService {
   }) {
     final List<int> payload = [];
     for (int i = 1; i <= totalQuestions; i++) {
-      final ans = answers[i] ?? false;
-      payload.add(mapAnswerToBackendIndex(i, ans));
+      final ans = answers[i];
+      if (ans == null) {
+        payload.add(1);
+      } else {
+        payload.add(mapAnswerToBackendIndex(i, ans));
+      }
     }
     return payload;
   }

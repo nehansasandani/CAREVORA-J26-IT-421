@@ -105,7 +105,12 @@ class AppRouter {
             builder: (context, state) {
               final idParam = state.uri.queryParameters['residentId'];
               final id = idParam != null ? int.tryParse(idParam) : null;
-              return CarePlansPage(initialResidentId: id);
+              final domainParam = state.uri.queryParameters['domain'];
+              final domain = domainParam != null ? int.tryParse(domainParam) : null;
+              return CarePlansPage(
+                initialResidentId: id,
+                initialDomain: domain,
+              );
             },
           ),
           GoRoute(
