@@ -10,8 +10,10 @@ class CognitiveResidentProfile {
   final int? educationYears;
   final String roomNumber;
   final String? gender;
+  final String? avatarUrl;
   final String? currentStatus;
   final String? riskLevel;
+  final double? cognitiveScore;
 
   final int? elderHomeId;
   final String? elderHomeName;
@@ -23,8 +25,10 @@ class CognitiveResidentProfile {
     this.educationYears,
     required this.roomNumber,
     this.gender,
+    this.avatarUrl,
     this.currentStatus,
     this.riskLevel,
+    this.cognitiveScore,
     this.elderHomeId,
     this.elderHomeName,
   });
@@ -37,8 +41,10 @@ class CognitiveResidentProfile {
       educationYears: (json['educationYears'] as num?)?.toInt(),
       roomNumber: json['roomNumber'] as String? ?? 'Room 101',
       gender: json['gender'] as String?,
+      avatarUrl: json['avatarUrl'] as String?,
       currentStatus: json['currentStatus'] as String?,
       riskLevel: json['riskLevel'] as String?,
+      cognitiveScore: (json['cognitiveScore'] as num?)?.toDouble(),
       elderHomeId: (json['elderHomeId'] as num?)?.toInt(),
       elderHomeName: json['elderHomeName'] as String?,
     );

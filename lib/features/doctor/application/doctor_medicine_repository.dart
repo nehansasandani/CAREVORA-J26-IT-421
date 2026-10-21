@@ -4,14 +4,14 @@ import '../../medicine/application/dose_schedule_service.dart';
 
 class MockDataRepository extends ChangeNotifier {
   final List<Resident> _residents = [
-    const Resident(id: 'R-101', name: 'Florence Nightingale', roomNo: '101', age: 84, gender: 'Female', allergies: ['Penicillin']),
-    const Resident(id: 'R-102', name: 'Arthur Pendelton', roomNo: '102', age: 79, gender: 'Male', allergies: []),
-    const Resident(id: 'R-103', name: 'Eleanor Vance', roomNo: '103', age: 88, gender: 'Female', allergies: ['Sulfa', 'Aspirin']),
-    const Resident(id: 'R-104', name: 'Robert Chen', roomNo: '104', age: 75, gender: 'Male', allergies: []),
-    const Resident(id: 'R-105', name: 'James Perera', roomNo: '105', age: 82, gender: 'Male', allergies: ['Codeine']),
-    const Resident(id: 'R-106', name: 'Clara Oswald', roomNo: '106', age: 78, gender: 'Female', allergies: []),
-    const Resident(id: 'R-107', name: 'Harold Finch', roomNo: '107', age: 85, gender: 'Male', allergies: ['Lisinopril']),
-    const Resident(id: 'R-108', name: 'Beatrice Potter', roomNo: '108', age: 91, gender: 'Female', allergies: []),
+    const Resident(id: 'R-101', name: 'Florence Nightingale', roomNo: '101', age: 84, gender: 'Female', allergies: ['Penicillin'], avatarUrl: 'assets/images/landing/testimonial_1.jpg'),
+    const Resident(id: 'R-102', name: 'Arthur Pendelton', roomNo: '102', age: 79, gender: 'Male', allergies: [], avatarUrl: 'assets/images/landing/testimonial_2.jpg'),
+    const Resident(id: 'R-103', name: 'Eleanor Vance', roomNo: '103', age: 88, gender: 'Female', allergies: ['Sulfa', 'Aspirin'], avatarUrl: 'assets/images/landing/caregivers_team.jpg'),
+    const Resident(id: 'R-104', name: 'Robert Chen', roomNo: '104', age: 75, gender: 'Male', allergies: [], avatarUrl: 'assets/images/landing/testimonial_3.jpg'),
+    const Resident(id: 'R-105', name: 'James Perera', roomNo: '105', age: 82, gender: 'Male', allergies: ['Codeine'], avatarUrl: 'assets/images/landing/senior_neutral_calm_face.jpg'),
+    const Resident(id: 'R-106', name: 'Clara Oswald', roomNo: '106', age: 78, gender: 'Female', allergies: [], avatarUrl: 'assets/images/landing/testimonial_1.jpg'),
+    const Resident(id: 'R-107', name: 'Harold Finch', roomNo: '107', age: 85, gender: 'Male', allergies: ['Lisinopril'], avatarUrl: 'assets/images/landing/senior_happy_face.jpg'),
+    const Resident(id: 'R-108', name: 'Beatrice Potter', roomNo: '108', age: 91, gender: 'Female', allergies: [], avatarUrl: 'assets/images/landing/testimonial_3.jpg'),
   ];
 
   final List<DoctorModel> _doctors = [
@@ -21,8 +21,8 @@ class MockDataRepository extends ChangeNotifier {
   ];
 
   List<Prescription> _prescriptions = [];
-  List<DoseEvent> _doseEvents = [];
-  List<AuditLog> _auditLogs = [];
+  final List<DoseEvent> _doseEvents = [];
+  final List<AuditLog> _auditLogs = [];
 
   List<SlotWindow> _slotWindows = [
     const SlotWindow(slot: DoseSlot.morning, startHour: 6, startMinute: 0, endHour: 10, endMinute: 0),

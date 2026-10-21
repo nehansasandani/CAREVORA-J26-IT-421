@@ -5,6 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../features/auth/application/auth_controller.dart';
+import 'carevora_avatar.dart';
 import 'carevora_logo.dart';
 
 class DesktopSidebar extends ConsumerWidget {
@@ -166,17 +167,10 @@ class DesktopSidebar extends ConsumerWidget {
                         ),
                         child: Row(
                           children: [
-                            CircleAvatar(
+                            CarevoraAvatar(
+                              avatarUrl: authState.avatarUrl,
                               radius: 18,
-                              backgroundColor: AppColors.primarySoft,
-                              child: Text(
-                                initials,
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.primary,
-                                ),
-                              ),
+                              initials: initials,
                             ),
                             const SizedBox(width: 10),
                             Expanded(

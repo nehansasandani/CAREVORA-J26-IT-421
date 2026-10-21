@@ -51,6 +51,42 @@ public class DataInitializer implements CommandLineRunner {
     @Override
     public void run(String... args) {
         if (userRepository.count() > 0) {
+            userRepository.findByEmail("sarah.jenkins@carevora.com").ifPresent(u -> {
+                if (u.getAvatarUrl() == null) {
+                    u.setAvatarUrl("assets/images/landing/testimonial_1.jpg");
+                    userRepository.save(u);
+                }
+            });
+            userRepository.findByEmail("arthur.p@carevora.com").ifPresent(u -> {
+                if (u.getAvatarUrl() == null) {
+                    u.setAvatarUrl("assets/images/landing/testimonial_2.jpg");
+                    userRepository.save(u);
+                }
+            });
+            userRepository.findByEmail("margaret.chen@carevora.com").ifPresent(u -> {
+                if (u.getAvatarUrl() == null) {
+                    u.setAvatarUrl("assets/images/landing/testimonial_3.jpg");
+                    userRepository.save(u);
+                }
+            });
+            userRepository.findByEmail("eleanor.vance@carevora.com").ifPresent(u -> {
+                if (u.getAvatarUrl() == null) {
+                    u.setAvatarUrl("assets/images/landing/caregivers_team.jpg");
+                    userRepository.save(u);
+                }
+            });
+            userRepository.findByEmail("david.silva@carevora.com").ifPresent(u -> {
+                if (u.getAvatarUrl() == null) {
+                    u.setAvatarUrl("assets/images/landing/testimonial_2.jpg");
+                    userRepository.save(u);
+                }
+            });
+            userRepository.findByEmail("dr.reed@carevora.com").ifPresent(u -> {
+                if (u.getAvatarUrl() == null) {
+                    u.setAvatarUrl("assets/images/landing/hero_caregiver_hug.jpg");
+                    userRepository.save(u);
+                }
+            });
             return;
         }
 

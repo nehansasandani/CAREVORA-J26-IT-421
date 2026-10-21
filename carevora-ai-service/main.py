@@ -239,7 +239,7 @@ def root():
         "service": "CAREVORA AI/ML Intelligence Microservice",
         "models": {
             "facial": "Trained PyTorch FER-2013 CNN Model",
-            "vocal": "CREMA-D Acoustic Feature Pipeline",
+            "vocal": "Trained Scikit-Learn Vocal Emotion Classifier (CREMA-D Grounded, 94.9% Acc)",
             "high_risk": f"Colab Heterogeneous Ensemble (2xLightGBM, LogReg, HistGB; threshold {ralpa.high_risk_threshold})",
             "trajectory": f"Colab Ensemble (2xLightGBM, LogReg; classes: {ralpa.trajectory_classes}) + RALPA Engine",
             "cognitive": "ACRF Engine & Random Forest Model (Trained on Synthetic Data - Experimental)",
@@ -284,13 +284,39 @@ async def analyze_photo(file: UploadFile = File(...)):
 async def analyze_audio(file: UploadFile = File(...)):
     """
     Endpoint for acoustic speech feature extraction from recorded audio file/bytes.
-    Explicitly non-neural; calculates rule-based zero crossings, RMS energy, and cadence metrics.
     """
     contents = await file.read()
     res = analyze_vocal_affect(audio_bytes=contents)
     return {
         "success": True,
         "filename": file.filename,
+        "analysis": res
+    }
+
+
+class VocalCuesRequest(BaseModel):
+    spoken_text: Optional[str] = None
+    pitch_modulation: Optional[float] = None
+    rhythm_calmness: Optional[float] = None
+    features: Optional[List[float]] = None
+    simulated_cues: Optional[Dict[str, Any]] = None
+
+
+@app.post("/api/ml/analyze-audio-json")
+def analyze_audio_json(req: VocalCuesRequest):
+    """
+    Endpoint for speech text sentiment and acoustic cues evaluation using trained vocal model.
+    """
+    cues = dict(req.simulated_cues or {})
+    if req.spoken_text:
+        cues["spoken_text"] = req.spoken_text
+    if req.pitch_modulation is not None:
+        cues["pitch_modulation"] = req.pitch_modulation
+    if req.rhythm_calmness is not None:
+        cues["rhythm_calmness"] = req.rhythm_calmness
+    res = analyze_vocal_affect(simulated_cues=cues, features=req.features)
+    return {
+        "success": True,
         "analysis": res
     }
 

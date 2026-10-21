@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../shared/widgets/carevora_avatar.dart';
 import '../../../doctor/domain/models.dart';
 import '../../../doctor/presentation/widgets/doctor_components.dart';
 
@@ -90,13 +91,10 @@ class _DoseDetailSheetState extends State<DoseDetailSheet> {
             // Header
             Row(
               children: [
-                CircleAvatar(
+                CarevoraAvatar(
+                  avatarUrl: widget.resident.avatarUrl,
                   radius: 24,
-                  backgroundColor: AppColors.primarySoft,
-                  child: Text(
-                    widget.resident.name.split(' ').map((e) => e[0]).take(2).join(),
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.primary),
-                  ),
+                  initials: widget.resident.name.split(' ').map((e) => e.isNotEmpty ? e[0] : '').take(2).join(),
                 ),
                 const SizedBox(width: 14),
                 Expanded(

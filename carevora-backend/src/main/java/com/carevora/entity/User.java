@@ -37,7 +37,8 @@ public class User {
     @Column(name = "last_name", nullable = false, length = 60)
     private String lastName;
 
-    @Column(length = 255)
+    @Lob
+    @Column(name = "avatar_url", columnDefinition = "LONGTEXT")
     private String avatarUrl;
 
     @Column(nullable = false)

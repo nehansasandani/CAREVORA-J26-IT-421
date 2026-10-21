@@ -15,6 +15,7 @@ import '../../../core/responsive/responsive_builder.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/mock/mock_carevora_data.dart';
 import '../../../data/models/carevora_models.dart';
+import '../../../shared/widgets/carevora_avatar.dart';
 import '../../auth/application/auth_controller.dart';
 import '../application/cognitive_assessment_service.dart';
 import '../domain/cognitive_scoring.dart';
@@ -414,12 +415,14 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
               id: residentId,
               name: authState.userName ?? 'Sarah Jenkins',
               roomNumber: 'Room 204',
+              avatarUrl: authState.avatarUrl,
             );
       } catch (_) {
         profile = CognitiveResidentProfile(
           id: authState.residentId ?? 1,
           name: authState.userName ?? 'Sarah Jenkins',
           roomNumber: 'Room 204',
+          avatarUrl: authState.avatarUrl,
         );
       }
       if (mounted) {
@@ -1152,7 +1155,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
            a.residentName?.trim().toLowerCase() == _resident?.name.trim().toLowerCase()));
 
       if (isHighRisk) {
-        final alertId = 'ALT-COG-REAL-${_resident?.id ?? 0}-${result.id ?? DateTime.now().millisecondsSinceEpoch}';
+        final alertId = 'ALT-COG-REAL-${_resident?.id ?? 0}-${result.id}';
         final scoreText = result.acrfScore != null
             ? '${result.acrfScore!.toStringAsFixed(1)}/100'
             : 'High Risk';
@@ -1844,73 +1847,49 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Luxury Animated Avatar with portrait image & active status indicator
+              // Resident Avatar with portrait image & active status indicator
               Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  Container(
-                    width: 62,
-                    height: 62,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: const Color(0xFFDDD6FE), width: 2.5),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF6C3FC5).withValues(alpha: 0.28),
-                          blurRadius: 16,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: ClipOval(
-                      child: Image.asset(
-                        'assets/images/landing/senior_neutral_calm_face.jpg',
-                        fit: BoxFit.cover,
-                        errorBuilder: (ctx, err, stack) => Container(
-                          decoration: const BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [Color(0xFF6C3FC5), Color(0xFF8B5CF6)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
+                  RepaintBoundary(
+                    child: Container(
+                      width: 62,
+                      height: 62,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: const Color(0xFFDDD6FE), width: 2.5),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF6C3FC5).withValues(alpha: 0.28),
+                            blurRadius: 16,
+                            offset: const Offset(0, 4),
                           ),
-                          alignment: Alignment.center,
-                          child: Text(
-                            initials,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 19,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ),
+                        ],
+                      ),
+                      child: CarevoraAvatar(
+                        key: const ValueKey('resident_session_banner_avatar'),
+                        avatarUrl: res?.avatarUrl ?? (isElder ? ref.read(authProvider).state.avatarUrl : null),
+                        radius: 31,
+                        initials: initials,
                       ),
                     ),
                   ),
                   Positioned(
                     right: 0,
                     bottom: 0,
-                    child: AnimatedBuilder(
-                      animation: _ambientPulseAnimation,
-                      builder: (context, child) => Transform.scale(
-                        scale: _ambientPulseAnimation.value,
-                        child: child,
-                      ),
-                      child: Container(
-                        width: 16,
-                        height: 16,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF10B981),
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2.5),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFF10B981).withValues(alpha: 0.6),
-                              blurRadius: 6,
-                            ),
-                          ],
-                        ),
+                    child: Container(
+                      width: 16,
+                      height: 16,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF10B981),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2.5),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF10B981).withValues(alpha: 0.6),
+                            blurRadius: 6,
+                          ),
+                        ],
                       ),
                     ),
                   ),

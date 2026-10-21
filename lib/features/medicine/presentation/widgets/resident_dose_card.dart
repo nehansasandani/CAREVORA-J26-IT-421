@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../shared/widgets/carevora_avatar.dart';
 import '../../../doctor/domain/models.dart';
 import '../widgets/dose_status_chip.dart';
 
@@ -56,13 +57,12 @@ class ResidentDoseCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  CircleAvatar(
+                  CarevoraAvatar(
+                    avatarUrl: resident.avatarUrl,
                     radius: 18,
+                    initials: resident.name.split(' ').map((e) => e.isNotEmpty ? e[0] : '').take(2).join(),
                     backgroundColor: status == 'given' ? AppColors.riskLowBg : AppColors.primarySoft,
-                    child: Text(
-                      resident.name.split(' ').map((e) => e[0]).take(2).join(),
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: status == 'given' ? AppColors.riskLow : AppColors.primary),
-                    ),
+                    foregroundColor: status == 'given' ? AppColors.riskLow : AppColors.primary,
                   ),
                   const SizedBox(width: 10),
                   Expanded(

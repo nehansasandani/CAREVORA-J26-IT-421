@@ -18,10 +18,14 @@ import '../../../data/models/carevora_models.dart';
 import '../application/facial_emotion_ai_service.dart';
 import '../application/automatic_facial_capture_service.dart';
 import '../application/emotional_assessment_service.dart';
+import '../application/vocal_emotion_ai_service.dart';
 import '../application/social_audit_service.dart';
+import '../application/cognitive_assessment_service.dart';
 import '../../auth/application/auth_controller.dart';
 import '../../../core/services/audio_player_service.dart';
+import '../../../core/services/live_voice_capture_service.dart';
 import '../../../core/services/url_launcher_service.dart';
+import '../../../shared/widgets/carevora_avatar.dart';
 
 class EmotionalWellnessPage extends ConsumerStatefulWidget {
   final String? initialResidentId;
@@ -46,6 +50,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
   double _facialConfidence = 0.85;
   String _voiceEmotion = 'Neutral';
   double _voiceConfidence = 0.72;
+  double _vocalWellnessScore = 75.0;
 
   // Scores
   int _lonelinessScore = 67;
@@ -60,8 +65,11 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
   bool _isRecording = false;
   int _recordSeconds = 0;
   Timer? _recordTimer;
-  String _spokenText =
-      'Sometimes in the evenings, even when people are around, I feel alone in my thoughts.';
+  String _spokenText = '';
+  double _soundLevel = 0.0;
+  String _micStatusNotice = '';
+  String _selectedVoiceLocale = 'si-LK';
+  String get _selectedVoiceLocaleLabel => _selectedVoiceLocale == 'si-LK' ? 'සිංහල' : 'English';
 
   // Automatic Facial Affect Capture & Consent
   late final AutomaticFacialCaptureService _facialCaptureService;
@@ -147,6 +155,9 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
   bool _isLoadingSocialAudit = false;
   bool _useSimplifiedElderView = false;
   late List<Resident> _availableResidents;
+  int? _educationYears = 13;
+  String _facilityName = 'Serenity Elder Home';
+  List<CognitiveResidentProfile>? _liveProfiles;
 
   late List<PersonalizedActivityItem> _activities;
   late List<EmotionalAssessmentHistoryLog> _historyLogs;
@@ -239,12 +250,33 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
       if (matchedResident != null) {
         _currentResident = matchedResident;
       } else {
+        final bId = authState.residentId;
+        final isFemale = userName != null &&
+            (userName.contains('Mrs.') ||
+                userName.contains('Malini') ||
+                userName.contains('Sarah') ||
+                userName.contains('Margaret') ||
+                userName.contains('Seetha') ||
+                userName.contains('Nanda'));
+        final isMale = userName != null &&
+            (userName.contains('Mr.') ||
+                userName.contains('Arthur') ||
+                userName.contains('Kamal') ||
+                userName.contains('James') ||
+                userName.contains('Robert') ||
+                userName.contains('Senarath'));
+        final detectedGender = isFemale ? 'Female' : (isMale ? 'Male' : 'Senior Resident');
+        final defaultAge = (bId == 165 || (userName != null && userName.contains('Malini'))) ? 65 : 75;
+        final defaultRoom = (bId == 165 || (userName != null && userName.contains('Malini'))) ? '30' : '101';
+
         final newResident = Resident(
-          id: authState.residentId?.toString() ?? '9005',
-          name: (userName != null && userName.isNotEmpty) ? userName : 'Senior Resident',
-          age: 75,
-          gender: 'Senior Resident',
-          roomNo: '101',
+          id: bId?.toString() ?? '9005',
+          name: (userName != null && userName.isNotEmpty)
+              ? userName
+              : (bId == 165 ? 'Malini Bandara' : 'Senior Resident'),
+          age: defaultAge,
+          gender: detectedGender,
+          roomNo: defaultRoom,
           lastAssessmentDate: 'Today, 10:30 AM',
           cognitiveScore: 0.72,
           cognitiveTrend: 0.05,
@@ -254,6 +286,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
           metabolicTrend: 0.02,
           overallIndex: 0.73,
           overallTrend: 0.05,
+          avatarUrl: authState.avatarUrl,
         );
         _currentResident = newResident;
       }
@@ -291,8 +324,155 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
     _initVoiceEngines();
     _initFacialCapture();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadLiveResidentProfile();
       _fetchLatestSocialAuditForCurrentResident();
     });
+  }
+
+  String _formatDisplayId(String id) {
+    final clean = id.trim();
+    if (clean.startsWith('R') || clean.startsWith('r')) return clean.toUpperCase();
+    final parsed = int.tryParse(clean);
+    if (parsed != null) {
+      if (parsed >= 9000) {
+        return 'R${(parsed - 9000).toString().padLeft(4, '0')}';
+      }
+      return 'R${parsed.toString().padLeft(4, '0')}';
+    }
+    return 'R-$clean';
+  }
+
+  Future<void> _loadLiveResidentProfile() async {
+    final authState = ref.read(authProvider).state;
+    final token = authState.token;
+
+    try {
+      if (authState.isElder) {
+        final bId = authState.residentId ?? _resolveBackendResidentId();
+        final fetched = await CognitiveAssessmentService.fetchResident(
+          residentId: bId,
+          token: token,
+        );
+        if (fetched != null && mounted) {
+          final cleanRoom = fetched.roomNumber
+              .replaceAll('Room No: ', '')
+              .replaceAll('Room ', '')
+              .replaceAll('Suite ', '')
+              .trim();
+          final isFemale = fetched.name.contains('Mrs.') ||
+              fetched.name.contains('Malini') ||
+              fetched.name.contains('Sarah') ||
+              fetched.name.contains('Margaret') ||
+              fetched.name.contains('Seetha');
+          final isMale = fetched.name.contains('Mr.') ||
+              fetched.name.contains('Arthur') ||
+              fetched.name.contains('Kamal') ||
+              fetched.name.contains('James') ||
+              fetched.name.contains('Robert');
+          final genderStr = (fetched.gender != null && fetched.gender!.isNotEmpty && fetched.gender != 'Unknown')
+              ? fetched.gender!
+              : (isFemale ? 'Female' : (isMale ? 'Male' : 'Senior Resident'));
+
+          setState(() {
+            _educationYears = fetched.educationYears ?? 13;
+            if (fetched.elderHomeName != null && fetched.elderHomeName!.isNotEmpty) {
+              _facilityName = fetched.elderHomeName!;
+            }
+            _currentResident = Resident(
+              id: fetched.id.toString(),
+              name: fetched.name,
+              age: fetched.age ?? _currentResident.age,
+              gender: genderStr,
+              roomNo: cleanRoom.isNotEmpty ? cleanRoom : _currentResident.roomNo,
+              lastAssessmentDate: _currentResident.lastAssessmentDate,
+              cognitiveScore: _currentResident.cognitiveScore,
+              cognitiveTrend: _currentResident.cognitiveTrend,
+              emotionalScore: _currentResident.emotionalScore,
+              emotionalTrend: _currentResident.emotionalTrend,
+              metabolicScore: _currentResident.metabolicScore,
+              metabolicTrend: _currentResident.metabolicTrend,
+              overallIndex: _currentResident.overallIndex,
+              overallTrend: _currentResident.overallTrend,
+              socialScore: _currentResident.socialScore,
+              avatarUrl: fetched.avatarUrl ?? _currentResident.avatarUrl ?? authState.avatarUrl,
+            );
+            _availableResidents = [_currentResident];
+          });
+          _loadResidentData(_currentResident.id);
+        }
+      } else {
+        final liveList = await CognitiveAssessmentService.fetchResidents(token: token);
+        if (liveList.isNotEmpty && mounted) {
+          final converted = liveList.map((fetched) {
+            final cleanRoom = fetched.roomNumber
+                .replaceAll('Room No: ', '')
+                .replaceAll('Room ', '')
+                .replaceAll('Suite ', '')
+                .trim();
+            final isFemale = fetched.name.contains('Mrs.') ||
+                fetched.name.contains('Malini') ||
+                fetched.name.contains('Sarah') ||
+                fetched.name.contains('Margaret') ||
+                fetched.name.contains('Seetha');
+            final isMale = fetched.name.contains('Mr.') ||
+                fetched.name.contains('Arthur') ||
+                fetched.name.contains('Kamal') ||
+                fetched.name.contains('James') ||
+                fetched.name.contains('Robert');
+            final genderStr = (fetched.gender != null && fetched.gender!.isNotEmpty && fetched.gender != 'Unknown')
+                ? fetched.gender!
+                : (isFemale ? 'Female' : (isMale ? 'Male' : 'Senior Resident'));
+
+            return Resident(
+              id: fetched.id.toString(),
+              name: fetched.name,
+              age: fetched.age ?? 75,
+              gender: genderStr,
+              roomNo: cleanRoom.isNotEmpty ? cleanRoom : '101',
+              lastAssessmentDate: 'Today, 10:30 AM',
+              cognitiveScore: 0.75,
+              cognitiveTrend: 0.05,
+              emotionalScore: 0.80,
+              emotionalTrend: 0.05,
+              metabolicScore: 0.70,
+              metabolicTrend: 0.02,
+              overallIndex: 0.75,
+              overallTrend: 0.05,
+              socialScore: 0.78,
+              avatarUrl: fetched.avatarUrl,
+            );
+          }).toList();
+
+          setState(() {
+            _liveProfiles = liveList;
+            _availableResidents = converted;
+            if (widget.initialResidentId != null) {
+              final target = widget.initialResidentId!;
+              _currentResident = _availableResidents.firstWhere(
+                (r) => r.id == target,
+                orElse: () => _availableResidents.first,
+              );
+            } else {
+              _currentResident = _availableResidents.firstWhere(
+                (r) => r.id == _currentResident.id,
+                orElse: () => _availableResidents.first,
+              );
+            }
+            final matched = liveList.firstWhere(
+              (p) => p.id.toString() == _currentResident.id,
+              orElse: () => liveList.first,
+            );
+            _educationYears = matched.educationYears ?? 13;
+            if (matched.elderHomeName != null && matched.elderHomeName!.isNotEmpty) {
+              _facilityName = matched.elderHomeName!;
+            }
+          });
+          _loadResidentData(_currentResident.id);
+        }
+      }
+    } catch (e) {
+      debugPrint('[EmotionalWellness] Error fetching live resident profile: $e');
+    }
   }
 
   void _initActivitiesAndHistory() {
@@ -854,17 +1034,212 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
     _speech = stt.SpeechToText();
     try {
       _speechEnabled = await _speech.initialize(
-        onError: (err) => debugPrint('STT Error: $err'),
-        onStatus: (status) {
-          if (status == 'done' || status == 'notListening') {
-            if (mounted && _isRecording) {
-              // keep state synced
-            }
+        onError: (err) {
+          debugPrint('STT Error: ${err.errorMsg}');
+          if (mounted) {
+            _onSpeechError(err);
           }
         },
+        onStatus: _onSpeechStatus,
       );
     } catch (e) {
       debugPrint('Speech init fallback: $e');
+      _speechEnabled = false;
+    }
+  }
+
+  void _onSpeechError(dynamic err) {
+    debugPrint('STT Error: ${err?.errorMsg ?? err}');
+    if (!mounted) return;
+    if (_isRecording) {
+      // Auto recover and restart listen loop if error is silence/timeout/no-match
+      _micStatusNotice = '🎙️ Listening... (Speak now in $_selectedVoiceLocaleLabel)';
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (mounted && _isRecording && !_speech.isListening) {
+          _listenLoop();
+        }
+      });
+    } else {
+      setState(() {
+        _micStatusNotice = 'Microphone notice: ${err?.errorMsg ?? err}';
+      });
+    }
+  }
+
+  void _switchVoiceLocale(String locale) {
+    if (_selectedVoiceLocale == locale) return;
+    setState(() {
+      _selectedVoiceLocale = locale;
+      _micStatusNotice = 'Language switched to $_selectedVoiceLocaleLabel';
+    });
+    if (_isRecording) {
+      _speech.stop().then((_) {
+        Future.delayed(const Duration(milliseconds: 250), () {
+          if (mounted && _isRecording) {
+            _listenLoop();
+          }
+        });
+      });
+    }
+  }
+
+  Future<void> _startContinuousListening() async {
+    if (!_speechEnabled) {
+      try {
+        final enabled = await _speech.initialize(
+          onError: (err) {
+            debugPrint('STT Error: ${err.errorMsg}');
+            if (mounted) {
+              _onSpeechError(err);
+            }
+          },
+          onStatus: _onSpeechStatus,
+        );
+        _speechEnabled = enabled;
+        if (enabled && _isRecording) {
+          _listenLoop();
+        }
+      } catch (e) {
+        debugPrint('STT enable error: $e');
+      }
+      return;
+    }
+    _listenLoop();
+  }
+
+  void _listenLoop() {
+    if (!_isRecording) return;
+    try {
+      if (_speech.isListening) return;
+      _speech.listen(
+        onResult: (result) {
+          if (!mounted) return;
+          final words = result.recognizedWords.trim();
+          if (words.isNotEmpty) {
+            setState(() {
+              _spokenText = words;
+              _micStatusNotice = 'Captured voice: "$words"';
+            });
+            _analyzeSpokenVoice(words);
+          }
+        },
+        onSoundLevelChange: (level) {
+          if (mounted && _isRecording) {
+            setState(() {
+              _soundLevel = level;
+              if (level.abs() > 0.08 && _spokenText.isEmpty) {
+                _micStatusNotice = '🎙️ Hearing elder voice... analyzing affect';
+              }
+            });
+          }
+        },
+        listenOptions: stt.SpeechListenOptions(
+          listenMode: stt.ListenMode.dictation,
+          cancelOnError: false,
+          partialResults: true,
+          localeId: _selectedVoiceLocale,
+          pauseFor: const Duration(seconds: 15),
+          listenFor: const Duration(minutes: 60),
+        ),
+      );
+    } catch (e) {
+      debugPrint('Speech listen error: $e');
+      if (_isRecording) {
+        Future.delayed(const Duration(milliseconds: 400), () {
+          if (mounted && _isRecording && !_speech.isListening) {
+            _listenLoop();
+          }
+        });
+      }
+    }
+  }
+
+  void _onSpeechStatus(String status) {
+    debugPrint('STT Status: $status');
+    if (!mounted) return;
+    if (status == 'listening') {
+      setState(() {
+        if (_spokenText.isEmpty) {
+          _micStatusNotice = '🎙️ Listening... (Speak in $_selectedVoiceLocaleLabel)';
+        }
+      });
+    } else if ((status == 'done' || status == 'notListening') && _isRecording) {
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (mounted && _isRecording && !_speech.isListening) {
+          _listenLoop();
+        }
+      });
+    }
+  }
+
+  void _stopContinuousListening() async {
+    try {
+      if (_speech.isListening) {
+        await _speech.stop();
+      }
+    } catch (e) {
+      debugPrint('Speech stop error: $e');
+    }
+  }
+
+  Color _getVoiceEmotionColor(String emotion) {
+    final lower = emotion.toLowerCase();
+    if (lower.contains('happy') || lower.contains('cheerful')) {
+      return AppColors.riskLow;
+    } else if (lower.contains('sad') || lower.contains('depressed')) {
+      return AppColors.riskHigh;
+    } else if (lower.contains('angry') || lower.contains('confus') || lower.contains('agitated')) {
+      return const Color(0xFFEA580C);
+    } else if (lower.contains('fear') || lower.contains('anxious') || lower.contains('tremulous')) {
+      return AppColors.primary;
+    } else if (lower.contains('listening')) {
+      return Colors.blueAccent;
+    }
+    return const Color(0xFF0284C7);
+  }
+
+  Future<void> _analyzeSpokenVoice(String text) async {
+    final clean = text.trim();
+    try {
+      final soundNorm = (_soundLevel.abs() * 2.5).clamp(0.0, 1.0);
+      final double pitchMod = (0.35 + (soundNorm * 0.55)).clamp(0.25, 0.95);
+      final double rhythmCalm = (0.80 - (soundNorm * 0.40)).clamp(0.30, 0.90);
+
+      final res = await VocalEmotionAiService.analyzeSpokenSpeech(
+        spokenText: clean,
+        pitchModulation: pitchMod,
+        rhythmCalmness: rhythmCalm,
+      );
+      if (!mounted) return;
+      setState(() {
+        _voiceEmotion = res.profileLabel;
+        _voiceConfidence = res.confidence;
+        _vocalWellnessScore = res.vocalWellnessScore;
+
+        if (res.acousticProfile == 'HAP') {
+          _commLevel = 'High';
+          _engagementLevel = 'High';
+          _responseTime = 'Normal';
+        } else if (res.acousticProfile == 'SAD') {
+          _commLevel = 'Low';
+          _engagementLevel = 'Low';
+          _responseTime = 'Delayed';
+        } else if (res.acousticProfile == 'ANG' || res.acousticProfile == 'DIS') {
+          _commLevel = 'Elevated';
+          _engagementLevel = 'High';
+          _responseTime = 'Rapid';
+        } else if (res.acousticProfile == 'FEA') {
+          _commLevel = 'Guarded';
+          _engagementLevel = 'Low';
+          _responseTime = 'Variable';
+        } else {
+          _commLevel = 'Moderate';
+          _engagementLevel = 'Moderate';
+          _responseTime = 'Normal';
+        }
+      });
+    } catch (e) {
+      debugPrint('Vocal analysis error: $e');
     }
   }
 
@@ -876,6 +1251,9 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
           setState(() {
             _recordSeconds++;
           });
+          if (_isRecording) {
+            _analyzeSpokenVoice(_spokenText);
+          }
         }
       });
     }
@@ -1006,6 +1384,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
     _aiChatScrollController.dispose();
     _conversationTimer?.cancel();
     AudioPlayerService.instance.stop();
+    LiveVoiceCaptureService.instance.stop();
     _flutterTts.stop();
     _speech.stop();
     super.dispose();
@@ -1022,29 +1401,53 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
       if (!mounted) return;
       setState(() {
         _isRecording = true;
+        _recordSeconds = 0;
+        _spokenText = '';
+        _soundLevel = 0.0;
+        _micStatusNotice = '🎙️ Listening... (Speak in $_selectedVoiceLocaleLabel)';
+        _voiceEmotion = 'Listening live...';
+        _voiceConfidence = 0.65;
       });
       _startRecordingTimer();
-      if (_speechEnabled) {
-        _speech.listen(onResult: (result) {
-          if (mounted) {
-            setState(() {
-              _spokenText = result.recognizedWords;
-            });
-          }
-        });
-      }
+      _startContinuousListening();
+
+      // Start physical Web Audio API microphone stream for real-time acoustic & laughter detection
+      LiveVoiceCaptureService.instance.start(
+        onAcousticFrame: (frame) {
+          if (!mounted || !_isRecording) return;
+          setState(() {
+            _soundLevel = frame.volume;
+            // Real-time laughter / cheerful voice detection (e.g. speaking while smiling/laughing)
+            if (frame.isLaughing) {
+              _voiceEmotion = 'Happy';
+              _voiceConfidence = frame.confidence;
+              _commLevel = 'High';
+              _engagementLevel = 'High';
+              _responseTime = 'Normal';
+            } else if (frame.volume > 0.08 && _spokenText.isEmpty) {
+              _voiceEmotion = frame.suggestedEmotion;
+              _voiceConfidence = frame.confidence;
+            }
+          });
+        },
+      );
+
       if (consentGranted) {
         await _facialCaptureService.startCaptureForVoiceRecording();
       }
     } else {
       setState(() {
         _isRecording = false;
+        _soundLevel = 0.0;
+        _micStatusNotice = '';
       });
       _recordTimer?.cancel();
-      if (_speechEnabled) {
-        await _speech.stop();
-      }
+      _stopContinuousListening();
+      LiveVoiceCaptureService.instance.stop();
       _facialCaptureService.stopCapture();
+      if (_spokenText.isNotEmpty) {
+        _analyzeSpokenVoice(_spokenText);
+      }
     }
   }
 
@@ -4607,7 +5010,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
       if (parsed == 9002 || _currentResident.name.contains('Sarah')) return 1;
       if (parsed == 9003 || _currentResident.name.contains('Arthur')) return 2;
       if (parsed == 9004 || _currentResident.name.contains('Margaret')) return 3;
-      if (parsed <= 100) return parsed;
+      return parsed;
     }
     if (authState.residentId != null) {
       return authState.residentId!;
@@ -4652,7 +5055,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
     }
 
     final bool hasVoiceSession = _recordSeconds > 0;
-    final double? vocalScore = hasVoiceSession ? 78.0 : null;
+    final double? vocalScore = hasVoiceSession ? _vocalWellnessScore : null;
 
     showDialog(
       context: context,
@@ -5335,91 +5738,6 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
             ),
           ),
         ),
-        Row(
-          children: [
-            if (isElder) ...[
-              OutlinedButton.icon(
-                onPressed: () {
-                  setState(() {
-                    _useSimplifiedElderView = !_useSimplifiedElderView;
-                  });
-                },
-                icon: Icon(
-                  _useSimplifiedElderView ? LucideIcons.layoutDashboard : LucideIcons.smile,
-                  size: 15,
-                  color: AppColors.primary,
-                ),
-                label: Text(
-                  _useSimplifiedElderView ? 'Full Dashboard' : 'Simplified Check-In',
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary),
-                ),
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: AppColors.primary),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                ),
-              ),
-              const SizedBox(width: 10),
-            ],
-            Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColors.card,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: const Icon(LucideIcons.bell, size: 16, color: AppColors.navy),
-                ),
-                Positioned(
-                  right: -2,
-                  top: -2,
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(
-                      color: AppColors.riskHigh,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Text(
-                      '3',
-                      style: TextStyle(
-                        fontSize: 9,
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(width: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              decoration: BoxDecoration(
-                color: AppColors.card,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: Row(
-                children: const [
-                  Icon(LucideIcons.calendar, size: 14, color: AppColors.muted),
-                  SizedBox(width: 8),
-                  Text(
-                    '12 May 2025',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.navy),
-                  ),
-                  SizedBox(width: 4),
-                  Text(
-                    'Monday, 10:30 AM',
-                    style: TextStyle(fontSize: 12, color: AppColors.muted),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
       ],
     );
   }
@@ -5434,22 +5752,35 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
         .map((w) => w.isNotEmpty ? w[0] : '')
         .join();
 
+    final cleanRoom = _currentResident.roomNo
+        .replaceAll('Room No: ', '')
+        .replaceAll('Room No ', '')
+        .replaceAll('Room ', '')
+        .replaceAll('Suite ', '')
+        .trim();
+
     return Container(
-      padding: const EdgeInsets.all(20),
+      width: double.infinity,
+      padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFE5E1F6), width: 1.2),
         boxShadow: [
           BoxShadow(
+            color: const Color(0xFF6C3FC5).withValues(alpha: 0.07),
+            blurRadius: 28,
+            offset: const Offset(0, 8),
+          ),
+          BoxShadow(
             color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
           ),
         ],
       ),
       child: Wrap(
-        spacing: 24,
+        spacing: 20,
         runSpacing: 16,
         alignment: WrapAlignment.spaceBetween,
         crossAxisAlignment: WrapCrossAlignment.center,
@@ -5457,24 +5788,56 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: const BoxDecoration(
-                  color: AppColors.primarySoft,
-                  shape: BoxShape.circle,
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  initials.isNotEmpty ? initials : 'R',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.primary,
+              // Resident Avatar with portrait image & active status indicator
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  RepaintBoundary(
+                    child: Container(
+                      width: 62,
+                      height: 62,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: const Color(0xFFDDD6FE), width: 2.5),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF6C3FC5).withValues(alpha: 0.28),
+                            blurRadius: 16,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: CarevoraAvatar(
+                        key: const ValueKey('resident_emotional_banner_avatar'),
+                        avatarUrl: _currentResident.avatarUrl ?? (authState.isElder ? authState.avatarUrl : null),
+                        radius: 31,
+                        initials: initials.isNotEmpty ? initials : 'R',
+                      ),
+                    ),
                   ),
-                ),
+                  Positioned(
+                    right: 0,
+                    bottom: 0,
+                    child: Container(
+                      width: 16,
+                      height: 16,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF10B981),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2.5),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF10B981).withValues(alpha: 0.6),
+                            blurRadius: 6,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 16),
+              // Resident Identity & Demographic Information
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -5482,131 +5845,259 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        '${_currentResident.name} (ID: R00${_currentResident.id.length > 2 ? _currentResident.id.substring(_currentResident.id.length - 2) : _currentResident.id})',
+                        _currentResident.name,
                         style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
+                          fontSize: 21,
+                          fontWeight: FontWeight.w800,
                           color: AppColors.navy,
+                          letterSpacing: -0.3,
                         ),
                       ),
-                      // Dropdown to switch residents seamlessly for staff
-                      if (!authState.isElder && _availableResidents.length > 1)
-                        DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                            value: _availableResidents.any((r) => r.id == _currentResident.id)
-                                ? _currentResident.id
-                                : (_availableResidents.isNotEmpty ? _availableResidents.first.id : null),
-                            icon: const Icon(LucideIcons.chevronDown, size: 16, color: AppColors.primary),
-                            dropdownColor: AppColors.card,
+                      const SizedBox(width: 10),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 3.5,
+                        ),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFFEDE9FE), Color(0xFFF3E8FF)],
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFDDD6FE)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: const [
+                            Icon(
+                              LucideIcons.userCheck,
+                              size: 11,
+                              color: AppColors.primary,
+                            ),
+                            SizedBox(width: 5),
+                            Text(
+                              'ELDER / RESIDENT',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.primary,
+                                letterSpacing: 0.4,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (_facilityName.isNotEmpty) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 9,
+                            vertical: 3.5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF1F5F9),
                             borderRadius: BorderRadius.circular(12),
-                            onChanged: (String? newResId) {
-                              if (newResId != null) {
-                                final selected = _availableResidents.firstWhere(
-                                  (r) => r.id == newResId,
-                                  orElse: () => _availableResidents.first,
-                                );
-                                setState(() {
-                                  _currentResident = selected;
-                                  _loadResidentData(selected.id);
-                                });
-                              }
-                            },
-                            items: () {
-                              final seen = <String>{};
-                              final uniqueResidents = <Resident>[];
-                              for (final r in _availableResidents) {
-                                if (seen.add(r.id)) {
-                                  uniqueResidents.add(r);
-                                }
-                              }
-                              return uniqueResidents.map((Resident r) {
-                                return DropdownMenuItem<String>(
-                                  value: r.id,
-                                  child: Text(
-                                    r.name,
-                                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.navy),
-                                  ),
-                                );
-                              }).toList();
-                            }(),
+                            border: Border.all(color: const Color(0xFFE2E8F0)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                LucideIcons.building2,
+                                size: 11,
+                                color: Color(0xFF475569),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                _facilityName,
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF475569),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
+                      ],
                     ],
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Age ${_currentResident.age} / ${_currentResident.gender} / Room No: ${_currentResident.roomNo}',
-                    style: const TextStyle(fontSize: 12, color: AppColors.muted),
+                  const SizedBox(height: 8),
+                  // Rich Demographic Attribute Pills
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    children: [
+                      _buildResidentDetailPill(
+                        icon: LucideIcons.calendar,
+                        label: 'Age: ${_currentResident.age} yrs',
+                        color: const Color(0xFF4F46E5),
+                        bg: const Color(0xFFEEF2FF),
+                        border: const Color(0xFFE0E7FF),
+                      ),
+                      _buildResidentDetailPill(
+                        icon: LucideIcons.doorOpen,
+                        label: cleanRoom.isNotEmpty ? 'Room $cleanRoom' : 'Room 30',
+                        color: const Color(0xFF059669),
+                        bg: const Color(0xFFECFDF5),
+                        border: const Color(0xFFA7F3D0),
+                      ),
+                      _buildResidentDetailPill(
+                        icon: LucideIcons.graduationCap,
+                        label: 'Education: ${_educationYears ?? 13} yrs',
+                        color: const Color(0xFF7C3AED),
+                        bg: const Color(0xFFF5F3FF),
+                        border: const Color(0xFFDDD6FE),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ],
           ),
           Wrap(
-            spacing: 32,
-            runSpacing: 12,
+            spacing: 12,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'ASSESSMENT TYPE',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.8,
-                      color: AppColors.muted,
+              // Caregiver Switcher if multiple residents
+              if (!authState.isElder && _availableResidents.length > 1)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _availableResidents.any((r) => r.id == _currentResident.id)
+                          ? _currentResident.id
+                          : (_availableResidents.isNotEmpty ? _availableResidents.first.id : null),
+                      icon: const Icon(LucideIcons.chevronDown, size: 14, color: AppColors.primary),
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        color: AppColors.navy,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      items: () {
+                        final seen = <String>{};
+                        final unique = <Resident>[];
+                        for (final r in _availableResidents) {
+                          if (seen.add(r.id)) unique.add(r);
+                        }
+                        return unique.map((Resident r) {
+                          final clean = (r.name.trim().isNotEmpty && r.name.trim() != '-')
+                              ? r.name.trim()
+                              : 'Resident #${r.id}';
+                          return DropdownMenuItem<String>(
+                            value: r.id,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(LucideIcons.user, size: 13, color: AppColors.primary),
+                                const SizedBox(width: 6),
+                                Text('$clean (ID: ${_formatDisplayId(r.id)})'),
+                              ],
+                            ),
+                          );
+                        }).toList();
+                      }(),
+                      onChanged: (String? newResId) {
+                        if (newResId != null) {
+                          final selected = _availableResidents.firstWhere(
+                            (r) => r.id == newResId,
+                            orElse: () => _availableResidents.first,
+                          );
+                          setState(() {
+                            _currentResident = selected;
+                            if (_liveProfiles != null && _liveProfiles!.isNotEmpty) {
+                              final matched = _liveProfiles!.firstWhere(
+                                (p) => p.id.toString() == newResId,
+                                orElse: () => _liveProfiles!.first,
+                              );
+                              _educationYears = matched.educationYears ?? 13;
+                              if (matched.elderHomeName != null && matched.elderHomeName!.isNotEmpty) {
+                                _facilityName = matched.elderHomeName!;
+                              }
+                            }
+                            _loadResidentData(selected.id);
+                          });
+                        }
+                      },
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: const [
-                      Icon(LucideIcons.heartPulse, size: 14, color: AppColors.primary),
-                      SizedBox(width: 6),
-                      Text(
-                        'Loneliness & Social-Isolation Assessment',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.navy,
-                        ),
-                      ),
-                    ],
+                ),
+              // Floating Session Battery Badge
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 15,
+                  vertical: 8.5,
+                ),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF6C3FC5), Color(0xFF8B5CF6)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
-                ],
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'SESSION STARTED',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.8,
-                      color: AppColors.muted,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF6C3FC5).withValues(alpha: 0.28),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: const [
-                      Icon(LucideIcons.clock, size: 14, color: AppColors.primary),
-                      SizedBox(width: 6),
-                      Text(
-                        '10:30:15 AM',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.navy,
-                        ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(LucideIcons.sparkles, size: 14, color: Colors.white),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Self-Response Session (${_questions.length} Items)',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                        letterSpacing: 0.2,
                       ),
-                    ],
-                  ),
-                ],
+                    ),
+                  ],
+                ),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildResidentDetailPill({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required Color bg,
+    required Color border,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: border),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
           ),
         ],
       ),
@@ -6503,9 +6994,10 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                 style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.navy),
               ),
               Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                     decoration: BoxDecoration(
                       color: _isRecording ? AppColors.riskHighBg : AppColors.border,
                       borderRadius: BorderRadius.circular(12),
@@ -6522,7 +7014,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                         Text(
                           _isRecording ? 'Recording...' : 'Paused',
                           style: TextStyle(
-                            fontSize: 11,
+                            fontSize: 10,
                             fontWeight: FontWeight.bold,
                             color: _isRecording ? AppColors.riskHigh : AppColors.muted,
                           ),
@@ -6530,7 +7022,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                       ],
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 6),
                   Text(
                     _formatTimer(_recordSeconds),
                     style: const TextStyle(
@@ -6543,6 +7035,33 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
               ),
             ],
           ),
+          const SizedBox(height: 8),
+
+          // Speech Language selection bar
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Speech Language:',
+                style: TextStyle(fontSize: 11, color: AppColors.muted, fontWeight: FontWeight.w500),
+              ),
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.border),
+                ),
+                padding: const EdgeInsets.all(2),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildLangToggleItem('si-LK', '🇱🇰 සිංහල'),
+                    _buildLangToggleItem('en-US', '🇺🇸 English'),
+                  ],
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 16),
 
           // Dynamic Animated Audio Waveform Box
@@ -6551,7 +7070,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.border),
+              border: Border.all(color: _isRecording ? AppColors.primary.withValues(alpha: 0.5) : AppColors.border),
             ),
             child: AnimatedBuilder(
               animation: _waveController,
@@ -6562,22 +7081,24 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                   children: List.generate(24, (i) {
                     final factor = (1 + 0.8 * ((i % 4 == 0) ? 1.0 : 0.4));
                     final waveValue = (_waveController.value * 6.28 + (i * 0.3)).abs();
+                    final soundBoost = (_soundLevel.abs() > 0.02) ? (_soundLevel.abs() * 50.0).clamp(0.0, 55.0) : 0.0;
                     final dynamicHeight = _isRecording
-                        ? (12.0 + (35.0 * (0.3 + 0.7 * (1.0 - (waveValue % 1.0)))) * factor)
-                            .clamp(8.0, 75.0)
+                        ? (12.0 + soundBoost + (35.0 * (0.3 + 0.7 * (1.0 - (waveValue % 1.0)))) * factor)
+                            .clamp(8.0, 80.0)
                         : 6.0;
 
+                    final emotionColor = _getVoiceEmotionColor(_voiceEmotion);
                     return Container(
                       width: 4,
                       height: dynamicHeight,
                       decoration: BoxDecoration(
-                        color: _isRecording ? AppColors.primary : AppColors.border,
+                        color: _isRecording ? emotionColor : AppColors.border,
                         borderRadius: BorderRadius.circular(3),
                         gradient: _isRecording
                             ? LinearGradient(
                                 colors: [
-                                  AppColors.primary,
-                                  AppColors.primary.withValues(alpha: 0.5),
+                                  emotionColor,
+                                  emotionColor.withValues(alpha: 0.5),
                                 ],
                                 begin: Alignment.topCenter,
                                 end: Alignment.bottomCenter,
@@ -6629,7 +7150,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
               ],
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
 
           // Spoken Transcript Preview
           Container(
@@ -6637,24 +7158,146 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppColors.border),
+              border: Border.all(color: _isRecording ? AppColors.primary.withValues(alpha: 0.4) : AppColors.border),
             ),
             child: Row(
               children: [
-                const Icon(LucideIcons.messageSquare, size: 14, color: AppColors.primary),
+                Icon(
+                  _isRecording ? LucideIcons.mic : LucideIcons.messageSquare,
+                  size: 14,
+                  color: _isRecording ? AppColors.riskHigh : AppColors.primary,
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    _spokenText,
+                    _spokenText.isNotEmpty
+                        ? _spokenText
+                        : (_isRecording
+                            ? (_micStatusNotice.isNotEmpty ? _micStatusNotice : '🎙️ Listening... (Speak in $_selectedVoiceLocaleLabel)')
+                            : 'Tap the microphone to speak your response...'),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 11, fontStyle: FontStyle.italic, color: AppColors.navy),
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontStyle: FontStyle.italic,
+                      color: _spokenText.isNotEmpty
+                          ? AppColors.navy
+                          : (_isRecording ? AppColors.primary : AppColors.muted),
+                      fontWeight: _isRecording ? FontWeight.w600 : FontWeight.normal,
+                    ),
                   ),
                 ),
+                if (_spokenText.isNotEmpty)
+                  GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _spokenText = '';
+                      });
+                    },
+                    child: const Icon(LucideIcons.x, size: 14, color: AppColors.muted),
+                  ),
               ],
             ),
           ),
+          if (_isRecording || _spokenText.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+              decoration: BoxDecoration(
+                color: _getVoiceEmotionColor(_voiceEmotion).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: _getVoiceEmotionColor(_voiceEmotion).withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    _isRecording ? Icons.sensors : LucideIcons.checkCircle2,
+                    size: 14,
+                    color: _getVoiceEmotionColor(_voiceEmotion),
+                  ),
+                  const SizedBox(width: 6),
+                  const Text(
+                    'Elder Voice Emotion: ',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.navy),
+                  ),
+                  Expanded(
+                    child: Text(
+                      '$_voiceEmotion (${(_voiceConfidence * 100).toInt()}%)',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: _getVoiceEmotionColor(_voiceEmotion),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          const SizedBox(height: 10),
+
+          // Quick Voice Test Prompts
+          Wrap(
+            spacing: 6,
+            runSpacing: 4,
+            children: [
+              _buildQuickSpeechChip('😊 Feeling Happy & Fine', 'I feel very happy and fine today.'),
+              _buildQuickSpeechChip('😔 Feeling Sad & Lonely', 'I feel sad and alone today.'),
+              _buildQuickSpeechChip('😌 Calm Baseline', 'I am calm and feeling peaceful.'),
+              _buildQuickSpeechChip('😟 Anxious / Worried', 'I feel nervous and worried.'),
+              _buildQuickSpeechChip('🇱🇰 ඔව් සතුටුයි', 'ඔව් අද මට සතුටින් සැනසීමක් දැනෙනවා.'),
+              _buildQuickSpeechChip('🇱🇰 මට දුකයි', 'මට අද දුකයි සහ පාළුයි.'),
+            ],
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildLangToggleItem(String locale, String label) {
+    final isSelected = _selectedVoiceLocale == locale;
+    return InkWell(
+      onTap: () => _switchVoiceLocale(locale),
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.primary : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+            color: isSelected ? Colors.white : AppColors.muted,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickSpeechChip(String label, String sampleText) {
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _spokenText = sampleText;
+          _micStatusNotice = 'Sample selected: "$sampleText"';
+        });
+        _analyzeSpokenVoice(sampleText);
+      },
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: AppColors.lavenderBg,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.lilac.withValues(alpha: 0.6)),
+        ),
+        child: Text(
+          label,
+          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.primary),
+        ),
       ),
     );
   }
@@ -6888,10 +7531,45 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Voice Emotion', style: TextStyle(fontSize: 12, color: AppColors.muted)),
-              Text(
-                '$_voiceEmotion  ${(_voiceConfidence * 100).toInt()}%',
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blueAccent),
+              Row(
+                children: [
+                  const Text('Voice Emotion', style: TextStyle(fontSize: 12, color: AppColors.muted)),
+                  if (_isRecording) ...[
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                      decoration: BoxDecoration(
+                        color: AppColors.riskHighBg,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: const [
+                          Icon(Icons.fiber_manual_record, size: 7, color: AppColors.riskHigh),
+                          SizedBox(width: 3),
+                          Text(
+                            'LIVE',
+                            style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppColors.riskHigh),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  '$_voiceEmotion  ${(_voiceConfidence * 100).toInt()}%',
+                  textAlign: TextAlign.end,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: _getVoiceEmotionColor(_voiceEmotion),
+                  ),
+                ),
               ),
             ],
           ),
@@ -6902,7 +7580,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
               value: _voiceConfidence,
               minHeight: 6,
               backgroundColor: AppColors.border,
-              color: Colors.blueAccent,
+              color: _getVoiceEmotionColor(_voiceEmotion),
             ),
           ),
           const SizedBox(height: 18),
@@ -7049,16 +7727,21 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
           const SizedBox(height: 14),
 
           // Section B: Social-Isolation Indicators
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 6,
             children: [
-              Row(
+              Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 8,
+                runSpacing: 4,
                 children: [
                   const Text(
                     'Social-Isolation Indicators',
                     style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.riskHigh),
                   ),
-                  const SizedBox(width: 8),
                   if (_isLoadingSocialAudit)
                     const SizedBox(
                       width: 14,
@@ -7085,7 +7768,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: const Text(
-                        'Unassessed — No Caregiver Social Audit On File',
+                        'Unassessed (No Caregiver Audit)',
                         style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF92400E)),
                       ),
                     ),

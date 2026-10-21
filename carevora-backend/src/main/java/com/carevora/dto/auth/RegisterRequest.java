@@ -28,12 +28,16 @@ public class RegisterRequest {
     @NotNull(message = "Role is required (CAREGIVER, ELDER, DOCTOR)")
     private UserRole role;
 
+    // Profile picture (Base64 data URL or image URL for CAREGIVER, ELDER, DOCTOR)
+    private String avatarUrl;
+
     // Selected Elder Home (Required for CAREGIVER and ELDER)
     private Long elderHomeId;
 
     // Optional fields for Elder
     private String roomNumber;
     private Integer age;
+    private Integer educationYears;
     private String emergencyContact;
 
     // Optional fields for Caregiver / Doctor
