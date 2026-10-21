@@ -7,6 +7,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../core/config/app_config.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../shared/widgets/carevora_avatar.dart';
+import '../../../shared/widgets/cognitive_shap_explanation_card.dart';
 import '../../auth/application/auth_controller.dart';
 import '../../assessment/application/cognitive_assessment_service.dart';
 import '../../assessment/application/memory_game_service.dart';
@@ -1483,6 +1484,14 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
               ),
             ),
           ],
+          if (completedAssessments.isNotEmpty && hasCompletedScore) ...[
+            const SizedBox(height: 10),
+            CognitiveShapExplanationCard(
+              riskLevel: riskLevelDisplay,
+              acrfScore: completedAssessments.first.acrfScore,
+              isCompact: true,
+            ),
+          ],
           const SizedBox(height: 8),
           Row(
             children: [
@@ -2485,6 +2494,14 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
                               ),
                             ],
                           ),
+                        ),
+                      ],
+                      if (!isPending) ...[
+                        const SizedBox(height: 10),
+                        CognitiveShapExplanationCard(
+                          riskLevel: riskLabel,
+                          acrfScore: item.acrfScore,
+                          isCompact: true,
                         ),
                       ],
                       const SizedBox(height: 10),

@@ -39,10 +39,18 @@ class _OverviewPageState extends ConsumerState<OverviewPage> {
     if (authState.isElder) {
       final resId = authState.residentId ?? 165;
       try {
-        final profile = await CognitiveAssessmentService.fetchResident(
+        final profileFuture = CognitiveAssessmentService.fetchResident(
           residentId: resId,
           token: authState.token,
         );
+        final historyFuture = CognitiveAssessmentService.fetchHistory(
+          residentId: resId,
+          token: authState.token,
+        ).catchError((_) => <CognitiveSubmissionResult>[]);
+
+        final profile = await profileFuture;
+        final history = await historyFuture;
+
         if (profile != null && mounted) {
           final cleanRoom = profile.roomNumber
               .replaceAll('Room No: ', '')
@@ -64,6 +72,30 @@ class _OverviewPageState extends ConsumerState<OverviewPage> {
               ? profile.gender!
               : (isFemale ? 'Female' : (isMale ? 'Male' : 'Senior Resident'));
 
+          double realCogScore = (resId == 165 || profile.name.contains('Malini'))
+              ? 0.89
+              : MockCarevoraData.defaultResident.cognitiveScore;
+          double realCogTrend = MockCarevoraData.defaultResident.cognitiveTrend;
+
+          final completed = history.where((a) => a.acrfScore != null).toList();
+          if (completed.isNotEmpty) {
+            final latest = completed.first;
+            final raw = latest.acrfScore!;
+            realCogScore = (raw > 1.0) ? (raw / 100.0) : raw;
+
+            if (completed.length > 1 && completed[1].acrfScore != null) {
+              final prevRaw = completed[1].acrfScore!;
+              final prevScore = (prevRaw > 1.0) ? (prevRaw / 100.0) : prevRaw;
+              realCogTrend = double.parse((realCogScore - prevScore).toStringAsFixed(2));
+            } else {
+              realCogTrend = 0.08;
+            }
+          } else if (profile.cognitiveScore != null) {
+            final raw = profile.cognitiveScore!;
+            realCogScore = (raw > 1.0) ? (raw / 100.0) : raw;
+            realCogTrend = 0.08;
+          }
+
           setState(() {
             _liveResident = Resident(
               id: profile.id.toString(),
@@ -72,8 +104,8 @@ class _OverviewPageState extends ConsumerState<OverviewPage> {
               gender: genderStr,
               roomNo: cleanRoom.isNotEmpty ? cleanRoom : '30',
               lastAssessmentDate: 'Today, 10:30 AM',
-              cognitiveScore: MockCarevoraData.defaultResident.cognitiveScore,
-              cognitiveTrend: MockCarevoraData.defaultResident.cognitiveTrend,
+              cognitiveScore: realCogScore,
+              cognitiveTrend: realCogTrend,
               emotionalScore: MockCarevoraData.defaultResident.emotionalScore,
               emotionalTrend: MockCarevoraData.defaultResident.emotionalTrend,
               metabolicScore: MockCarevoraData.defaultResident.metabolicScore,
@@ -85,6 +117,16 @@ class _OverviewPageState extends ConsumerState<OverviewPage> {
           });
         }
       } catch (_) {}
+    }
+  }
+
+  (String, Color, Color) _getCognitiveRiskBadge(double score) {
+    if (score >= 0.70) {
+      return ('Low Risk', AppColors.riskLow, AppColors.riskLowBg);
+    } else if (score >= 0.50) {
+      return ('Moderate', AppColors.riskModerate, AppColors.riskModerateBg);
+    } else {
+      return ('High Risk', AppColors.riskHigh, AppColors.riskHighBg);
     }
   }
 
@@ -116,6 +158,9 @@ class _OverviewPageState extends ConsumerState<OverviewPage> {
       final defaultRoom = (bId == 165 || (userName != null && userName.contains('Malini')))
           ? '30'
           : (bId == 1 || (userName != null && userName.contains('Sarah')) ? '204' : '101');
+      final defaultCogScore = (bId == 165 || (userName != null && userName.contains('Malini')))
+          ? 0.89
+          : (bId == 1 || (userName != null && userName.contains('Sarah')) ? 0.85 : MockCarevoraData.defaultResident.cognitiveScore);
 
       return Resident(
         id: bId.toString(),
@@ -126,7 +171,7 @@ class _OverviewPageState extends ConsumerState<OverviewPage> {
         gender: detectedGender,
         roomNo: defaultRoom,
         lastAssessmentDate: 'Today, 10:30 AM',
-        cognitiveScore: MockCarevoraData.defaultResident.cognitiveScore,
+        cognitiveScore: defaultCogScore,
         cognitiveTrend: MockCarevoraData.defaultResident.cognitiveTrend,
         emotionalScore: MockCarevoraData.defaultResident.emotionalScore,
         emotionalTrend: MockCarevoraData.defaultResident.emotionalTrend,
@@ -295,95 +340,110 @@ class _OverviewPageState extends ConsumerState<OverviewPage> {
           const SizedBox(height: 20),
 
           // 2. 4 Multimodal Score Cards
-          ResponsiveBuilder(
-            mobile: (context) => SizedBox(
-              height: 180,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                children: [
-                  SizedBox(
-                    width: 260,
-                    child: ScoreCard(
-                      title: 'Cognitive Health',
-                      score: resident.cognitiveScore,
-                      delta: resident.cognitiveTrend,
-                      onTap: () => context.go('/dashboard/cognitive/session'),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  SizedBox(
-                    width: 260,
-                    child: ScoreCard(
-                      title: 'Emotional Wellness',
-                      score: resident.emotionalScore,
-                      delta: resident.emotionalTrend,
-                      onTap: () => context.go('/dashboard/emotional'),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  SizedBox(
-                    width: 260,
-                    child: ScoreCard(
-                      title: 'Metabolic Health',
-                      score: resident.metabolicScore,
-                      delta: resident.metabolicTrend,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  SizedBox(
-                    width: 260,
-                    child: ScoreCard(
-                      title: 'Overall Wellness Index',
-                      score: resident.overallIndex,
-                      delta: resident.overallTrend,
-                      isGauge: true,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            desktop: (context) => LayoutBuilder(
-              builder: (context, constraints) {
-                return Row(
-                  children: [
-                    Expanded(
-                      child: ScoreCard(
-                        title: 'Cognitive Health',
-                        score: resident.cognitiveScore,
-                        delta: resident.cognitiveTrend,
-                        onTap: () => context.go('/dashboard/cognitive/session'),
+          Builder(
+            builder: (context) {
+              final cogBadge = _getCognitiveRiskBadge(resident.cognitiveScore);
+              final cogDeltaColor = resident.cognitiveTrend >= 0 ? AppColors.riskLow : AppColors.riskHigh;
+
+              return ResponsiveBuilder(
+                mobile: (context) => SizedBox(
+                  height: 180,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    children: [
+                      SizedBox(
+                        width: 260,
+                        child: ScoreCard(
+                          title: 'Cognitive Health',
+                          score: resident.cognitiveScore,
+                          delta: resident.cognitiveTrend,
+                          customBadgeLabel: cogBadge.$1,
+                          customBadgeColor: cogBadge.$2,
+                          customBadgeBgColor: cogBadge.$3,
+                          customDeltaColor: cogDeltaColor,
+                          onTap: () => context.go('/dashboard/cognitive/session'),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: ScoreCard(
-                        title: 'Emotional Wellness',
-                        score: resident.emotionalScore,
-                        delta: resident.emotionalTrend,
-                        onTap: () => context.go('/dashboard/emotional'),
+                      const SizedBox(width: 12),
+                      SizedBox(
+                        width: 260,
+                        child: ScoreCard(
+                          title: 'Emotional Wellness',
+                          score: resident.emotionalScore,
+                          delta: resident.emotionalTrend,
+                          onTap: () => context.go('/dashboard/emotional'),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: ScoreCard(
-                        title: 'Metabolic Health',
-                        score: resident.metabolicScore,
-                        delta: resident.metabolicTrend,
+                      const SizedBox(width: 12),
+                      SizedBox(
+                        width: 260,
+                        child: ScoreCard(
+                          title: 'Metabolic Health',
+                          score: resident.metabolicScore,
+                          delta: resident.metabolicTrend,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: ScoreCard(
-                        title: 'Overall Wellness Index',
-                        score: resident.overallIndex,
-                        delta: resident.overallTrend,
-                        isGauge: true,
+                      const SizedBox(width: 12),
+                      SizedBox(
+                        width: 260,
+                        child: ScoreCard(
+                          title: 'Overall Wellness Index',
+                          score: resident.overallIndex,
+                          delta: resident.overallTrend,
+                          isGauge: true,
+                        ),
                       ),
-                    ),
-                  ],
-                );
-              },
-            ),
+                    ],
+                  ),
+                ),
+                desktop: (context) => LayoutBuilder(
+                  builder: (context, constraints) {
+                    return Row(
+                      children: [
+                        Expanded(
+                          child: ScoreCard(
+                            title: 'Cognitive Health',
+                            score: resident.cognitiveScore,
+                            delta: resident.cognitiveTrend,
+                            customBadgeLabel: cogBadge.$1,
+                            customBadgeColor: cogBadge.$2,
+                            customBadgeBgColor: cogBadge.$3,
+                            customDeltaColor: cogDeltaColor,
+                            onTap: () => context.go('/dashboard/cognitive/session'),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: ScoreCard(
+                            title: 'Emotional Wellness',
+                            score: resident.emotionalScore,
+                            delta: resident.emotionalTrend,
+                            onTap: () => context.go('/dashboard/emotional'),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: ScoreCard(
+                            title: 'Metabolic Health',
+                            score: resident.metabolicScore,
+                            delta: resident.metabolicTrend,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: ScoreCard(
+                            title: 'Overall Wellness Index',
+                            score: resident.overallIndex,
+                            delta: resident.overallTrend,
+                            isGauge: true,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              );
+            },
           ),
           const SizedBox(height: 20),
 
