@@ -95,6 +95,7 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   ResidentItem? _selectedResident;
+  int _selectedResidentWellnessTab = 0; // 0: Cognitive, 1: Emotional, 2: Metabolic
   List<CognitiveSubmissionResult> _residentCognitiveHistory = [];
   bool _isLoadingHistory = false;
   String? _historyError;
@@ -357,6 +358,7 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
   Future<void> _selectResident(ResidentItem resident) async {
     setState(() {
       _selectedResident = resident;
+      _selectedResidentWellnessTab = 0;
       _isLoadingHistory = true;
       _historyError = null;
       _residentCognitiveHistory = [];
@@ -470,6 +472,7 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
   void _clearSelectedResident() {
     setState(() {
       _selectedResident = null;
+      _selectedResidentWellnessTab = 0;
       _residentCognitiveHistory = [];
       _isLoadingHistory = false;
       _historyError = null;
@@ -1234,33 +1237,324 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
         ),
         const SizedBox(height: 20),
 
-        // Three Individual Wellness Cards in Responsive Wrap to prevent RenderFlex overflow
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final double cardWidth = constraints.maxWidth < 360
-                ? constraints.maxWidth
-                : constraints.maxWidth < 720
-                    ? constraints.maxWidth
-                    : (constraints.maxWidth < 1100 ? (constraints.maxWidth - 16) / 2 : 340.0);
-            return Wrap(
-              spacing: 16,
-              runSpacing: 16,
-              children: [
-                _buildCognitiveWellnessCard(r, cardWidth),
-                _buildEmotionalWellnessCard(r, cardWidth),
-                _buildMetabolicWellnessCard(r, cardWidth),
-                _buildMemoryGamesProgressCard(r, cardWidth),
-              ],
-            );
-          },
-        ),
+        // Three Interactive Wellness Domain Buttons (Cognitive, Emotional, Metabolic)
+        _buildWellnessDomainTabs(r),
+        const SizedBox(height: 20),
 
-        // Optional History View / Modal
-        if (_showHistoryView) ...[
-          const SizedBox(height: 24),
-          _buildCognitiveHistorySection(r),
+        // Domain-specific content
+        if (_selectedResidentWellnessTab == 0) ...[
+          _buildCognitiveTabContent(r),
+        ] else if (_selectedResidentWellnessTab == 1) ...[
+          _buildEmotionalTabContent(r),
+        ] else ...[
+          _buildMetabolicTabContent(r),
         ],
       ],
+    );
+  }
+
+  /// 3 Modern Interactive Domain Selection Buttons (Cognitive, Emotional, Metabolic)
+  Widget _buildWellnessDomainTabs(ResidentItem r) {
+    // 1. Cognitive status tag
+    final completedCog = _residentCognitiveHistory.where((a) {
+      final s = a.status.toUpperCase();
+      return s == 'COMPLETED' || s == 'COMPLETED_PREDICTION_UNAVAILABLE';
+    }).length;
+    final String cogTag = _isLoadingHistory
+        ? 'Checking...'
+        : (completedCog > 0 ? '$completedCog Completed' : 'Cognitive AI');
+
+    // 2. Emotional status tag
+    final String emoTag = r.emotionalScore != null
+        ? '${r.emotionalScore!.toStringAsFixed(1)}%'
+        : (r.currentStatus ?? 'Stable');
+
+    // 3. Metabolic status tag
+    final latestMet = _latestMetabolic;
+    final tiersMet = latestMet?.outcomes.where((o) => o.isOk).map((o) => o.riskTier).toList() ?? const [];
+    final overallMet = tiersMet.contains('high')
+        ? 'High Risk'
+        : tiersMet.contains('watch')
+            ? 'Watch'
+            : tiersMet.contains('low')
+                ? 'Low Risk'
+                : (_isLoadingMetabolic ? 'Loading...' : 'Not screened');
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final bool isStacked = constraints.maxWidth < 820;
+
+        final cogBtn = _buildDomainTabButton(
+          index: 0,
+          title: 'Cognitive Wellness',
+          subtitle: 'Assessments & Memory Games',
+          icon: LucideIcons.brain,
+          primaryColor: AppColors.primary,
+          activeGradient: const [Color(0xFF6C5CE7), Color(0xFF8B5CF6)],
+          tag: cogTag,
+          tagBg: AppColors.primarySoft,
+          tagFg: AppColors.primaryDeep,
+        );
+
+        final emoBtn = _buildDomainTabButton(
+          index: 1,
+          title: 'Emotional Wellness',
+          subtitle: 'Affective Telemetry & SHAP AI',
+          icon: LucideIcons.heartHandshake,
+          primaryColor: const Color(0xFFDB2777),
+          activeGradient: const [Color(0xFFDB2777), Color(0xFFF43F5E)],
+          tag: emoTag,
+          tagBg: const Color(0xFFFCE7F3),
+          tagFg: const Color(0xFFBE185D),
+        );
+
+        final metBtn = _buildDomainTabButton(
+          index: 2,
+          title: 'Metabolic Wellness',
+          subtitle: 'NHANES Risk Screenings',
+          icon: LucideIcons.activity,
+          primaryColor: const Color(0xFF059669),
+          activeGradient: const [Color(0xFF059669), Color(0xFF10B981)],
+          tag: overallMet,
+          tagBg: const Color(0xFFD1FAE5),
+          tagFg: const Color(0xFF047857),
+        );
+
+        if (isStacked) {
+          return Column(
+            children: [
+              cogBtn,
+              const SizedBox(height: 10),
+              emoBtn,
+              const SizedBox(height: 10),
+              metBtn,
+            ],
+          );
+        }
+
+        return Row(
+          children: [
+            Expanded(child: cogBtn),
+            const SizedBox(width: 14),
+            Expanded(child: emoBtn),
+            const SizedBox(width: 14),
+            Expanded(child: metBtn),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildDomainTabButton({
+    required int index,
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color primaryColor,
+    required List<Color> activeGradient,
+    required String tag,
+    required Color tagBg,
+    required Color tagFg,
+  }) {
+    final isSelected = _selectedResidentWellnessTab == index;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          setState(() {
+            _selectedResidentWellnessTab = index;
+          });
+        },
+        borderRadius: BorderRadius.circular(16),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeInOut,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            gradient: isSelected
+                ? LinearGradient(
+                    colors: activeGradient,
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  )
+                : null,
+            color: isSelected ? null : Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isSelected ? Colors.transparent : AppColors.border,
+              width: isSelected ? 0 : 1.2,
+            ),
+            boxShadow: [
+              if (isSelected)
+                BoxShadow(
+                  color: primaryColor.withValues(alpha: 0.28),
+                  blurRadius: 14,
+                  offset: const Offset(0, 5),
+                )
+              else
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.02),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? Colors.white.withValues(alpha: 0.22)
+                      : primaryColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Center(
+                  child: Icon(
+                    icon,
+                    size: 20,
+                    color: isSelected ? Colors.white : primaryColor,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            title,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: isSelected ? Colors.white : AppColors.navy,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? Colors.white.withValues(alpha: 0.25)
+                                : tagBg,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            tag,
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: isSelected ? Colors.white : tagFg,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: isSelected
+                            ? Colors.white.withValues(alpha: 0.88)
+                            : AppColors.muted,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              if (isSelected) ...[
+                const SizedBox(width: 6),
+                Container(
+                  width: 20,
+                  height: 20,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.25),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Center(
+                    child: Icon(
+                      LucideIcons.check,
+                      size: 12,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Cognitive Domain View: Shows Cognitive Wellness Card + Memory Games Progress side-by-side
+  Widget _buildCognitiveTabContent(ResidentItem r) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isNarrow = constraints.maxWidth < 780;
+        final cardWidth = isNarrow ? constraints.maxWidth : (constraints.maxWidth - 16) / 2;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (isNarrow) ...[
+              _buildCognitiveWellnessCard(r, cardWidth),
+              const SizedBox(height: 16),
+              _buildMemoryGamesProgressCard(r, cardWidth),
+            ] else ...[
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(child: _buildCognitiveWellnessCard(r, double.infinity)),
+                  const SizedBox(width: 16),
+                  Expanded(child: _buildMemoryGamesProgressCard(r, double.infinity)),
+                ],
+              ),
+            ],
+            if (_showHistoryView) ...[
+              const SizedBox(height: 24),
+              _buildCognitiveHistorySection(r),
+            ],
+          ],
+        );
+      },
+    );
+  }
+
+  /// Emotional Domain View: Shows Emotional Wellness Card
+  Widget _buildEmotionalTabContent(ResidentItem r) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final double cardWidth = constraints.maxWidth < 780 ? constraints.maxWidth : 680.0;
+        return Align(
+          alignment: Alignment.topLeft,
+          child: _buildEmotionalWellnessCard(r, cardWidth),
+        );
+      },
+    );
+  }
+
+  /// Metabolic Domain View: Shows Metabolic Wellness Card
+  Widget _buildMetabolicTabContent(ResidentItem r) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final double cardWidth = constraints.maxWidth < 780 ? constraints.maxWidth : 680.0;
+        return Align(
+          alignment: Alignment.topLeft,
+          child: _buildMetabolicWellnessCard(r, cardWidth),
+        );
+      },
     );
   }
 
