@@ -733,7 +733,29 @@ class _CaregiverSocialAuditDashboardPageState
               style: TextStyle(fontSize: 11, fontStyle: FontStyle.italic, color: AppColors.muted),
             ),
           ],
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
+          // Weekly Music Therapy & Emotional Wellness Schedule
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFDF2F8),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFFFCE7F3)),
+            ),
+            child: Row(
+              children: const [
+                Icon(LucideIcons.music, size: 12, color: Color(0xFFDB2777)),
+                SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'Weekly Music Therapy: Mon, Wed, Fri (10:00 AM • 10 Mins)',
+                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Color(0xFF9D174D)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
 
           // Action Buttons
           Row(

@@ -225,6 +225,10 @@ class EmotionalRecommendationItem {
   final String description;
   final IconData icon;
   final String priority;
+  final String weeklySchedule; // e.g. 'Every Mon, Wed, Fri'
+  final String scheduledTime; // e.g. '10:00 AM - 10:15 AM'
+  final String sessionDuration; // e.g. '10 Mins'
+  final String? lastSessionDate; // e.g. '22 Oct 2026, 02:30 PM'
 
   const EmotionalRecommendationItem({
     required this.category,
@@ -232,6 +236,29 @@ class EmotionalRecommendationItem {
     required this.description,
     required this.icon,
     this.priority = 'Recommended',
+    this.weeklySchedule = 'Every Mon, Wed, Fri',
+    this.scheduledTime = '10:00 AM - 10:15 AM',
+    this.sessionDuration = '10 Mins',
+    this.lastSessionDate,
+  });
+}
+
+/// Track item representing a song played or scheduled during 10-minute music therapy.
+class CarePlanMusicTrackItem {
+  final String title;
+  final String artist;
+  final String durationText;
+  final bool isListened;
+  final String? listenedDate;
+  final String genre;
+
+  const CarePlanMusicTrackItem({
+    required this.title,
+    required this.artist,
+    this.durationText = '10 Mins',
+    this.isListened = false,
+    this.listenedDate,
+    this.genre = 'Classical Sinhala',
   });
 }
 
@@ -247,6 +274,13 @@ class CarePlanEmotionalData {
   final String? lastAssessmentDate;
   final String? encouragingMessage;
   final List<EmotionalRecommendationItem> recommendations;
+  final String weeklyScheduleSummary;
+  final String scheduledTimeRange;
+  final String sessionDuration;
+  final String lastActivityDate;
+  final String? completedSongTitle;
+  final String? completedSongArtist;
+  final List<CarePlanMusicTrackItem> therapySongs;
 
   const CarePlanEmotionalData({
     required this.hasData,
@@ -259,6 +293,46 @@ class CarePlanEmotionalData {
     this.lastAssessmentDate,
     this.encouragingMessage,
     this.recommendations = const [],
+    this.weeklyScheduleSummary = 'Weekly: Mon, Wed, Fri (3 Sessions / Week)',
+    this.scheduledTimeRange = '10:00 AM - 10:15 AM (Morning) & 03:30 PM (Evening Relaxation)',
+    this.sessionDuration = '10 Minutes per Music & Activity Session',
+    this.lastActivityDate = '22 Oct 2026, 02:30 PM • 10-Min Session Completed',
+    this.completedSongTitle = 'රන්කෙන්දෙන් බැඳි අතැඟිලි',
+    this.completedSongArtist = 'විශාරද නන්දා මාලිනී',
+    this.therapySongs = const [
+      CarePlanMusicTrackItem(
+        title: 'රන්කෙන්දෙන් බැඳි අතැඟිලි',
+        artist: 'විශාරද නන්දා මාලිනී',
+        durationText: '10 Mins',
+        isListened: true,
+        listenedDate: '22 Oct 2026, 02:30 PM (Completed)',
+        genre: 'Sinhala Classical / Calm Valence',
+      ),
+      CarePlanMusicTrackItem(
+        title: 'ශාන්ත මේ රෑ යාමේ',
+        artist: 'පණ්ඩිත් ඩබ්.ඩී. අමරදේව',
+        durationText: '10 Mins',
+        isListened: true,
+        listenedDate: '21 Oct 2026, 10:10 AM (Completed)',
+        genre: 'Soothing Acoustic Serenade',
+      ),
+      CarePlanMusicTrackItem(
+        title: 'සොඳුරිය මනරම්',
+        artist: 'ආචාර්ය වික්ටර් රත්නායක',
+        durationText: '10 Mins',
+        isListened: false,
+        listenedDate: 'Scheduled: Fri 10:00 AM Session',
+        genre: 'Reminiscence & Nostalgia Melody',
+      ),
+      CarePlanMusicTrackItem(
+        title: 'ඈත එපිට ගම්මානෙන්',
+        artist: 'විශාරද නන්දා මාලිනී',
+        durationText: '10 Mins',
+        isListened: false,
+        listenedDate: 'Scheduled: Fri 03:30 PM Session',
+        genre: 'Traditional Rhythms & Mindful Calm',
+      ),
+    ],
   });
 
   factory CarePlanEmotionalData.empty() {
@@ -284,6 +358,26 @@ class CarePlanMetabolicData {
 /// Service providing unified data fetching for Care Plans Management.
 class CarePlansService {
   static http.Client? client;
+
+  static CarePlanMusicTrackItem? latestLiveMusicSession;
+  static String? latestLiveCompletionDate;
+
+  static void recordCompletedSession({
+    required String songTitle,
+    required String songArtist,
+    required String dateText,
+    required String durationText,
+  }) {
+    latestLiveCompletionDate = '$dateText • $durationText Session Completed';
+    latestLiveMusicSession = CarePlanMusicTrackItem(
+      title: songTitle,
+      artist: songArtist,
+      durationText: durationText,
+      isListened: true,
+      listenedDate: '$dateText (Completed)',
+      genre: 'Sinhala Classical / Calm Valence',
+    );
+  }
 
   static String get baseUrl => AppConfig.backendBaseUrl;
 
@@ -516,6 +610,44 @@ class CarePlansService {
             recs.addAll(_getPersonalizedRecommendationsForResident(residentId, residentName));
           }
 
+          final liveDate = latestLiveCompletionDate ?? '22 Oct 2026, 02:30 PM • 10-Min Session Completed';
+          final liveTitle = latestLiveMusicSession?.title ?? 'රන්කෙන්දෙන් බැඳි අතැඟිලි';
+          final liveArtist = latestLiveMusicSession?.artist ?? 'විශාරද නන්දා මාලිනී';
+          final List<CarePlanMusicTrackItem> dynamicSongs = [
+            CarePlanMusicTrackItem(
+              title: liveTitle,
+              artist: liveArtist,
+              durationText: latestLiveMusicSession?.durationText ?? '10 Mins',
+              isListened: true,
+              listenedDate: latestLiveMusicSession?.listenedDate ?? '22 Oct 2026, 02:30 PM (Completed)',
+              genre: 'Sinhala Classical / Calm Valence',
+            ),
+            const CarePlanMusicTrackItem(
+              title: 'ශාන්ත මේ රෑ යාමේ',
+              artist: 'පණ්ඩිත් ඩබ්.ඩී. අමරදේව',
+              durationText: '10 Mins',
+              isListened: true,
+              listenedDate: '21 Oct 2026, 10:10 AM (Completed)',
+              genre: 'Soothing Acoustic Serenade',
+            ),
+            const CarePlanMusicTrackItem(
+              title: 'සොඳුරිය මනරම්',
+              artist: 'ආචාර්ය වික්ටර් රත්නායක',
+              durationText: '10 Mins',
+              isListened: false,
+              listenedDate: 'Scheduled: Fri 10:00 AM Session',
+              genre: 'Reminiscence & Nostalgia Melody',
+            ),
+            const CarePlanMusicTrackItem(
+              title: 'ඈත එපිට ගම්මානෙන්',
+              artist: 'විශාරද නන්දා මාලිනී',
+              durationText: '10 Mins',
+              isListened: false,
+              listenedDate: 'Scheduled: Fri 03:30 PM Session',
+              genre: 'Traditional Rhythms & Mindful Calm',
+            ),
+          ];
+
           return CarePlanEmotionalData(
             hasData: true,
             overallScore: overall,
@@ -527,9 +659,51 @@ class CarePlansService {
             lastAssessmentDate: date,
             encouragingMessage: message,
             recommendations: recs,
+            lastActivityDate: liveDate,
+            completedSongTitle: liveTitle,
+            completedSongArtist: liveArtist,
+            therapySongs: dynamicSongs,
           );
         }
       }
+
+      final liveDate = latestLiveCompletionDate ?? '22 Oct 2026, 02:30 PM • 10-Min Session Completed';
+      final liveTitle = latestLiveMusicSession?.title ?? 'රන්කෙන්දෙන් බැඳි අතැඟිලි';
+      final liveArtist = latestLiveMusicSession?.artist ?? 'විශාරද නන්දා මාලිනී';
+      final List<CarePlanMusicTrackItem> dynamicSongs = [
+        CarePlanMusicTrackItem(
+          title: liveTitle,
+          artist: liveArtist,
+          durationText: latestLiveMusicSession?.durationText ?? '10 Mins',
+          isListened: true,
+          listenedDate: latestLiveMusicSession?.listenedDate ?? '22 Oct 2026, 02:30 PM (Completed)',
+          genre: 'Sinhala Classical / Calm Valence',
+        ),
+        const CarePlanMusicTrackItem(
+          title: 'ශාන්ත මේ රෑ යාමේ',
+          artist: 'පණ්ඩිත් ඩබ්.ඩී. අමරදේව',
+          durationText: '10 Mins',
+          isListened: true,
+          listenedDate: '21 Oct 2026, 10:10 AM (Completed)',
+          genre: 'Soothing Acoustic Serenade',
+        ),
+        const CarePlanMusicTrackItem(
+          title: 'සොඳුරිය මනරම්',
+          artist: 'ආචාර්ය වික්ටර් රත්නායක',
+          durationText: '10 Mins',
+          isListened: false,
+          listenedDate: 'Scheduled: Fri 10:00 AM Session',
+          genre: 'Reminiscence & Nostalgia Melody',
+        ),
+        const CarePlanMusicTrackItem(
+          title: 'ඈත එපිට ගම්මානෙන්',
+          artist: 'විශාරද නන්දා මාලිනී',
+          durationText: '10 Mins',
+          isListened: false,
+          listenedDate: 'Scheduled: Fri 03:30 PM Session',
+          genre: 'Traditional Rhythms & Mindful Calm',
+        ),
+      ];
 
       // Check if dataset suggestions exist for known resident profiles
       final fallbackRecs = _getPersonalizedRecommendationsForResident(residentId, residentName);
@@ -545,6 +719,10 @@ class CarePlansService {
           lastAssessmentDate: 'Recent',
           encouragingMessage: 'Resident engages well during interactive sessions.',
           recommendations: fallbackRecs,
+          lastActivityDate: liveDate,
+          completedSongTitle: liveTitle,
+          completedSongArtist: liveArtist,
+          therapySongs: dynamicSongs,
         );
       }
 
@@ -584,6 +762,10 @@ class CarePlansService {
           description: 'Gentle classical strings playlist during morning relaxation to elevate positive valence.',
           icon: LucideIcons.music,
           priority: 'Recommended',
+          weeklySchedule: 'Every Mon, Wed, Fri',
+          scheduledTime: '10:00 AM - 10:15 AM',
+          sessionDuration: '10 Mins (Classical & Sinhala)',
+          lastSessionDate: '22 Oct 2026, 10:05 AM (Completed)',
         ),
         EmotionalRecommendationItem(
           category: 'Reading & Literature',
@@ -591,6 +773,10 @@ class CarePlansService {
           description: 'Short nature poems supporting cognitive recall, peaceful focus, and individual comfort.',
           icon: LucideIcons.bookOpen,
           priority: 'Recommended',
+          weeklySchedule: 'Tuesday & Thursday',
+          scheduledTime: '02:00 PM - 02:20 PM',
+          sessionDuration: '20 Mins',
+          lastSessionDate: '21 Oct 2026, 02:15 PM (Completed)',
         ),
         EmotionalRecommendationItem(
           category: 'Spiritual / Cultural',
@@ -598,6 +784,10 @@ class CarePlansService {
           description: 'Weekly choir hymn recitation with fellowship group to foster grounding and calm.',
           icon: LucideIcons.sparkles,
           priority: 'Essential',
+          weeklySchedule: 'Sunday & Wednesday',
+          scheduledTime: '09:00 AM - 09:30 AM',
+          sessionDuration: '30 Mins',
+          lastSessionDate: '22 Oct 2026, 09:15 AM (Completed)',
         ),
         EmotionalRecommendationItem(
           category: 'Social Interaction',
@@ -605,6 +795,10 @@ class CarePlansService {
           description: 'Facilitated buddy pairing during 3:30 PM tea time to nurture peer connections.',
           icon: LucideIcons.users,
           priority: 'Recommended',
+          weeklySchedule: 'Daily (Mon - Fri)',
+          scheduledTime: '03:30 PM - 04:00 PM',
+          sessionDuration: '30 Mins',
+          lastSessionDate: 'Scheduled Today, 03:30 PM',
         ),
       ];
     } else if (residentId == 2 || residentId == 9003 || lowerName.contains('arthur') || lowerName.contains('pendelton')) {
@@ -615,6 +809,10 @@ class CarePlansService {
           description: 'Designed to soothe evening restlessness and promote restful sleep patterns.',
           icon: LucideIcons.music,
           priority: 'High Priority',
+          weeklySchedule: 'Every Mon, Wed, Fri',
+          scheduledTime: '10:00 AM - 10:15 AM & 07:30 PM',
+          sessionDuration: '10 Mins',
+          lastSessionDate: '22 Oct 2026, 10:10 AM (Completed)',
         ),
         EmotionalRecommendationItem(
           category: 'Games & Hobbies',
@@ -622,6 +820,10 @@ class CarePlansService {
           description: 'Tactile, goal-oriented hobby craft engaging motor coordination and nostalgic memory.',
           icon: LucideIcons.gamepad2,
           priority: 'High Priority',
+          weeklySchedule: 'Every Tuesday',
+          scheduledTime: '02:30 PM - 03:15 PM',
+          sessionDuration: '45 Mins',
+          lastSessionDate: '20 Oct 2026, 02:30 PM',
         ),
         EmotionalRecommendationItem(
           category: 'Reading & Literature',
@@ -629,6 +831,10 @@ class CarePlansService {
           description: 'Audiobook paired with large-print imagery for low-stress personal recreation.',
           icon: LucideIcons.bookOpen,
           priority: 'Recommended',
+          weeklySchedule: 'Every Thursday',
+          scheduledTime: '03:00 PM - 03:30 PM',
+          sessionDuration: '30 Mins',
+          lastSessionDate: '22 Oct 2026, 03:00 PM',
         ),
         EmotionalRecommendationItem(
           category: 'Social Interaction',
@@ -636,6 +842,10 @@ class CarePlansService {
           description: 'Short 15-minute guided conversations focused on proud life milestones.',
           icon: LucideIcons.users,
           priority: 'Essential',
+          weeklySchedule: 'Mon & Fri',
+          scheduledTime: '11:00 AM - 11:15 AM',
+          sessionDuration: '15 Mins',
+          lastSessionDate: '20 Oct 2026, 11:00 AM',
         ),
       ];
     } else if (residentId == 9001 || lowerName.contains('james') || lowerName.contains('perera')) {
@@ -643,9 +853,13 @@ class CarePlansService {
         EmotionalRecommendationItem(
           category: 'Music Therapy',
           title: 'Soothing Classical & Traditional Chants Playlist',
-          description: 'Familiar acoustic rhythms reduce agitation, stabilize vocal prosody, and lift mood.',
+          description: '10-Minute curated music session (Nanda Malini, W.D. Amaradeva, Victor Rathnayake) to reduce isolation.',
           icon: LucideIcons.music,
           priority: 'High Priority',
+          weeklySchedule: 'Every Mon, Wed, Fri',
+          scheduledTime: '10:00 AM - 10:15 AM (10 Mins)',
+          sessionDuration: '10 Mins',
+          lastSessionDate: '22 Oct 2026, 02:30 PM (Completed 10 Mins)',
         ),
         EmotionalRecommendationItem(
           category: 'Games & Hobbies',
@@ -653,6 +867,10 @@ class CarePlansService {
           description: 'Facilitated buddy pairing at tea time to counter seclusion and rebuild interaction frequency.',
           icon: LucideIcons.gamepad2,
           priority: 'High Priority',
+          weeklySchedule: 'Tue, Thu, Sat',
+          scheduledTime: '03:30 PM - 04:15 PM',
+          sessionDuration: '45 Mins',
+          lastSessionDate: '21 Oct 2026, 03:30 PM',
         ),
         EmotionalRecommendationItem(
           category: 'Reading & Literature',
@@ -660,6 +878,10 @@ class CarePlansService {
           description: 'Engaging narrative material prompting conversational recall.',
           icon: LucideIcons.bookOpen,
           priority: 'Recommended',
+          weeklySchedule: 'Every Wednesday',
+          scheduledTime: '02:00 PM - 02:30 PM',
+          sessionDuration: '30 Mins',
+          lastSessionDate: '22 Oct 2026, 02:00 PM',
         ),
         EmotionalRecommendationItem(
           category: 'Religious / Cultural',
@@ -667,6 +889,10 @@ class CarePlansService {
           description: 'Primary emotional coping mechanism for elderly residents in care facilities.',
           icon: LucideIcons.sparkles,
           priority: 'Essential',
+          weeklySchedule: 'Daily',
+          scheduledTime: '07:30 AM - 08:00 AM',
+          sessionDuration: '30 Mins',
+          lastSessionDate: '22 Oct 2026, 07:30 AM (Completed)',
         ),
       ];
     }

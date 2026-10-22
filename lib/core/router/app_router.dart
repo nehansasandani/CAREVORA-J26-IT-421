@@ -21,6 +21,7 @@ import '../../features/assessment/presentation/caregiver_social_audit_dashboard_
 import '../../features/assessment/presentation/resident_social_audit_detail_page.dart';
 import '../../features/splash/presentation/pages/splash_page.dart';
 import '../../features/metabolic/presentation/metabolic_health_page.dart';
+import '../../features/dashboard/presentation/emotional_wellness_games_page.dart';
 
 GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
 GlobalKey<NavigatorState> _shellNavigatorKey = GlobalKey<NavigatorState>();
@@ -167,6 +168,10 @@ class AppRouter {
           GoRoute(
             path: '/dashboard/memory-games',
             builder: (context, state) => const MemoryGamesPage(),
+          ),
+          GoRoute(
+            path: '/dashboard/emotional-games',
+            builder: (context, state) => const EmotionalWellnessGamesPage(),
           ),
           GoRoute(
             path: '/dashboard/station-help',

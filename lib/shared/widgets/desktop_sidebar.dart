@@ -141,6 +141,12 @@ class DesktopSidebar extends ConsumerWidget {
                 ],
                 _buildNavItem(
                   context,
+                  icon: LucideIcons.sparkles,
+                  label: 'Emotional Wellness Games',
+                  route: '/dashboard/emotional-games',
+                ),
+                _buildNavItem(
+                  context,
                   icon: LucideIcons.phoneCall,
                   label: 'Station Help & Calls',
                   route: '/dashboard/station-help',
