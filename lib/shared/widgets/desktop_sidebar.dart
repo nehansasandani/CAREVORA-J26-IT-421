@@ -137,13 +137,13 @@ class DesktopSidebar extends ConsumerWidget {
                     label: 'Memory Games',
                     route: '/dashboard/memory-games',
                   ),
+                  _buildNavItem(
+                    context,
+                    icon: LucideIcons.sparkles,
+                    label: 'Emotional Wellness Games',
+                    route: '/dashboard/emotional-games',
+                  ),
                 ],
-                _buildNavItem(
-                  context,
-                  icon: LucideIcons.sparkles,
-                  label: 'Emotional Wellness Games',
-                  route: '/dashboard/emotional-games',
-                ),
                 _buildNavItem(
                   context,
                   icon: LucideIcons.phoneCall,
