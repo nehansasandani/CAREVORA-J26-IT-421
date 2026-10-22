@@ -11,6 +11,7 @@ import '../../../shared/widgets/cognitive_shap_explanation_card.dart';
 import '../../../shared/widgets/emotional_shap_explanation_card.dart';
 import '../../auth/application/auth_controller.dart';
 import '../../assessment/application/cognitive_assessment_service.dart';
+import '../../assessment/application/care_plans_service.dart';
 import '../../assessment/application/memory_game_service.dart';
 import '../../assessment/domain/cognitive_scoring.dart';
 import '../../metabolic/application/metabolic_risk_service.dart';
@@ -2096,13 +2097,17 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
                 ),
                 const SizedBox(height: 4),
                 Row(
-                  children: const [
-                    Icon(LucideIcons.checkCheck, size: 12, color: Color(0xFF166534)),
-                    SizedBox(width: 5),
+                  children: [
+                    const Icon(LucideIcons.checkCheck, size: 12, color: Color(0xFF166534)),
+                    const SizedBox(width: 5),
                     Expanded(
                       child: Text(
-                        'Latest Song Listened: "රන්කෙන්දෙන් බැඳි අතැඟිලි" - නන්දා මාලිනී (10 Mins • Completed 22 Oct, 02:30 PM)',
-                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: Color(0xFF166534)),
+                        CarePlansService.latestActivityTitle != null
+                            ? 'Latest Activity Completed: "${CarePlansService.latestActivityTitle}" (${CarePlansService.latestActivityDuration ?? "15 Mins"} • ${CarePlansService.latestActivityDate ?? "Completed"})'
+                            : (CarePlansService.latestLiveMusicSession != null
+                                ? 'Latest Activity Completed: "${CarePlansService.latestLiveMusicSession!.title}" (${CarePlansService.latestLiveMusicSession!.durationText} • ${CarePlansService.latestLiveMusicSession!.listenedDate})'
+                                : 'Latest Activity Completed: "Playful Pet Friends & Joy Garden" (15 Mins • Completed 22 Oct 2026, 06:45 PM)'),
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF166534)),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),

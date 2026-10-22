@@ -2,13 +2,26 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:intl/intl.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../data/models/carevora_models.dart';
 import '../../auth/application/auth_controller.dart';
 import '../application/social_audit_service.dart';
 import 'widgets/caregiver_social_audit_dialog.dart';
+
+String _formatAuditDate(DateTime dt, {bool fullMonth = false}) {
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const fullMonths = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+  final m = fullMonth ? fullMonths[dt.month - 1] : months[dt.month - 1];
+  final hour = dt.hour == 0 ? 12 : (dt.hour > 12 ? dt.hour - 12 : dt.hour);
+  final period = dt.hour >= 12 ? 'PM' : 'AM';
+  final min = dt.minute.toString().padLeft(2, '0');
+  final day = dt.day.toString().padLeft(2, '0');
+  return '$day $m ${dt.year}, ${hour.toString().padLeft(2, '0')}:$min $period';
+}
 
 class ResidentSocialAuditDetailPage extends ConsumerStatefulWidget {
   final String residentId;
@@ -30,8 +43,11 @@ class _ResidentSocialAuditDetailPageState
 
   ResidentAuditDirectoryItem? _residentSummary;
   List<SocialAuditRecord> _auditHistory = [];
-  SocialAuditRecord? get _latestAudit =>
-      _auditHistory.isNotEmpty ? _auditHistory.first : null;
+  SocialAuditRecord? get _latestAudit {
+    if (_auditHistory.isNotEmpty) return _auditHistory.first;
+    final parsedId = int.tryParse(widget.residentId) ?? 1;
+    return SocialAuditService.getLiveAudit(parsedId);
+  }
 
   @override
   void initState() {
@@ -67,10 +83,30 @@ class _ResidentSocialAuditDetailPageState
       );
 
       // 2. Fetch full historical audits for this specific resident
-      final history = await SocialAuditService.fetchAuditHistory(
+      var history = await SocialAuditService.fetchAuditHistory(
         residentId: parsedId,
         token: token,
       );
+
+      final liveAudit = SocialAuditService.getLiveAudit(parsedId);
+      if (liveAudit != null) {
+        if (!history.any((a) => a.id == liveAudit.id)) {
+          history = [liveAudit, ...history];
+        }
+        if (matched.name.startsWith('Resident #') || !matched.hasCompletedAudit) {
+          matched = ResidentAuditDirectoryItem(
+            residentId: parsedId,
+            name: liveAudit.residentName,
+            roomNumber: matched.roomNumber ?? '102',
+            age: matched.age ?? 74,
+            elderHomeName: matched.elderHomeName ?? 'Serene Valley Senior Living',
+            hasCompletedAudit: true,
+            latestAuditDate: liveAudit.auditDate,
+            latestSocialScore: liveAudit.socialScore,
+            auditCount: history.length,
+          );
+        }
+      }
 
       if (mounted) {
         setState(() {
@@ -108,7 +144,7 @@ class _ResidentSocialAuditDetailPageState
       age: _residentSummary?.age ?? 75,
       gender: 'Resident',
       lastAssessmentDate: _latestAudit != null
-          ? DateFormat('dd MMM yyyy, hh:mm a').format(_latestAudit!.auditDate)
+          ? _formatAuditDate(_latestAudit!.auditDate)
           : 'Awaiting Audit',
       cognitiveScore: 0.70,
       cognitiveTrend: 0.0,
@@ -329,7 +365,7 @@ class _ResidentSocialAuditDetailPageState
                     _buildMetaTag(
                       LucideIcons.clock,
                       hasAudit
-                          ? 'Latest Audit: ${DateFormat('dd MMM yyyy, hh:mm a').format(_latestAudit!.auditDate)}'
+                          ? 'Latest Audit: ${_formatAuditDate(_latestAudit!.auditDate)}'
                           : 'No Prior Audit',
                     ),
                   ],
@@ -714,7 +750,7 @@ class _ResidentSocialAuditDetailPageState
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
-                                DateFormat('dd MMMM yyyy, hh:mm a').format(item.auditDate),
+                                _formatAuditDate(item.auditDate, fullMonth: true),
                                 style: const TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.bold,
