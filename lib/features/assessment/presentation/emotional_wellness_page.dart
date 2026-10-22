@@ -164,6 +164,9 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
   late List<PersonalizedActivityItem> _activities;
   late List<EmotionalAssessmentHistoryLog> _historyLogs;
   late Map<String, ResidentProfileDataset> _residentDatasets;
+  Map<String, dynamic>? _liveRalpaTrajectory;
+  bool _isLoadingRalpaTrajectory = false;
+  bool _hasLiveAssessments = false;
 
   void _initResidents() {
     final baseResidents = [
@@ -328,6 +331,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadLiveResidentProfile();
       _fetchLatestSocialAuditForCurrentResident();
+      _fetchRealRalpaDataForCurrentResident();
     });
   }
 
@@ -888,6 +892,17 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
           interventionStatus: 'Regular Monitoring Active',
           assessedBy: 'Self-Report & Specialist',
         ),
+        EmotionalAssessmentHistoryLog(
+          id: 'EAL-002',
+          date: '10 May 2025, 10:00 AM',
+          primaryEmotion: 'Calm / Neutral',
+          lonelinessScore: 36,
+          isolationScore: 30,
+          deviation: 0.0,
+          trajectory: 'Baseline Assessment',
+          interventionStatus: 'Initial Baseline Logged',
+          assessedBy: 'Seetha N. (RN)',
+        ),
       ],
     );
   }
@@ -951,6 +966,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
       }
     }
     _fetchLatestSocialAuditForCurrentResident();
+    _fetchRealRalpaDataForCurrentResident();
   }
 
   Future<void> _fetchLatestSocialAuditForCurrentResident() async {
@@ -1001,6 +1017,155 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
       }
     }
   }
+
+  String _ralpaMonthName(int m) {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return (m >= 1 && m <= 12) ? months[m - 1] : '';
+  }
+
+  String _formatAssessmentTimestamp(String? iso) {
+    if (iso == null || iso.isEmpty) return 'Recent Session';
+    final dt = DateTime.tryParse(iso);
+    if (dt == null) return iso;
+    final hour = dt.hour % 12 == 0 ? 12 : dt.hour % 12;
+    final ampm = dt.hour >= 12 ? 'PM' : 'AM';
+    final min = dt.minute.toString().padLeft(2, '0');
+    return '${dt.day.toString().padLeft(2, '0')} ${_ralpaMonthName(dt.month)} ${dt.year}, $hour:$min $ampm';
+  }
+
+  Future<void> _fetchRealRalpaDataForCurrentResident() async {
+    final bId = _resolveBackendResidentId();
+    final authState = ref.read(authProvider).state;
+    final token = authState.token;
+
+    if (mounted) {
+      setState(() {
+        _isLoadingRalpaTrajectory = true;
+      });
+    }
+
+    try {
+      // 1. Fetch real historical assessments from Spring Boot API
+      final liveAssessments = await EmotionalAssessmentService.fetchResidentAssessments(
+        residentId: bId,
+        token: token,
+      );
+
+      if (liveAssessments.isNotEmpty && mounted) {
+        final List<EmotionalAssessmentHistoryLog> convertedLogs = [];
+        for (final item in liveAssessments) {
+          final idNum = item['id']?.toString() ?? '0';
+          final tsStr = item['timestamp']?.toString();
+          final formattedDate = _formatAssessmentTimestamp(tsStr);
+          final rawOverall = (item['overallScore'] as num?)?.toDouble() ?? 75.0;
+          final rawEmotional = (item['emotionalScore'] as num?)?.toDouble() ?? rawOverall;
+          final rawSocial = (item['socialScore'] as num?)?.toDouble() ?? (_latestSocialAudit?.socialScore ?? 80.0);
+
+          final int loneliness = (100.0 - rawEmotional).round().clamp(5, 95);
+          final int isolation = (100.0 - rawSocial).round().clamp(5, 95);
+          final String trajStr = (item['trajectory']?.toString() ?? 'STABLE').toUpperCase();
+          final String statusStr = item['status']?.toString() ?? 'STABLE';
+
+          String primaryEmotion = 'Calm / Neutral';
+          if (rawEmotional < 50.0 || statusStr == 'NEEDS_ATTENTION') {
+            primaryEmotion = 'Sad / Affect Flattening';
+          } else if (rawEmotional >= 85.0) {
+            primaryEmotion = 'Happy / Uplifted';
+          }
+
+          convertedLogs.add(EmotionalAssessmentHistoryLog(
+            id: 'EAL-$idNum',
+            date: formattedDate,
+            primaryEmotion: primaryEmotion,
+            lonelinessScore: loneliness,
+            isolationScore: isolation,
+            deviation: 0.0,
+            trajectory: trajStr.replaceAll('_', ' '),
+            interventionStatus: (statusStr == 'NEEDS_ATTENTION' || loneliness >= 65)
+                ? 'Clinical Review Assigned'
+                : 'Routine Monitoring Active',
+            assessedBy: 'Carevora Multimodal Engine',
+          ));
+        }
+
+        setState(() {
+          _historyLogs = convertedLogs;
+          _hasLiveAssessments = true;
+          if (_historyLogs.isNotEmpty) {
+            _lonelinessScore = _historyLogs.first.lonelinessScore;
+            _isolationScore = _historyLogs.first.isolationScore;
+          }
+        });
+      }
+
+      // 2. Fetch real RALPA trajectory and predictive progression from backend / AI microservice
+      final traj = await EmotionalAssessmentService.fetchRalpaTrajectory(
+        residentId: bId,
+        token: token,
+      );
+
+      if (traj != null && mounted) {
+        setState(() {
+          _liveRalpaTrajectory = traj;
+
+          // Map real AI personalized recommendations if available
+          final recs = traj['recommendations'];
+          if (recs is List && recs.isNotEmpty) {
+            final List<PersonalizedActivityItem> realActivities = [];
+            for (int i = 0; i < recs.length; i++) {
+              final r = recs[i];
+              if (r is Map) {
+                final cat = r['category']?.toString() ?? 'Wellness Support';
+                final title = r['title']?.toString() ?? 'Personalized Wellness Routine';
+                final rationale = r['rationale']?.toString() ?? 'AI-recommended activity to support emotional balance.';
+                final prio = r['priority']?.toString() ?? 'Recommended';
+
+                IconData icon = LucideIcons.sparkles;
+                Color prioColor = AppColors.primary;
+                final catLower = cat.toLowerCase();
+                if (catLower.contains('music')) {
+                  icon = LucideIcons.music;
+                  prioColor = const Color(0xFF8B5CF6);
+                } else if (catLower.contains('reading') || catLower.contains('book')) {
+                  icon = LucideIcons.bookOpen;
+                  prioColor = Colors.blueAccent;
+                } else if (catLower.contains('social') || catLower.contains('carrom') || catLower.contains('tea')) {
+                  icon = LucideIcons.users;
+                  prioColor = AppColors.riskModerate;
+                } else if (catLower.contains('sun') || catLower.contains('walk') || catLower.contains('garden')) {
+                  icon = LucideIcons.sun;
+                  prioColor = AppColors.leafGreen;
+                }
+
+                realActivities.add(PersonalizedActivityItem(
+                  id: 'REC-$bId-${i + 1}',
+                  title: title,
+                  category: cat,
+                  description: rationale,
+                  icon: icon,
+                  priority: prio,
+                  priorityColor: prioColor,
+                  isCompleted: false,
+                ));
+              }
+            }
+            if (realActivities.isNotEmpty) {
+              _activities = realActivities;
+            }
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('[EmotionalWellness] Error fetching real RALPA data: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingRalpaTrajectory = false;
+        });
+      }
+    }
+  }
+
 
   void _initAnimations() {
     _waveController = AnimationController(
@@ -7237,6 +7402,9 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                   setState(() {
                     _selectedSubTab = index;
                   });
+                  if ((index == 1 || index == 3) && _liveRalpaTrajectory == null) {
+                    _fetchRealRalpaDataForCurrentResident();
+                  }
                 },
                 borderRadius: BorderRadius.circular(12),
                 child: Container(
@@ -9742,29 +9910,78 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
   // =========================================================================
   Widget _buildRalpaMethodologyAnalyticsPanel() {
     final dataset = _residentDatasets[_currentResident.id] ?? _residentDatasets['9001']!;
-    final bool hasSufficientHistory = _historyLogs.length >= 2;
-    final double baselineLoneliness = dataset.baselineLoneliness;
+
+    // Check if live prediction was fetched from Python RALPA microservice / backend
+    final trajData = _liveRalpaTrajectory;
+    final bool hasSufficientHistory = trajData != null
+        ? !(trajData['is_insufficient_history'] == true)
+        : (_historyLogs.length >= 2);
+
+    final double baselineLoneliness = (trajData != null && trajData['baseline_score'] != null)
+        ? (trajData['baseline_score'] as num).toDouble()
+        : dataset.baselineLoneliness;
     final double baselineIsolation = dataset.baselineIsolation;
-    final double currentLoneliness = _lonelinessScore.toDouble();
-    final double currentIsolation = _isolationScore.toDouble();
-    final double deltaLoneliness = currentLoneliness - baselineLoneliness;
+
+    final double currentLoneliness = (trajData != null && trajData['current_risk_score'] != null)
+        ? (trajData['current_risk_score'] as num).toDouble()
+        : _lonelinessScore.toDouble();
+    final double currentIsolation = _latestSocialAudit?.socialScore != null
+        ? (100.0 - _latestSocialAudit!.socialScore!).clamp(0.0, 100.0)
+        : _isolationScore.toDouble();
+
+    final double deltaLoneliness = (trajData != null && trajData['baseline_deviation'] != null)
+        ? (trajData['baseline_deviation'] as num).toDouble()
+        : (currentLoneliness - baselineLoneliness);
     final double deltaIsolation = currentIsolation - baselineIsolation;
 
-    final bool isHighRisk = currentLoneliness >= 70 || _selectedEmotion == 'Sad' || _selectedEmotion == 'Angry' || _selectedEmotion == 'Fear';
+    final double trendSlope = (trajData != null && trajData['longitudinal_slope'] != null)
+        ? (trajData['longitudinal_slope'] as num).toDouble()
+        : dataset.trendSlope;
+
+    final String trajectoryRaw = (trajData != null && (trajData['trajectory_status_label'] != null || trajData['trajectory'] != null))
+        ? (trajData['trajectory_status_label'] ?? trajData['trajectory']).toString().toUpperCase()
+        : '';
+
+    final bool isHighRisk = (trajData != null && trajData['risk_level'] == 'HIGH') ||
+        currentLoneliness >= 65 ||
+        _selectedEmotion == 'Sad' ||
+        _selectedEmotion == 'Angry' ||
+        _selectedEmotion == 'Fear' ||
+        trajectoryRaw.contains('DETERIORATING');
+
     final String trajectoryStatus = !hasSufficientHistory
         ? 'BASELINE ESTABLISHING (INSUFFICIENT DATA)'
-        : (dataset.trendSlope > 1.0 || deltaLoneliness > 10.0
-            ? 'DETERIORATING / INCREASING RISK'
-            : (dataset.trendSlope < -1.0 ? 'IMPROVING TRAJECTORY' : 'STABLE BASELINE'));
+        : (trajectoryRaw.isNotEmpty
+            ? trajectoryRaw
+            : (trendSlope > 1.0 || deltaLoneliness > 10.0
+                ? 'DETERIORATING / INCREASING RISK'
+                : (trendSlope < -1.0 ? 'IMPROVING TRAJECTORY' : 'STABLE BASELINE')));
+
     final Color trajectoryColor = !hasSufficientHistory
         ? AppColors.primary
-        : (dataset.trendSlope > 1.0 || deltaLoneliness > 10.0
+        : (isHighRisk || trendSlope > 1.0 || deltaLoneliness > 10.0
             ? AppColors.riskHigh
             : (_selectedEmotion == 'Happy' ? AppColors.riskLow : Colors.blueAccent));
 
-    final List<double> forecastValues = hasSufficientHistory
-        ? List.generate(14, (i) => (currentLoneliness + (i * dataset.trendSlope * 0.8)).clamp(10.0, 95.0))
-        : [];
+    // Forecast values: Real 14-Day Trajectory projection from RALPA Engine
+    List<double> forecastValues = [];
+    if (hasSufficientHistory) {
+      if (trajData != null && trajData['forecast_14_days'] is List && (trajData['forecast_14_days'] as List).isNotEmpty) {
+        final raw14 = (trajData['forecast_14_days'] as List).map((e) => (e as num).toDouble()).toList();
+        forecastValues = [
+          currentLoneliness,
+          if (raw14.isNotEmpty) raw14[0],
+          if (raw14.length > 2) raw14[2],
+          if (raw14.length > 4) raw14[4],
+          if (raw14.length > 6) raw14[6],
+          if (raw14.length > 8) raw14[8],
+          if (raw14.length > 10) raw14[10],
+          if (raw14.length > 13) raw14[13] else if (raw14.isNotEmpty) raw14.last,
+        ];
+      } else {
+        forecastValues = List.generate(8, (i) => (currentLoneliness + ((i * 2) * trendSlope * 0.8)).clamp(10.0, 95.0));
+      }
+    }
 
     return Container(
       padding: const EdgeInsets.all(26),
@@ -9803,10 +10020,10 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
-                            children: const [
-                              Icon(LucideIcons.graduationCap, size: 13, color: AppColors.primary),
-                              SizedBox(width: 6),
-                              Text(
+                            children: [
+                              const Icon(LucideIcons.graduationCap, size: 13, color: AppColors.primary),
+                              const SizedBox(width: 6),
+                              const Text(
                                 'RESEARCH METHODOLOGY (SEC 3.1 - 3.5)',
                                 style: TextStyle(
                                   fontSize: 10,
@@ -9815,8 +10032,27 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                                   color: AppColors.primary,
                                 ),
                               ),
+                              if (_hasLiveAssessments) ...[
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF10B981).withValues(alpha: 0.2),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: const Text(
+                                    'REAL DATA LIVE',
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w900,
+                                      color: Color(0xFF047857),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
+
                         ),
                       ],
                     ),
@@ -9841,18 +10077,37 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                   border: Border.all(color: AppColors.border),
                 ),
                 child: Row(
-                  children: const [
-                    Icon(LucideIcons.checkCircle2, size: 16, color: AppColors.riskLow),
-                    SizedBox(width: 8),
-                    Text(
-                      'Model: RALPA-Adaptive v1',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.navy),
-                    ),
+                  children: [
+                    if (_isLoadingRalpaTrajectory) ...[
+                      const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                      ),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'Syncing Live RALPA AI...',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.navy),
+                      ),
+                    ] else ...[
+                      Icon(
+                        _liveRalpaTrajectory != null ? LucideIcons.sparkles : LucideIcons.checkCircle2,
+                        size: 16,
+                        color: _liveRalpaTrajectory != null ? const Color(0xFF16A34A) : AppColors.riskLow,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        _liveRalpaTrajectory != null ? 'Model: RALPA Live AI Engine' : 'Model: RALPA-Adaptive v1',
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.navy),
+                      ),
+                    ],
                   ],
                 ),
+
               ),
             ],
           ),
+
           const SizedBox(height: 24),
           const Divider(height: 1, color: AppColors.border),
           const SizedBox(height: 24),
@@ -10360,7 +10615,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Forecasted Loneliness Risk (Day +1 to Day +14)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.navy)),
+                      const Text('Forecasted Loneliness Risk (Every 2 Days: Day +2 to Day +14)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.navy)),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
@@ -10381,7 +10636,8 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: List.generate(forecast.length, (index) {
                         final val = forecast[index];
-                        final dayLabel = index == 0 ? 'Today' : 'D+$index';
+                        final dayStep = index * 2;
+                        final dayLabel = index == 0 ? 'Today' : 'D+$dayStep';
                         final barHeight = (val / 100.0 * 55.0).clamp(12.0, 55.0);
 
                         return Container(

@@ -230,4 +230,57 @@ class EmotionalAssessmentService {
 
     throw EmotionalAssessmentException(message, statusCode: res.statusCode);
   }
+
+  /// Fetches historical assessments for a resident from GET /api/assessments/resident/{residentId}.
+  static Future<List<Map<String, dynamic>>> fetchResidentAssessments({
+    required int residentId,
+    String? token,
+  }) async {
+    final uri = Uri.parse('$baseUrl/api/assessments/resident/$residentId');
+    final Map<String, String> headers = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    };
+    if (token != null && token.isNotEmpty) {
+      headers['Authorization'] = 'Bearer $token';
+    }
+
+    try {
+      final res = await http.get(uri, headers: headers).timeout(const Duration(seconds: 8));
+      if (res.statusCode == 200) {
+        final decoded = jsonDecode(res.body) as Map<String, dynamic>?;
+        if (decoded != null && decoded['success'] == true && decoded['data'] is List) {
+          return List<Map<String, dynamic>>.from(decoded['data'] as List);
+        }
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  /// Fetches real RALPA trajectory prediction from GET /api/ai/trajectory/{residentId}.
+  static Future<Map<String, dynamic>?> fetchRalpaTrajectory({
+    required int residentId,
+    String? token,
+  }) async {
+    final uri = Uri.parse('$baseUrl/api/ai/trajectory/$residentId');
+    final Map<String, String> headers = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    };
+    if (token != null && token.isNotEmpty) {
+      headers['Authorization'] = 'Bearer $token';
+    }
+
+    try {
+      final res = await http.get(uri, headers: headers).timeout(const Duration(seconds: 10));
+      if (res.statusCode == 200) {
+        final decoded = jsonDecode(res.body) as Map<String, dynamic>?;
+        if (decoded != null && decoded['success'] == true && decoded['data'] is Map) {
+          return Map<String, dynamic>.from(decoded['data'] as Map);
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
 }
+
