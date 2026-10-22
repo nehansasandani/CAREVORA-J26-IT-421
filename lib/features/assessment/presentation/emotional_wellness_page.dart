@@ -879,6 +879,16 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
           priorityColor: Colors.blueAccent,
           isCompleted: false,
         ),
+        PersonalizedActivityItem(
+          id: 'ACT-4-CUSTOM',
+          title: 'Reading Books',
+          category: 'Mindful Reading',
+          description: 'Calming classic literature, soothing poetry, and inspirational short stories to enrich the heart and mind.',
+          icon: LucideIcons.bookOpen,
+          priority: 'Recommended',
+          priorityColor: const Color(0xFF0D9488),
+          isCompleted: false,
+        ),
       ],
       logs: [
         EmotionalAssessmentHistoryLog(
@@ -930,6 +940,26 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
           isCompleted: act.isCompleted,
         );
       }
+    }
+
+    // Ensure all residents have the Reading Books card
+    final hasReading = _activities.any((a) =>
+        a.id == 'ACT-4-CUSTOM' ||
+        a.title.toLowerCase().contains('reading') ||
+        a.title.toLowerCase().contains('book'));
+    if (!hasReading) {
+      _activities.add(
+        PersonalizedActivityItem(
+          id: 'ACT-4-CUSTOM',
+          title: 'Reading Books',
+          category: 'Mindful Reading',
+          description: 'Calming classic literature, soothing poetry, and inspirational short stories to enrich the heart and mind.',
+          icon: LucideIcons.bookOpen,
+          priority: 'Recommended',
+          priorityColor: const Color(0xFF0D9488),
+          isCompleted: false,
+        ),
+      );
     }
     _capturedImageBytes = null;
 
@@ -10312,6 +10342,87 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
     },
   ];
 
+  static const List<Map<String, String>> _elderCuratedBooks = [
+    {
+      'title': 'Gamperaliya (ගම්පෙරළිය)',
+      'sinhala': 'ගම්පෙරළිය',
+      'author': 'මාර්ටින් වික්‍රමසිංහ',
+      'authorEnglish': 'Martin Wickramasinghe',
+      'category': 'සම්භාව්‍ය සාහිත්‍යය (Classics)',
+      'filter': 'සම්භාව්‍ය',
+      'tag': 'ගැමි සුවඳ (Village Nostalgia)',
+      'readTime': '15 mins',
+      'chapter': 'පළමු පරිච්ඡේදය: කොග්ගල මහගෙදර සිරියාව',
+      'excerpt':
+          'දකුණු මුහුදු බඩ කොග්ගල ගම්මානය අතීතයේ සිටම සුන්දර ගැමි පරිසරයකින් පිරි ගමකි. මහගෙදර පිහිටියේ මුහුදටත්, කොග්ගල ඔයටත් අතරමැදිවය. උදෑසන පිබිදෙන විට මුහුදු සුළඟත් සමග පොල් අතු සෙලවෙන හඬත්, කුරුල්ලන්ගේ නාදයත් ගම පුරා විසිරෙයි.\n\nකයිසාරුවත්තේ මුහන්දිරම් මහතා සහ මාතර හාමිනේ තම දූවරුන් වන නන්දා සහ අනුලා සමග මහගෙදර ආලින්දයේ වාඩි වී උදෑසන තේ පානය කරමින් සාමකාමී කතාබහක යෙදෙති. මිදුලේ වැලි මළුව අතුගා පිරිසිදු කර ඇති අතර, පිපි මල් සුවඳ මුළු නිවස පුරා පැතිරෙයි.\n\n"නන්දා, අද දවස හරිම සන්සුන්. ගමේ හැමෝම කුඹුරු වැඩට ලෑස්ති වෙනවා," මුහන්දිරම් පැවසුවේ සතුටිනි. ගැමි ජීවිතයේ සරල බවත්, හිත මිතුරුකමත් කොග්ගල ගම්මානයට ගෙන ආවේ නිසංසල සාමයකි.',
+    },
+    {
+      'title': 'Madol Doova (මඩොල් දූව)',
+      'sinhala': 'මඩොල් දූව',
+      'author': 'මාර්ටින් වික්‍රමසිංහ',
+      'authorEnglish': 'Martin Wickramasinghe',
+      'category': 'සම්භාව්‍ය සාහිත්‍යය (Classics)',
+      'filter': 'සම්භාව්‍ය',
+      'tag': 'සුන්දර මතක (Island Life)',
+      'readTime': '15 mins',
+      'chapter': 'පරිච්ඡේදය: දූවේ නිදහස හා සොබා සිරිය',
+      'excerpt':
+          'උපාලි සහ ජින්නා මඩොල් දූවට පා තබන විට සවස් යාමය එළඹෙමින් තිබිණි. ගං ඉවුරේ පිහිටි විසල් ගස්වල සෙවණැලි දිය මතුපිට සන්සුන්ව ඇඳී ගියේය. පරිසරය නිහඬය, කුරුල්ලන් තම කැදලි කරා පියඹා යන හඬ පමණක් ඇසේ.\n\n"ජින්නා, බලපන් මේ දූපතේ තියෙන නිදහස සහ සාමය!" උපාලි පැවසීය. දෙදෙනා එක්ව ගං ඉවුර අසල කුඩා පැලක් තනා, පොල් අතු සෙවිලි කර, රාත්‍රිය ගත කිරීමට සූදානම් වූහ.\n\nගඟෙන් හමා ආ සිසිල් සුළඟ ගතට මෙන්ම සිතටද ගෙන ආවේ මහත් සහනයකි. සොබාදහමේ සුවයත්, නිදහස් නිහඬතාවයත් ඔවුන්ගේ සිත් ප්‍රීතියෙන් හා ජීවයෙන් පුරවාලීය.',
+    },
+    {
+      'title': 'Loweda Sangarawa (ලෝවැඩ සඟරාව)',
+      'sinhala': 'ලෝවැඩ සඟරාව හා සුභාෂිතය',
+      'author': 'වීදාගම මෛත්‍රෙය හිමි',
+      'authorEnglish': 'Ven. Vidagama Maithreya Thero',
+      'category': 'කාව්‍ය හා දහම් (Wisdom & Verse)',
+      'filter': 'කාව්‍ය හා දහම්',
+      'tag': 'දහම් සිසිල (Spiritual Wisdom)',
+      'readTime': '10 mins',
+      'chapter': 'සිත සනසන සදාචාර උපදේශ කාව්‍ය',
+      'excerpt':
+          '• "සිත නිතියෙන් යහපතෙහිම යොදනු මැනැවි\nනපුරු සිතින් කිසිවෙකු නොම පෙළනු මැනැවි\nමෙත් සිත පතුරුවා සියලු සතුන් වෙතැවි\nසසර දුකින් මිදෙනා මඟ දකිනු මැනැවි."\n\n• "පිනෙන් පිරුණු සිතක් ඇති තැනැත්තා සැමවිටම සතුටින් පසන් වෙයි. ලොව ඇති සියලු සම්පත්වලට වඩා සිතේ සැනසිල්ල උතුම් ය."\n\n• "පින් කළ උතුමෝ මෙලොවද පරලොවද සතුටු වෙති. පිපුණු පියුමක් සේ පවිත්‍ර සිත සැමවිටම ප්‍රභාස්වරය."\n\nමෙම උතුම් කවි පන්ති කියවන විට සිතට දැනෙන්නේ මහත් ශාන්තියකි. මෙත් සිතින් යුතුව ජීවිතයේ සැඳෑ සමය සැනසිල්ලෙන් ගෙවීමට මෙම සිතුවිලි සිතට මඟ පෙන්වයි.',
+    },
+    {
+      'title': 'Sobadahama Ha Gami Diviya (සොබාදහම හා ගැමි දිවිය)',
+      'sinhala': 'කුරුළු හඬ හා සොබා අසිරිය',
+      'author': 'කුමාරතුංග මුනිදාස',
+      'authorEnglish': 'Kumaratunga Munidasa',
+      'category': 'සොබාදහම (Nature Tales)',
+      'filter': 'සොබාදහම',
+      'tag': 'සන්සුන් උදෑසන (Morning Bliss)',
+      'readTime': '12 mins',
+      'chapter': 'උදෑසන පිබිදීම හා සොබා සෞන්දර්යය',
+      'excerpt':
+          'අරුණෝදය උදා වන විට පෙරදිග අහස රන්වන් පැහැයෙන් බැබළෙයි. ගස්වැල් මත පිනි බිඳු දිලිසෙන්නේ මුතු කැට මෙනි. පොල් අතු අගින් මද පවන හමා යද්දී, මල් පැණි උරන බඹරුන්ගේ ගුමු ගුමුවත්, ගිරවුන් හා කොවුලන්ගේ නාදයත් මුළු මිදුල පුරා රැව්දෙයි.\n\nගැමි ගෙදර මිදුලට බැස සුවඳ මල් පිරි වටපිටාව දෙස බලන විට ගතට මෙන්ම සිතටද දැනෙන්නේ මහත් ප්‍රබෝධයකි.\n\nසොබාදහමේ මෙම සුන්දර රටාව නරඹන ඕනෑම කෙනෙකුගේ සිත වෙහෙස නිවා ප්‍රබෝධවත් කරවයි. සිතට දැනෙන ඒ ශාන්තිය මුළු දවස පුරාම ප්‍රීතියෙන් ගත කිරීමට ශක්තියක් සපයයි.',
+    },
+    {
+      'title': 'Sede Samaya Ha Sanasuma (සැඳෑ සමය හා සැනසුම)',
+      'sinhala': 'සිත සුවපත් කරන සිතුවිලි',
+      'author': 'ආචාර්ය ආනන්ද ගුරුගේ',
+      'authorEnglish': 'Dr. Ananda Guruge',
+      'category': 'කාව්‍ය හා දහම් (Wisdom & Verse)',
+      'filter': 'කාව්‍ය හා දහම්',
+      'tag': 'ආත්ම තෘප්තිය (Peaceful Aging)',
+      'readTime': '15 mins',
+      'chapter': 'ජීවිතයේ සැඳෑ සමය ප්‍රීතියෙන් ගත කිරීම',
+      'excerpt':
+          'ජීවිතයේ සැඳෑ සමය යනු විවේකය, ආවර්ජනය සහ ආත්ම තෘප්තිය උපරිමයෙන් විඳිය යුතු ස්වර්ණමය කාල පරිච්ඡේදයකි.\n\nඅතීතයේ කළ යහපත් ක්‍රියා, දරුවන්ට සහ සමාජයට ලබා දුන් ආදරය සිහිපත් කරමින් සතුටු වන්න. වර්තමාන මොහොතේ ජීවත් වීමෙන්, මද පවන, උණුසුම් තේ කෝප්පය, මිතුරෙකුගේ සිනහව වැනි කුඩා දේවල් තුළින් ලැබෙන ප්‍රීතිය අපමණ ය.\n\nඔබේ සිත සැහැල්ලු කරගන්න. සිතේ සාමය රඳවා ගැනීමෙන් ශාරීරික මෙන්ම මානසික සුවපත්භාවයද නිරතුරුවම ආරක්ෂා වේ.',
+    },
+    {
+      'title': 'Koggala Mahagedara Mathaka (කොග්ගල මතක)',
+      'sinhala': 'අපේ ගම (Ape Gama)',
+      'author': 'මාර්ටින් වික්‍රමසිංහ',
+      'authorEnglish': 'Martin Wickramasinghe',
+      'category': 'සම්භාව්‍ය සාහිත්‍යය (Classics)',
+      'filter': 'සම්භාව්‍ය',
+      'tag': 'ළමා වියේ මතක (Childhood Memories)',
+      'readTime': '12 mins',
+      'chapter': 'ගමේ වෙල්යාය සහ ගං ඉවුර',
+      'excerpt':
+          'අපේ ගමේ වෙල්යාය මැදින් වැටී තිබුණු අඩිපාර දිගේ ඇවිද යාම තරම් ප්‍රීතියක් මගේ ළමා වියේ තවත් නොතිබිණි. ගොයම් කරල් සුළඟට වැනෙද්දී රන්වන් තරංග නැගෙන්නාක් මෙන් දිස් විය.\n\nවෙල් එළියේ වක්කඩ ළඟින් ගලා යන දිය පහරේ සිසිලස විඳිමින්, ගමේ මිතුරන් සමග ගත කළ ඒ සුන්දර අතීතය අදටත් සිතට ගෙන දෙන්නේ නොමියෙන ආස්වාදයකි.\n\nපැරණි සුන්දර මතකයන් සිත තුළ යළි අවදි වන විට සිතට දැනෙන්නේ තෘප්තිමත් බවකි.',
+    },
+  ];
+
   Widget _buildElderActivityCard(PersonalizedActivityItem activity) {
     final bool isMusic = activity.category.toLowerCase().contains('music') ||
         activity.title.toLowerCase().contains('melody') ||
@@ -10325,23 +10436,37 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
         activity.title.toLowerCase().contains('courtyard') ||
         activity.title.toLowerCase().contains('nature walk') ||
         activity.category.toLowerCase().contains('game');
+    final bool isBook = activity.id == 'ACT-4-CUSTOM' ||
+        activity.id.contains('ACT-4') ||
+        activity.title.toLowerCase().contains('reading') ||
+        activity.title.toLowerCase().contains('book') ||
+        activity.icon == LucideIcons.bookOpen ||
+        activity.category.toLowerCase().contains('reading');
 
     final String displayTitle = (activity.title.toLowerCase().contains('courtyard') ||
             activity.title.toLowerCase().contains('nature walk') ||
             activity.id.contains('ACT-2'))
         ? 'Emotional Wellness Games'
-        : activity.title;
+        : (isBook ? 'Reading Books' : activity.title);
 
-    final String displayCategory = isGame ? 'Mindful Games / Joy & Calm' : activity.category;
+    final String displayCategory = isGame
+        ? 'Mindful Games / Joy & Calm'
+        : (isBook ? 'Mindful Reading (පොත් කියවීම)' : activity.category);
     final String displayDescription = isGame
         ? 'Joyful interactive games & relaxation puzzles designed to uplift mood, reduce isolation, and foster positive emotions.'
-        : activity.description;
-    final IconData displayIcon = isGame ? LucideIcons.gamepad2 : activity.icon;
+        : (isBook
+            ? 'Calming classic literature, soothing poetry, and inspirational short stories to enrich the heart and mind.'
+            : activity.description);
+    final IconData displayIcon = isGame
+        ? LucideIcons.gamepad2
+        : (isBook ? LucideIcons.bookOpen : activity.icon);
 
     return InkWell(
       onTap: isGame
           ? () => context.go('/dashboard/emotional-games')
-          : (isMusic ? () => _showElderMusicTherapyDialog(activity) : null),
+          : (isMusic
+              ? () => _showElderMusicTherapyDialog(activity)
+              : (isBook ? () => _showElderReadingBooksDialog(activity) : null)),
       borderRadius: BorderRadius.circular(14),
       child: Container(
         padding: const EdgeInsets.all(16),
@@ -10351,11 +10476,19 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
           border: Border.all(
             color: activity.isCompleted
                 ? const Color(0xFF86EFAC)
-                : (isGame ? const Color(0xFFF472B6).withValues(alpha: 0.6) : AppColors.border),
+                : (isGame
+                    ? const Color(0xFFF472B6).withValues(alpha: 0.6)
+                    : (isBook
+                        ? const Color(0xFF14B8A6).withValues(alpha: 0.6)
+                        : AppColors.border)),
           ),
           boxShadow: [
             BoxShadow(
-              color: isGame ? const Color(0xFFDB2777).withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.02),
+              color: isGame
+                  ? const Color(0xFFDB2777).withValues(alpha: 0.05)
+                  : (isBook
+                      ? const Color(0xFF0D9488).withValues(alpha: 0.05)
+                      : Colors.black.withValues(alpha: 0.02)),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -10370,13 +10503,17 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: isGame ? const Color(0xFFFCE7F3) : AppColors.primarySoft,
+                    color: isGame
+                        ? const Color(0xFFFCE7F3)
+                        : (isBook ? const Color(0xFFCCFBF1) : AppColors.primarySoft),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
                     displayIcon,
                     size: 20,
-                    color: isGame ? const Color(0xFFDB2777) : AppColors.primary,
+                    color: isGame
+                        ? const Color(0xFFDB2777)
+                        : (isBook ? const Color(0xFF0D9488) : AppColors.primary),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -10401,19 +10538,25 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                   decoration: BoxDecoration(
                     color: activity.isCompleted
                         ? const Color(0xFFDCFCE7)
-                        : (isGame ? const Color(0xFFFCE7F3) : AppColors.primarySoft),
+                        : (isGame
+                            ? const Color(0xFFFCE7F3)
+                            : (isBook ? const Color(0xFFCCFBF1) : AppColors.primarySoft)),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
                     activity.isCompleted
                         ? 'Completed ✓'
-                        : (isGame ? 'Interactive Game 🎮' : 'Suggested for You'),
+                        : (isGame
+                            ? 'Interactive Game 🎮'
+                            : (isBook ? 'Reading / පොත් 📚' : 'Suggested for You')),
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
                       color: activity.isCompleted
                           ? const Color(0xFF15803D)
-                          : (isGame ? const Color(0xFFDB2777) : AppColors.primary),
+                          : (isGame
+                              ? const Color(0xFFDB2777)
+                              : (isBook ? const Color(0xFF0D9488) : AppColors.primary)),
                     ),
                   ),
                 ),
@@ -10436,7 +10579,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                     Text(
                       isMusic
                           ? '10 mins'
-                          : (isGame ? '15 mins' : '15 - 20 mins'),
+                          : (isGame ? '15 mins' : (isBook ? '15 mins' : '15 - 20 mins')),
                       style: const TextStyle(fontSize: 10.5, color: AppColors.muted),
                     ),
                   ],
@@ -10449,6 +10592,10 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                     }
                     if (isMusic) {
                       _showElderMusicTherapyDialog(activity);
+                      return;
+                    }
+                    if (isBook) {
+                      _showElderReadingBooksDialog(activity);
                       return;
                     }
                     setState(() {
@@ -10466,26 +10613,32 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                         ? LucideIcons.playCircle
                         : (isMusic
                             ? (activity.isCompleted ? LucideIcons.music : LucideIcons.playCircle)
-                            : (activity.isCompleted ? LucideIcons.checkCheck : LucideIcons.playCircle)),
+                            : (isBook
+                                ? (activity.isCompleted ? LucideIcons.bookOpen : LucideIcons.playCircle)
+                                : (activity.isCompleted ? LucideIcons.checkCheck : LucideIcons.playCircle))),
                     size: 14,
-                    color: (activity.isCompleted && !isMusic && !isGame) ? const Color(0xFF15803D) : Colors.white,
+                    color: (activity.isCompleted && !isMusic && !isGame && !isBook) ? const Color(0xFF15803D) : Colors.white,
                   ),
                   label: Text(
                     isGame
                         ? 'Start Now'
                         : (isMusic
                             ? (activity.isCompleted ? 'Listen Again 🎵' : 'Start Now')
-                            : (activity.isCompleted ? 'Enjoyed ✓' : 'Start Now')),
+                            : (isBook
+                                ? (activity.isCompleted ? 'Read Again 📖' : 'Start Now')
+                                : (activity.isCompleted ? 'Enjoyed ✓' : 'Start Now'))),
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
-                      color: (activity.isCompleted && !isMusic && !isGame) ? const Color(0xFF15803D) : Colors.white,
+                      color: (activity.isCompleted && !isMusic && !isGame && !isBook) ? const Color(0xFF15803D) : Colors.white,
                     ),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: isGame
                         ? const Color(0xFF7C3AED)
-                        : ((activity.isCompleted && !isMusic) ? const Color(0xFFDCFCE7) : AppColors.primary),
+                        : (isBook
+                            ? const Color(0xFF0D9488)
+                            : ((activity.isCompleted && !isMusic) ? const Color(0xFFDCFCE7) : AppColors.primary)),
                     elevation: 0,
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -10528,6 +10681,559 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
             ],
           ],
         ),
+      ),
+    );
+  }
+
+  void _showElderReadingBooksDialog(PersonalizedActivityItem activity) {
+    _flutterTts.stop();
+    _flutterTts.speak('පොත් කියවීමේ සැසිය වෙත සාදරයෙන් පිළිගනිමු. ඔබ කැමති පොතක් තෝරාගෙන සන්සුන්ව කියවන්න.');
+
+    Map<String, String> currentBook = _elderCuratedBooks[0];
+    String selectedFilter = 'සියල්ල (All)';
+    double readingFontSize = 16.0;
+    bool isTtsReading = false;
+
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final List<String> filterTabs = ['සියල්ල (All)', 'සම්භාව්‍ය', 'කාව්‍ය හා දහම්', 'සොබාදහම'];
+          final filteredBooks = selectedFilter == 'සියල්ල (All)'
+              ? _elderCuratedBooks
+              : _elderCuratedBooks.where((b) => (b['filter'] ?? '') == selectedFilter).toList();
+
+          void toggleTtsReading() {
+            if (isTtsReading) {
+              _flutterTts.stop();
+              setDialogState(() {
+                isTtsReading = false;
+              });
+            } else {
+              setDialogState(() {
+                isTtsReading = true;
+              });
+              final textToRead = '${currentBook['sinhala']}. කර්තෘ ${currentBook['author']}. ${currentBook['chapter']}. ${currentBook['excerpt']}';
+              _flutterTts.speak(textToRead);
+            }
+          }
+
+          void completeReading() {
+            _flutterTts.stop();
+            Navigator.of(dialogCtx).pop();
+
+            final now = DateTime.now();
+            final String bookTitle = currentBook['sinhala'] ?? 'පොත් කියවීම';
+            final String bookAuthor = currentBook['author'] ?? 'ප්‍රවීණ ලේඛක';
+            const int durationSeconds = 900;
+            const int durationMins = 15;
+            final String formattedDate = '${now.day.toString().padLeft(2, '0')} ${_ralpaMonthName(now.month)} ${now.year}';
+            final String formattedTime = '${(now.hour % 12 == 0 ? 12 : now.hour % 12).toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')} ${now.hour >= 12 ? 'PM' : 'AM'}';
+
+            setState(() {
+              activity.isCompleted = true;
+              activity.completedAt = now;
+              activity.durationSeconds = durationSeconds;
+              activity.completionNotes = 'Caregiver Daily Observational Log: Elder ${_currentResident.name} completed 15 mins Mindful Reading on $formattedDate at $formattedTime (Book: $bookTitle by $bookAuthor). Cognitive engagement and literary reminiscence elevated positive emotional valence.';
+              activity.residentFeedback = 'Resident enjoyed reading $bookTitle by $bookAuthor; felt peaceful and calm.';
+            });
+
+            CarePlansService.recordCompletedSession(
+              songTitle: '$bookTitle (පොත)',
+              songArtist: bookAuthor,
+              dateText: '$formattedDate, $formattedTime',
+              durationText: '$durationMins Mins',
+            );
+
+            // Update social isolation score
+            final double baseSocial = _latestSocialAudit?.socialScore ?? 75.0;
+            final double updatedSocialScore = (baseSocial + 8.0).clamp(50.0, 92.0);
+            final int updatedIsolationScore = (100.0 - updatedSocialScore).round();
+            setState(() {
+              _isolationScore = updatedIsolationScore;
+            });
+
+            _flutterTts.speak('විශිෂ්ටයි! ඔබ $bookTitle පොත කියවීම සාර්ථකව සම්පූර්ණ කළා.');
+          }
+
+          void closeDialog() {
+            _flutterTts.stop();
+            Navigator.of(dialogCtx).pop();
+          }
+
+          final screenWidth = MediaQuery.of(dialogCtx).size.width;
+          final isNarrow = screenWidth < 768;
+
+          return Dialog(
+            backgroundColor: Colors.transparent,
+            insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+            child: Container(
+              width: 900,
+              constraints: const BoxConstraints(maxHeight: 700),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: const [
+                  BoxShadow(color: Colors.black26, blurRadius: 20, offset: Offset(0, 10)),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // --- HEADER ---
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFF0FDFA),
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(20),
+                        topRight: Radius.circular(20),
+                      ),
+                      border: Border(bottom: BorderSide(color: Color(0xFFCCFBF1))),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(9),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFCCFBF1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(LucideIcons.bookOpen, size: 22, color: Color(0xFF0D9488)),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: const [
+                              Text(
+                                'කියවීමට සුදුසු පොත් (Mindful Reading for You)',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.navy,
+                                ),
+                              ),
+                              SizedBox(height: 2),
+                              Text(
+                                'සිත නිවන සම්භාව්‍ය කෘති, දහම් කාව්‍ය හා සොබාදහම් කතා කියවා සැනසෙන්න',
+                                style: TextStyle(fontSize: 11.5, color: AppColors.body),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(LucideIcons.x, size: 20, color: AppColors.muted),
+                          onPressed: closeDialog,
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // --- CATEGORY FILTER CHIPS ---
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
+                    ),
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: filterTabs.map((tab) {
+                          final isSelected = selectedFilter == tab;
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: ChoiceChip(
+                              label: Text(
+                                tab,
+                                style: TextStyle(
+                                  fontSize: 11.5,
+                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                                  color: isSelected ? Colors.white : AppColors.navy,
+                                ),
+                              ),
+                              selected: isSelected,
+                              selectedColor: const Color(0xFF0D9488),
+                              backgroundColor: AppColors.surfaceSecondary,
+                              side: BorderSide(
+                                color: isSelected ? const Color(0xFF0D9488) : AppColors.border,
+                              ),
+                              onSelected: (val) {
+                                if (val) {
+                                  setDialogState(() {
+                                    selectedFilter = tab;
+                                  });
+                                }
+                              },
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ),
+
+                  // --- MAIN SPLIT PANE: BOOK LIST + READER PANE ---
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: isNarrow
+                          ? Column(
+                              children: [
+                                SizedBox(
+                                  height: 100,
+                                  child: ListView(
+                                    scrollDirection: Axis.horizontal,
+                                    children: filteredBooks.map((book) {
+                                      final isCur = currentBook['title'] == book['title'];
+                                      return GestureDetector(
+                                        onTap: () {
+                                          _flutterTts.stop();
+                                          setDialogState(() {
+                                            currentBook = book;
+                                            isTtsReading = false;
+                                          });
+                                        },
+                                        child: Container(
+                                          width: 170,
+                                          margin: const EdgeInsets.only(right: 10),
+                                          padding: const EdgeInsets.all(10),
+                                          decoration: BoxDecoration(
+                                            color: isCur ? const Color(0xFFF0FDFA) : Colors.white,
+                                            borderRadius: BorderRadius.circular(12),
+                                            border: Border.all(
+                                              color: isCur ? const Color(0xFF0D9488) : const Color(0xFFE2E8F0),
+                                              width: isCur ? 1.8 : 1.0,
+                                            ),
+                                          ),
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                book['sinhala'] ?? '',
+                                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                book['author'] ?? '',
+                                                style: const TextStyle(fontSize: 10, color: AppColors.muted),
+                                                maxLines: 1,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      );
+                                    }).toList(),
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                Expanded(child: _buildBookReaderView(currentBook, readingFontSize, isTtsReading, toggleTtsReading, (delta) {
+                                  setDialogState(() {
+                                    readingFontSize = (readingFontSize + delta).clamp(13.0, 24.0);
+                                  });
+                                })),
+                              ],
+                            )
+                          : Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Left Column: Book List (320px)
+                                SizedBox(
+                                  width: 320,
+                                  child: ListView.builder(
+                                    itemCount: filteredBooks.length,
+                                    itemBuilder: (ctx, idx) {
+                                      final book = filteredBooks[idx];
+                                      final isCur = currentBook['title'] == book['title'];
+                                      return Container(
+                                        margin: const EdgeInsets.only(bottom: 8),
+                                        decoration: BoxDecoration(
+                                          color: isCur ? const Color(0xFFF0FDFA) : Colors.white,
+                                          borderRadius: BorderRadius.circular(12),
+                                          border: Border.all(
+                                            color: isCur ? const Color(0xFF0D9488) : const Color(0xFFE2E8F0),
+                                            width: isCur ? 1.8 : 1.0,
+                                          ),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black.withValues(alpha: 0.015),
+                                              blurRadius: 4,
+                                              offset: const Offset(0, 2),
+                                            ),
+                                          ],
+                                        ),
+                                        child: ListTile(
+                                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                          onTap: () {
+                                            _flutterTts.stop();
+                                            setDialogState(() {
+                                              currentBook = book;
+                                              isTtsReading = false;
+                                            });
+                                          },
+                                          leading: Container(
+                                            padding: const EdgeInsets.all(8),
+                                            decoration: BoxDecoration(
+                                              color: isCur ? const Color(0xFFCCFBF1) : const Color(0xFFF1F5F9),
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                            child: Icon(
+                                              LucideIcons.bookOpen,
+                                              size: 18,
+                                              color: isCur ? const Color(0xFF0D9488) : AppColors.muted,
+                                            ),
+                                          ),
+                                          title: Text(
+                                            book['sinhala'] ?? '',
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: isCur ? FontWeight.bold : FontWeight.w600,
+                                              color: isCur ? const Color(0xFF0D9488) : AppColors.navy,
+                                            ),
+                                          ),
+                                          subtitle: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                book['author'] ?? '',
+                                                style: const TextStyle(fontSize: 11, color: AppColors.muted),
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Row(
+                                                children: [
+                                                  Container(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                    decoration: BoxDecoration(
+                                                      color: const Color(0xFFF1F5F9),
+                                                      borderRadius: BorderRadius.circular(4),
+                                                    ),
+                                                    child: Text(
+                                                      book['tag'] ?? '',
+                                                      style: const TextStyle(fontSize: 9.5, color: AppColors.body),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 6),
+                                                  Text(
+                                                    book['readTime'] ?? '15 mins',
+                                                    style: const TextStyle(fontSize: 10, color: AppColors.muted),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          ),
+                                          trailing: isCur
+                                              ? const Icon(LucideIcons.chevronRight, size: 16, color: Color(0xFF0D9488))
+                                              : null,
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+
+                                const SizedBox(width: 16),
+
+                                // Right Column: Reading Pane
+                                Expanded(
+                                  child: _buildBookReaderView(
+                                    currentBook,
+                                    readingFontSize,
+                                    isTtsReading,
+                                    toggleTtsReading,
+                                    (delta) {
+                                      setDialogState(() {
+                                        readingFontSize = (readingFontSize + delta).clamp(13.0, 24.0);
+                                      });
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                    ),
+                  ),
+
+                  // --- BOTTOM ACTION FOOTER ---
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.only(
+                        bottomLeft: Radius.circular(20),
+                        bottomRight: Radius.circular(20),
+                      ),
+                      border: Border(top: BorderSide(color: Color(0xFFE2E8F0))),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(LucideIcons.checkCircle2, size: 16, color: Color(0xFF0D9488)),
+                            const SizedBox(width: 6),
+                            Text(
+                              'නියමිත කාලය: ${currentBook['readTime'] ?? '15 mins'} කියවීම',
+                              style: const TextStyle(fontSize: 11.5, color: AppColors.muted),
+                            ),
+                          ],
+                        ),
+                        Row(
+                          children: [
+                            OutlinedButton(
+                              onPressed: closeDialog,
+                              style: OutlinedButton.styleFrom(
+                                side: const BorderSide(color: Color(0xFFCBD5E1)),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              ),
+                              child: const Text('පසුව කියවන්න (Close)', style: TextStyle(fontSize: 11.5, color: AppColors.navy)),
+                            ),
+                            const SizedBox(width: 10),
+                            ElevatedButton.icon(
+                              onPressed: completeReading,
+                              icon: const Icon(LucideIcons.checkCheck, size: 16, color: Colors.white),
+                              label: const Text('කියවා අවසන් (Finished Reading ✓)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF0D9488),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                elevation: 0,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildBookReaderView(
+    Map<String, String> book,
+    double fontSize,
+    bool isTtsReading,
+    VoidCallback onToggleTts,
+    void Function(double) onFontSizeChange,
+  ) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFFFCFBF7),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.only(topLeft: Radius.circular(16), topRight: Radius.circular(16)),
+              border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        book['sinhala'] ?? '',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppColors.navy),
+                      ),
+                      Text(
+                        'කර්තෘ: ${book['author'] ?? ''}',
+                        style: const TextStyle(fontSize: 11, color: AppColors.muted),
+                      ),
+                    ],
+                  ),
+                ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.remove, size: 16),
+                      tooltip: 'අකුරු කුඩා කරන්න',
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                      onPressed: () => onFontSizeChange(-1.5),
+                    ),
+                    Text('${fontSize.toInt()}pt', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                    IconButton(
+                      icon: const Icon(Icons.add, size: 16),
+                      tooltip: 'අකුරු විශාල කරන්න',
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                      onPressed: () => onFontSizeChange(1.5),
+                    ),
+                  ],
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton.icon(
+                  onPressed: onToggleTts,
+                  icon: Icon(isTtsReading ? LucideIcons.volumeX : LucideIcons.volume2, size: 14, color: isTtsReading ? Colors.white : const Color(0xFF0D9488)),
+                  label: Text(
+                    isTtsReading ? 'නවත්වන්න' : 'හඬින් අසන්න',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: isTtsReading ? Colors.white : const Color(0xFF0D9488)),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isTtsReading ? Colors.redAccent : const Color(0xFFCCFBF1),
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE6FFFA),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: const Color(0xFFB2F5EA)),
+                    ),
+                    child: Text(
+                      book['chapter'] ?? '',
+                      style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF0D9488)),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  SelectableText(
+                    book['excerpt'] ?? '',
+                    style: TextStyle(
+                      fontSize: fontSize,
+                      height: 1.85,
+                      color: const Color(0xFF1E293B),
+                      letterSpacing: 0.2,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  const Center(
+                    child: Text(
+                      '~ • ~',
+                      style: TextStyle(fontSize: 16, color: Color(0xFF94A3B8)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
