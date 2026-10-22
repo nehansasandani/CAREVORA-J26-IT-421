@@ -21,6 +21,7 @@ import '../application/emotional_assessment_service.dart';
 import '../application/vocal_emotion_ai_service.dart';
 import '../application/social_audit_service.dart';
 import '../application/cognitive_assessment_service.dart';
+import '../application/care_plans_service.dart';
 import '../../auth/application/auth_controller.dart';
 import '../../../core/services/audio_player_service.dart';
 import '../../../core/services/live_voice_capture_service.dart';
@@ -503,15 +504,13 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
           ),
           PersonalizedActivityItem(
             id: 'ACT-2-9001',
-            title: 'Historical Folklore & Illustrated Biography Reading',
-            category: 'Reading & Literature',
-            description: 'Engaging narrative material prompts conversational recall and provides comfortable individual engagement in personal quarters.',
-            icon: LucideIcons.bookOpen,
+            title: 'Emotional Wellness Games',
+            category: 'Mindful Games / Joy & Calm',
+            description: 'Joyful interactive games & relaxation puzzles designed to uplift mood, reduce isolation, and foster positive emotions.',
+            icon: LucideIcons.gamepad2,
             priority: 'Recommended',
-            priorityColor: Colors.blueAccent,
-            isCompleted: true,
-            completionNotes: 'Resident completed chapter 3 with caregiver assistance.',
-            residentFeedback: 'Felt calm and reminisced about childhood stories.',
+            priorityColor: const Color(0xFFDB2777),
+            isCompleted: false,
           ),
           PersonalizedActivityItem(
             id: 'ACT-3-9001',
@@ -614,12 +613,12 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
           ),
           PersonalizedActivityItem(
             id: 'ACT-2-9002',
-            title: 'Botanical Garden Memoir & Poetry',
-            category: 'Reading & Literature',
-            description: 'Short nature poems supporting cognitive recall and personal peace.',
-            icon: LucideIcons.bookOpen,
+            title: 'Emotional Wellness Games',
+            category: 'Mindful Games / Joy & Calm',
+            description: 'Joyful interactive games & relaxation puzzles designed to uplift mood, reduce isolation, and foster positive emotions.',
+            icon: LucideIcons.gamepad2,
             priority: 'Recommended',
-            priorityColor: AppColors.leafGreen,
+            priorityColor: const Color(0xFFDB2777),
             isCompleted: false,
           ),
           PersonalizedActivityItem(
@@ -712,12 +711,12 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
           ),
           PersonalizedActivityItem(
             id: 'ACT-2-9003',
-            title: 'Steam Locomotive Archive & Picture Albums',
-            category: 'Reading & Literature',
-            description: 'High-interest historical machinery album to spark conversational enthusiasm.',
-            icon: LucideIcons.bookOpen,
+            title: 'Emotional Wellness Games',
+            category: 'Mindful Games / Joy & Calm',
+            description: 'Joyful interactive games & relaxation puzzles designed to uplift mood, reduce isolation, and foster positive emotions.',
+            icon: LucideIcons.gamepad2,
             priority: 'Recommended',
-            priorityColor: Colors.blueAccent,
+            priorityColor: const Color(0xFFDB2777),
             isCompleted: false,
           ),
           PersonalizedActivityItem(
@@ -797,12 +796,12 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
           ),
           PersonalizedActivityItem(
             id: 'ACT-2-9004',
-            title: 'Illustrated Travelogues & Art Journals',
-            category: 'Reading & Literature',
-            description: 'Visual cultural narratives for leisurely room reading.',
-            icon: LucideIcons.bookOpen,
+            title: 'Emotional Wellness Games',
+            category: 'Mindful Games / Joy & Calm',
+            description: 'Joyful interactive games & relaxation puzzles designed to uplift mood, reduce isolation, and foster positive emotions.',
+            icon: LucideIcons.gamepad2,
             priority: 'Recommended',
-            priorityColor: Colors.blueAccent,
+            priorityColor: const Color(0xFFDB2777),
             isCompleted: false,
           ),
           PersonalizedActivityItem(
@@ -862,12 +861,12 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
         ),
         PersonalizedActivityItem(
           id: 'ACT-2-CUSTOM',
-          title: 'Courtyard Nature Walk & Mindful Breathing',
-          category: 'Physical / Relaxation',
-          description: 'Gentle nature walk in personal quarters or courtyard to elevate mood.',
-          icon: LucideIcons.sparkles,
+          title: 'Emotional Wellness Games',
+          category: 'Mindful Games / Joy & Calm',
+          description: 'Joyful interactive games & relaxation puzzles designed to uplift mood, reduce isolation, and foster positive emotions.',
+          icon: LucideIcons.gamepad2,
           priority: 'Recommended',
-          priorityColor: AppColors.leafGreen,
+          priorityColor: const Color(0xFFDB2777),
           isCompleted: false,
         ),
         PersonalizedActivityItem(
@@ -912,6 +911,26 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
     final dataset = _residentDatasets[id] ?? _createDefaultDataset(_currentResident.name);
     _historyLogs = List.from(dataset.logs);
     _activities = List.from(dataset.activities);
+
+    // Ensure all residents have the Emotional Wellness Games card at index 1 / replacing legacy nature walk
+    for (int i = 0; i < _activities.length; i++) {
+      final act = _activities[i];
+      final titleLower = act.title.toLowerCase();
+      if (titleLower.contains('courtyard') ||
+          titleLower.contains('nature walk') ||
+          act.id.contains('ACT-2')) {
+        _activities[i] = PersonalizedActivityItem(
+          id: act.id,
+          title: 'Emotional Wellness Games',
+          category: 'Mindful Games / Joy & Calm',
+          description: 'Joyful interactive games & relaxation puzzles designed to uplift mood, reduce isolation, and foster positive emotions.',
+          icon: LucideIcons.gamepad2,
+          priority: 'Recommended',
+          priorityColor: const Color(0xFFDB2777),
+          isCompleted: act.isCompleted,
+        );
+      }
+    }
     _capturedImageBytes = null;
     if (_historyLogs.isNotEmpty) {
       final latest = _historyLogs.first;
@@ -9154,6 +9173,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
 
   // --- ASSESSMENT FOCUS PANEL ---
   Widget _buildAssessmentFocusPanel() {
+    final authState = ref.watch(authProvider).state;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -9175,7 +9195,8 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
             _buildFocusBadge(LucideIcons.users, 'Social Interaction', isCurrent: _questions[_currentIndex].category == 'Social Interaction'),
             _buildFocusBadge(LucideIcons.messageSquare, 'Communication Patterns', isCurrent: _questions[_currentIndex].category == 'Communication Patterns'),
             _buildFocusBadge(LucideIcons.shieldAlert, 'Loneliness Indicators', isCurrent: _questions[_currentIndex].category == 'Loneliness Indicators'),
-            _buildFocusBadge(LucideIcons.share2, 'Social-isolation Indicators', isCurrent: _questions[_currentIndex].category == 'Social-isolation Indicators'),
+            if (!authState.isElder)
+              _buildFocusBadge(LucideIcons.share2, 'Social-isolation Indicators', isCurrent: _questions[_currentIndex].category == 'Social-isolation Indicators'),
           ],
         ),
       ],
@@ -9461,9 +9482,9 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Loneliness & Social-Isolation Indicators',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.navy),
+          Text(
+            authState.isElder ? 'Loneliness Indicators' : 'Loneliness & Social-Isolation Indicators',
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.navy),
           ),
           const SizedBox(height: 16),
 
@@ -9512,59 +9533,59 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          const Divider(height: 1, color: AppColors.border),
-          const SizedBox(height: 14),
+          if (!authState.isElder) ...[
+            const SizedBox(height: 16),
+            const Divider(height: 1, color: AppColors.border),
+            const SizedBox(height: 14),
 
-          // Section B: Social-Isolation Indicators
-          Wrap(
-            alignment: WrapAlignment.spaceBetween,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 8,
-            runSpacing: 6,
-            children: [
-              Wrap(
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: 8,
-                runSpacing: 4,
-                children: [
-                  const Text(
-                    'Social-Isolation Indicators',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.riskHigh),
-                  ),
-                  if (_isLoadingSocialAudit)
-                    const SizedBox(
-                      width: 14,
-                      height: 14,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
-                    )
-                  else if (_latestSocialAudit != null)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFDCFCE7),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: const Text(
-                        'Verified Caregiver Audit',
-                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF166534)),
-                      ),
-                    )
-                  else
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFEF3C7),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: const Text(
-                        'Unassessed (No Caregiver Audit)',
-                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF92400E)),
-                      ),
+            // Section B: Social-Isolation Indicators (Caregiver Observational Audit Only)
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 6,
+              children: [
+                Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: [
+                    const Text(
+                      'Social-Isolation Indicators',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.riskHigh),
                     ),
-                ],
-              ),
-              if (!authState.isElder)
+                    if (_isLoadingSocialAudit)
+                      const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                      )
+                    else if (_latestSocialAudit != null)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFDCFCE7),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Text(
+                          'Verified Caregiver Audit',
+                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF166534)),
+                        ),
+                      )
+                    else
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFEF3C7),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Text(
+                          'Unassessed (No Caregiver Audit)',
+                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF92400E)),
+                        ),
+                      ),
+                  ],
+                ),
                 TextButton.icon(
                   style: TextButton.styleFrom(
                     visualDensity: VisualDensity.compact,
@@ -9577,116 +9598,117 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                   ),
                   onPressed: () => context.go('/dashboard/social-audit/resident/${_resolveBackendResidentId()}'),
                 ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          if (_latestSocialAudit != null) ...[
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceSecondary,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _IndicatorSubRow(
-                              label: 'External Contacts (7d)',
-                              level: _latestSocialAudit!.externalContactUnknown
-                                  ? 'Unknown / Not Recorded'
-                                  : '${_latestSocialAudit!.totalExternalContacts ?? 0} contacts (${_latestSocialAudit!.familyInPersonVisits ?? 0} visits, ${_latestSocialAudit!.familyPhoneVideoContacts ?? 0} calls)',
-                            ),
-                            const SizedBox(height: 4),
-                            _IndicatorSubRow(
-                              label: 'Peer Social Interaction',
-                              level: _latestSocialAudit!.peerInteractionLevel.label,
-                            ),
-                            const SizedBox(height: 4),
-                            _IndicatorSubRow(
-                              label: 'Activity Attendance',
-                              level: _latestSocialAudit!.activitiesAttended != null
-                                  ? '${_latestSocialAudit!.activitiesAttended} / ${_latestSocialAudit!.activitiesAvailable ?? 0} (${_latestSocialAudit!.activityParticipationLevel.label})'
-                                  : _latestSocialAudit!.activityParticipationLevel.label,
-                            ),
-                            const SizedBox(height: 4),
-                            _IndicatorSubRow(
-                              label: 'Time Alone / Day',
-                              level: _latestSocialAudit!.estimatedHoursAlonePerDay != null
-                                  ? '${_latestSocialAudit!.estimatedHoursAlonePerDay!.toStringAsFixed(1)} hrs/day (${_latestSocialAudit!.aloneTimeContext.label})'
-                                  : _latestSocialAudit!.aloneTimeContext.label,
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (_latestSocialAudit!.socialScore != null)
-                        _buildCircularScoreGauge(
-                          score: (100.0 - _latestSocialAudit!.socialScore!).round(),
-                          riskLabel: (100.0 - _latestSocialAudit!.socialScore!) >= 50 ? 'Elevated' : 'Low',
-                          riskColor: (100.0 - _latestSocialAudit!.socialScore!) >= 50 ? AppColors.riskHigh : AppColors.riskLow,
-                          bgRingColor: (100.0 - _latestSocialAudit!.socialScore!) >= 50 ? AppColors.riskHighBg : const Color(0xFFDCFCE7),
-                        ),
-                    ],
-                  ),
-                  const Divider(height: 16),
-                  Row(
-                    children: [
-                      const Icon(LucideIcons.userCheck, size: 14, color: AppColors.primary),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          'Audited on ${_latestSocialAudit!.auditDate.day}/${_latestSocialAudit!.auditDate.month}/${_latestSocialAudit!.auditDate.year} by ${_latestSocialAudit!.caregiverName}',
-                          style: const TextStyle(fontSize: 11, color: AppColors.muted, fontWeight: FontWeight.w500),
-                        ),
-                      ),
-                      if (_latestSocialAudit!.healthMobilityBarriers)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFFEDD5),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: const Text(
-                            'Health Barrier Protected',
-                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFFC2410C)),
-                          ),
-                        ),
-                    ],
-                  ),
-                ],
-              ),
+              ],
             ),
-          ] else ...[
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceSecondary,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: const [
-                      Icon(LucideIcons.clipboardList, size: 20, color: AppColors.muted),
-                      SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          'Unassessed — No Caregiver Social Audit On File. External contacts, visitor logs, and group activity attendance require staff observational audit.',
-                          style: TextStyle(fontSize: 11, color: AppColors.body, height: 1.3),
+            const SizedBox(height: 8),
+            if (_latestSocialAudit != null) ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceSecondary,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _IndicatorSubRow(
+                                label: 'External Contacts (7d)',
+                                level: _latestSocialAudit!.externalContactUnknown
+                                    ? 'Unknown / Not Recorded'
+                                    : '${_latestSocialAudit!.totalExternalContacts ?? 0} contacts (${_latestSocialAudit!.familyInPersonVisits ?? 0} visits, ${_latestSocialAudit!.familyPhoneVideoContacts ?? 0} calls)',
+                              ),
+                              const SizedBox(height: 4),
+                              _IndicatorSubRow(
+                                label: 'Peer Social Interaction',
+                                level: _latestSocialAudit!.peerInteractionLevel.label,
+                              ),
+                              const SizedBox(height: 4),
+                              _IndicatorSubRow(
+                                label: 'Activity Attendance',
+                                level: _latestSocialAudit!.activitiesAttended != null
+                                    ? '${_latestSocialAudit!.activitiesAttended} / ${_latestSocialAudit!.activitiesAvailable ?? 0} (${_latestSocialAudit!.activityParticipationLevel.label})'
+                                    : _latestSocialAudit!.activityParticipationLevel.label,
+                              ),
+                              const SizedBox(height: 4),
+                              _IndicatorSubRow(
+                                label: 'Time Alone / Day',
+                                level: _latestSocialAudit!.estimatedHoursAlonePerDay != null
+                                    ? '${_latestSocialAudit!.estimatedHoursAlonePerDay!.toStringAsFixed(1)} hrs/day (${_latestSocialAudit!.aloneTimeContext.label})'
+                                    : _latestSocialAudit!.aloneTimeContext.label,
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  if (!authState.isElder) ...[
+                        if (_latestSocialAudit!.socialScore != null) ...[
+                          const SizedBox(width: 8),
+                          _buildCircularScoreGauge(
+                            score: (100.0 - _latestSocialAudit!.socialScore!).round(),
+                            riskLabel: (100.0 - _latestSocialAudit!.socialScore!) >= 50 ? 'Elevated' : 'Low',
+                            riskColor: (100.0 - _latestSocialAudit!.socialScore!) >= 50 ? AppColors.riskHigh : AppColors.riskLow,
+                            bgRingColor: (100.0 - _latestSocialAudit!.socialScore!) >= 50 ? AppColors.riskHighBg : const Color(0xFFDCFCE7),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const Divider(height: 16),
+                    Row(
+                      children: [
+                        const Icon(LucideIcons.userCheck, size: 14, color: AppColors.primary),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            'Audited on ${_latestSocialAudit!.auditDate.day}/${_latestSocialAudit!.auditDate.month}/${_latestSocialAudit!.auditDate.year} by ${_latestSocialAudit!.caregiverName}',
+                            style: const TextStyle(fontSize: 11, color: AppColors.muted, fontWeight: FontWeight.w500),
+                          ),
+                        ),
+                        if (_latestSocialAudit!.healthMobilityBarriers)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFEDD5),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text(
+                              'Health Barrier Protected',
+                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFFC2410C)),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ] else ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceSecondary,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: const [
+                        Icon(LucideIcons.clipboardList, size: 20, color: AppColors.muted),
+                        SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'Unassessed — No Caregiver Social Audit On File. External contacts, visitor logs, and group activity attendance require staff observational audit.',
+                            style: TextStyle(fontSize: 11, color: AppColors.body, height: 1.3),
+                          ),
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: 10),
                     SizedBox(
                       width: double.infinity,
@@ -9706,9 +9728,9 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                       ),
                     ),
                   ],
-                ],
+                ),
               ),
-            ),
+            ],
           ],
         ],
       ),
@@ -10229,19 +10251,44 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
         activity.title.toLowerCase().contains('music') ||
         activity.icon == LucideIcons.music ||
         activity.id.contains('ACT-1');
+    final bool isGame = activity.id == 'ACT-2-CUSTOM' ||
+        activity.id.contains('ACT-2') ||
+        activity.id.contains('GAME') ||
+        activity.title.toLowerCase().contains('game') ||
+        activity.title.toLowerCase().contains('courtyard') ||
+        activity.title.toLowerCase().contains('nature walk') ||
+        activity.category.toLowerCase().contains('game');
+
+    final String displayTitle = (activity.title.toLowerCase().contains('courtyard') ||
+            activity.title.toLowerCase().contains('nature walk') ||
+            activity.id.contains('ACT-2'))
+        ? 'Emotional Wellness Games'
+        : activity.title;
+
+    final String displayCategory = isGame ? 'Mindful Games / Joy & Calm' : activity.category;
+    final String displayDescription = isGame
+        ? 'Joyful interactive games & relaxation puzzles designed to uplift mood, reduce isolation, and foster positive emotions.'
+        : activity.description;
+    final IconData displayIcon = isGame ? LucideIcons.gamepad2 : activity.icon;
 
     return InkWell(
-      onTap: isMusic ? () => _showElderMusicTherapyDialog(activity) : null,
+      onTap: isGame
+          ? () => context.go('/dashboard/emotional-games')
+          : (isMusic ? () => _showElderMusicTherapyDialog(activity) : null),
       borderRadius: BorderRadius.circular(14),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: activity.isCompleted ? const Color(0xFF86EFAC) : AppColors.border),
+          border: Border.all(
+            color: activity.isCompleted
+                ? const Color(0xFF86EFAC)
+                : (isGame ? const Color(0xFFF472B6).withValues(alpha: 0.6) : AppColors.border),
+          ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.02),
+              color: isGame ? const Color(0xFFDB2777).withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.02),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -10256,10 +10303,14 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: AppColors.primarySoft,
+                    color: isGame ? const Color(0xFFFCE7F3) : AppColors.primarySoft,
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Icon(activity.icon, size: 20, color: AppColors.primary),
+                  child: Icon(
+                    displayIcon,
+                    size: 20,
+                    color: isGame ? const Color(0xFFDB2777) : AppColors.primary,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -10267,12 +10318,12 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        activity.title,
+                        displayTitle,
                         style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: AppColors.navy),
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        activity.category,
+                        displayCategory,
                         style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w500, color: AppColors.muted),
                       ),
                     ],
@@ -10281,15 +10332,21 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: activity.isCompleted ? const Color(0xFFDCFCE7) : AppColors.primarySoft,
+                    color: activity.isCompleted
+                        ? const Color(0xFFDCFCE7)
+                        : (isGame ? const Color(0xFFFCE7F3) : AppColors.primarySoft),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
-                    activity.isCompleted ? 'Completed ✓' : 'Suggested for You',
+                    activity.isCompleted
+                        ? 'Completed ✓'
+                        : (isGame ? 'Interactive Game 🎮' : 'Suggested for You'),
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
-                      color: activity.isCompleted ? const Color(0xFF15803D) : AppColors.primary,
+                      color: activity.isCompleted
+                          ? const Color(0xFF15803D)
+                          : (isGame ? const Color(0xFFDB2777) : AppColors.primary),
                     ),
                   ),
                 ),
@@ -10297,7 +10354,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
             ),
             const SizedBox(height: 10),
             Text(
-              activity.description,
+              displayDescription,
               style: const TextStyle(fontSize: 11.5, color: AppColors.body, height: 1.35),
             ),
             const SizedBox(height: 12),
@@ -10309,11 +10366,20 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                   children: [
                     const Icon(LucideIcons.clock, size: 12, color: AppColors.muted),
                     const SizedBox(width: 4),
-                    Text(isMusic ? '10 mins' : '15 - 20 mins', style: const TextStyle(fontSize: 10.5, color: AppColors.muted)),
+                    Text(
+                      isMusic
+                          ? '10 mins'
+                          : (isGame ? '15 mins' : '15 - 20 mins'),
+                      style: const TextStyle(fontSize: 10.5, color: AppColors.muted),
+                    ),
                   ],
                 ),
                 ElevatedButton.icon(
                   onPressed: () {
+                    if (isGame) {
+                      context.go('/dashboard/emotional-games');
+                      return;
+                    }
                     if (isMusic) {
                       _showElderMusicTherapyDialog(activity);
                       return;
@@ -10329,24 +10395,30 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                     }
                   },
                   icon: Icon(
-                    isMusic
-                        ? (activity.isCompleted ? LucideIcons.music : LucideIcons.playCircle)
-                        : (activity.isCompleted ? LucideIcons.checkCheck : LucideIcons.playCircle),
+                    isGame
+                        ? LucideIcons.playCircle
+                        : (isMusic
+                            ? (activity.isCompleted ? LucideIcons.music : LucideIcons.playCircle)
+                            : (activity.isCompleted ? LucideIcons.checkCheck : LucideIcons.playCircle)),
                     size: 14,
-                    color: (activity.isCompleted && !isMusic) ? const Color(0xFF15803D) : Colors.white,
+                    color: (activity.isCompleted && !isMusic && !isGame) ? const Color(0xFF15803D) : Colors.white,
                   ),
                   label: Text(
-                    isMusic
-                        ? (activity.isCompleted ? 'Listen Again 🎵' : 'Start Now')
-                        : (activity.isCompleted ? 'Enjoyed ✓' : 'Start Now'),
+                    isGame
+                        ? 'Start Now'
+                        : (isMusic
+                            ? (activity.isCompleted ? 'Listen Again 🎵' : 'Start Now')
+                            : (activity.isCompleted ? 'Enjoyed ✓' : 'Start Now')),
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
-                      color: (activity.isCompleted && !isMusic) ? const Color(0xFF15803D) : Colors.white,
+                      color: (activity.isCompleted && !isMusic && !isGame) ? const Color(0xFF15803D) : Colors.white,
                     ),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: (activity.isCompleted && !isMusic) ? const Color(0xFFDCFCE7) : AppColors.primary,
+                    backgroundColor: isGame
+                        ? const Color(0xFF7C3AED)
+                        : ((activity.isCompleted && !isMusic) ? const Color(0xFFDCFCE7) : AppColors.primary),
                     elevation: 0,
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -10354,6 +10426,39 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                 ),
               ],
             ),
+            if (activity.isCompleted) ...[
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF0FDF4),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFF86EFAC)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(LucideIcons.checkCheck, size: 16, color: Color(0xFF15803D)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'අද දින සාර්ථකව සම්පූර්ණයි • ${_currentResident.name} (${activity.completedAt != null ? _formatAssessmentTimestamp(activity.completedAt!.toIso8601String()) : "අද දින"})',
+                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF15803D)),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'යෙදුණු කාලය: ${activity.durationSeconds != null ? ((activity.durationSeconds! / 60).ceil().toString() + " mins") : "10 mins"} | සත්කාරක Social Audit වෙත යොමු විය (Social Isolation: $_isolationScore%).',
+                            style: const TextStyle(fontSize: 10.5, color: Color(0xFF166534)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -10404,11 +10509,12 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                   timer.cancel();
                   isAudioPlaying = false;
                   AudioPlayerService.instance.stop();
-                  setState(() {
-                    activity.isCompleted = true;
-                  });
-                  _flutterTts.stop();
-                  _flutterTts.speak('මිනිත්තු 10 ක සන්සුන් සංගීත සැසිය සාර්ථකව අවසන් විය. ඔබගේ මනස සැහැල්ලු වූවා යැයි බලාපොරොත්තු වෙමු.');
+                  Navigator.of(dialogCtx).pop();
+                  _handleElderActivityCompletion(
+                    activity: activity,
+                    currentSong: currentSong,
+                    elapsedSeconds: targetDurationSeconds,
+                  );
                 }
               });
             });
@@ -10432,9 +10538,12 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                     timer.cancel();
                     isAudioPlaying = false;
                     AudioPlayerService.instance.stop();
-                    setState(() {
-                      activity.isCompleted = true;
-                    });
+                    Navigator.of(dialogCtx).pop();
+                    _handleElderActivityCompletion(
+                      activity: activity,
+                      currentSong: currentSong,
+                      elapsedSeconds: targetDurationSeconds,
+                    );
                   }
                 });
               });
@@ -10447,12 +10556,14 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
           void completeAndClose() {
             dialogTimer?.cancel();
             AudioPlayerService.instance.stop();
-            setState(() {
-              activity.isCompleted = true;
-            });
             Navigator.of(dialogCtx).pop();
-            _flutterTts.stop();
-            _flutterTts.speak('විශිෂ්ටයි! ඔබ සන්සුන් සංගීත චිකිත්සා සැසිය සම්පූර්ණ කළා.');
+            _handleElderActivityCompletion(
+              activity: activity,
+              currentSong: currentSong,
+              elapsedSeconds: elapsedSeconds >= targetDurationSeconds
+                  ? targetDurationSeconds
+                  : (elapsedSeconds > 0 ? elapsedSeconds : 600),
+            );
           }
 
           void closeDialog() {
@@ -10980,6 +11091,373 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
           );
         },
       ),
+    );
+  }
+
+  void _handleElderActivityCompletion({
+    required PersonalizedActivityItem activity,
+    required Map<String, String>? currentSong,
+    required int elapsedSeconds,
+  }) {
+    final now = DateTime.now();
+    final int durationSeconds = elapsedSeconds > 0 ? elapsedSeconds : 600;
+    final int durationMins = (durationSeconds / 60).ceil();
+    final String durationText = '$durationMins mins ($durationMins මිනිත්තු)';
+    final String formattedDate = '${now.day.toString().padLeft(2, '0')} ${_ralpaMonthName(now.month)} ${now.year}';
+    final String formattedTime = '${(now.hour % 12 == 0 ? 12 : now.hour % 12).toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')} ${now.hour >= 12 ? 'PM' : 'AM'}';
+
+    final songTitle = currentSong?['sinhala'] ?? 'සන්සුන් ගීතය';
+    final songArtist = currentSong?['artist'] ?? 'ප්‍රවීණ ගායන ශිල්පී';
+
+    // 1. Update activity object
+    activity.isCompleted = true;
+    activity.completedAt = now;
+    activity.durationSeconds = durationSeconds;
+    activity.completedSongTitle = songTitle;
+    activity.completedSongArtist = songArtist;
+    activity.completionNotes = 'Caregiver Daily Observational Log: Elder ${_currentResident.name} actively completed $durationText Music Therapy on $formattedDate at $formattedTime (Track: $songTitle). Acoustic rhythms stabilized prosody and fostered positive emotional connectivity.';
+    activity.residentFeedback = 'Resident felt calm, comforted and joyful listening to $songTitle.';
+
+    // Record session for Care Plans & Caregiver Resident Directory live synchronization
+    CarePlansService.recordCompletedSession(
+      songTitle: songTitle,
+      songArtist: songArtist,
+      dateText: '$formattedDate, $formattedTime',
+      durationText: '$durationMins Mins',
+    );
+
+    // 2. Compute improved social audit scores & reduced social isolation score
+    final double baseSocial = _latestSocialAudit?.socialScore ?? 75.0;
+    final double updatedSocialScore = (baseSocial + 10.0).clamp(50.0, 92.0);
+    final int updatedIsolationScore = (100.0 - updatedSocialScore).round();
+
+    // 3. Construct verified SocialAuditRecord
+    final updatedAudit = SocialAuditRecord(
+      id: _latestSocialAudit?.id ?? 901,
+      residentId: _resolveBackendResidentId(),
+      residentName: _currentResident.name,
+      caregiverUserId: 1,
+      caregiverName: 'Nurse Seetha N. (Assigned Caregiver)',
+      auditDate: now,
+      reportingPeriodDays: 7,
+      familyInPersonVisits: _latestSocialAudit?.familyInPersonVisits ?? 2,
+      familyPhoneVideoContacts: _latestSocialAudit?.familyPhoneVideoContacts ?? 3,
+      totalExternalContacts: _latestSocialAudit?.totalExternalContacts ?? 5,
+      externalContactUnknown: false,
+      peerInteractionLevel: PeerInteractionFrequency.often,
+      activitiesAvailable: _latestSocialAudit?.activitiesAvailable ?? 4,
+      activitiesAttended: ((_latestSocialAudit?.activitiesAttended ?? 2) + 1).clamp(1, 4),
+      activityParticipationRate: (((_latestSocialAudit?.activitiesAttended ?? 2) + 1) / 4.0).clamp(0.0, 1.0),
+      activityParticipationLevel: ActivityParticipationMode.activeEngagement,
+      healthMobilityBarriers: false,
+      estimatedHoursAlonePerDay: ((_latestSocialAudit?.estimatedHoursAlonePerDay ?? 5.0) - 1.0).clamp(1.0, 12.0),
+      aloneTimeContext: SolitudeContext.chosenSolitude,
+      caregiverNotes: 'Caregiver Daily Social Audit Update: Elder ${_currentResident.name} completed $durationText Music Therapy on $formattedDate at $formattedTime (Song: $songTitle). Regular therapeutic participation confirmed; social isolation score decreased to $updatedIsolationScore%.',
+      socialScore: updatedSocialScore,
+      scoreProvenance: 'Updated from Elder Activity Completion & Caregiver Observational Audit',
+      createdAt: now,
+    );
+
+    // 4. Update widget state
+    setState(() {
+      _latestSocialAudit = updatedAudit;
+      _isolationScore = updatedIsolationScore;
+      _currentResident = Resident(
+        id: _currentResident.id,
+        name: _currentResident.name,
+        age: _currentResident.age,
+        gender: _currentResident.gender,
+        roomNo: _currentResident.roomNo,
+        lastAssessmentDate: _currentResident.lastAssessmentDate,
+        cognitiveScore: _currentResident.cognitiveScore,
+        cognitiveTrend: _currentResident.cognitiveTrend,
+        emotionalScore: _currentResident.emotionalScore,
+        emotionalTrend: _currentResident.emotionalTrend,
+        metabolicScore: _currentResident.metabolicScore,
+        metabolicTrend: _currentResident.metabolicTrend,
+        overallIndex: _currentResident.overallIndex,
+        overallTrend: _currentResident.overallTrend,
+        socialScore: updatedSocialScore,
+      );
+
+      final idx = _availableResidents.indexWhere((r) => r.id == _currentResident.id);
+      if (idx != -1) {
+        _availableResidents[idx] = _currentResident;
+      }
+
+      final dataset = _residentDatasets[_currentResident.id];
+      if (dataset != null) {
+        final act = dataset.activities.firstWhere((a) => a.id == activity.id, orElse: () => activity);
+        act.isCompleted = true;
+        act.completedAt = now;
+        act.durationSeconds = durationSeconds;
+        act.completedSongTitle = songTitle;
+        act.completedSongArtist = songArtist;
+        act.completionNotes = activity.completionNotes;
+        act.residentFeedback = activity.residentFeedback;
+      }
+
+      _historyLogs.insert(0, EmotionalAssessmentHistoryLog(
+        id: 'LOG-ACT-${now.millisecondsSinceEpoch}',
+        date: '$formattedDate, $formattedTime',
+        primaryEmotion: 'Peaceful / Calm (සන්සුන්)',
+        lonelinessScore: (_lonelinessScore - 8).clamp(10, 85),
+        isolationScore: updatedIsolationScore,
+        deviation: -0.65,
+        trajectory: 'Stabilizing / Improving (සන්සුන්)',
+        interventionStatus: '10-Min Music Therapy Completed',
+        assessedBy: 'Elder Self-Activity & Caregiver Sync',
+      ));
+    });
+
+    // 5. Speak comforting Sinhala voice message
+    _flutterTts.stop();
+    _flutterTts.speak('විශිෂ්ටයි ${_currentResident.name}! ඔබ අද දවසේ $durationText සන්සුන් සංගීත චිකිත්සාව සාර්ථකව අවසන් කළා. මෙම තොරතුරු සත්කාරක වාර්තාවට සහ සමාජ විගණනයට යොමු කරන ලදී.');
+
+    // 6. Show Elder Activity Completion & Caregiver Sync Dialog
+    _showElderActivityCompletionConfirmationModal(
+      activity: activity,
+      songTitle: songTitle,
+      songArtist: songArtist,
+      durationText: durationText,
+      formattedDate: formattedDate,
+      formattedTime: formattedTime,
+      updatedSocialScore: updatedSocialScore,
+      updatedIsolationScore: updatedIsolationScore,
+    );
+  }
+
+  void _showElderActivityCompletionConfirmationModal({
+    required PersonalizedActivityItem activity,
+    required String songTitle,
+    required String songArtist,
+    required String durationText,
+    required String formattedDate,
+    required String formattedTime,
+    required double updatedSocialScore,
+    required int updatedIsolationScore,
+  }) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+        backgroundColor: Colors.white,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+        child: Container(
+          width: 580,
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFDCFCE7),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: const Color(0xFF86EFAC)),
+                    ),
+                    child: const Icon(LucideIcons.checkCheck, size: 24, color: Color(0xFF15803D)),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: const [
+                        Text(
+                          'අද දවසේ සුවතා සැසිය සාර්ථකව අවසන්! 🎉',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.navy),
+                        ),
+                        SizedBox(height: 3),
+                        Text(
+                          'සත්කාරක වාර්තාවට (Caregiver Audit) තොරතුරු සාර්ථකව යොමු විය.',
+                          style: TextStyle(fontSize: 11.5, color: Color(0xFF15803D), fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(LucideIcons.x, size: 20, color: AppColors.muted),
+                    onPressed: () => Navigator.of(ctx).pop(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+
+              // Elder Session Summary Card
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: Column(
+                  children: [
+                    _buildSummaryDataRow(LucideIcons.user, 'වැඩිහිටියාගේ නම (Elder Name)', _currentResident.name),
+                    const Divider(height: 16, color: Color(0xFFE2E8F0)),
+                    _buildSummaryDataRow(LucideIcons.calendar, 'දිනය සහ වේලාව (Date & Time)', '$formattedDate • $formattedTime'),
+                    const Divider(height: 16, color: Color(0xFFE2E8F0)),
+                    _buildSummaryDataRow(LucideIcons.clock, 'යෙදුණු කාලය (Duration Spent)', durationText, isHighlight: true),
+                    const Divider(height: 16, color: Color(0xFFE2E8F0)),
+                    _buildSummaryDataRow(LucideIcons.music, 'ක්‍රියාකාරකම හා ගීතය (Activity & Song)', '$songTitle ($songArtist)'),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 14),
+
+              // Caregiver Social Audit Integration Box
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFF0FDF4), Color(0xFFFAF5FF)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFF86EFAC)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: const [
+                        Icon(LucideIcons.shieldCheck, size: 16, color: Color(0xFF15803D)),
+                        SizedBox(width: 6),
+                        Text(
+                          'Caregiver Social Audit Integration (සත්කාරක සමාජ විගණනය)',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF166534)),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: const Color(0xFFBBF7D0)),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Social Score', style: TextStyle(fontSize: 10, color: AppColors.muted)),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '${updatedSocialScore.toStringAsFixed(0)}% (ඉහළ)',
+                                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF15803D)),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: const Color(0xFFDDD6FE)),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Social Isolation Score', style: TextStyle(fontSize: 10, color: AppColors.muted)),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '$updatedIsolationScore% (අවම අවදානම)',
+                                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.primary),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '• සත්කාරක සටහන: Elder ${_currentResident.name} actively completed $durationText Music Therapy. Social isolation score updated to $updatedIsolationScore%.',
+                      style: const TextStyle(fontSize: 10.5, fontStyle: FontStyle.italic, color: Color(0xFF166534)),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              // Actions
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.of(ctx).pop();
+                      setState(() {
+                        _showCaregiverClinicalViewOnElder = true;
+                      });
+                    },
+                    icon: const Icon(LucideIcons.stethoscope, size: 14),
+                    label: const Text('Caregiver Clinical View බලන්න', style: TextStyle(fontSize: 12)),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.primary,
+                      side: const BorderSide(color: AppColors.primary),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  ElevatedButton(
+                    onPressed: () => Navigator.of(ctx).pop(),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF15803D),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    child: const Text('තහවුරුයි (Done)', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSummaryDataRow(IconData icon, String label, String value, {bool isHighlight = false}) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: isHighlight ? const Color(0xFF15803D) : AppColors.muted),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: const TextStyle(fontSize: 10.5, color: AppColors.muted)),
+              const SizedBox(height: 1),
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: isHighlight ? FontWeight.bold : FontWeight.w600,
+                  color: isHighlight ? const Color(0xFF15803D) : AppColors.navy,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -13191,20 +13669,24 @@ class _IndicatorSubRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
             label,
             style: const TextStyle(fontSize: 11, color: AppColors.muted),
           ),
-        ),
-        Text(
-          level,
-          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.navy),
-        ),
-        const SizedBox(width: 14),
-      ],
+          const SizedBox(height: 1),
+          Text(
+            level,
+            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.navy),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
     );
   }
 }
@@ -13220,6 +13702,10 @@ class PersonalizedActivityItem {
   bool isCompleted;
   String? completionNotes;
   String? residentFeedback;
+  DateTime? completedAt;
+  int? durationSeconds;
+  String? completedSongTitle;
+  String? completedSongArtist;
 
   PersonalizedActivityItem({
     required this.id,
@@ -13232,6 +13718,10 @@ class PersonalizedActivityItem {
     this.isCompleted = false,
     this.completionNotes,
     this.residentFeedback,
+    this.completedAt,
+    this.durationSeconds,
+    this.completedSongTitle,
+    this.completedSongArtist,
   });
 }
 

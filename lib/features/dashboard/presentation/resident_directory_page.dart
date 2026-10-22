@@ -1750,6 +1750,73 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
               ),
             ],
           ),
+          const SizedBox(height: 12),
+          // Weekly Emotional Wellness & Music Therapy Schedule Box
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFFFDF2F8), Color(0xFFFCE7F3)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFF472B6).withValues(alpha: 0.35)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(LucideIcons.calendarCheck, size: 14, color: Color(0xFFDB2777)),
+                    const SizedBox(width: 6),
+                    const Expanded(
+                      child: Text(
+                        'Weekly Music Therapy Schedule',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF831843)),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFDB2777),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Text(
+                        'Mon, Wed, Fri',
+                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: const [
+                    Icon(LucideIcons.clock, size: 12, color: Color(0xFF9D174D)),
+                    SizedBox(width: 5),
+                    Text(
+                      'Time: 10:00 AM - 10:15 AM (10 Mins)',
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF9D174D)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: const [
+                    Icon(LucideIcons.checkCheck, size: 12, color: Color(0xFF166534)),
+                    SizedBox(width: 5),
+                    Expanded(
+                      child: Text(
+                        'Latest Song Listened: "රන්කෙන්දෙන් බැඳි අතැඟිලි" - නන්දා මාලිනී (10 Mins • Completed 22 Oct, 02:30 PM)',
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: Color(0xFF166534)),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
           const SizedBox(height: 14),
           // SHAP Feature Attribution for Emotional Wellness
           EmotionalShapExplanationCard(

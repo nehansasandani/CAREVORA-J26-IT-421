@@ -2016,6 +2016,112 @@ class _CarePlansPageState extends ConsumerState<CarePlansPage> {
                 ),
                 const SizedBox(height: 18),
 
+                // Weekly Schedule & Music Therapy Routine Overview
+                if (hasData) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFFDF2F8), Color(0xFFFCE7F3)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFFF472B6).withValues(alpha: 0.4)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFDB2777),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(LucideIcons.calendarCheck, size: 16, color: Colors.white),
+                            ),
+                            const SizedBox(width: 10),
+                            const Expanded(
+                              child: Text(
+                                'Weekly Emotional Wellness & Music Therapy Schedule',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF831843),
+                                ),
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFDB2777),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Text(
+                                'Active Routine',
+                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Wrap(
+                          spacing: 12,
+                          runSpacing: 8,
+                          children: [
+                            _buildSchedulePill(LucideIcons.calendar, 'Weekly Days', emo.weeklyScheduleSummary),
+                            _buildSchedulePill(LucideIcons.clock, 'Session Times', emo.scheduledTimeRange),
+                            _buildSchedulePill(LucideIcons.timer, 'Duration', emo.sessionDuration),
+                            _buildSchedulePill(
+                              LucideIcons.checkCircle2,
+                              'Latest Completed',
+                              '${emo.lastActivityDate} • "${emo.completedSongTitle ?? "රන්කෙන්දෙන් බැඳි අතැඟිලි"}"',
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        const Divider(height: 1, color: Color(0xFFFBCFE8)),
+                        const SizedBox(height: 12),
+
+                        // Listened / Scheduled Music Therapy Songs section
+                        Row(
+                          children: [
+                            const Icon(LucideIcons.music, size: 15, color: Color(0xFFDB2777)),
+                            const SizedBox(width: 6),
+                            const Text(
+                              'Music Therapy Songs & Listened Tracks (අසන ලද ගීත ලැයිස්තුව)',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF831843),
+                              ),
+                            ),
+                            const Spacer(),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(color: const Color(0xFFF472B6)),
+                              ),
+                              child: const Text(
+                                '10-Minute Sessions',
+                                style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFFDB2777)),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        ...emo.therapySongs.map((track) => _buildTherapySongRow(track)),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                ],
+
                 // Personalized Activities, Games, Books, Songs, Social Engagement
                 if (hasData && emo.recommendations.isNotEmpty) ...[
                   const Text(
@@ -2059,28 +2165,58 @@ class _CarePlansPageState extends ConsumerState<CarePlansPage> {
     );
   }
 
-  Widget _buildEmotionalRecommendationTile(EmotionalRecommendationItem item) {
+  Widget _buildSchedulePill(IconData icon, String label, String value) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: AppColors.surfaceSecondary,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFFBCFE8)),
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: const Color(0xFFDB2777)),
+          const SizedBox(width: 6),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(label, style: const TextStyle(fontSize: 10, color: AppColors.muted)),
+              Text(value, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.navy)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTherapySongRow(CarePlanMusicTrackItem track) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: track.isListened ? const Color(0xFF86EFAC) : const Color(0xFFFBCFE8),
+        ),
+      ),
+      child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(7),
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppColors.border),
+              color: track.isListened ? const Color(0xFFDCFCE7) : const Color(0xFFFCE7F3),
+              borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(item.icon, size: 20, color: AppColors.primary),
+            child: Icon(
+              track.isListened ? LucideIcons.disc : LucideIcons.music2,
+              size: 15,
+              color: track.isListened ? const Color(0xFF166534) : const Color(0xFFDB2777),
+            ),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -2088,38 +2224,197 @@ class _CarePlansPageState extends ConsumerState<CarePlansPage> {
                 Row(
                   children: [
                     Text(
-                      item.title,
+                      '"${track.title}"',
                       style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
                         color: AppColors.navy,
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: AppColors.lavenderBg,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        item.category,
-                        style: const TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.primaryDeep,
-                        ),
+                    Text(
+                      '• ${track.artist}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF475569),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 2),
                 Text(
-                  item.description,
-                  style: const TextStyle(fontSize: 12, color: AppColors.body, height: 1.4),
+                  'Genre: ${track.genre} • Duration: ${track.durationText}',
+                  style: const TextStyle(fontSize: 11, color: AppColors.muted),
                 ),
               ],
             ),
+          ),
+          const SizedBox(width: 10),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: track.isListened ? const Color(0xFFDCFCE7) : const Color(0xFFEFF6FF),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(
+                color: track.isListened ? const Color(0xFF86EFAC) : const Color(0xFFBFDBFE),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  track.isListened ? LucideIcons.checkCheck : LucideIcons.calendarClock,
+                  size: 12,
+                  color: track.isListened ? const Color(0xFF166534) : const Color(0xFF1D4ED8),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  track.listenedDate ?? (track.isListened ? 'Listened ✓' : 'Scheduled'),
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: track.isListened ? const Color(0xFF166534) : const Color(0xFF1D4ED8),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmotionalRecommendationTile(EmotionalRecommendationItem item) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceSecondary,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Icon(item.icon, size: 20, color: AppColors.primary),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Text(
+                          item.title,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.navy,
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.lavenderBg,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            item.category,
+                            style: const TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.primaryDeep,
+                            ),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: item.priority == 'Essential'
+                                ? const Color(0xFFFEE2E2)
+                                : const Color(0xFFDCFCE7),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            item.priority,
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: item.priority == 'Essential'
+                                  ? const Color(0xFFDC2626)
+                                  : const Color(0xFF166534),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      item.description,
+                      style: const TextStyle(fontSize: 12, color: AppColors.body, height: 1.4),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          const Divider(height: 1, color: AppColors.border),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 12,
+            runSpacing: 6,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(LucideIcons.calendar, size: 13, color: AppColors.primary),
+                  const SizedBox(width: 4),
+                  Text(
+                    item.weeklySchedule,
+                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.navy),
+                  ),
+                ],
+              ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(LucideIcons.clock, size: 13, color: Color(0xFFDB2777)),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${item.scheduledTime} (${item.sessionDuration})',
+                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF9D174D)),
+                  ),
+                ],
+              ),
+              if (item.lastSessionDate != null)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(LucideIcons.checkCheck, size: 13, color: Color(0xFF166534)),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Last: ${item.lastSessionDate}',
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: Color(0xFF166534)),
+                    ),
+                  ],
+                ),
+            ],
           ),
         ],
       ),
