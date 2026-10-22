@@ -167,6 +167,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
   Map<String, dynamic>? _liveRalpaTrajectory;
   bool _isLoadingRalpaTrajectory = false;
   bool _hasLiveAssessments = false;
+  bool _showCaregiverClinicalViewOnElder = false;
 
   void _initResidents() {
     final baseResidents = [
@@ -9906,9 +9907,1095 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
   }
 
   // =========================================================================
+  // --- ELDER-FRIENDLY CALMING PERSONALIZED WELLNESS PANEL ---
+  // =========================================================================
+  Widget _buildElderCalmingPersonalizedActivitiesPanel() {
+    final items = _activities.isNotEmpty ? _activities : <PersonalizedActivityItem>[];
+
+    return Container(
+      padding: const EdgeInsets.all(26),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: AppColors.lilac.withValues(alpha: 0.8), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.05),
+            blurRadius: 20,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header with warm elder greeting & discrete caregiver toggle
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.primarySoft,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: AppColors.lilac),
+                      ),
+                      child: const Icon(LucideIcons.sparkles, size: 24, color: AppColors.primary),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Wrap(
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            spacing: 8,
+                            runSpacing: 4,
+                            children: [
+                              Text(
+                                'Personalized Wellness Moments for You',
+                                style: AppTextStyles.h2.copyWith(fontSize: 18, color: AppColors.navy),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFECFDF5),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(color: const Color(0xFFA7F3D0)),
+                                ),
+                                child: const Text(
+                                  'Curated for Today 🌸',
+                                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF047857)),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          const Text(
+                            'Calming activities, soothing music, and pleasant routines tailored to bring you joy, peace, and comfort today.',
+                            style: TextStyle(fontSize: 12, color: AppColors.body),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Discrete staff / caregiver inspector button
+              InkWell(
+                onTap: () {
+                  setState(() {
+                    _showCaregiverClinicalViewOnElder = true;
+                  });
+                },
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceSecondary,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      Icon(LucideIcons.stethoscope, size: 13, color: AppColors.muted),
+                      SizedBox(width: 6),
+                      Text(
+                        'Caregiver Clinical View',
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.navy),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 20),
+          const Divider(height: 1, color: AppColors.border),
+          const SizedBox(height: 20),
+
+          // Activities Cards
+          ResponsiveBuilder(
+            mobile: (context) => Column(
+              children: items.take(4).map((activity) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _buildElderActivityCard(activity),
+              )).toList(),
+            ),
+            desktop: (context) => Column(
+              children: [
+                if (items.length >= 2) ...[
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(child: _buildElderActivityCard(items[0])),
+                      const SizedBox(width: 16),
+                      Expanded(child: _buildElderActivityCard(items[1])),
+                    ],
+                  ),
+                ] else if (items.isNotEmpty) ...[
+                  _buildElderActivityCard(items[0]),
+                ],
+                if (items.length >= 4) ...[
+                  const SizedBox(height: 16),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(child: _buildElderActivityCard(items[2])),
+                      const SizedBox(width: 16),
+                      Expanded(child: _buildElderActivityCard(items[3])),
+                    ],
+                  ),
+                ] else if (items.length == 3) ...[
+                  const SizedBox(height: 16),
+                  _buildElderActivityCard(items[2]),
+                ],
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 18),
+
+          // Reassuring Bottom Note
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceSecondary,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Row(
+              children: [
+                const Icon(LucideIcons.smile, size: 18, color: AppColors.primary),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Text(
+                    'Your comfort and happiness matter to us. Feel free to enjoy any of these at your own relaxing pace.',
+                    style: TextStyle(fontSize: 11.5, color: AppColors.body, height: 1.3),
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: _showTipsDialog,
+                  icon: const Icon(LucideIcons.sparkles, size: 14, color: AppColors.primary),
+                  label: const Text('Wellness Tips', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary)),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static const List<Map<String, String>> _elderCuratedSongs = [
+    // Nanda Malini (විශාරද නන්දා මාලිනී)
+    {
+      'title': 'Rankenden Bendi Athangili',
+      'sinhala': 'රන්කෙන්දෙන් බැඳි අතැඟිලි',
+      'artist': 'විශාරද නන්දා මාලිනී',
+      'artistEnglish': 'Visharada Nanda Malini',
+      'artistFilter': 'නන්දා මාලිනී',
+      'path': 'audio/nanda_malini.mp3',
+      'tag': 'සන්සුන් භාවය (Calming)',
+      'description': 'සිත සංසුන් කරවන සාම්ප්‍රදායික මිහිරි ගීතයකි.',
+    },
+    {
+      'title': 'Sara Sonduru Mal Pipi',
+      'sinhala': 'සාර සොඳුරු මල් පිපී',
+      'artist': 'විශාරද නන්දා මාලිනී',
+      'artistEnglish': 'Visharada Nanda Malini',
+      'artistFilter': 'නන්දා මාලිනී',
+      'path': 'audio/nanda_malini.mp3',
+      'tag': 'ප්‍රබෝධමත් (Uplifting)',
+      'description': 'සිතට සතුට හා ප්‍රබෝධය ගෙන දෙන නාද රටාවකි.',
+    },
+    {
+      'title': 'Niwan Doratu Pamula',
+      'sinhala': 'නිවන් දොරටු පාමුල',
+      'artist': 'විශාරද නන්දා මාලිනී',
+      'artistEnglish': 'Visharada Nanda Malini',
+      'artistFilter': 'නන්දා මාලිනී',
+      'path': 'audio/nanda_malini.mp3',
+      'tag': 'ආධ්‍යාත්මික (Spiritual)',
+      'description': 'ආධ්‍යාත්මික ශාන්තිය හා සංයමය සිතට එක් කරයි.',
+    },
+    {
+      'title': 'Ammawarune Sambudu Mahime',
+      'sinhala': 'අම්මාවරුනේ සම්බුදු මහිමේ',
+      'artist': 'විශාරද නන්දා මාලිනී',
+      'artistEnglish': 'Visharada Nanda Malini',
+      'artistFilter': 'නන්දා මාලිනී',
+      'path': 'audio/nanda_malini.mp3',
+      'tag': 'මව් ගුණ (Heartwarming)',
+      'description': 'උතුම් මව් ගුණ හා සෙනෙහස සිහිපත් කරවන සුවදායක ගීතයකි.',
+    },
+
+    // W.D. Amaradeva (පණ්ඩිත් ඩබ්.ඩී. අමරදේව)
+    {
+      'title': 'Shantha Sandhyawa Me',
+      'sinhala': 'ශාන්ත සන්ධ්‍යාව මේ',
+      'artist': 'පණ්ඩිත් ඩබ්.ඩී. අමරදේව',
+      'artistEnglish': 'Pandit W.D. Amaradeva',
+      'artistFilter': 'ඩබ්.ඩී. අමරදේව',
+      'path': 'audio/amaradeva.mp3',
+      'tag': 'සන්ධ්‍යා සාමය (Serene)',
+      'description': 'සන්ධ්‍යා යාමයේ මනස සන්සුන් කරවන අමරදේවයන්ගේ සම්භාව්‍ය ගීතයකි.',
+    },
+    {
+      'title': 'Kumariyaka Pa Salamba Saluna',
+      'sinhala': 'කුමාරියක පා සළඹ සැලුනා',
+      'artist': 'පණ්ඩිත් ඩබ්.ඩී. අමරදේව',
+      'artistEnglish': 'Pandit W.D. Amaradeva',
+      'artistFilter': 'ඩබ්.ඩී. අමරදේව',
+      'path': 'audio/amaradeva.mp3',
+      'tag': 'පැරණි මිහිරියාව (Classic)',
+      'description': 'නාද මාලා හා තනුව සිත නිවා සනසන විශිෂ්ට නිර්මාණයකි.',
+    },
+    {
+      'title': 'Manohari Manaram Geethe',
+      'sinhala': 'මනෝහාරී මනරම් ගීතේ',
+      'artist': 'පණ්ඩිත් ඩබ්.ඩී. අමරදේව',
+      'artistEnglish': 'Pandit W.D. Amaradeva',
+      'artistFilter': 'ඩබ්.ඩී. අමරදේව',
+      'path': 'audio/amaradeva.mp3',
+      'tag': 'මනස නිවන (Tranquil)',
+      'description': 'මනෝභාවයන් සමතුලිත කරන මධුර ස්වර මාලාවකි.',
+    },
+    {
+      'title': 'Sasala Dana Mana Niwana',
+      'sinhala': 'සසල දන මන නිවන',
+      'artist': 'පණ්ඩිත් ඩබ්.ඩී. අමරදේව',
+      'artistEnglish': 'Pandit W.D. Amaradeva',
+      'artistFilter': 'ඩබ්.ඩී. අමරදේව',
+      'path': 'audio/amaradeva.mp3',
+      'tag': 'සැනසුම (Peace of Mind)',
+      'description': 'සසල වූ සිත නිවා සනහාලන සන්සුන් ගීතයකි.',
+    },
+
+    // Victor Rathnayake (ආචාර්ය වික්ටර් රත්නායක)
+    {
+      'title': 'Sitha Niwana Sewana',
+      'sinhala': 'සිත නිවන සෙවන',
+      'artist': 'ආචාර්ය වික්ටර් රත්නායක',
+      'artistEnglish': 'Dr. Victor Rathnayake',
+      'artistFilter': 'වික්ටර් රත්නායක',
+      'path': 'audio/victor_ratnayake.mp3',
+      'tag': 'සිත නිවන (Deep Calm)',
+      'description': 'සිතට සහනය හා ශාන්තිය ලබාදෙන මිහිරි තනුවකි.',
+    },
+    {
+      'title': 'Thani Tharuwe Obe Eliya',
+      'sinhala': 'තනි තරුවේ ඔබේ ඔය එළිය',
+      'artist': 'ආචාර්ය වික්ටර් රත්නායක',
+      'artistEnglish': 'Dr. Victor Rathnayake',
+      'artistFilter': 'වික්ටර් රත්නායක',
+      'path': 'audio/victor_ratnayake.mp3',
+      'tag': 'මතක ආවර්ජනය (Reminiscence)',
+      'description': 'හුදකලාව මකා සිත ප්‍රසන්න මතකයන් වෙත යොමු කරයි.',
+    },
+    {
+      'title': 'Kurullanata Gee Gayanna',
+      'sinhala': 'කුරුල්ලන්ට ගී ගයන්න',
+      'artist': 'ආචාර්ය වික්ටර් රත්නායක',
+      'artistEnglish': 'Dr. Victor Rathnayake',
+      'artistFilter': 'වික්ටර් රත්නායක',
+      'path': 'audio/victor_ratnayake.mp3',
+      'tag': 'සතුට (Pleasant Joy)',
+      'description': 'ස්වභාවදහම හා බැඳුණු සතුටුදායක තනුවකි.',
+    },
+    {
+      'title': 'Aadaraye Ulpatha Wu Amma',
+      'sinhala': 'ආදරයේ උල්පත වූ අම්මා',
+      'artist': 'ආචාර්ය වික්ටර් රත්නායක',
+      'artistEnglish': 'Dr. Victor Rathnayake',
+      'artistFilter': 'වික්ටර් රත්නායක',
+      'path': 'audio/victor_ratnayake.mp3',
+      'tag': 'සෙනෙහස (Loving Comfort)',
+      'description': 'ආදරය හා සෙනෙහස කැටි වූ හදවත නිවන ගීතයකි.',
+    },
+  ];
+
+  Widget _buildElderActivityCard(PersonalizedActivityItem activity) {
+    final bool isMusic = activity.category.toLowerCase().contains('music') ||
+        activity.title.toLowerCase().contains('melody') ||
+        activity.title.toLowerCase().contains('music') ||
+        activity.icon == LucideIcons.music ||
+        activity.id.contains('ACT-1');
+
+    return InkWell(
+      onTap: isMusic ? () => _showElderMusicTherapyDialog(activity) : null,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: activity.isCompleted ? const Color(0xFF86EFAC) : AppColors.border),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.primarySoft,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(activity.icon, size: 20, color: AppColors.primary),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        activity.title,
+                        style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: AppColors.navy),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        activity.category,
+                        style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w500, color: AppColors.muted),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: activity.isCompleted ? const Color(0xFFDCFCE7) : AppColors.primarySoft,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    activity.isCompleted ? 'Completed ✓' : 'Suggested for You',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: activity.isCompleted ? const Color(0xFF15803D) : AppColors.primary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text(
+              activity.description,
+              style: const TextStyle(fontSize: 11.5, color: AppColors.body, height: 1.35),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(LucideIcons.clock, size: 12, color: AppColors.muted),
+                    const SizedBox(width: 4),
+                    Text(isMusic ? '10 mins' : '15 - 20 mins', style: const TextStyle(fontSize: 10.5, color: AppColors.muted)),
+                  ],
+                ),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    if (isMusic) {
+                      _showElderMusicTherapyDialog(activity);
+                      return;
+                    }
+                    setState(() {
+                      activity.isCompleted = !activity.isCompleted;
+                    });
+                    _flutterTts.stop();
+                    if (activity.isCompleted) {
+                      _flutterTts.speak('Wonderful! You marked ${activity.title} as completed.');
+                    } else {
+                      _flutterTts.speak('Starting ${activity.title}. Relax and enjoy your moment.');
+                    }
+                  },
+                  icon: Icon(
+                    isMusic
+                        ? (activity.isCompleted ? LucideIcons.music : LucideIcons.playCircle)
+                        : (activity.isCompleted ? LucideIcons.checkCheck : LucideIcons.playCircle),
+                    size: 14,
+                    color: (activity.isCompleted && !isMusic) ? const Color(0xFF15803D) : Colors.white,
+                  ),
+                  label: Text(
+                    isMusic
+                        ? (activity.isCompleted ? 'Listen Again 🎵' : 'Start Now')
+                        : (activity.isCompleted ? 'Enjoyed ✓' : 'Start Now'),
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: (activity.isCompleted && !isMusic) ? const Color(0xFF15803D) : Colors.white,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: (activity.isCompleted && !isMusic) ? const Color(0xFFDCFCE7) : AppColors.primary,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showElderMusicTherapyDialog(PersonalizedActivityItem activity) {
+    _flutterTts.stop();
+    _flutterTts.speak('සන්සුන් සංගීත චිකිත්සාව වෙත සාදරයෙන් පිළිගනිමු. ඔබ කැමති ගීතයක් තෝරාගෙන මිනිත්තු 10 ක් සන්සුන්ව විවේක ගන්න.');
+
+    Map<String, String>? currentSong = _elderCuratedSongs[0];
+    bool isAudioPlaying = false;
+    int elapsedSeconds = 0;
+    const int targetDurationSeconds = 600; // Exactly 10 minutes (10 * 60 seconds)
+    Timer? dialogTimer;
+    String selectedArtistFilter = 'සියල්ල (All)';
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          void startPlaying(Map<String, String> song) {
+            dialogTimer?.cancel();
+            AudioPlayerService.instance.stop();
+
+            final path = song['path'] ?? 'audio/amaradeva.mp3';
+            setDialogState(() {
+              currentSong = song;
+              elapsedSeconds = 0;
+              isAudioPlaying = true;
+            });
+
+            AudioPlayerService.instance.play(path, onEnded: () {
+              if (isAudioPlaying) {
+                AudioPlayerService.instance.play(path);
+              }
+            });
+
+            dialogTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+              if (!mounted) {
+                timer.cancel();
+                return;
+              }
+              setDialogState(() {
+                elapsedSeconds++;
+                if (elapsedSeconds >= targetDurationSeconds) {
+                  timer.cancel();
+                  isAudioPlaying = false;
+                  AudioPlayerService.instance.stop();
+                  setState(() {
+                    activity.isCompleted = true;
+                  });
+                  _flutterTts.stop();
+                  _flutterTts.speak('මිනිත්තු 10 ක සන්සුන් සංගීත සැසිය සාර්ථකව අවසන් විය. ඔබගේ මනස සැහැල්ලු වූවා යැයි බලාපොරොත්තු වෙමු.');
+                }
+              });
+            });
+          }
+
+          void togglePlayPause() {
+            if (currentSong == null) return;
+            setDialogState(() {
+              isAudioPlaying = !isAudioPlaying;
+            });
+            if (isAudioPlaying) {
+              AudioPlayerService.instance.resume();
+              dialogTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+                if (!mounted) {
+                  timer.cancel();
+                  return;
+                }
+                setDialogState(() {
+                  elapsedSeconds++;
+                  if (elapsedSeconds >= targetDurationSeconds) {
+                    timer.cancel();
+                    isAudioPlaying = false;
+                    AudioPlayerService.instance.stop();
+                    setState(() {
+                      activity.isCompleted = true;
+                    });
+                  }
+                });
+              });
+            } else {
+              dialogTimer?.cancel();
+              AudioPlayerService.instance.pause();
+            }
+          }
+
+          void completeAndClose() {
+            dialogTimer?.cancel();
+            AudioPlayerService.instance.stop();
+            setState(() {
+              activity.isCompleted = true;
+            });
+            Navigator.of(dialogCtx).pop();
+            _flutterTts.stop();
+            _flutterTts.speak('විශිෂ්ටයි! ඔබ සන්සුන් සංගීත චිකිත්සා සැසිය සම්පූර්ණ කළා.');
+          }
+
+          void closeDialog() {
+            dialogTimer?.cancel();
+            AudioPlayerService.instance.stop();
+            Navigator.of(dialogCtx).pop();
+          }
+
+          final List<String> artistTabs = ['සියල්ල (All)', 'නන්දා මාලිනී', 'ඩබ්.ඩී. අමරදේව', 'වික්ටර් රත්නායක'];
+          final filteredSongs = selectedArtistFilter == 'සියල්ල (All)'
+              ? _elderCuratedSongs
+              : _elderCuratedSongs.where((s) => s['artistFilter'] == selectedArtistFilter).toList();
+
+          final elapsedMin = elapsedSeconds ~/ 60;
+          final elapsedSec = elapsedSeconds % 60;
+          final remainingSec = (targetDurationSeconds - elapsedSeconds).clamp(0, targetDurationSeconds);
+          final remMin = remainingSec ~/ 60;
+          final remSec = remainingSec % 60;
+          final progress = (elapsedSeconds / targetDurationSeconds).clamp(0.0, 1.0);
+
+          return Dialog(
+            backgroundColor: Colors.transparent,
+            insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+            child: Container(
+              width: 720,
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.90,
+              ),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.15),
+                    blurRadius: 30,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // --- HEADER ---
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
+                    decoration: BoxDecoration(
+                      color: AppColors.primarySoft.withValues(alpha: 0.7),
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(24),
+                        topRight: Radius.circular(24),
+                      ),
+                      border: const Border(bottom: BorderSide(color: Color(0xFFE9D5FF), width: 1.5)),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(LucideIcons.music, size: 22, color: Colors.white),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: const [
+                              Text(
+                                'සන්සුන් සංගීත චිකිත්සාව (Music Therapy)',
+                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.navy),
+                              ),
+                              SizedBox(height: 2),
+                              Text(
+                                'නන්දා මාලිනී • ඩබ්.ඩී. අමරදේව • වික්ටර් රත්නායක • මිනිත්තු 10 ක සන්සුන් සැසිය',
+                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.primary),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(LucideIcons.x, size: 20, color: AppColors.muted),
+                          onPressed: closeDialog,
+                          tooltip: 'Close',
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // --- MAIN BODY (SCROLLABLE) ---
+                  Flexible(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(22),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // --- CURRENTLY PLAYING HERO CARD ---
+                          Container(
+                            padding: const EdgeInsets.all(18),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFFFAF5FF), Color(0xFFF0FDF4)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(
+                                color: isAudioPlaying ? const Color(0xFF86EFAC) : const Color(0xFFD8B4FE),
+                                width: 1.8,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppColors.primary.withValues(alpha: 0.05),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: isAudioPlaying ? const Color(0xFFDCFCE7) : AppColors.primarySoft,
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                          color: isAudioPlaying ? const Color(0xFF86EFAC) : const Color(0xFFD8B4FE),
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            isAudioPlaying ? LucideIcons.volume2 : LucideIcons.volumeX,
+                                            size: 13,
+                                            color: isAudioPlaying ? const Color(0xFF15803D) : AppColors.primary,
+                                          ),
+                                          const SizedBox(width: 5),
+                                          Text(
+                                            elapsedSeconds >= targetDurationSeconds
+                                                ? '🎉 සැසිය සම්පූර්ණයි (10 Mins Complete)'
+                                                : (isAudioPlaying ? '🎶 ධාවනය වෙමින් පවතී (Playing)' : '⏸️ විරාමය (Paused)'),
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.bold,
+                                              color: isAudioPlaying ? const Color(0xFF15803D) : AppColors.primary,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: const [
+                                          Icon(LucideIcons.hourglass, size: 12, color: AppColors.muted),
+                                          SizedBox(width: 4),
+                                          Text(
+                                            'නියමිත කාලය: මිනිත්තු 10 (600s)',
+                                            style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: AppColors.muted),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+
+                                // Song title and details
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            currentSong?['sinhala'] ?? 'ගීතයක් තෝරන්න',
+                                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.navy),
+                                          ),
+                                          const SizedBox(height: 3),
+                                          Row(
+                                            children: [
+                                              const Icon(LucideIcons.user, size: 13, color: AppColors.primary),
+                                              const SizedBox(width: 5),
+                                              Text(
+                                                currentSong?['artist'] ?? '',
+                                                style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: AppColors.primary),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                                decoration: BoxDecoration(
+                                                  color: const Color(0xFFE0E7FF),
+                                                  borderRadius: BorderRadius.circular(6),
+                                                ),
+                                                child: Text(
+                                                  currentSong?['tag'] ?? '',
+                                                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Color(0xFF3730A3)),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 14),
+
+                                // Equalizer wave visualizer & progress
+                                Row(
+                                  children: [
+                                    // Animated soundwave bars
+                                    Row(
+                                      children: List.generate(14, (i) {
+                                        final barHeight = isAudioPlaying
+                                            ? 8.0 + ((i * 5 + elapsedSeconds * 7) % 22)
+                                            : 6.0;
+                                        return Container(
+                                          margin: const EdgeInsets.symmetric(horizontal: 2),
+                                          width: 3.5,
+                                          height: barHeight,
+                                          decoration: BoxDecoration(
+                                            color: isAudioPlaying ? AppColors.primary : AppColors.muted.withValues(alpha: 0.5),
+                                            borderRadius: BorderRadius.circular(2),
+                                          ),
+                                        );
+                                      }),
+                                    ),
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          ClipRRect(
+                                            borderRadius: BorderRadius.circular(6),
+                                            child: LinearProgressIndicator(
+                                              value: progress,
+                                              minHeight: 8,
+                                              backgroundColor: const Color(0xFFE2E8F0),
+                                              valueColor: AlwaysStoppedAnimation<Color>(
+                                                elapsedSeconds >= targetDurationSeconds ? const Color(0xFF16A34A) : AppColors.primary,
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 6),
+                                          Row(
+                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Text(
+                                                '${elapsedMin.toString().padLeft(2, '0')}:${elapsedSec.toString().padLeft(2, '0')} / 10:00',
+                                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.navy),
+                                              ),
+                                              Text(
+                                                'ඉතිරි කාලය: ${remMin.toString().padLeft(2, '0')}:${remSec.toString().padLeft(2, '0')}',
+                                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.muted),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 14),
+
+                                // Controls Row
+                                Row(
+                                  children: [
+                                    ElevatedButton.icon(
+                                      onPressed: togglePlayPause,
+                                      icon: Icon(isAudioPlaying ? LucideIcons.pause : LucideIcons.play, size: 16),
+                                      label: Text(
+                                        isAudioPlaying ? 'විරාමය (Pause)' : 'වාදනය කරන්න (Play)',
+                                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                      ),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: AppColors.primary,
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    OutlinedButton.icon(
+                                      onPressed: () {
+                                        if (currentSong != null) {
+                                          startPlaying(currentSong!);
+                                        }
+                                      },
+                                      icon: const Icon(LucideIcons.rotateCcw, size: 15),
+                                      label: const Text('නැවත මුල සිට (Restart 10 Mins)', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600)),
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: AppColors.navy,
+                                        side: const BorderSide(color: AppColors.border),
+                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    ElevatedButton.icon(
+                                      onPressed: completeAndClose,
+                                      icon: const Icon(LucideIcons.checkCheck, size: 15, color: Color(0xFF15803D)),
+                                      label: const Text(
+                                        'සැසිය අවසන් කරන්න ✓',
+                                        style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF15803D)),
+                                      ),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: const Color(0xFFDCFCE7),
+                                        elevation: 0,
+                                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(10),
+                                          side: const BorderSide(color: Color(0xFF86EFAC)),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          const SizedBox(height: 20),
+
+                          // --- INSTRUCTION & ARTIST FILTER TABS ---
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: const [
+                              Text(
+                                'කැමති ගීතයක් තෝරන්න (Select a Song to Play for 10 Mins):',
+                                style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.navy),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+
+                          // Filter chips
+                          SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              children: artistTabs.map((tab) {
+                                final isSelected = selectedArtistFilter == tab;
+                                return Padding(
+                                  padding: const EdgeInsets.only(right: 8),
+                                  child: ChoiceChip(
+                                    label: Text(
+                                      tab,
+                                      style: TextStyle(
+                                        fontSize: 11.5,
+                                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                                        color: isSelected ? Colors.white : AppColors.navy,
+                                      ),
+                                    ),
+                                    selected: isSelected,
+                                    selectedColor: AppColors.primary,
+                                    backgroundColor: AppColors.surfaceSecondary,
+                                    side: BorderSide(color: isSelected ? AppColors.primary : AppColors.border),
+                                    onSelected: (val) {
+                                      if (val) {
+                                        setDialogState(() {
+                                          selectedArtistFilter = tab;
+                                        });
+                                      }
+                                    },
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                          ),
+
+                          const SizedBox(height: 12),
+
+                          // --- SONG LIST (12 CURATED CLASSICS) ---
+                          Column(
+                            children: filteredSongs.map((song) {
+                              final isCurrent = currentSong?['title'] == song['title'];
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 8),
+                                decoration: BoxDecoration(
+                                  color: isCurrent ? const Color(0xFFF5F3FF) : Colors.white,
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                    color: isCurrent ? AppColors.primary : const Color(0xFFE2E8F0),
+                                    width: isCurrent ? 1.6 : 1.0,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.015),
+                                      blurRadius: 5,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: ListTile(
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                                  leading: Container(
+                                    padding: const EdgeInsets.all(9),
+                                    decoration: BoxDecoration(
+                                      color: isCurrent ? AppColors.primarySoft : const Color(0xFFF1F5F9),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Icon(
+                                      (isCurrent && isAudioPlaying) ? LucideIcons.volume2 : LucideIcons.music2,
+                                      size: 18,
+                                      color: isCurrent ? AppColors.primary : AppColors.muted,
+                                    ),
+                                  ),
+                                  title: Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          song['sinhala'] ?? '',
+                                          style: TextStyle(
+                                            fontSize: 13.5,
+                                            fontWeight: isCurrent ? FontWeight.bold : FontWeight.w600,
+                                            color: isCurrent ? AppColors.primary : AppColors.navy,
+                                          ),
+                                        ),
+                                      ),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFECFDF5),
+                                          borderRadius: BorderRadius.circular(4),
+                                          border: Border.all(color: const Color(0xFFA7F3D0)),
+                                        ),
+                                        child: const Text(
+                                          '10 mins',
+                                          style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.bold, color: Color(0xFF047857)),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  subtitle: Padding(
+                                    padding: const EdgeInsets.only(top: 3),
+                                    child: Row(
+                                      children: [
+                                        Text(
+                                          song['artist'] ?? '',
+                                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: AppColors.muted),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text('•', style: TextStyle(color: Colors.grey.shade400)),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          song['tag'] ?? '',
+                                          style: const TextStyle(fontSize: 10.5, fontStyle: FontStyle.italic, color: Color(0xFF6366F1)),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  trailing: ElevatedButton.icon(
+                                    onPressed: () => startPlaying(song),
+                                    icon: Icon(
+                                      (isCurrent && isAudioPlaying) ? LucideIcons.pause : LucideIcons.play,
+                                      size: 13,
+                                      color: Colors.white,
+                                    ),
+                                    label: Text(
+                                      (isCurrent && isAudioPlaying) ? 'වාදනය වේ' : 'අහන්න',
+                                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
+                                    ),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: (isCurrent && isAudioPlaying) ? const Color(0xFF16A34A) : AppColors.primary,
+                                      elevation: 0,
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                    ),
+                                  ),
+                                  onTap: () => startPlaying(song),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // --- FOOTER NOTE ---
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+                    decoration: const BoxDecoration(
+                      color: AppColors.surfaceSecondary,
+                      borderRadius: BorderRadius.only(
+                        bottomLeft: Radius.circular(24),
+                        bottomRight: Radius.circular(24),
+                      ),
+                      border: Border(top: BorderSide(color: AppColors.border)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: const [
+                            Icon(LucideIcons.smile, size: 15, color: AppColors.primary),
+                            SizedBox(width: 8),
+                            Text(
+                              'සන්සුන් සංගීතය ඔබේ මානසික සුවතාවය සහ ප්‍රබෝධය වැඩිදියුණු කරයි.',
+                              style: TextStyle(fontSize: 11, color: AppColors.body),
+                            ),
+                          ],
+                        ),
+                        TextButton(
+                          onPressed: closeDialog,
+                          child: const Text('වසන්න (Close)', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: AppColors.muted)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  // =========================================================================
   // --- RALPA RESEARCH METHODOLOGY ANALYTICS PANEL (CHAPTER 3: SEC 3.1 - 3.5) ---
   // =========================================================================
   Widget _buildRalpaMethodologyAnalyticsPanel() {
+    final authState = ref.watch(authProvider).state;
+    final bool isElder = authState.isElder;
+
+    // When logged in as Elder, display peaceful & encouraging personalized wellness activities
+    // without intimidating risk slopes and equations, unless Caregiver Clinical View is explicitly toggled.
+    if (isElder && !_showCaregiverClinicalViewOnElder) {
+      return _buildElderCalmingPersonalizedActivitiesPanel();
+    }
+
     final dataset = _residentDatasets[_currentResident.id] ?? _residentDatasets['9001']!;
 
     // Check if live prediction was fetched from Python RALPA microservice / backend
@@ -10000,6 +11087,58 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // If viewing clinical diagnostics on elder account, show return banner
+          if (isElder && _showCaregiverClinicalViewOnElder) ...[
+            Container(
+              margin: const EdgeInsets.only(bottom: 18),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF3C7),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFF59E0B)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(LucideIcons.stethoscope, size: 18, color: Color(0xFFB45309)),
+                  const SizedBox(width: 10),
+                  const Expanded(
+                    child: Text(
+                      'Caregiver Clinical Diagnostics Mode: Viewing resident longitudinal risk forecast & multimodal AI attribution.',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF92400E)),
+                    ),
+                  ),
+                  InkWell(
+                    onTap: () {
+                      setState(() {
+                        _showCaregiverClinicalViewOnElder = false;
+                      });
+                    },
+                    borderRadius: BorderRadius.circular(6),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: const Color(0xFFF59E0B)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: const [
+                          Icon(LucideIcons.arrowLeft, size: 12, color: Color(0xFFB45309)),
+                          SizedBox(width: 4),
+                          Text(
+                            'Back to Elder View',
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFB45309)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
           // Section Title & Methodology Badge
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -10729,7 +11868,12 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                 runSpacing: 6,
                 children: [
                   _buildMetricChip('Prediction Mode', _liveRalpaTrajectory?['prediction_mode']?.toString() ?? 'COMPLETE'),
-                  _buildMetricChip('Inference Confidence', '${((_liveRalpaTrajectory?['confidence_score'] as num?)?.toDouble() ?? 0.88 * 100).toInt()}%'),
+                  _buildMetricChip('Inference Confidence', () {
+                    final rawConf = (_liveRalpaTrajectory?['confidence_score'] as num?)?.toDouble();
+                    if (rawConf == null) return '88%';
+                    final pct = rawConf <= 1.0 ? (rawConf * 100).round() : rawConf.round();
+                    return '$pct%';
+                  }()),
                   _buildMetricChip('Longitudinal Slope', '${((_liveRalpaTrajectory?['longitudinal_slope'] as num?)?.toDouble() ?? 0.0).toStringAsFixed(2)} pts/period'),
                   _buildMetricChip('Features Evaluated', '149 ML Features'),
                 ],
