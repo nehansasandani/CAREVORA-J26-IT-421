@@ -77,6 +77,10 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
   // Automatic Facial Affect Capture & Consent
   late final AutomaticFacialCaptureService _facialCaptureService;
   bool _hasFacialConsent = false;
+  bool _isElderCamActive = false;
+  bool _isManualCamActive = false;
+  bool _hasRecordedVoice = false;
+  bool _hasFacialAnalysisResult = false;
 
   // Speech and Voice engines
   late FlutterTts _flutterTts;
@@ -1567,6 +1571,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
   void _handleAutomaticCaptureResult(FacialEmotionResult result) {
     if (!mounted) return;
     if (result.status == FacialInferenceStatus.success) {
+      _hasFacialAnalysisResult = true;
       _updateEmotionFromResult(result);
     } else {
       debugPrint('Automatic facial capture status: ${result.status} (${result.clinicalObservation})');
@@ -1685,6 +1690,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
       if (!mounted) return;
       setState(() {
         _isRecording = true;
+        _hasRecordedVoice = true;
         _recordSeconds = 0;
         _spokenText = '';
         _soundLevel = 0.0;
@@ -1717,20 +1723,60 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
       );
 
       if (consentGranted) {
+        setState(() {
+          _isElderCamActive = true;
+        });
         await _facialCaptureService.startCaptureForVoiceRecording();
       }
     } else {
       setState(() {
         _isRecording = false;
+        if (!_isManualCamActive) {
+          _isElderCamActive = false;
+        }
         _soundLevel = 0.0;
         _micStatusNotice = '';
       });
       _recordTimer?.cancel();
       _stopContinuousListening();
       LiveVoiceCaptureService.instance.stop();
-      _facialCaptureService.stopCapture();
+      if (!_isManualCamActive) {
+        _facialCaptureService.stopCapture();
+      }
       if (_spokenText.isNotEmpty) {
         _analyzeSpokenVoice(_spokenText);
+      }
+    }
+  }
+
+  Future<void> _toggleElderCam() async {
+    final bool isCurrentlyActive = _isElderCamActive ||
+        (_facialCaptureService.cameraController != null &&
+            _facialCaptureService.cameraController!.value.isInitialized &&
+            _facialCaptureService.isAutoCapturing);
+
+    if (!isCurrentlyActive) {
+      final consentGranted = await _ensureFacialObservationConsent();
+      if (!consentGranted || !mounted) return;
+
+      setState(() {
+        _isElderCamActive = true;
+        _isManualCamActive = true;
+      });
+
+      final ready = await _facialCaptureService.initializeCamera();
+      if (!mounted) return;
+      if (ready) {
+        setState(() {});
+        await _facialCaptureService.startCaptureForVoiceRecording();
+      }
+    } else {
+      _facialCaptureService.stopCapture();
+      if (mounted) {
+        setState(() {
+          _isElderCamActive = false;
+          _isManualCamActive = false;
+        });
       }
     }
   }
@@ -1748,6 +1794,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
         final bytes = await photo.readAsBytes();
         setState(() {
           _capturedImageBytes = bytes;
+          _hasFacialAnalysisResult = true;
         });
 
         final result = await FacialEmotionAiService.analyzeImage(imageBytes: bytes);
@@ -1773,6 +1820,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
         final bytes = await photo.readAsBytes();
         setState(() {
           _capturedImageBytes = bytes;
+          _hasFacialAnalysisResult = true;
         });
 
         final result = await FacialEmotionAiService.analyzeImage(imageBytes: bytes);
@@ -8354,7 +8402,14 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                 'Camera (Facial Expression)',
                 style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.navy),
               ),
-              _buildFacialCaptureStatusBadge(),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildElderCamToggleButton(),
+                  const SizedBox(width: 8),
+                  _buildFacialCaptureStatusBadge(),
+                ],
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -8369,8 +8424,13 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                 children: [
                   Builder(
                     builder: (context) {
+                      final isCameraActive = _isElderCamActive ||
+                          (_facialCaptureService.cameraController != null &&
+                              _facialCaptureService.cameraController!.value.isInitialized &&
+                              _facialCaptureService.isAutoCapturing);
+
                       final controller = _facialCaptureService.cameraController;
-                      if (controller != null && controller.value.isInitialized) {
+                      if (controller != null && controller.value.isInitialized && isCameraActive) {
                         return ClipRRect(
                           borderRadius: BorderRadius.circular(16),
                           child: FittedBox(
@@ -8394,14 +8454,13 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                           ),
                         );
                       }
-                      return Image.asset(
-                        _currentFaceAsset,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Image.asset(
-                            'assets/images/landing/senior_neutral_calm_face.jpg',
+                      return Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          Image.asset(
+                            _currentFaceAsset,
                             fit: BoxFit.cover,
-                            errorBuilder: (ctx, err, st) {
+                            errorBuilder: (context, error, stackTrace) {
                               return Container(
                                 color: const Color(0xFF1E293B),
                                 child: const Center(
@@ -8413,80 +8472,139 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                                 ),
                               );
                             },
-                          );
-                        },
+                          ),
+                          Container(
+                            color: Colors.black.withValues(alpha: 0.40),
+                            child: Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black54,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(color: Colors.white24),
+                                    ),
+                                    child: const Icon(
+                                      LucideIcons.videoOff,
+                                      color: Colors.white70,
+                                      size: 22,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  const Text(
+                                    'Elder Cam Standby',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 3),
+                                  const Text(
+                                    'Turn on Elder Cam or Mic to begin capture',
+                                    style: TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
                       );
                     },
                   ),
 
                   // Overlay Face Tracking Box with green/purple corners
                   Center(
-                    child: Container(
-                      width: 140,
-                      height: 140,
-                      decoration: BoxDecoration(
-                        border: Border.all(
-                          color: _selectedEmotion == 'Happy'
-                              ? AppColors.riskLow.withValues(alpha: 0.85)
-                              : (_selectedEmotion == 'Sad'
-                                  ? AppColors.riskHigh.withValues(alpha: 0.85)
-                                  : (_selectedEmotion == 'Confused'
-                                      ? AppColors.riskModerate.withValues(alpha: 0.85)
-                                      : (_selectedEmotion == 'Fear'
-                                          ? AppColors.lilac.withValues(alpha: 0.85)
-                                          : AppColors.primary.withValues(alpha: 0.85)))),
-                          width: 2,
-                        ),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Stack(
-                        children: [
-                          Positioned(
-                            top: 4,
-                            left: 6,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: Colors.black54,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                'Face Target: ${(_facialConfidence * 100).toInt()}%',
-                                style: const TextStyle(color: Colors.white, fontSize: 9),
-                              ),
+                    child: Builder(
+                      builder: (context) {
+                        final isCameraActive = _isElderCamActive ||
+                            (_facialCaptureService.cameraController != null &&
+                                _facialCaptureService.cameraController!.value.isInitialized &&
+                                _facialCaptureService.isAutoCapturing) ||
+                            _capturedImageBytes != null;
+
+                        return Container(
+                          width: 140,
+                          height: 140,
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: isCameraActive
+                                  ? (_selectedEmotion == 'Happy'
+                                      ? AppColors.riskLow.withValues(alpha: 0.85)
+                                      : (_selectedEmotion == 'Sad'
+                                          ? AppColors.riskHigh.withValues(alpha: 0.85)
+                                          : (_selectedEmotion == 'Confused'
+                                              ? AppColors.riskModerate.withValues(alpha: 0.85)
+                                              : (_selectedEmotion == 'Fear'
+                                                  ? AppColors.lilac.withValues(alpha: 0.85)
+                                                  : AppColors.primary.withValues(alpha: 0.85)))))
+                                  : Colors.white30,
+                              width: 2,
                             ),
+                            borderRadius: BorderRadius.circular(16),
                           ),
-                        ],
-                      ),
+                          child: Stack(
+                            children: [
+                              Positioned(
+                                top: 4,
+                                left: 6,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black54,
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    isCameraActive
+                                        ? 'Face Target: ${(_facialConfidence * 100).toInt()}%'
+                                        : 'Camera Off • Standby',
+                                    style: const TextStyle(color: Colors.white, fontSize: 9),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
                     ),
                   ),
 
                   // Subtle animated scanning laser line
-                  AnimatedBuilder(
-                    animation: _scannerController,
-                    builder: (context, child) {
-                      return Positioned(
-                        top: 20 + (_scannerController.value * 120),
-                        left: 40,
-                        right: 40,
-                        child: Container(
-                          height: 2,
-                          decoration: BoxDecoration(
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppColors.primary.withValues(alpha: 0.8),
-                                blurRadius: 4,
-                                spreadRadius: 1,
+                  if (_isElderCamActive ||
+                      (_facialCaptureService.cameraController != null &&
+                          _facialCaptureService.cameraController!.value.isInitialized &&
+                          _facialCaptureService.isAutoCapturing) ||
+                      _capturedImageBytes != null)
+                    AnimatedBuilder(
+                      animation: _scannerController,
+                      builder: (context, child) {
+                        return Positioned(
+                          top: 20 + (_scannerController.value * 120),
+                          left: 40,
+                          right: 40,
+                          child: Container(
+                            height: 2,
+                            decoration: BoxDecoration(
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppColors.primary.withValues(alpha: 0.8),
+                                  blurRadius: 4,
+                                  spreadRadius: 1,
+                                ),
+                              ],
+                              gradient: const LinearGradient(
+                                colors: [Colors.transparent, AppColors.primary, Colors.transparent],
                               ),
-                            ],
-                            gradient: const LinearGradient(
-                              colors: [Colors.transparent, AppColors.primary, Colors.transparent],
                             ),
                           ),
-                        ),
-                      );
-                    },
-                  ),
+                        );
+                      },
+                    ),
 
                   // Action buttons: Upload Image & Capture Camera
                   Positioned(
@@ -9367,8 +9485,59 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
     );
   }
 
+  Widget _buildElderCamToggleButton() {
+    final bool isCameraActive = _isElderCamActive ||
+        (_facialCaptureService.cameraController != null &&
+            _facialCaptureService.cameraController!.value.isInitialized &&
+            _facialCaptureService.isAutoCapturing);
+
+    return InkWell(
+      onTap: _toggleElderCam,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
+        decoration: BoxDecoration(
+          color: isCameraActive ? AppColors.riskLowBg : AppColors.surfaceSecondary,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isCameraActive ? AppColors.riskLow : AppColors.border,
+            width: 1.2,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isCameraActive ? LucideIcons.video : LucideIcons.videoOff,
+              size: 12,
+              color: isCameraActive ? AppColors.riskLow : AppColors.muted,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              isCameraActive ? 'Elder Cam ON' : 'Turn On Elder Cam',
+              style: TextStyle(
+                fontSize: 10.5,
+                fontWeight: FontWeight.bold,
+                color: isCameraActive ? AppColors.riskLow : AppColors.navy,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   // 1. Real-time Analysis Card
   Widget _buildRealtimeAnalysisCard() {
+    final bool isCameraActive = _isElderCamActive ||
+        (_facialCaptureService.cameraController != null &&
+            _facialCaptureService.cameraController!.value.isInitialized &&
+            _facialCaptureService.isAutoCapturing) ||
+        _capturedImageBytes != null ||
+        _hasFacialAnalysisResult;
+
+    final bool isMicActive = _isRecording || (_hasRecordedVoice && _spokenText.isNotEmpty);
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -9391,19 +9560,23 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
             children: [
               const Text('Facial Emotion', style: TextStyle(fontSize: 12, color: AppColors.muted)),
               Text(
-                '$_selectedEmotion  ${(_facialConfidence * 100).toInt()}%',
+                isCameraActive
+                    ? '$_selectedEmotion  ${(_facialConfidence * 100).toInt()}%'
+                    : 'Camera Off  0%',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
-                  color: _selectedEmotion == 'Happy'
-                      ? AppColors.riskLow
-                      : (_selectedEmotion == 'Sad'
-                          ? AppColors.riskHigh
-                          : (_selectedEmotion == 'Confused'
-                              ? AppColors.riskModerate
-                              : (_selectedEmotion == 'Fear'
-                                  ? AppColors.primary
-                                  : AppColors.primary))),
+                  color: isCameraActive
+                      ? (_selectedEmotion == 'Happy'
+                          ? AppColors.riskLow
+                          : (_selectedEmotion == 'Sad'
+                              ? AppColors.riskHigh
+                              : (_selectedEmotion == 'Confused'
+                                  ? AppColors.riskModerate
+                                  : (_selectedEmotion == 'Fear'
+                                      ? AppColors.primary
+                                      : AppColors.primary))))
+                      : AppColors.muted,
                 ),
               ),
             ],
@@ -9412,18 +9585,20 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
           ClipRRect(
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
-              value: _facialConfidence,
+              value: isCameraActive ? _facialConfidence : 0.0,
               minHeight: 6,
               backgroundColor: AppColors.border,
-              color: _selectedEmotion == 'Happy'
-                  ? AppColors.riskLow
-                  : (_selectedEmotion == 'Sad'
-                      ? AppColors.riskHigh
-                      : (_selectedEmotion == 'Confused'
-                          ? AppColors.riskModerate
-                          : (_selectedEmotion == 'Fear'
-                              ? AppColors.primary
-                              : AppColors.primary))),
+              color: isCameraActive
+                  ? (_selectedEmotion == 'Happy'
+                      ? AppColors.riskLow
+                      : (_selectedEmotion == 'Sad'
+                          ? AppColors.riskHigh
+                          : (_selectedEmotion == 'Confused'
+                              ? AppColors.riskModerate
+                              : (_selectedEmotion == 'Fear'
+                                  ? AppColors.primary
+                                  : AppColors.primary))))
+                  : AppColors.border,
             ),
           ),
           const SizedBox(height: 14),
@@ -9461,14 +9636,18 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
               const SizedBox(width: 8),
               Flexible(
                 child: Text(
-                  '$_voiceEmotion  ${(_voiceConfidence * 100).toInt()}%',
+                  isMicActive
+                      ? '$_voiceEmotion  ${(_voiceConfidence * 100).toInt()}%'
+                      : 'Mic Off  0%',
                   textAlign: TextAlign.end,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
-                    color: _getVoiceEmotionColor(_voiceEmotion),
+                    color: isMicActive
+                        ? _getVoiceEmotionColor(_voiceEmotion)
+                        : AppColors.muted,
                   ),
                 ),
               ),
@@ -9478,10 +9657,12 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
           ClipRRect(
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
-              value: _voiceConfidence,
+              value: isMicActive ? _voiceConfidence : 0.0,
               minHeight: 6,
               backgroundColor: AppColors.border,
-              color: _getVoiceEmotionColor(_voiceEmotion),
+              color: isMicActive
+                  ? _getVoiceEmotionColor(_voiceEmotion)
+                  : AppColors.border,
             ),
           ),
           const SizedBox(height: 18),
