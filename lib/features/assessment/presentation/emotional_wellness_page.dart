@@ -10105,35 +10105,6 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                   ],
                 ),
               ),
-              const SizedBox(width: 12),
-              // Discrete staff / caregiver inspector button
-              InkWell(
-                onTap: () {
-                  setState(() {
-                    _showCaregiverClinicalViewOnElder = true;
-                  });
-                },
-                borderRadius: BorderRadius.circular(8),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceSecondary,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: const [
-                      Icon(LucideIcons.stethoscope, size: 13, color: AppColors.muted),
-                      SizedBox(width: 6),
-                      Text(
-                        'Caregiver Clinical View',
-                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.navy),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
             ],
           ),
 
@@ -12172,23 +12143,6 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  OutlinedButton.icon(
-                    onPressed: () {
-                      Navigator.of(ctx).pop();
-                      setState(() {
-                        _showCaregiverClinicalViewOnElder = true;
-                      });
-                    },
-                    icon: const Icon(LucideIcons.stethoscope, size: 14),
-                    label: const Text('Caregiver Clinical View බලන්න', style: TextStyle(fontSize: 12)),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.primary,
-                      side: const BorderSide(color: AppColors.primary),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
                   ElevatedButton(
                     onPressed: () => Navigator.of(ctx).pop(),
                     style: ElevatedButton.styleFrom(
@@ -12502,6 +12456,10 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
           const Divider(height: 1, color: AppColors.border),
           const SizedBox(height: 24),
 
+          // --- EMOTIONAL WELLNESS RESEARCH FLOW PIPELINE ---
+          _buildRalpaResearchFlowCard(),
+          const SizedBox(height: 24),
+
           // ROW 1: Baseline vs Deviation Card & Benchmark Comparison
           ResponsiveBuilder(
             mobile: (context) => Column(
@@ -12574,6 +12532,147 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
 
           // ROW 3: Personalized Interventions & Reassessment Tracking (Sec 3.5)
           _buildPersonalizedInterventionsCard(isHighRisk),
+        ],
+      ),
+    );
+  }
+
+  // --- RALPA RESEARCH FLOW PIPELINE CARD (SEC 3.1 - 3.5) ---
+  Widget _buildRalpaResearchFlowCard() {
+    final flowSteps = [
+      'Multimodal Observations',
+      'Resident Historical Data',
+      'Resident-Specific Baseline',
+      'Baseline Deviation Detection',
+      'Longitudinal Trend Analysis',
+      'RALPA',
+      'Future Risk / Trajectory Prediction',
+      'Explainable Risk Factors',
+      'Personalized Activities',
+      'Post-Intervention Reassessment',
+    ];
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header: RALPA — Resident-Adaptive Longitudinal Prediction Algorithm
+          const Text(
+            'RALPA — Resident-Adaptive Longitudinal Prediction Algorithm',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: AppColors.navy,
+              letterSpacing: -0.2,
+            ),
+          ),
+          const SizedBox(height: 10),
+          // Description
+          const Text(
+            'RALPA is designed to support resident-specific longitudinal analysis by considering historical observations, personal baseline patterns, deviations from baseline, and temporal trends before predicting future risk trajectories.',
+            style: TextStyle(
+              fontSize: 13,
+              color: AppColors.body,
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 22),
+
+          // Section Title
+          const Text(
+            'Emotional Wellness Research Flow',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: AppColors.navy,
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // Diagram Box matching the research workflow layout
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 28),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (int i = 0; i < flowSteps.length; i++) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: flowSteps[i] == 'RALPA'
+                          ? AppColors.primarySoft
+                          : Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: flowSteps[i] == 'RALPA'
+                            ? AppColors.primary
+                            : const Color(0xFFE2E8F0),
+                        width: flowSteps[i] == 'RALPA' ? 1.5 : 1,
+                      ),
+                    ),
+                    child: Text(
+                      flowSteps[i],
+                      style: TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 13.5,
+                        fontWeight: flowSteps[i] == 'RALPA' ? FontWeight.w800 : FontWeight.w600,
+                        color: flowSteps[i] == 'RALPA' ? AppColors.primary : AppColors.navy,
+                        letterSpacing: flowSteps[i] == 'RALPA' ? 0.8 : 0,
+                      ),
+                    ),
+                  ),
+                  if (i < flowSteps.length - 1) ...[
+                    Padding(
+                      padding: const EdgeInsets.only(left: 32, top: 4, bottom: 4),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: const [
+                          Text(
+                            '|',
+                            style: TextStyle(
+                              fontFamily: 'monospace',
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF94A3B8),
+                              height: 1.0,
+                            ),
+                          ),
+                          Text(
+                            '▼',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Color(0xFF64748B),
+                              height: 1.0,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -12934,31 +13033,53 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                   Icon(LucideIcons.trendingUp, size: 18, color: AppColors.primary),
                   SizedBox(width: 8),
                   Text(
-                    'Longitudinal 14-Day Trajectory Forecast',
+                    'Longitudinal 14-Day Trajectory Forecast (Every 2-Day Steps)',
                     style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.navy),
                   ),
                 ],
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: statusColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  status,
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    color: statusColor,
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFEF3C7),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: const Color(0xFFFDE68A)),
+                    ),
+                    child: const Text(
+                      'දින 2න් 2ට පුරෝකථනය',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF92400E),
+                      ),
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: statusColor.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      status,
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        color: statusColor,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
           const SizedBox(height: 8),
           const Text(
-            'Methodology Sec 3.1 & 3.4: Temporal trend modeling predicting continuous risk trajectory across 14 future care periods (Day +1 to Day +14).',
+            'Methodology Sec 3.1 & 3.4: Temporal trend modeling predicting continuous risk trajectory across 14 future care periods with bi-daily evaluation steps (Every 2 Days: Today, Day +2, Day +4, Day +6, Day +8, Day +10, Day +12, Day +14).',
             style: TextStyle(fontSize: 11, color: AppColors.muted),
           ),
           const SizedBox(height: 16),
@@ -13013,7 +13134,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                     runSpacing: 6,
                     children: [
                       const Text(
-                        'Forecasted Loneliness Risk (Day +2 to Day +14)',
+                        'Forecasted Loneliness Risk (Every 2-Day Steps: Day +2 to Day +14)',
                         style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.navy),
                       ),
                       Container(
@@ -13037,7 +13158,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                       children: List.generate(forecast.length, (index) {
                         final val = forecast[index];
                         final dayStep = index * 2;
-                        final dayLabel = index == 0 ? 'Today' : 'D+$dayStep';
+                        final dayLabel = index == 0 ? 'Today' : 'Day +$dayStep';
                         final barHeight = (val / 100.0 * 55.0).clamp(12.0, 55.0);
 
                         return Container(
@@ -13081,6 +13202,27 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                           ),
                         );
                       }),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Row(
+                      children: const [
+                        Icon(LucideIcons.calendarCheck, size: 14, color: AppColors.primary),
+                        SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            'Bi-Daily Predictive Horizon: Evaluated every 2 days (දින 2න් 2ට පුරෝකථනය) using resident-specific baseline regression to forecast loneliness progression.',
+                            style: TextStyle(fontSize: 10, color: AppColors.body, fontWeight: FontWeight.w500),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -13328,11 +13470,17 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
 
   // --- 5. PERSONALIZED CARE INTERVENTIONS & REASSESSMENT CARD (SEC 3.5) ---
   Widget _buildPersonalizedInterventionsCard(bool isHighRisk) {
-    final itemsToShow = _activities.isNotEmpty ? _activities.take(2).toList() : <PersonalizedActivityItem>[];
-    final hasRealItems = itemsToShow.length >= 2;
+    // Filter out games so that the research trajectory panel only shows clinical/care interventions
+    final nonGameActivities = _activities
+        .where((a) =>
+            !a.title.toLowerCase().contains('game') &&
+            !a.category.toLowerCase().contains('game') &&
+            !a.id.toLowerCase().contains('game') &&
+            !a.description.toLowerCase().contains('game'))
+        .toList();
 
-    final item1 = hasRealItems
-        ? itemsToShow[0]
+    final item1 = nonGameActivities.isNotEmpty
+        ? nonGameActivities[0]
         : PersonalizedActivityItem(
             id: 'REC-1',
             title: 'Afternoon Garden & Daylight Stroll',
@@ -13343,8 +13491,8 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
             priorityColor: isHighRisk ? AppColors.riskHigh : AppColors.riskLow,
           );
 
-    final item2 = hasRealItems
-        ? itemsToShow[1]
+    final item2 = nonGameActivities.length > 1
+        ? nonGameActivities[1]
         : PersonalizedActivityItem(
             id: 'REC-2',
             title: 'Parlor Herbal Tea Connection (3:30 PM)',
@@ -13377,7 +13525,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                   Icon(LucideIcons.heartPulse, size: 18, color: AppColors.primary),
                   SizedBox(width: 8),
                   Text(
-                    'Personalized Intervention Protocols & Reassessment (Sec 3.5)',
+                    'Clinical Intervention Protocols & Reassessment (Sec 3.5)',
                     style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.navy),
                   ),
                 ],
@@ -13398,7 +13546,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
           ),
           const SizedBox(height: 8),
           const Text(
-            'Methodology Sec 3.5: Real AI personalized recommendations tailored to resident trajectory. Post-intervention observations verify stabilization.',
+            'Methodology Sec 3.5: Tailored clinical interventions driven by RALPA trajectory forecasts (non-recreational care protocols). Post-intervention observations verify stabilization.',
             style: TextStyle(fontSize: 11, color: AppColors.body),
           ),
           const SizedBox(height: 14),
