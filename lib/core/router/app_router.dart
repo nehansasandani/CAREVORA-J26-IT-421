@@ -22,6 +22,7 @@ import '../../features/assessment/presentation/resident_social_audit_detail_page
 import '../../features/splash/presentation/pages/splash_page.dart';
 import '../../features/metabolic/presentation/metabolic_health_page.dart';
 import '../../features/dashboard/presentation/emotional_wellness_games_page.dart';
+import '../../features/assessment/presentation/emotional_ralpa_trajectory_page.dart';
 
 GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
 GlobalKey<NavigatorState> _shellNavigatorKey = GlobalKey<NavigatorState>();
@@ -164,6 +165,10 @@ class AppRouter {
               final residentId = state.pathParameters['id'] ?? '1';
               return ResidentSocialAuditDetailPage(residentId: residentId);
             },
+          ),
+          GoRoute(
+            path: '/dashboard/emotional-ralpa-trajectory',
+            builder: (context, state) => const EmotionalRalpaTrajectoryPage(),
           ),
           GoRoute(
             path: '/dashboard/memory-games',

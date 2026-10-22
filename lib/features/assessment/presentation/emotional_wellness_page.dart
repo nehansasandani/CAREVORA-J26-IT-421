@@ -7472,15 +7472,12 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                 ],
               ),
             ),
-            const SizedBox(height: 28),
-            // RALPA Research Methodology Intelligence Dashboard (Chapter 3: Sec 3.1 - 3.5)
-            _buildRalpaMethodologyAnalyticsPanel(),
           ] else if (_selectedSubTab == 1) ...[
-            // In-Depth RALPA Longitudinal Trajectory & Baseline Drift Analytics
-            _buildRalpaMethodologyAnalyticsPanel(),
-          ] else if (_selectedSubTab == 2) ...[
             // Personalized Interventions & Reassessment Tracking (FR11, FR14)
-            _buildPersonalizedInterventionsTab(),
+            if (authState.state.isElder)
+              _buildElderCalmingPersonalizedActivitiesPanel()
+            else
+              _buildPersonalizedInterventionsTab(),
           ] else ...[
             // Historical Assessment Records & Audit Logs (FR4, FR13)
             _buildAssessmentHistoryTab(),
@@ -7493,7 +7490,6 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
   Widget _buildNavigationSubTabs() {
     final tabs = [
       {'title': 'Active Assessment', 'icon': LucideIcons.messageSquare, 'desc': 'Fig 11-4 Structured Session'},
-      {'title': 'RALPA Trajectory', 'icon': LucideIcons.trendingUp, 'desc': 'Sec 3.1-3.4 Longitudinal AI'},
       {'title': 'Care Interventions', 'icon': LucideIcons.sparkles, 'desc': 'FR11 / FR14 Reassessments'},
       {'title': 'Assessment History', 'icon': LucideIcons.history, 'desc': 'FR4 Longitudinal Records'},
     ];
@@ -7519,9 +7515,6 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                   setState(() {
                     _selectedSubTab = index;
                   });
-                  if ((index == 1 || index == 3) && _liveRalpaTrajectory == null) {
-                    _fetchRealRalpaDataForCurrentResident();
-                  }
                 },
                 borderRadius: BorderRadius.circular(12),
                 child: Container(
@@ -12191,7 +12184,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
   // =========================================================================
   // --- RALPA RESEARCH METHODOLOGY ANALYTICS PANEL (CHAPTER 3: SEC 3.1 - 3.5) ---
   // =========================================================================
-  Widget _buildRalpaMethodologyAnalyticsPanel() {
+  Widget buildRalpaMethodologyAnalyticsPanel() {
     final authState = ref.watch(authProvider).state;
     final bool isElder = authState.isElder;
 

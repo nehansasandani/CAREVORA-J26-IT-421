@@ -130,6 +130,12 @@ class DesktopSidebar extends ConsumerWidget {
                     label: 'Social Audit Hub',
                     route: '/dashboard/social-audit',
                   ),
+                  _buildNavItem(
+                    context,
+                    icon: LucideIcons.trendingUp,
+                    label: 'Emotional RALPA Trajectory',
+                    route: '/dashboard/emotional-ralpa-trajectory',
+                  ),
                 ],
                 if (authState.isElder) ...[
                   _buildNavItem(
