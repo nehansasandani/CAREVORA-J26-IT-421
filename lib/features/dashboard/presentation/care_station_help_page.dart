@@ -17,6 +17,8 @@ class CallContactItem {
   final String status;
   final Color statusColor;
   final IconData icon;
+  final int? elderHomeId;
+  final String? elderHomeName;
 
   const CallContactItem({
     required this.id,
@@ -28,6 +30,8 @@ class CallContactItem {
     required this.status,
     required this.statusColor,
     required this.icon,
+    this.elderHomeId,
+    this.elderHomeName,
   });
 }
 
@@ -43,40 +47,203 @@ class _CareStationHelpPageState extends ConsumerState<CareStationHelpPage> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
 
-  // Preset data for Elders to call Caregivers & Doctors
-  final List<CallContactItem> _elderCaregivers = const [
+  // Preset facility caregivers categorized strictly by Elder Home (matching database records)
+  final List<CallContactItem> _facilityCaregivers = const [
+    // Serenity Elder Home Registered Caregivers (ID: 3)
     CallContactItem(
-      id: 'CG-1',
-      name: 'Caregiver Pasidi Sarangi',
-      roleOrRoom: 'Assigned Primary Caregiver',
-      subtitle: 'Dedicated Care Assistant • On Call & WhatsApp',
+      id: 'CG-207',
+      name: 'Caregiver Sarangi',
+      roleOrRoom: 'Care Coordinator',
+      subtitle: 'General Elderly Care • On Duty',
       phoneOrExt: '+94 76 037 6031',
       whatsappNumber: '94760376031',
       status: 'Available • On Duty',
       statusColor: AppColors.riskLow,
       icon: LucideIcons.userCheck,
+      elderHomeId: 3,
+      elderHomeName: 'Serenity Elder Home',
     ),
     CallContactItem(
-      id: 'CG-2',
-      name: 'Nurse Seetha N. (RN)',
-      roleOrRoom: 'Primary Room Attendant',
-      subtitle: 'Duty Station 2 • Floor 2 Lead Nurse',
-      phoneOrExt: 'Ext. 104',
-      status: 'On Duty • Active',
+      id: 'CG-238',
+      name: 'Caregiver Pasidi Sarangi',
+      roleOrRoom: 'Assigned Primary Caregiver',
+      subtitle: 'Care Coordinator • General Elderly Care',
+      phoneOrExt: '+94 76 037 6031',
+      whatsappNumber: '94760376031',
+      status: 'Available • On Duty',
       statusColor: AppColors.riskLow,
-      icon: LucideIcons.heartPulse,
+      icon: LucideIcons.userCheck,
+      elderHomeId: 3,
+      elderHomeName: 'Serenity Elder Home',
     ),
     CallContactItem(
-      id: 'CG-3',
-      name: 'Station 2 Central Reception',
-      roleOrRoom: 'Emergency Nurse Desk',
-      subtitle: 'Direct Intercom • 24/7 Monitored',
-      phoneOrExt: 'Ext. 100',
-      status: 'Monitored 24/7',
-      statusColor: AppColors.primary,
-      icon: LucideIcons.radio,
+      id: 'CG-369',
+      name: 'Caregiver Maya Ekanayaka',
+      roleOrRoom: 'Care Coordinator',
+      subtitle: 'General Elderly Care • On Duty',
+      phoneOrExt: '+94 76 037 6031',
+      whatsappNumber: '94760376031',
+      status: 'Available • On Duty',
+      statusColor: AppColors.riskLow,
+      icon: LucideIcons.userCheck,
+      elderHomeId: 3,
+      elderHomeName: 'Serenity Elder Home',
+    ),
+    CallContactItem(
+      id: 'CG-398',
+      name: 'Caregiver Indika Perera',
+      roleOrRoom: 'Care Coordinator',
+      subtitle: 'General Elderly Care • Active',
+      phoneOrExt: '+94 76 037 6031',
+      whatsappNumber: '94760376031',
+      status: 'Available • Active',
+      statusColor: AppColors.riskLow,
+      icon: LucideIcons.userCheck,
+      elderHomeId: 3,
+      elderHomeName: 'Serenity Elder Home',
+    ),
+    CallContactItem(
+      id: 'CG-399',
+      name: 'Caregiver Malini Silva',
+      roleOrRoom: 'Care Coordinator',
+      subtitle: 'General Elderly Care • On Duty',
+      phoneOrExt: '+94 76 037 6031',
+      whatsappNumber: '94760376031',
+      status: 'Available • On Duty',
+      statusColor: AppColors.riskLow,
+      icon: LucideIcons.userCheck,
+      elderHomeId: 3,
+      elderHomeName: 'Serenity Elder Home',
+    ),
+
+    // Serene Valley Senior Living Registered Caregivers (ID: 1)
+    CallContactItem(
+      id: 'CG-101',
+      name: 'Caregiver Eleanor Vance',
+      roleOrRoom: 'Lead Care Coordinator',
+      subtitle: 'Senior Behavioral Health • On Duty',
+      phoneOrExt: '+94 76 037 6031',
+      whatsappNumber: '94760376031',
+      status: 'Available • On Duty',
+      statusColor: AppColors.riskLow,
+      icon: LucideIcons.userCheck,
+      elderHomeId: 1,
+      elderHomeName: 'Serene Valley Senior Living',
+    ),
+    CallContactItem(
+      id: 'CG-TEST-99',
+      name: 'Caregiver Florence Nightingale',
+      roleOrRoom: 'Senior Charge Nurse',
+      subtitle: 'Palliative & Wellness Care • Active',
+      phoneOrExt: '+94 76 037 6031',
+      whatsappNumber: '94760376031',
+      status: 'Available • Active',
+      statusColor: AppColors.riskLow,
+      icon: LucideIcons.userCheck,
+      elderHomeId: 1,
+      elderHomeName: 'Serene Valley Senior Living',
+    ),
+    CallContactItem(
+      id: 'CG-CLARA-1',
+      name: 'Caregiver Clara Barton',
+      roleOrRoom: 'Staff Care Coordinator',
+      subtitle: 'Elder Emotional Wellness • On Duty',
+      phoneOrExt: '+94 76 037 6031',
+      whatsappNumber: '94760376031',
+      status: 'Available • On Duty',
+      statusColor: AppColors.riskLow,
+      icon: LucideIcons.userCheck,
+      elderHomeId: 1,
+      elderHomeName: 'Serene Valley Senior Living',
+    ),
+
+    // Golden Sunset Eldercare Registered Caregivers (ID: 2)
+    CallContactItem(
+      id: 'CG-202',
+      name: 'Caregiver David Silva',
+      roleOrRoom: 'Senior Care Specialist',
+      subtitle: 'Active Living Support • On Duty',
+      phoneOrExt: '+94 76 037 6031',
+      whatsappNumber: '94760376031',
+      status: 'Available • On Duty',
+      statusColor: AppColors.riskLow,
+      icon: LucideIcons.userCheck,
+      elderHomeId: 2,
+      elderHomeName: 'Golden Sunset Eldercare',
+    ),
+    CallContactItem(
+      id: 'CG-203',
+      name: 'Caregiver Kamala Jayawardena',
+      roleOrRoom: 'Care Coordinator',
+      subtitle: 'Resident Wellbeing Specialist • On Duty',
+      phoneOrExt: '+94 76 037 6031',
+      whatsappNumber: '94760376031',
+      status: 'Available • On Duty',
+      statusColor: AppColors.riskLow,
+      icon: LucideIcons.userCheck,
+      elderHomeId: 2,
+      elderHomeName: 'Golden Sunset Eldercare',
     ),
   ];
+
+  int _getResolvedElderHomeId(AuthState authState) {
+    int? resolvedHomeId = authState.elderHomeId;
+
+    final homeName = authState.elderHomeName?.toLowerCase().trim() ?? '';
+    if (homeName.isNotEmpty) {
+      if (homeName.contains('serenity')) {
+        resolvedHomeId = 3;
+      } else if (homeName.contains('golden')) {
+        resolvedHomeId = 2;
+      } else if (homeName.contains('serene')) {
+        resolvedHomeId = 1;
+      }
+    }
+
+    if (resolvedHomeId == null) {
+      final resId = authState.residentId;
+      final userName = authState.userName?.toLowerCase().trim() ?? '';
+      final email = authState.email?.toLowerCase().trim() ?? '';
+
+      if (resId == 1 || resId == 2 || userName.contains('sarah') || userName.contains('arthur') || userName.contains('eleanor') || email.contains('sarah') || email.contains('eleanor')) {
+        resolvedHomeId = 1;
+      } else if (resId == 3 || resId == 4 || userName.contains('margaret') || userName.contains('david') || email.contains('margaret') || email.contains('david')) {
+        resolvedHomeId = 2;
+      } else if (resId == 5 || resId == 30 || resId == 165 || resId == 300 || userName.contains('malini') || userName.contains('pasidi') || userName.contains('sarangi') || email.contains('mb@') || email.contains('ps@') || email.contains('serenity')) {
+        resolvedHomeId = 3;
+      }
+    }
+
+    return resolvedHomeId ?? 3;
+  }
+
+  List<CallContactItem> _getElderCaregivers(AuthState authState) {
+    final finalHomeId = _getResolvedElderHomeId(authState);
+    return _facilityCaregivers.where((cg) => cg.elderHomeId == finalHomeId).toList();
+  }
+
+  List<CallContactItem> _getOtherCaregivers(AuthState authState) {
+    final homeId = _getResolvedElderHomeId(authState);
+    final currentUserName = authState.userName?.toLowerCase().trim() ?? '';
+    final currentClean = currentUserName.replaceAll('caregiver', '').trim();
+
+    final filtered = _facilityCaregivers.where((cg) {
+      if (cg.elderHomeId != homeId) return false;
+      if (currentClean.isNotEmpty) {
+        final cgNameClean = cg.name.toLowerCase().replaceAll('caregiver', '').trim();
+        // Exact match with logged-in user name
+        if (cgNameClean == currentClean) {
+          return false;
+        }
+      }
+      return true;
+    }).toList();
+
+    if (filtered.isEmpty) {
+      return _facilityCaregivers.where((cg) => cg.elderHomeId == homeId).toList();
+    }
+    return filtered;
+  }
 
   final List<CallContactItem> _elderDoctors = const [
     CallContactItem(
@@ -111,57 +278,34 @@ class _CareStationHelpPageState extends ConsumerState<CareStationHelpPage> {
     ),
   ];
 
-  // Preset data for Caregivers to call Elders (Residents)
+  // Preset data for Caregivers to call Elders (Residents), strictly categorized by Elder Home
   final List<CallContactItem> _caregiverResidents = const [
+    // Serene Valley Senior Living (ID: 1)
     CallContactItem(
       id: 'RES-101',
       name: 'Sarah Jenkins',
-      roleOrRoom: 'Room 101 • Suite A',
+      roleOrRoom: 'Room 101 • Suite 204',
       subtitle: 'Age: 78 • Female',
       phoneOrExt: 'Intercom #101',
+      whatsappNumber: '94760376031',
       status: 'In Room • Resting',
       statusColor: AppColors.riskLow,
       icon: LucideIcons.user,
+      elderHomeId: 1,
+      elderHomeName: 'Serene Valley Senior Living',
     ),
     CallContactItem(
       id: 'RES-102',
       name: 'Arthur Pendelton',
-      roleOrRoom: 'Room 102 • Suite B',
-      subtitle: 'Age: 79 • Male',
+      roleOrRoom: 'Room 102 • Suite 112',
+      subtitle: 'Age: 82 • Male',
       phoneOrExt: 'Intercom #102',
+      whatsappNumber: '94760376031',
       status: 'Activity Hall',
       statusColor: AppColors.primary,
       icon: LucideIcons.user,
-    ),
-    CallContactItem(
-      id: 'RES-103',
-      name: 'Eleanor Vance',
-      roleOrRoom: 'Room 103 • Suite A',
-      subtitle: 'Age: 88 • Female',
-      phoneOrExt: 'Intercom #103',
-      status: 'In Room',
-      statusColor: AppColors.riskLow,
-      icon: LucideIcons.user,
-    ),
-    CallContactItem(
-      id: 'RES-104',
-      name: 'Robert Chen',
-      roleOrRoom: 'Room 104 • Suite C',
-      subtitle: 'Age: 75 • Male',
-      phoneOrExt: 'Intercom #104',
-      status: 'Garden Walk',
-      statusColor: AppColors.riskLow,
-      icon: LucideIcons.user,
-    ),
-    CallContactItem(
-      id: 'RES-105',
-      name: 'James Perera',
-      roleOrRoom: 'Room 105 • North Wing',
-      subtitle: 'Age: 82 • Male',
-      phoneOrExt: 'Intercom #105',
-      status: 'In Room • Monitored',
-      statusColor: AppColors.riskModerate,
-      icon: LucideIcons.user,
+      elderHomeId: 1,
+      elderHomeName: 'Serene Valley Senior Living',
     ),
     CallContactItem(
       id: 'RES-106',
@@ -169,29 +313,68 @@ class _CareStationHelpPageState extends ConsumerState<CareStationHelpPage> {
       roleOrRoom: 'Room 106 • Suite B',
       subtitle: 'Age: 78 • Female',
       phoneOrExt: 'Intercom #106',
+      whatsappNumber: '94760376031',
       status: 'In Room',
       statusColor: AppColors.riskLow,
       icon: LucideIcons.user,
+      elderHomeId: 1,
+      elderHomeName: 'Serene Valley Senior Living',
     ),
+
+    // Golden Sunset Eldercare (ID: 2)
     CallContactItem(
-      id: 'RES-107',
-      name: 'Harold Finch',
-      roleOrRoom: 'Room 107 • Suite D',
-      subtitle: 'Age: 85 • Male',
-      phoneOrExt: 'Intercom #107',
-      status: 'Reading Lounge',
+      id: 'RES-201',
+      name: 'Margaret Chen',
+      roleOrRoom: 'Room 201 • Suite 305',
+      subtitle: 'Age: 79 • Female',
+      phoneOrExt: 'Intercom #201',
+      whatsappNumber: '94760376031',
+      status: 'Activity Lounge',
       statusColor: AppColors.riskLow,
       icon: LucideIcons.user,
+      elderHomeId: 2,
+      elderHomeName: 'Golden Sunset Eldercare',
     ),
     CallContactItem(
-      id: 'RES-108',
-      name: 'Beatrice Potter',
-      roleOrRoom: 'Room 108 • South Wing',
-      subtitle: 'Age: 91 • Female',
-      phoneOrExt: 'Intercom #108',
-      status: 'In Room • Vitals Due',
+      id: 'RES-202',
+      name: 'Robert Hastings',
+      roleOrRoom: 'Room 202 • Suite 108',
+      subtitle: 'Age: 84 • Male',
+      phoneOrExt: 'Intercom #202',
+      whatsappNumber: '94760376031',
+      status: 'Garden Walk',
+      statusColor: AppColors.riskLow,
+      icon: LucideIcons.user,
+      elderHomeId: 2,
+      elderHomeName: 'Golden Sunset Eldercare',
+    ),
+    CallContactItem(
+      id: 'RES-104',
+      name: 'Robert Chen',
+      roleOrRoom: 'Room 104 • Suite C',
+      subtitle: 'Age: 75 • Male',
+      phoneOrExt: 'Intercom #104',
+      whatsappNumber: '94760376031',
+      status: 'In Room',
+      statusColor: AppColors.riskLow,
+      icon: LucideIcons.user,
+      elderHomeId: 2,
+      elderHomeName: 'Golden Sunset Eldercare',
+    ),
+
+    // Serenity Elder Home (ID: 3)
+    CallContactItem(
+      id: 'RES-105',
+      name: 'James Perera',
+      roleOrRoom: 'Room 105 • North Wing',
+      subtitle: 'Age: 82 • Male',
+      phoneOrExt: 'Intercom #105',
+      whatsappNumber: '94760376031',
+      status: 'In Room • Monitored',
       statusColor: AppColors.riskModerate,
       icon: LucideIcons.user,
+      elderHomeId: 3,
+      elderHomeName: 'Serenity Elder Home',
     ),
     CallContactItem(
       id: 'RES-30',
@@ -199,11 +382,58 @@ class _CareStationHelpPageState extends ConsumerState<CareStationHelpPage> {
       roleOrRoom: 'Room 30 • East Wing',
       subtitle: 'Age: 65 • Female',
       phoneOrExt: 'Intercom #030',
+      whatsappNumber: '94760376031',
       status: 'In Room • Relaxed',
       statusColor: AppColors.riskLow,
       icon: LucideIcons.user,
+      elderHomeId: 3,
+      elderHomeName: 'Serenity Elder Home',
+    ),
+    CallContactItem(
+      id: 'RES-107',
+      name: 'Harold Finch',
+      roleOrRoom: 'Room 107 • Suite D',
+      subtitle: 'Age: 85 • Male',
+      phoneOrExt: 'Intercom #107',
+      whatsappNumber: '94760376031',
+      status: 'Reading Lounge',
+      statusColor: AppColors.riskLow,
+      icon: LucideIcons.user,
+      elderHomeId: 3,
+      elderHomeName: 'Serenity Elder Home',
+    ),
+    CallContactItem(
+      id: 'RES-108',
+      name: 'Beatrice Potter',
+      roleOrRoom: 'Room 108 • South Wing',
+      subtitle: 'Age: 91 • Female',
+      phoneOrExt: 'Intercom #108',
+      whatsappNumber: '94760376031',
+      status: 'In Room • Vitals Due',
+      statusColor: AppColors.riskModerate,
+      icon: LucideIcons.user,
+      elderHomeId: 3,
+      elderHomeName: 'Serenity Elder Home',
+    ),
+    CallContactItem(
+      id: 'RES-301',
+      name: 'Simon Perera',
+      roleOrRoom: 'Room 301 • Suite A',
+      subtitle: 'Age: 76 • Male',
+      phoneOrExt: 'Intercom #301',
+      whatsappNumber: '94760376031',
+      status: 'Garden Courtyard',
+      statusColor: AppColors.riskLow,
+      icon: LucideIcons.user,
+      elderHomeId: 3,
+      elderHomeName: 'Serenity Elder Home',
     ),
   ];
+
+  List<CallContactItem> _getCaregiverResidents(AuthState authState) {
+    final homeId = _getResolvedElderHomeId(authState);
+    return _caregiverResidents.where((r) => r.elderHomeId == homeId).toList();
+  }
 
   final List<CallContactItem> _caregiverStations = const [
     CallContactItem(
@@ -271,9 +501,9 @@ class _CareStationHelpPageState extends ConsumerState<CareStationHelpPage> {
               _buildHeader(isElder),
               const SizedBox(height: 20),
               if (isElder) ...[
-                _buildElderView(),
+                _buildElderView(authState),
               ] else ...[
-                _buildCaregiverView(),
+                _buildCaregiverView(authState),
               ],
             ],
           ),
@@ -313,8 +543,8 @@ class _CareStationHelpPageState extends ConsumerState<CareStationHelpPage> {
               const SizedBox(height: 4),
               Text(
                 isElder
-                    ? 'Contact your assigned caregivers, nursing station, or medical doctors whenever you need assistance.'
-                    : 'Immediate direct intercom and audio/video calling to residents, on-call doctors, and nurse stations.',
+                    ? 'Contact your assigned caregiver whenever you need assistance.'
+                    : 'Immediate direct intercom and audio/video calling to residents, fellow caregivers, on-call doctors, and nurse stations.',
                 style: AppTextStyles.caption.copyWith(fontSize: 13, height: 1.4),
               ),
             ],
@@ -325,53 +555,44 @@ class _CareStationHelpPageState extends ConsumerState<CareStationHelpPage> {
   }
 
   // --------------------------------------------------------------------------
-  // ELDER VIEW: Call Caregivers & Doctors
+  // ELDER VIEW: Call Caregivers belonging strictly to the Elder's Elder Home
   // --------------------------------------------------------------------------
-  Widget _buildElderView() {
+  Widget _buildElderView(AuthState authState) {
+    final caregivers = _getElderCaregivers(authState);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Section 1: My Caregivers & Attendants
+        // Assigned Caregiver
         Row(
           children: [
             const Icon(LucideIcons.heartHandshake, color: AppColors.primary, size: 20),
             const SizedBox(width: 8),
             Text(
-              'My Assigned Caregivers & Nurses',
+              caregivers.length > 1 ? 'My Assigned Caregivers' : 'My Assigned Caregiver',
               style: AppTextStyles.h4.copyWith(fontSize: 17, fontWeight: FontWeight.bold),
             ),
           ],
         ),
         const SizedBox(height: 12),
-        ..._elderCaregivers.map((c) => _buildContactCard(c, isElder: true)),
-
-        const SizedBox(height: 28),
-
-        // Section 2: My Doctors
-        Row(
-          children: [
-            const Icon(LucideIcons.stethoscope, color: AppColors.primary, size: 20),
-            const SizedBox(width: 8),
-            Text(
-              'My Consulting Medical Doctors',
-              style: AppTextStyles.h4.copyWith(fontSize: 17, fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        ..._elderDoctors.map((d) => _buildContactCard(d, isElder: true)),
+        ...caregivers.map((c) => _buildContactCard(c, isElder: true)),
       ],
     );
   }
 
   // --------------------------------------------------------------------------
-  // CAREGIVER VIEW: Call Elders (Residents) & Doctors
+  // CAREGIVER VIEW: Call Elders & Other Caregivers in Assigned Elder Home
   // --------------------------------------------------------------------------
-  Widget _buildCaregiverView() {
+  Widget _buildCaregiverView(AuthState authState) {
+    final residents = _getCaregiverResidents(authState);
+    final otherCaregivers = _getOtherCaregivers(authState);
+
     List<CallContactItem> currentList;
     if (_caregiverSelectedTab == 0) {
-      currentList = _caregiverResidents;
+      currentList = residents;
     } else if (_caregiverSelectedTab == 1) {
+      currentList = otherCaregivers;
+    } else if (_caregiverSelectedTab == 2) {
       currentList = _elderDoctors;
     } else {
       currentList = _caregiverStations;
@@ -382,7 +603,8 @@ class _CareStationHelpPageState extends ConsumerState<CareStationHelpPage> {
       currentList = currentList.where((item) {
         return item.name.toLowerCase().contains(q) ||
             item.roleOrRoom.toLowerCase().contains(q) ||
-            item.phoneOrExt.toLowerCase().contains(q);
+            item.phoneOrExt.toLowerCase().contains(q) ||
+            (item.subtitle != null && item.subtitle!.toLowerCase().contains(q));
       }).toList();
     }
 
@@ -404,12 +626,20 @@ class _CareStationHelpPageState extends ConsumerState<CareStationHelpPage> {
                   index: 0,
                   label: 'Call Residents (Elders)',
                   icon: LucideIcons.users,
-                  count: _caregiverResidents.length,
+                  count: residents.length,
                 ),
               ),
               Expanded(
                 child: _buildSegmentButton(
                   index: 1,
+                  label: 'Team Caregivers',
+                  icon: LucideIcons.userCheck,
+                  count: otherCaregivers.length,
+                ),
+              ),
+              Expanded(
+                child: _buildSegmentButton(
+                  index: 2,
                   label: 'Call Doctors',
                   icon: LucideIcons.stethoscope,
                   count: _elderDoctors.length,
@@ -417,7 +647,7 @@ class _CareStationHelpPageState extends ConsumerState<CareStationHelpPage> {
               ),
               Expanded(
                 child: _buildSegmentButton(
-                  index: 2,
+                  index: 3,
                   label: 'Duty Stations',
                   icon: LucideIcons.radio,
                   count: _caregiverStations.length,
@@ -437,8 +667,10 @@ class _CareStationHelpPageState extends ConsumerState<CareStationHelpPage> {
             hintText: _caregiverSelectedTab == 0
                 ? 'Search resident name or room number (e.g. James Perera, 105)...'
                 : (_caregiverSelectedTab == 1
-                    ? 'Search doctor by name or specialty (e.g. Dr. Nimal, Neurology)...'
-                    : 'Search station or wing...'),
+                    ? 'Search caregiver name or role (e.g. Sarangi, Maya)...'
+                    : (_caregiverSelectedTab == 2
+                        ? 'Search doctor by name or specialty (e.g. Dr. Nimal, Neurology)...'
+                        : 'Search station or wing...')),
             prefixIcon: const Icon(LucideIcons.search, size: 18, color: AppColors.muted),
             suffixIcon: _searchQuery.isNotEmpty
                 ? IconButton(
@@ -637,72 +869,101 @@ class _CareStationHelpPageState extends ConsumerState<CareStationHelpPage> {
                 if (contact.subtitle != null) ...[
                   const SizedBox(height: 1),
                   Text(
-                    '${contact.subtitle!} • ${contact.phoneOrExt}',
+                    isElder
+                        ? contact.subtitle!
+                        : (contact.phoneOrExt.isNotEmpty ? '${contact.subtitle!} • ${contact.phoneOrExt}' : contact.subtitle!),
                     style: const TextStyle(fontSize: 11.5, color: AppColors.muted),
                   ),
                 ],
               ],
             ),
           ),
-          // WhatsApp Call / Message Button
-          if (contact.whatsappNumber != null && contact.whatsappNumber!.isNotEmpty) ...[
+          // Action Buttons
+          if (isElder) ...[
+            // Elder View: Direct WhatsApp Voice Call
             ElevatedButton.icon(
               onPressed: () {
+                final wpNumber = contact.whatsappNumber ?? contact.phoneOrExt;
                 UrlLauncherService.launchWhatsApp(
-                  contact.whatsappNumber!,
-                  'Hello ${contact.name}, this is from Carevora. I need assistance.',
+                  wpNumber,
+                  'Hello ${contact.name}, this is from Carevora. Please start a voice call with me for assistance.',
                 );
+                _triggerCallDialog(contact, isVideo: false);
               },
-              icon: const Icon(LucideIcons.messageCircle, size: 14, color: Colors.white),
+              icon: const Icon(LucideIcons.phoneCall, size: 15, color: Colors.white),
               label: const Text(
-                'WhatsApp',
-                style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Colors.white),
+                'Start Voice Call',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white),
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF25D366),
-                padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                elevation: 0,
+              ),
+            ),
+          ] else ...[
+            // Caregiver View: Full communication options (WhatsApp, Voice Call, Video)
+            if (contact.whatsappNumber != null && contact.whatsappNumber!.isNotEmpty) ...[
+              ElevatedButton.icon(
+                onPressed: () {
+                  UrlLauncherService.launchWhatsApp(
+                    contact.whatsappNumber!,
+                    'Hello ${contact.name}, this is from Carevora. I need assistance.',
+                  );
+                },
+                icon: const Icon(LucideIcons.messageCircle, size: 14, color: Colors.white),
+                label: const Text(
+                  'WhatsApp',
+                  style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Colors.white),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF25D366),
+                  padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  elevation: 0,
+                ),
+              ),
+              const SizedBox(width: 8),
+            ],
+            // Audio Call Button
+            ElevatedButton.icon(
+              onPressed: () {
+                if (contact.phoneOrExt.startsWith('+') || RegExp(r'^\d{9,}').hasMatch(contact.phoneOrExt)) {
+                  UrlLauncherService.launchTel(contact.phoneOrExt);
+                }
+                _triggerCallDialog(contact, isVideo: false);
+              },
+              icon: const Icon(LucideIcons.phone, size: 14, color: Colors.white),
+              label: const Text(
+                'Voice Call',
+                style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Colors.white),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 elevation: 0,
               ),
             ),
             const SizedBox(width: 8),
+            // Video Call Button
+            OutlinedButton.icon(
+              onPressed: () => _triggerCallDialog(contact, isVideo: true),
+              icon: const Icon(LucideIcons.video, size: 14),
+              label: const Text(
+                'Video',
+                style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.navy,
+                side: const BorderSide(color: AppColors.border, width: 1.2),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
           ],
-          // Audio Call Button
-          ElevatedButton.icon(
-            onPressed: () {
-              if (contact.phoneOrExt.startsWith('+') || RegExp(r'^\d{9,}').hasMatch(contact.phoneOrExt)) {
-                UrlLauncherService.launchTel(contact.phoneOrExt);
-              }
-              _triggerCallDialog(contact, isVideo: false);
-            },
-            icon: const Icon(LucideIcons.phone, size: 14, color: Colors.white),
-            label: Text(
-              isElder ? 'Call' : 'Voice Call',
-              style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Colors.white),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              elevation: 0,
-            ),
-          ),
-          const SizedBox(width: 8),
-          // Video Call Button
-          OutlinedButton.icon(
-            onPressed: () => _triggerCallDialog(contact, isVideo: true),
-            icon: const Icon(LucideIcons.video, size: 14),
-            label: const Text(
-              'Video',
-              style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
-            ),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.navy,
-              side: const BorderSide(color: AppColors.border, width: 1.2),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-          ),
         ],
       ),
     );
@@ -846,7 +1107,7 @@ class _ActiveCallModalState extends State<_ActiveCallModal> {
             ),
             const SizedBox(height: 4),
             Text(
-              '${widget.contact.roleOrRoom} • ${widget.contact.phoneOrExt}',
+              widget.contact.roleOrRoom,
               style: const TextStyle(color: Colors.white60, fontSize: 13),
               textAlign: TextAlign.center,
             ),
