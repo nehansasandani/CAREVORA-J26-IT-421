@@ -2327,21 +2327,22 @@ class _CarePlansPageState extends ConsumerState<CarePlansPage> {
                             color: AppColors.navy,
                           ),
                         ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: AppColors.lavenderBg,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            item.category,
-                            style: const TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.primaryDeep,
+                        if (item.category.trim().toLowerCase() != item.priority.trim().toLowerCase())
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppColors.lavenderBg,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              item.category,
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.primaryDeep,
+                              ),
                             ),
                           ),
-                        ),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
