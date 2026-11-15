@@ -6,6 +6,8 @@ import 'package:http/http.dart' as http;
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../core/config/app_config.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/localization/app_language.dart';
+import '../../../core/localization/app_strings.dart';
 import '../../../shared/widgets/carevora_avatar.dart';
 import '../../../shared/widgets/cognitive_shap_explanation_card.dart';
 import '../../../shared/widgets/emotional_shap_explanation_card.dart';
@@ -799,6 +801,8 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
   }
 
   Widget _buildRoleHeader(AuthState auth) {
+    final lang = ref.watch(languageProvider).currentLanguage;
+    final strings = AppStrings(lang);
     String badgeText;
     Color badgeBg;
     Color badgeColor;
@@ -817,7 +821,7 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
       badgeIcon = LucideIcons.shieldCheck;
     } else {
       final home = auth.elderHomeName ?? 'Care Community';
-      badgeText = 'ELDER PRIVACY PROTECTION • $home';
+      badgeText = strings.isSinhala ? 'වැඩිහිටි රහස්‍යතා ආරක්ෂණය • $home' : 'ELDER PRIVACY PROTECTION • $home';
       badgeBg = const Color(0xFFFEF3C7);
       badgeColor = const Color(0xFF92400E);
       badgeIcon = LucideIcons.lock;
@@ -883,7 +887,7 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
           const SizedBox(height: 12),
           Text(
             auth.isElder
-                ? 'My Confidential Health Record'
+                ? strings.myConfidentialHealthRecord
                 : 'Resident Directory',
             style: const TextStyle(
               fontSize: 24,
@@ -898,7 +902,7 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
                 ? 'Logged in as ${auth.userName}. You have clinical clearance to review all residents and registered staff across all elder homes.'
                 : auth.isCaregiver
                     ? 'Search residents assigned to your care home to view longitudinal wellness metrics, review cognitive assessments, or initiate new evaluation sessions.'
-                    : 'Logged in as ${auth.userName}. Under HIPAA and resident privacy standards, you cannot view other elders\' records.',
+                    : strings.loggedInAs(auth.userName ?? ''),
             style: const TextStyle(
               fontSize: 13,
               color: AppColors.body,
@@ -3859,6 +3863,8 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
   // ELDER VIEW: Confidential individual record ONLY
   // ----------------------------------------------------
   Widget _buildElderView(AuthState auth) {
+    final lang = ref.watch(languageProvider).currentLanguage;
+    final strings = AppStrings(lang);
     final allResidents = _liveResidents.isNotEmpty ? _liveResidents : _allEldersFallback;
 
     final myRecord = allResidents.firstWhere(
@@ -3868,10 +3874,10 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
     );
 
     final cleanGender = (myRecord.gender.isNotEmpty && myRecord.gender != 'Unknown')
-        ? myRecord.gender
+        ? (myRecord.gender.toLowerCase() == 'female' ? strings.female : (myRecord.gender.toLowerCase() == 'male' ? strings.male : myRecord.gender))
         : ((auth.userName ?? myRecord.name).contains('Malini') || (auth.userName ?? myRecord.name).contains('Sarah') || (auth.userName ?? myRecord.name).contains('Margaret')
-            ? 'Female'
-            : 'Senior Resident');
+            ? strings.female
+            : strings.seniorResident);
 
     final completedEmotional = _residentEmotionalHistory
         .where((a) => a.status.toUpperCase() != 'CANCELLED')
@@ -3894,7 +3900,7 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
     final IconData riskIcon;
 
     if (!hasAnyAssessment) {
-      riskLabel = 'Not Assessed Yet';
+      riskLabel = strings.notAssessedYet;
       riskColor = const Color(0xFF64748B);
       riskBg = const Color(0xFFF1F5F9);
       riskIcon = LucideIcons.clock;
@@ -3902,7 +3908,7 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
       final rawRisk = (myRecord.riskLevel ?? '').toUpperCase();
       final isHighRisk = rawRisk == 'HIGH' || myRecord.riskScore >= 0.70;
       final isModRisk = rawRisk == 'MODERATE' || (!isHighRisk && myRecord.riskScore >= 0.35);
-      riskLabel = isHighRisk ? 'High Risk' : (isModRisk ? 'Moderate Risk' : 'Low Risk');
+      riskLabel = isHighRisk ? strings.highRisk : (isModRisk ? strings.moderateRisk : strings.lowRisk);
       riskColor = isHighRisk ? AppColors.riskHigh : (isModRisk ? AppColors.riskModerate : AppColors.riskLow);
       riskBg = isHighRisk ? AppColors.riskHighBg : (isModRisk ? AppColors.riskModerateBg : AppColors.riskLowBg);
       riskIcon = isHighRisk ? LucideIcons.shieldAlert : LucideIcons.shieldCheck;
@@ -3919,25 +3925,25 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
             border: Border.all(color: const Color(0xFFFDE68A)),
           ),
           child: Row(
-            children: const [
-              Icon(LucideIcons.lock, color: Color(0xFFB45309), size: 24),
-              SizedBox(width: 12),
+            children: [
+              const Icon(LucideIcons.lock, color: Color(0xFFB45309), size: 24),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Elder Confidential Privacy Protocol Active',
-                      style: TextStyle(
+                      strings.elderPrivacyActive,
+                      style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
                         color: Color(0xFF92400E),
                       ),
                     ),
-                    SizedBox(height: 2),
+                    const SizedBox(height: 2),
                     Text(
-                      'Other resident records are confidential and hidden from view. You have exclusive private access to your own personalized health telemetry and cognitive wellness progress.',
-                      style: TextStyle(fontSize: 12, color: Color(0xFF78350F)),
+                      strings.elderPrivacyDesc,
+                      style: const TextStyle(fontSize: 12, color: Color(0xFF78350F)),
                     ),
                   ],
                 ),
@@ -3987,7 +3993,7 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
                             ),
                           ),
                           Text(
-                            'Room ${myRecord.roomNo} • Age ${myRecord.age}${myRecord.educationYears != null ? ' • Education: ${myRecord.educationYears} Years' : ''} • $cleanGender',
+                            '${strings.room(myRecord.roomNo)} • ${strings.age(myRecord.age)}${myRecord.educationYears != null ? ' • ${strings.education(myRecord.educationYears!)}' : ''} • $cleanGender',
                             style: const TextStyle(fontSize: 13, color: AppColors.body),
                           ),
                           const SizedBox(height: 6),
@@ -4044,9 +4050,9 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'Your Wellness Tracking Scores',
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.navy),
+                    Text(
+                      strings.yourWellnessTrackingScores,
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.navy),
                     ),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
@@ -4055,7 +4061,7 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
-                        'Overall Risk: $riskLabel',
+                        strings.overallRisk(riskLabel),
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
@@ -4067,7 +4073,7 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
                 ),
                 const SizedBox(height: 12),
                 _buildScoreBar(
-                  'Cognitive Clarity',
+                  strings.cognitiveClarity,
                   hasCognitive
                       ? (completedCognitive.isNotEmpty
                           ? (completedCognitive.first.acrfScore != null ? completedCognitive.first.acrfScore! / 100.0 : null)
@@ -4077,7 +4083,7 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
                 ),
                 const SizedBox(height: 10),
                 _buildScoreBar(
-                  'Emotional Wellness',
+                  strings.emotionalWellnessScore,
                   hasEmotional
                       ? (((completedEmotional.isNotEmpty
                               ? (completedEmotional.first.overallScore ?? completedEmotional.first.emotionalScore)
@@ -4087,7 +4093,7 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
                 ),
                 const SizedBox(height: 10),
                 _buildScoreBar(
-                  'Metabolic Stability',
+                  strings.metabolicStability,
                   hasMetabolic ? 0.70 : null,
                   const Color(0xFF10B981),
                 ),
@@ -4103,7 +4109,7 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
                       const Icon(LucideIcons.heartHandshake, size: 18, color: AppColors.primary),
                       const SizedBox(width: 8),
                       Text(
-                        'Assigned Primary Caregiver: ${myRecord.caregiverName}',
+                        strings.assignedCaregiver(myRecord.caregiverName),
                         style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.navy),
                       ),
                     ],
@@ -4247,6 +4253,8 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
   }
 
   Widget _buildScoreBar(String label, double? score, Color color) {
+    final lang = ref.watch(languageProvider).currentLanguage;
+    final strings = AppStrings(lang);
     final bool isAssessed = score != null && score > 0.0;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -4256,7 +4264,7 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
           children: [
             Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.body)),
             Text(
-              isAssessed ? '${(score * 100).toInt()}%' : 'Not Assessed Yet',
+              isAssessed ? '${(score * 100).toInt()}%' : strings.notAssessedYet,
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: isAssessed ? FontWeight.bold : FontWeight.w600,

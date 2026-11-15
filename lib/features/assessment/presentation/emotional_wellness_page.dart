@@ -28,6 +28,8 @@ import '../../../core/services/live_voice_capture_service.dart';
 import '../../../core/services/url_launcher_service.dart';
 import '../../../shared/widgets/carevora_avatar.dart';
 import '../../../shared/widgets/emotional_shap_explanation_card.dart';
+import '../../../core/localization/app_language.dart';
+import '../../../core/localization/app_strings.dart';
 
 class EmotionalWellnessPage extends ConsumerStatefulWidget {
   final String? initialResidentId;
@@ -7632,6 +7634,8 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
 
   // --- TOP HEADER BAR ---
   Widget _buildTopHeaderBar() {
+    final lang = ref.watch(languageProvider).currentLanguage;
+    final strings = AppStrings(lang);
     final isElder = ref.watch(authProvider).state.isElder;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -7646,7 +7650,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                 const Icon(LucideIcons.arrowLeft, size: 16, color: AppColors.primary),
                 const SizedBox(width: 6),
                 Text(
-                  isElder ? 'Back to My Health Record' : 'Back to Residents',
+                  isElder ? strings.backToHealthRecord : 'Back to Residents',
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
@@ -7973,7 +7977,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                     const Icon(LucideIcons.sparkles, size: 14, color: Colors.white),
                     const SizedBox(width: 6),
                     Text(
-                      'Self-Response Session (${_questions.length} Items)',
+                      ref.watch(languageProvider).isSinhala ? 'ස්වයං-ප්‍රතිචාර සැසිය (ප්‍රශ්න ${_questions.length})' : 'Self-Response Session (${_questions.length} Items)',
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
@@ -8056,7 +8060,9 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
             children: [
               Expanded(
                 child: Text(
-                  'AI-Assisted Loneliness & Social-Isolation Assessment Session',
+                  ref.watch(languageProvider).isSinhala
+                      ? 'හුදකලා බව සහ සමාජීය තනිකම ඇගයීමේ සැසිය'
+                      : 'AI-Assisted Loneliness & Social-Isolation Assessment Session',
                   style: AppTextStyles.h3.copyWith(fontSize: 17, fontWeight: FontWeight.w700),
                 ),
               ),
@@ -8070,7 +8076,9 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
-                      'Question ${_currentIndex + 1} of ${_questions.length}',
+                      ref.watch(languageProvider).isSinhala
+                          ? 'ප්‍රශ්න ${_questions.length} න් ${_currentIndex + 1}'
+                          : 'Question ${_currentIndex + 1} of ${_questions.length}',
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
@@ -9673,28 +9681,28 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
           const SizedBox(height: 14),
 
           // Social Behavior Indicators
-          const Text(
-            'Social Behavior Indicators',
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.navy),
+          Text(
+            ref.watch(languageProvider).isSinhala ? 'සමාජීය හැසිරීම් දර්ශක' : 'Social Behavior Indicators',
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.navy),
           ),
           const SizedBox(height: 10),
           _buildBehaviorRow(
-            '• Communication Level',
-            (_answers.isNotEmpty || _hasLiveAssessments) ? _commLevel : 'Pending',
+            ref.watch(languageProvider).isSinhala ? '• සන්නිවේදන මට්ටම' : '• Communication Level',
+            (_answers.isNotEmpty || _hasLiveAssessments) ? _commLevel : (ref.watch(languageProvider).isSinhala ? 'අපේක්ෂිතයි' : 'Pending'),
             (_answers.isNotEmpty || _hasLiveAssessments) ? AppColors.riskModerateBg : AppColors.surfaceSecondary,
             (_answers.isNotEmpty || _hasLiveAssessments) ? AppColors.riskModerate : AppColors.muted,
           ),
           const SizedBox(height: 8),
           _buildBehaviorRow(
-            '• Engagement Level',
-            (_answers.isNotEmpty || _hasLiveAssessments) ? _engagementLevel : 'Pending',
+            ref.watch(languageProvider).isSinhala ? '• සම්බන්ධ වීමේ මට්ටම' : '• Engagement Level',
+            (_answers.isNotEmpty || _hasLiveAssessments) ? _engagementLevel : (ref.watch(languageProvider).isSinhala ? 'අපේක්ෂිතයි' : 'Pending'),
             (_answers.isNotEmpty || _hasLiveAssessments) ? AppColors.riskLowBg : AppColors.surfaceSecondary,
             (_answers.isNotEmpty || _hasLiveAssessments) ? AppColors.riskLow : AppColors.muted,
           ),
           const SizedBox(height: 8),
           _buildBehaviorRow(
-            '• Response Time',
-            (_answers.isNotEmpty || _hasLiveAssessments) ? _responseTime : 'Pending',
+            ref.watch(languageProvider).isSinhala ? '• ප්‍රතිචාර කාලය' : '• Response Time',
+            (_answers.isNotEmpty || _hasLiveAssessments) ? _responseTime : (ref.watch(languageProvider).isSinhala ? 'අපේක්ෂිතයි' : 'Pending'),
             (_answers.isNotEmpty || _hasLiveAssessments) ? const Color(0xFFE0F2FE) : AppColors.surfaceSecondary,
             (_answers.isNotEmpty || _hasLiveAssessments) ? Colors.blue : AppColors.muted,
           ),
@@ -9756,11 +9764,17 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
         ? calculatedLoneliness!.round()
         : (hasLiveHistory ? _lonelinessScore : null);
 
+    final isSinhala = ref.watch(languageProvider).isSinhala;
+    final String notAssessedLabel = isSinhala ? 'තවම ඇගයීමට ලක්කර නැත' : 'Not Assessed Yet';
+    final String lowRiskLabel = isSinhala ? 'අඩු අවදානම' : 'Low Risk';
+    final String modRiskLabel = isSinhala ? 'මධ්‍යම අවදානම' : 'Moderate Risk';
+    final String highRiskLabel = isSinhala ? 'ඉහළ අවදානම' : 'High Risk';
+
     final String lonelinessTier = !hasValidAssessment
-        ? 'Not Assessed Yet'
+        ? notAssessedLabel
         : (displayLoneliness! >= 65
-            ? 'High Risk'
-            : (displayLoneliness >= 40 ? 'Moderate Risk' : 'Low Risk'));
+            ? highRiskLabel
+            : (displayLoneliness >= 40 ? modRiskLabel : lowRiskLabel));
 
     final Color lonelinessColor = !hasValidAssessment
         ? AppColors.muted
@@ -9785,7 +9799,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            authState.isElder ? 'Loneliness Indicators' : 'Loneliness & Social-Isolation Indicators',
+            authState.isElder ? (isSinhala ? 'හුදකලා බවේ දර්ශක' : 'Loneliness Indicators') : 'Loneliness & Social-Isolation Indicators',
             style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.navy),
           ),
           const SizedBox(height: 16),
@@ -9793,9 +9807,9 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
           // Section A: Loneliness Indicators
           Row(
             children: [
-              const Text(
-                'Loneliness Indicators',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary),
+              Text(
+                isSinhala ? 'හුදකලා බවේ දර්ශක' : 'Loneliness Indicators',
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary),
               ),
               const SizedBox(width: 8),
               Container(
@@ -9804,9 +9818,9 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                   color: AppColors.lavenderBg,
                   borderRadius: BorderRadius.circular(4),
                 ),
-                child: const Text(
-                  'Questionnaire-Derived',
-                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.primary),
+                child: Text(
+                  isSinhala ? 'ප්‍රශ්නාවලිය ආශ්‍රිතයි' : 'Questionnaire-Derived',
+                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.primary),
                 ),
               ),
             ],
@@ -9819,11 +9833,11 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _IndicatorSubRow(label: 'Perceived Loneliness (Q4)', level: perceivedLonelinessLevel),
+                    _IndicatorSubRow(label: isSinhala ? 'හුදකලා බව දැනීම (Q4)' : 'Perceived Loneliness (Q4)', level: perceivedLonelinessLevel),
                     const SizedBox(height: 4),
-                    _IndicatorSubRow(label: 'Room Seclusion (Q5)', level: seclusionLevel),
+                    _IndicatorSubRow(label: isSinhala ? 'කාමරයේ තනිව සිටීම (Q5)' : 'Room Seclusion (Q5)', level: seclusionLevel),
                     const SizedBox(height: 4),
-                    _IndicatorSubRow(label: 'Social Support (Q3)', level: socialSupportLevel),
+                    _IndicatorSubRow(label: isSinhala ? 'සමාජීය සහයෝගය (Q3)' : 'Social Support (Q3)', level: socialSupportLevel),
                   ],
                 ),
               ),
