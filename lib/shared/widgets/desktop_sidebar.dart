@@ -27,8 +27,12 @@ class DesktopSidebar extends ConsumerWidget {
     final strings = AppStrings(lang);
     final width = isCollapsed ? 80.0 : 260.0;
 
-    final userName = authState.userName ?? 'Care Specialist';
-    final roleName = authState.role.name.toUpperCase();
+    final userName = authState.userName ?? (strings.isSinhala ? 'නේවාසිකයා' : 'Care Specialist');
+    final roleName = authState.role == UserRole.elder
+        ? (strings.isSinhala ? 'වැඩිහිටියා' : 'ELDER')
+        : (authState.role == UserRole.doctor
+            ? (strings.isSinhala ? 'වෛද්‍යවරයා' : 'DOCTOR')
+            : (strings.isSinhala ? 'භාරකරු' : 'CAREGIVER'));
     final elderHomeName = authState.elderHomeName;
 
     String initials = 'CV';

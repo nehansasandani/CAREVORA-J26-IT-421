@@ -4109,7 +4109,11 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
                       const Icon(LucideIcons.heartHandshake, size: 18, color: AppColors.primary),
                       const SizedBox(width: 8),
                       Text(
-                        strings.assignedCaregiver(myRecord.caregiverName),
+                        strings.assignedCaregiver(
+                          myRecord.caregiverName == 'Assigned Care Team'
+                              ? (strings.isSinhala ? 'පැවරුණු සත්කාරක කණ්ඩායම' : 'Assigned Care Team')
+                              : myRecord.caregiverName,
+                        ),
                         style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.navy),
                       ),
                     ],

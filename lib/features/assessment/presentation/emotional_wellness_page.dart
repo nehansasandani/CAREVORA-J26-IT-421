@@ -4554,6 +4554,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
     }
     switch (_interventionStage) {
       case 1:
+        final isSinhalaCase1 = ref.watch(languageProvider).isSinhala;
         return Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -4565,24 +4566,21 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
-                children: const [
-                  Icon(LucideIcons.stethoscope, size: 20, color: Color(0xFFC2410C)),
-                  SizedBox(width: 8),
+                children: [
+                  const Icon(LucideIcons.stethoscope, size: 20, color: Color(0xFFC2410C)),
+                  const SizedBox(width: 8),
                   Text(
-                    'AI Assistant: සෞඛ්‍ය සහ විවේක විමසුම (Health & Care Check)',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF9A3412)),
+                    isSinhalaCase1 ? 'AI සහයක: සෞඛ්‍ය සහ විවේක විමසුම' : 'AI Assistant: Health & Care Check',
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF9A3412)),
                   ),
                 ],
               ),
               const SizedBox(height: 8),
-              const Text(
-                'ඔබ බෙහෙත් බිව්වාද? ඔබට ගොඩක් අමාරුද? ඔබට වෛද්‍යවරයෙක් (Doctor) හමුවෙන්න අවශ්‍යද?',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF9A3412), height: 1.35),
-              ),
-              const SizedBox(height: 3),
-              const Text(
-                'Did you take your medication? Are you in a lot of discomfort? Do you need to see a doctor?',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFFC2410C)),
+              Text(
+                isSinhalaCase1
+                    ? 'ඔබ බෙහෙත් බිව්වාද? ඔබට ගොඩක් අමාරුද? ඔබට වෛද්‍යවරයෙක් හමුවෙන්න අවශ්‍යද?'
+                    : 'Did you take your medication? Are you in a lot of discomfort? Do you need to see a doctor?',
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF9A3412), height: 1.35),
               ),
               const SizedBox(height: 14),
               Wrap(
@@ -4592,7 +4590,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                   ElevatedButton.icon(
                     onPressed: _dispatchDoctorAndCaregiverAlert,
                     icon: const Icon(LucideIcons.bellRing, size: 16),
-                    label: const Text('🚨 ඔව්, දොස්තර මහත්තයෙක් (Doctor) හමුවෙන්න ඕනේ'),
+                    label: Text(isSinhalaCase1 ? '🚨 ඔව්, වෛද්‍යවරයෙක් හමුවෙන්න අවශ්‍යයි' : '🚨 Yes, I need to see a doctor'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFDC2626),
                       foregroundColor: Colors.white,
@@ -4603,7 +4601,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                   OutlinedButton.icon(
                     onPressed: _selectQuietPath,
                     icon: const Icon(LucideIcons.pill, size: 16),
-                    label: const Text('💊 බෙහෙත් බිව්වා, මට නිදහසේ විවේක ගත්තාම හරි'),
+                    label: Text(isSinhalaCase1 ? '💊 බෙහෙත් බිව්වා, මට නිදහසේ විවේක ගත්තාම හරි' : '💊 I took medication, I just need quiet rest'),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: const Color(0xFF9A3412),
                       side: const BorderSide(color: Color(0xFFFDBA74)),
@@ -4614,7 +4612,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                   OutlinedButton.icon(
                     onPressed: _selectQuietPath,
                     icon: const Icon(LucideIcons.leaf, size: 16),
-                    label: const Text('🌿 ගොඩක් අමාරුවක් නෑ, සිත සන්සුන් කරගත්තාම හරි'),
+                    label: Text(isSinhalaCase1 ? '🌿 ගොඩක් අමාරුවක් නෑ, සිත සන්සුන් කරගත්තාම හරි' : '🌿 Not in much discomfort, just need to calm my mind'),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: const Color(0xFF9A3412),
                       side: const BorderSide(color: Color(0xFFFDBA74)),
@@ -7541,10 +7539,23 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
   }
 
   Widget _buildNavigationSubTabs() {
+    final isSinhala = ref.watch(languageProvider).isSinhala;
     final tabs = [
-      {'title': 'Active Assessment', 'icon': LucideIcons.messageSquare, 'desc': 'Fig 11-4 Structured Session'},
-      {'title': 'Care Interventions', 'icon': LucideIcons.sparkles, 'desc': 'FR11 / FR14 Reassessments'},
-      {'title': 'Assessment History', 'icon': LucideIcons.history, 'desc': 'FR4 Longitudinal Records'},
+      {
+        'title': isSinhala ? 'ක්‍රියාකාරී ඇගයීම' : 'Active Assessment',
+        'icon': LucideIcons.messageSquare,
+        'desc': isSinhala ? 'ව්‍යුහාත්මක සැසිය' : 'Fig 11-4 Structured Session'
+      },
+      {
+        'title': isSinhala ? 'සුවතා මැදිහත්වීම්' : 'Care Interventions',
+        'icon': LucideIcons.sparkles,
+        'desc': isSinhala ? 'නැවත ඇගයීම්' : 'FR11 / FR14 Reassessments'
+      },
+      {
+        'title': isSinhala ? 'ඇගයීම් ඉතිහාසය' : 'Assessment History',
+        'icon': LucideIcons.history,
+        'desc': isSinhala ? 'කාලානුක්‍රමික වාර්තා' : 'FR4 Longitudinal Records'
+      },
     ];
 
     return Container(
@@ -7791,16 +7802,16 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
-                          children: const [
-                            Icon(
+                          children: [
+                            const Icon(
                               LucideIcons.userCheck,
                               size: 11,
                               color: AppColors.primary,
                             ),
-                            SizedBox(width: 5),
+                            const SizedBox(width: 5),
                             Text(
-                              'ELDER / RESIDENT',
-                              style: TextStyle(
+                              ref.watch(languageProvider).isSinhala ? 'වැඩිහිටියා / නේවාසිකයා' : 'ELDER / RESIDENT',
+                              style: const TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w800,
                                 color: AppColors.primary,
@@ -7853,21 +7864,23 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                     children: [
                       _buildResidentDetailPill(
                         icon: LucideIcons.calendar,
-                        label: 'Age: ${_currentResident.age} yrs',
+                        label: ref.watch(languageProvider).isSinhala ? 'වයස: අවු ${_currentResident.age}' : 'Age: ${_currentResident.age} yrs',
                         color: const Color(0xFF4F46E5),
                         bg: const Color(0xFFEEF2FF),
                         border: const Color(0xFFE0E7FF),
                       ),
                       _buildResidentDetailPill(
                         icon: LucideIcons.doorOpen,
-                        label: cleanRoom.isNotEmpty ? 'Room $cleanRoom' : 'Room 30',
+                        label: ref.watch(languageProvider).isSinhala
+                            ? (cleanRoom.isNotEmpty ? 'කාමරය $cleanRoom' : 'කාමරය 30')
+                            : (cleanRoom.isNotEmpty ? 'Room $cleanRoom' : 'Room 30'),
                         color: const Color(0xFF059669),
                         bg: const Color(0xFFECFDF5),
                         border: const Color(0xFFA7F3D0),
                       ),
                       _buildResidentDetailPill(
                         icon: LucideIcons.graduationCap,
-                        label: 'Education: ${_educationYears ?? 13} yrs',
+                        label: ref.watch(languageProvider).isSinhala ? 'අධ්‍යාපනය: වසර ${_educationYears ?? 13}' : 'Education: ${_educationYears ?? 13} yrs',
                         color: const Color(0xFF7C3AED),
                         bg: const Color(0xFFF5F3FF),
                         border: const Color(0xFFDDD6FE),
@@ -8029,6 +8042,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
 
   // --- MAIN ASSESSMENT CARD ---
   Widget _buildMainAssessmentCard(AssessmentQuestion currentQ) {
+    final isSinhala = ref.watch(languageProvider).isSinhala;
     final isReversePolarityQ = currentQ.id == 4 || currentQ.id == 5;
     final isCelebrationState = isReversePolarityQ
         ? (_answers[currentQ.id] == false)
@@ -8146,38 +8160,26 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            currentQ.prompt,
-                            style: const TextStyle(
-                              fontSize: 18,
+                            isSinhala ? (currentQ.promptSi ?? currentQ.prompt) : currentQ.prompt,
+                            style: TextStyle(
+                              fontSize: isSinhala ? 19 : 18,
                               fontWeight: FontWeight.w700,
                               color: AppColors.navy,
                               height: 1.35,
                             ),
                           ),
-                          if (currentQ.promptSi != null) ...[
-                            const SizedBox(height: 6),
-                            Text(
-                              currentQ.promptSi!,
-                              style: const TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.primaryDeep,
-                                height: 1.4,
-                              ),
-                            ),
-                          ],
                           const SizedBox(height: 8),
                           InkWell(
                             onTap: _readQuestionAloud,
                             borderRadius: BorderRadius.circular(8),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
-                              children: const [
-                                Icon(LucideIcons.volume2, size: 14, color: AppColors.primary),
-                                SizedBox(width: 6),
+                              children: [
+                                const Icon(LucideIcons.volume2, size: 14, color: AppColors.primary),
+                                const SizedBox(width: 6),
                                 Text(
-                                  'Tap to replay',
-                                  style: TextStyle(
+                                  isSinhala ? 'හඬ නැවත ඇසීමට ඔබන්න' : 'Tap to replay',
+                                  style: const TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w600,
                                     color: AppColors.primary,
@@ -8190,14 +8192,14 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                           Row(
                             children: [
                               _buildYesNoChoiceButton(
-                                label: 'Yes / ඔව්',
+                                label: isSinhala ? 'ඔව්' : 'Yes',
                                 isSelected: _answers[currentQ.id] == true,
                                 isYes: true,
                                 onTap: () => _selectYesNoAnswer(currentQ.id, true),
                               ),
                               const SizedBox(width: 12),
                               _buildYesNoChoiceButton(
-                                label: 'No / නැත',
+                                label: isSinhala ? 'නැත' : 'No',
                                 isSelected: _answers[currentQ.id] == false,
                                 isYes: false,
                                 onTap: () => _selectYesNoAnswer(currentQ.id, false),
@@ -8224,9 +8226,9 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        const Text(
-                                          'AI Assistant:  ✨ Delighted to hear this! ✨',
-                                          style: TextStyle(
+                                        Text(
+                                          isSinhala ? 'AI සහයක:  ✨ මේ ගැන ඇසීමත් සතුටක්! ✨' : 'AI Assistant:  ✨ Delighted to hear this! ✨',
+                                          style: const TextStyle(
                                             fontSize: 12,
                                             fontWeight: FontWeight.bold,
                                             color: Color(0xFF15803D),
@@ -8234,37 +8236,30 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                                         ),
                                         const SizedBox(height: 4),
                                         Text(
-                                          currentQ.id == 5
-                                              ? 'ඔබ කාමරයට පමණක් සීමා නොවී, නිරතුරුවම ක්‍රියාශීලීව සහ සමාජශීලීව කාලය ගත කිරීම ගැන මම ඉතාමත් සතුටු වෙනවා!'
-                                              : (currentQ.id == 4
-                                                  ? 'අන් අය එකතු වී සිටින විට ඔබ සතුටින්, සුහදව සහ ආදරයෙන් එක්ව සිටීම ගැන මම ඉතාමත් සතුටු වෙනවා!'
-                                                  : (currentQ.id == 3
-                                                      ? 'මෙහි ඔබ සමඟ සමීපව කතාබහ කිරීමට කෙනෙකු සිටීම මහත් භාග්‍යයක්! ඔබේ මිත්‍රත්වය සහ සතුට සදා රැඳේවා!'
-                                                      : (currentQ.id == 2
-                                                          ? 'ඉදිරි දින පිළිබඳව ඔබ තුළ සුබවාදී, ප්‍රීතිමත් බලාපොරොත්තු තිබීම ගැන මම ඉතාමත් සතුටු වෙනවා! ඔබ සැමදා සතුටින් සහ ජයග්‍රාහීව සිටින්න!'
-                                                          : 'ගොඩක් ඒ ගැන ස්තූතියි! අද දවසේ ඔබ සිතින් සතුටින් සහ සහනයෙන් පසුවීම ගැන මම ගොඩක් සතුටු වෙනවා!'))),
+                                          isSinhala
+                                              ? (currentQ.id == 5
+                                                  ? 'ඔබ කාමරයට පමණක් සීමා නොවී, නිරතුරුවම ක්‍රියාශීලීව සහ සමාජශීලීව කාලය ගත කිරීම ගැන මම ඉතාමත් සතුටු වෙනවා!'
+                                                  : (currentQ.id == 4
+                                                      ? 'අන් අය එකතු වී සිටින විට ඔබ සතුටින්, සුහදව සහ ආදරයෙන් එක්ව සිටීම ගැන මම ඉතාමත් සතුටු වෙනවා!'
+                                                      : (currentQ.id == 3
+                                                          ? 'මෙහි ඔබ සමඟ සමීපව කතාබහ කිරීමට කෙනෙකු සිටීම මහත් භාග්‍යයක්! ඔබේ මිත්‍රත්වය සහ සතුට සදා රැඳේවා!'
+                                                          : (currentQ.id == 2
+                                                              ? 'ඉදිරි දින පිළිබඳව ඔබ තුළ සුබවාදී, ප්‍රීතිමත් බලාපොරොත්තු තිබීම ගැන මම ඉතාමත් සතුටු වෙනවා! ඔබ සැමදා සතුටින් සහ ජයග්‍රාහීව සිටින්න!'
+                                                              : 'ගොඩක් ඒ ගැන ස්තූතියි! අද දවසේ ඔබ සිතින් සතුටින් සහ සහනයෙන් පසුවීම ගැන මම ගොඩක් සතුටු වෙනවා!'))))
+                                              : (currentQ.id == 5
+                                                  ? 'I am so glad to hear that you stay active, step out, and do not isolate yourself in your room all day!'
+                                                  : (currentQ.id == 4
+                                                      ? 'I am so glad to hear that you feel warmly included, comfortable, and happy when others gather around!'
+                                                      : (currentQ.id == 3
+                                                          ? 'Having someone close to talk with is a wonderful blessing! May your friendships bring lasting warmth and happiness.'
+                                                          : (currentQ.id == 2
+                                                              ? 'I am so glad you feel hopeful and optimistic about the days ahead! May each tomorrow bring you joy and triumph.'
+                                                              : 'Thank you so much! I am very glad to hear that you are feeling peaceful and in good spirits today.')))),
                                           style: const TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w700,
+                                            fontSize: 13.5,
+                                            fontWeight: FontWeight.w600,
                                             color: Color(0xFF166534),
                                             height: 1.35,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          currentQ.id == 5
-                                              ? 'I am so glad to hear that you stay active, step out, and do not isolate yourself in your room all day!'
-                                              : (currentQ.id == 4
-                                                  ? 'I am so glad to hear that you feel warmly included, comfortable, and happy when others gather around!'
-                                                  : (currentQ.id == 3
-                                                      ? 'Having someone close to talk with is a wonderful blessing! May your friendships bring lasting warmth and happiness.'
-                                                      : (currentQ.id == 2
-                                                          ? 'I am so glad you feel hopeful and optimistic about the days ahead! May each tomorrow bring you joy and triumph.'
-                                                          : 'Thank you so much! I am very glad to hear that you are feeling peaceful and in good spirits today.'))),
-                                          style: const TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w500,
-                                            color: Color(0xFF15803D),
                                           ),
                                         ),
                                       ],
@@ -8329,13 +8324,15 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
               border: Border.all(color: AppColors.border),
             ),
             child: Row(
-              children: const [
-                Icon(LucideIcons.shieldCheck, size: 18, color: AppColors.primary),
-                SizedBox(width: 12),
+              children: [
+                const Icon(LucideIcons.shieldCheck, size: 18, color: AppColors.primary),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'Please respond using your voice. Take your time. There are no right or wrong answers.',
-                    style: TextStyle(fontSize: 13, color: AppColors.body, fontWeight: FontWeight.w500),
+                    isSinhala
+                        ? 'කරුණාකර ඔබේ හඬින් පිළිතුරු දෙන්න. කලබල නොවී ඔබේ කාලය ගන්න. මෙහි හරි හෝ වැරදි පිළිතුරු නොමැත.'
+                        : 'Please respond using your voice. Take your time. There are no right or wrong answers.',
+                    style: const TextStyle(fontSize: 13, color: AppColors.body, fontWeight: FontWeight.w500),
                   ),
                 ),
               ],
@@ -8350,7 +8347,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
               OutlinedButton.icon(
                 onPressed: _currentIndex > 0 ? _previousQuestion : null,
                 icon: const Icon(LucideIcons.arrowLeft, size: 15),
-                label: const Text('Previous Question'),
+                label: Text(isSinhala ? 'කලින් ප්‍රශ්නය' : 'Previous Question'),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.navy,
                   side: const BorderSide(color: AppColors.border, width: 1.5),
@@ -8363,7 +8360,11 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                   ElevatedButton.icon(
                     onPressed: _nextQuestion,
                     icon: const Icon(LucideIcons.arrowRight, size: 15),
-                    label: Text(_currentIndex < _questions.length - 1 ? 'Next Question' : 'Complete Assessment'),
+                    label: Text(
+                      _currentIndex < _questions.length - 1
+                          ? (isSinhala ? 'ඊළඟ ප්‍රශ්නය' : 'Next Question')
+                          : (isSinhala ? 'ඇගයීම සම්පූර්ණ කරන්න' : 'Complete Assessment'),
+                    ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
@@ -8376,7 +8377,10 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                   TextButton.icon(
                     onPressed: _skipQuestion,
                     icon: const Icon(LucideIcons.chevronsRight, size: 15, color: AppColors.muted),
-                    label: const Text('Skip Question', style: TextStyle(color: AppColors.muted)),
+                    label: Text(
+                      isSinhala ? 'ප්‍රශ්නය මඟහරින්න' : 'Skip Question',
+                      style: const TextStyle(color: AppColors.muted),
+                    ),
                   ),
                 ],
               ),
@@ -8409,9 +8413,9 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Camera (Facial Expression)',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.navy),
+              Text(
+                ref.watch(languageProvider).isSinhala ? 'කැමරාව (මුහුණේ හැඟීම්)' : 'Camera (Facial Expression)',
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.navy),
               ),
               Row(
                 mainAxisSize: MainAxisSize.min,
@@ -8504,21 +8508,22 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                                     ),
                                   ),
                                   const SizedBox(height: 8),
-                                  const Text(
-                                    'Elder Cam Standby',
-                                    style: TextStyle(
+                                  Text(
+                                    ref.watch(languageProvider).isSinhala ? 'කැමරාව සූදානම්ව පවතී' : 'Elder Cam Standby',
+                                    style: const TextStyle(
                                       color: Colors.white,
                                       fontSize: 12,
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
                                   const SizedBox(height: 3),
-                                  const Text(
-                                    'Turn on Elder Cam or Mic to begin capture',
-                                    style: TextStyle(
+                                  Text(
+                                    ref.watch(languageProvider).isSinhala ? 'හඳුනාගැනීම ආරම්භ කිරීමට කැමරාව හෝ මයික්‍රෆෝනය ක්‍රියාත්මක කරන්න' : 'Turn on Elder Cam or Mic to begin capture',
+                                    style: const TextStyle(
                                       color: Colors.white70,
                                       fontSize: 10,
                                     ),
+                                    textAlign: TextAlign.center,
                                   ),
                                 ],
                               ),
@@ -8572,8 +8577,8 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                                   ),
                                   child: Text(
                                     isCameraActive
-                                        ? 'Face Target: ${(_facialConfidence * 100).toInt()}%'
-                                        : 'Camera Off • Standby',
+                                        ? (ref.watch(languageProvider).isSinhala ? 'මුහුණ හඳුනාගැනීම: ${(_facialConfidence * 100).toInt()}%' : 'Face Target: ${(_facialConfidence * 100).toInt()}%')
+                                        : (ref.watch(languageProvider).isSinhala ? 'කැමරාව ක්‍රියාවිරහිතයි • සූදානම්' : 'Camera Off • Standby'),
                                     style: const TextStyle(color: Colors.white, fontSize: 9),
                                   ),
                                 ),
@@ -8729,9 +8734,9 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
           const SizedBox(height: 12),
 
           // Real AI Detected Emotion Readout
-          const Text(
-            'AI Detected Facial Emotion:',
-            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.navy),
+          Text(
+            ref.watch(languageProvider).isSinhala ? 'AI හඳුනාගත් මුහුණේ හැඟීම:' : 'AI Detected Facial Emotion:',
+            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.navy),
           ),
           const SizedBox(height: 8),
           _buildAiDetectedEmotionDisplay(),
@@ -9017,9 +9022,9 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Voice Recording',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.navy),
+              Text(
+                ref.watch(languageProvider).isSinhala ? 'හඬ පටිගත කිරීම' : 'Voice Recording',
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.navy),
               ),
               Row(
                 mainAxisSize: MainAxisSize.min,
@@ -9040,7 +9045,9 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          _isRecording ? 'Recording...' : 'Paused',
+                          _isRecording
+                              ? (ref.watch(languageProvider).isSinhala ? 'පටිගත වෙමින්...' : 'Recording...')
+                              : (ref.watch(languageProvider).isSinhala ? 'විරාමය' : 'Paused'),
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
@@ -9069,9 +9076,9 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Speech Language:',
-                style: TextStyle(fontSize: 11, color: AppColors.muted, fontWeight: FontWeight.w500),
+              Text(
+                ref.watch(languageProvider).isSinhala ? 'කථා කරන භාෂාව:' : 'Speech Language:',
+                style: const TextStyle(fontSize: 11, color: AppColors.muted, fontWeight: FontWeight.w500),
               ),
               Container(
                 decoration: BoxDecoration(
@@ -9172,7 +9179,9 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  _isRecording ? 'Tap microphone to stop' : 'Tap microphone to record',
+                  _isRecording
+                      ? (ref.watch(languageProvider).isSinhala ? 'නැවැත්වීමට මයික්‍රෆෝනය ඔබන්න' : 'Tap microphone to stop')
+                      : (ref.watch(languageProvider).isSinhala ? 'පටිගත කිරීමට මයික්‍රෆෝනය ඔබන්න' : 'Tap microphone to record'),
                   style: const TextStyle(fontSize: 11, color: AppColors.muted),
                 ),
               ],
@@ -9525,7 +9534,9 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
             ),
             const SizedBox(width: 4),
             Text(
-              isCameraActive ? 'Elder Cam ON' : 'Turn On Elder Cam',
+              isCameraActive
+                  ? (ref.watch(languageProvider).isSinhala ? 'කැමරාව ක්‍රියාත්මකයි' : 'Elder Cam ON')
+                  : (ref.watch(languageProvider).isSinhala ? 'කැමරාව ක්‍රියාත්මක කරන්න' : 'Turn On Elder Cam'),
               style: TextStyle(
                 fontSize: 10.5,
                 fontWeight: FontWeight.bold,
@@ -9559,9 +9570,9 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Real-time Analysis',
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.navy),
+          Text(
+            ref.watch(languageProvider).isSinhala ? 'තථ්‍ය කාලීන විශ්ලේෂණය' : 'Real-time Analysis',
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.navy),
           ),
           const SizedBox(height: 16),
 
@@ -9569,11 +9580,14 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Facial Emotion', style: TextStyle(fontSize: 12, color: AppColors.muted)),
+              Text(
+                ref.watch(languageProvider).isSinhala ? 'මුහුණේ හැඟීම්' : 'Facial Emotion',
+                style: const TextStyle(fontSize: 12, color: AppColors.muted),
+              ),
               Text(
                 isCameraActive
                     ? '$_selectedEmotion  ${(_facialConfidence * 100).toInt()}%'
-                    : 'Camera Off  0%',
+                    : (ref.watch(languageProvider).isSinhala ? 'කැමරාව ක්‍රියාවිරහිතයි  0%' : 'Camera Off  0%'),
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
@@ -9620,7 +9634,10 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
             children: [
               Row(
                 children: [
-                  const Text('Voice Emotion', style: TextStyle(fontSize: 12, color: AppColors.muted)),
+                  Text(
+                    ref.watch(languageProvider).isSinhala ? 'හඬේ හැඟීම්' : 'Voice Emotion',
+                    style: const TextStyle(fontSize: 12, color: AppColors.muted),
+                  ),
                   if (_isRecording) ...[
                     const SizedBox(width: 6),
                     Container(
@@ -9649,7 +9666,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                 child: Text(
                   isMicActive
                       ? '$_voiceEmotion  ${(_voiceConfidence * 100).toInt()}%'
-                      : 'Mic Off  0%',
+                      : (ref.watch(languageProvider).isSinhala ? 'මයික්‍රෆෝනය ක්‍රියාවිරහිතයි  0%' : 'Mic Off  0%'),
                   textAlign: TextAlign.end,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -9746,15 +9763,16 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
     final q4Answer = _answers[3]; // Feel left out or lonely (Perceived Loneliness)
     final q5Answer = _answers[4]; // Spending day alone in room (Room Isolation)
 
+    final isSinhalaLang = ref.watch(languageProvider).isSinhala;
     final String perceivedLonelinessLevel = q4Answer == null
-        ? 'Pending Q4'
-        : (q4Answer == true ? 'High' : 'Low');
+        ? (isSinhalaLang ? 'අපේක්ෂිතයි Q4' : 'Pending Q4')
+        : (q4Answer == true ? (isSinhalaLang ? 'ඉහළ' : 'High') : (isSinhalaLang ? 'අඩු' : 'Low'));
     final String seclusionLevel = q5Answer == null
-        ? 'Pending Q5'
-        : (q5Answer == true ? 'High' : 'Low');
+        ? (isSinhalaLang ? 'අපේක්ෂිතයි Q5' : 'Pending Q5')
+        : (q5Answer == true ? (isSinhalaLang ? 'ඉහළ' : 'High') : (isSinhalaLang ? 'අඩු' : 'Low'));
     final String socialSupportLevel = q3Answer == null
-        ? 'Pending Q3'
-        : (q3Answer == true ? 'Adequate' : 'Low');
+        ? (isSinhalaLang ? 'අපේක්ෂිතයි Q3' : 'Pending Q3')
+        : (q3Answer == true ? (isSinhalaLang ? 'ප්‍රමාණවත්' : 'Adequate') : (isSinhalaLang ? 'අඩු' : 'Low'));
 
     final bool hasLiveHistory = _hasLiveAssessments && _historyLogs.isNotEmpty;
     final bool hasCurrentCalculated = calculatedLoneliness != null;
@@ -14398,40 +14416,31 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          'Question ${_currentIndex + 1} of ${_questions.length}',
+                          ref.watch(languageProvider).isSinhala
+                              ? 'ප්‍රශ්න ${_questions.length} න් ${_currentIndex + 1}'
+                              : 'Question ${_currentIndex + 1} of ${_questions.length}',
                           style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.primary),
                         ),
                         IconButton(
                           icon: const Icon(LucideIcons.volume2, color: AppColors.primary, size: 28),
-                          tooltip: 'Listen to Question',
+                          tooltip: ref.watch(languageProvider).isSinhala ? 'ප්‍රශ්නයට සවන් දෙන්න' : 'Listen to Question',
                           onPressed: _readQuestionAloud,
                         ),
                       ],
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      currentQ.prompt,
-                      style: const TextStyle(
-                        fontSize: 20,
+                      ref.watch(languageProvider).isSinhala
+                          ? (currentQ.promptSi ?? currentQ.prompt)
+                          : currentQ.prompt,
+                      style: TextStyle(
+                        fontSize: ref.watch(languageProvider).isSinhala ? 21 : 20,
                         fontWeight: FontWeight.w600,
                         color: AppColors.navy,
                         height: 1.4,
                       ),
                       textAlign: TextAlign.center,
                     ),
-                    if (currentQ.promptSi != null) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        currentQ.promptSi!,
-                        style: const TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.primaryDeep,
-                          height: 1.4,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
                     const SizedBox(height: 20),
 
                     // Microphone interaction button
@@ -14456,7 +14465,9 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                             Icon(_isRecording ? LucideIcons.square : LucideIcons.mic, color: Colors.white, size: 22),
                             const SizedBox(width: 10),
                             Text(
-                              _isRecording ? 'Listening... Tap to Stop' : 'Tap to Speak Your Answer',
+                              _isRecording
+                                  ? (ref.watch(languageProvider).isSinhala ? 'සවන් දෙමින්... නැවැත්වීමට ඔබන්න' : 'Listening... Tap to Stop')
+                                  : (ref.watch(languageProvider).isSinhala ? 'පිළිතුර කථා කිරීමට ඔබන්න' : 'Tap to Speak Your Answer'),
                               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
                             ),
                           ],
