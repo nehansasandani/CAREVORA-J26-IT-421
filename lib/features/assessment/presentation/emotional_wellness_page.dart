@@ -7807,6 +7807,8 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
   // --- RESIDENT HEADER CARD ---
   Widget _buildResidentHeaderCard() {
     final authState = ref.watch(authProvider).state;
+    final isSinhala = ref.watch(languageProvider).isSinhala;
+
     final initials = _currentResident.name
         .split(' ')
         .where((w) => !w.startsWith('Mr.') && !w.startsWith('Mrs.') && !w.startsWith('Dr.'))
@@ -7821,76 +7823,119 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
         .replaceAll('Suite ', '')
         .trim();
 
+    final rawName = _currentResident.name.trim();
+    final displayName = rawName.isNotEmpty
+        ? rawName.split(' ').map((part) {
+            if (part.isEmpty) return '';
+            return part[0].toUpperCase() + part.substring(1);
+          }).join(' ')
+        : (isSinhala ? 'නේවාසික සාමාජිකයා' : 'Resident');
+
+    // Warm Cultural Greeting
+    final hour = DateTime.now().hour;
+    final String timeGreetingEn = hour < 12
+        ? 'Good morning'
+        : (hour < 17 ? 'Good afternoon' : 'Good evening');
+
+    final String welcomeHeadline = isSinhala
+        ? 'ආයුබෝවන්, $displayName! 🙏'
+        : '$timeGreetingEn, $displayName! 👋';
+
+    final String welcomeSubline = isSinhala
+        ? 'අද දින ඔබේ මානසික සුවතාවය සහ සතුට රැකගැනීමට අපි ඔබ ළඟින්ම සිටින්නෙමු.'
+        : 'We are warmly by your side for your emotional harmony and peace today.';
+
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(22),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFE5E1F6), width: 1.2),
+        gradient: const LinearGradient(
+          colors: [
+            Color(0xFFFFFFFF),
+            Color(0xFFFBF9FF),
+            Color(0xFFF4EEFD),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(color: const Color(0xFFDDD6FE), width: 1.4),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF6C3FC5).withValues(alpha: 0.07),
-            blurRadius: 28,
+            color: const Color(0xFF7C3AED).withValues(alpha: 0.08),
+            blurRadius: 30,
             offset: const Offset(0, 8),
           ),
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 4,
-            offset: const Offset(0, 1),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
       child: Wrap(
-        spacing: 20,
-        runSpacing: 16,
+        spacing: 24,
+        runSpacing: 18,
         alignment: WrapAlignment.spaceBetween,
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           Row(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Resident Avatar with portrait image & active status indicator
+              // Radiant Elder Avatar with glowing active indicator
               Stack(
                 clipBehavior: Clip.none,
                 children: [
                   RepaintBoundary(
                     child: Container(
-                      width: 62,
-                      height: 62,
+                      width: 70,
+                      height: 70,
+                      padding: const EdgeInsets.all(3),
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        border: Border.all(color: const Color(0xFFDDD6FE), width: 2.5),
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF8B5CF6), Color(0xFFEC4899), Color(0xFFF59E0B)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF6C3FC5).withValues(alpha: 0.28),
-                            blurRadius: 16,
-                            offset: const Offset(0, 4),
+                            color: const Color(0xFF8B5CF6).withValues(alpha: 0.35),
+                            blurRadius: 18,
+                            offset: const Offset(0, 5),
                           ),
                         ],
                       ),
-                      child: CarevoraAvatar(
-                        key: const ValueKey('resident_emotional_banner_avatar'),
-                        avatarUrl: _currentResident.avatarUrl ?? (authState.isElder ? authState.avatarUrl : null),
-                        radius: 31,
-                        initials: initials.isNotEmpty ? initials : 'R',
+                      child: Container(
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white,
+                        ),
+                        padding: const EdgeInsets.all(2),
+                        child: CarevoraAvatar(
+                          key: const ValueKey('resident_emotional_banner_avatar'),
+                          avatarUrl: _currentResident.avatarUrl ?? (authState.isElder ? authState.avatarUrl : null),
+                          radius: 32,
+                          initials: initials.isNotEmpty ? initials : 'R',
+                        ),
                       ),
                     ),
                   ),
                   Positioned(
-                    right: 0,
-                    bottom: 0,
+                    right: 2,
+                    bottom: 2,
                     child: Container(
-                      width: 16,
-                      height: 16,
+                      width: 18,
+                      height: 18,
                       decoration: BoxDecoration(
                         color: const Color(0xFF10B981),
                         shape: BoxShape.circle,
                         border: Border.all(color: Colors.white, width: 2.5),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF10B981).withValues(alpha: 0.6),
-                            blurRadius: 6,
+                            color: const Color(0xFF10B981).withValues(alpha: 0.8),
+                            blurRadius: 8,
                           ),
                         ],
                       ),
@@ -7898,24 +7943,43 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                   ),
                 ],
               ),
-              const SizedBox(width: 16),
-              // Resident Identity & Demographic Information
+              const SizedBox(width: 18),
+              // Resident Identity, Warm Greeting & Details
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
+                  // Top Welcome and Role Tags Row
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
-                      Text(
-                        _currentResident.name,
-                        style: const TextStyle(
-                          fontSize: 21,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.navy,
-                          letterSpacing: -0.3,
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3.5),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFFFFFBEB), Color(0xFFFEF3C7)],
+                          ),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFFFDE68A)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(LucideIcons.sparkles, size: 12, color: Color(0xFFD97706)),
+                            const SizedBox(width: 4),
+                            Text(
+                              isSinhala ? 'ආදරණීය පිළිගැනීම' : 'Warm Welcome',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFFB45309),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(width: 10),
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 10,
@@ -7925,7 +7989,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                           gradient: const LinearGradient(
                             colors: [Color(0xFFEDE9FE), Color(0xFFF3E8FF)],
                           ),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(10),
                           border: Border.all(color: const Color(0xFFDDD6FE)),
                         ),
                         child: Row(
@@ -7938,7 +8002,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                             ),
                             const SizedBox(width: 5),
                             Text(
-                              ref.watch(languageProvider).isSinhala ? 'වැඩිහිටියා / නේවාසිකයා' : 'ELDER / RESIDENT',
+                              isSinhala ? 'වැඩිහිටියා / නේවාසිකයා' : 'ELDER / RESIDENT',
                               style: const TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w800,
@@ -7950,7 +8014,6 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                         ),
                       ),
                       if (_facilityName.isNotEmpty) ...[
-                        const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 9,
@@ -7958,7 +8021,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                           ),
                           decoration: BoxDecoration(
                             color: const Color(0xFFF1F5F9),
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(10),
                             border: Border.all(color: const Color(0xFFE2E8F0)),
                           ),
                           child: Row(
@@ -7984,7 +8047,28 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                       ],
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
+                  // Dignified, Warm Elder Greeting Title
+                  Text(
+                    welcomeHeadline,
+                    style: const TextStyle(
+                      fontSize: 23,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFF1E1B4B),
+                      letterSpacing: -0.4,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  // Reassuring Subtitle
+                  Text(
+                    welcomeSubline,
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF6B7280),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
                   // Rich Demographic Attribute Pills
                   Wrap(
                     spacing: 8,
@@ -7992,23 +8076,23 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                     children: [
                       _buildResidentDetailPill(
                         icon: LucideIcons.calendar,
-                        label: ref.watch(languageProvider).isSinhala ? 'වයස: අවු ${_currentResident.age}' : 'Age: ${_currentResident.age} yrs',
+                        label: isSinhala ? 'වයස: අවු ${_currentResident.age}' : 'Age: ${_currentResident.age} yrs',
                         color: const Color(0xFF4F46E5),
                         bg: const Color(0xFFEEF2FF),
                         border: const Color(0xFFE0E7FF),
                       ),
                       _buildResidentDetailPill(
                         icon: LucideIcons.doorOpen,
-                        label: ref.watch(languageProvider).isSinhala
-                            ? (cleanRoom.isNotEmpty ? 'කාමරය $cleanRoom' : 'කාමරය 30')
-                            : (cleanRoom.isNotEmpty ? 'Room $cleanRoom' : 'Room 30'),
+                        label: isSinhala
+                            ? (cleanRoom.isNotEmpty ? 'කාමර අංකය: $cleanRoom' : 'කාමරය 101')
+                            : (cleanRoom.isNotEmpty ? 'Room No: $cleanRoom' : 'Room 101'),
                         color: const Color(0xFF059669),
                         bg: const Color(0xFFECFDF5),
                         border: const Color(0xFFA7F3D0),
                       ),
                       _buildResidentDetailPill(
                         icon: LucideIcons.graduationCap,
-                        label: ref.watch(languageProvider).isSinhala ? 'අධ්‍යාපනය: වසර ${_educationYears ?? 13}' : 'Education: ${_educationYears ?? 13} yrs',
+                        label: isSinhala ? 'අධ්‍යාපනය: වසර ${_educationYears ?? 12}' : 'Education: ${_educationYears ?? 12} yrs',
                         color: const Color(0xFF7C3AED),
                         bg: const Color(0xFFF5F3FF),
                         border: const Color(0xFFDDD6FE),
@@ -8094,8 +8178,8 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
               // Floating Session Battery Badge
               Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 15,
-                  vertical: 8.5,
+                  horizontal: 16,
+                  vertical: 9.5,
                 ),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
@@ -8103,11 +8187,11 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(22),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF6C3FC5).withValues(alpha: 0.28),
-                      blurRadius: 12,
+                      color: const Color(0xFF6C3FC5).withValues(alpha: 0.32),
+                      blurRadius: 14,
                       offset: const Offset(0, 4),
                     ),
                   ],
@@ -8116,11 +8200,11 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     const Icon(LucideIcons.sparkles, size: 14, color: Colors.white),
-                    const SizedBox(width: 6),
+                    const SizedBox(width: 7),
                     Text(
-                      ref.watch(languageProvider).isSinhala ? 'ස්වයං-ප්‍රතිචාර සැසිය (ප්‍රශ්න ${_questions.length})' : 'Self-Response Session (${_questions.length} Items)',
+                      isSinhala ? 'ස්වයං-ප්‍රතිචාර සැසිය (ප්‍රශ්න ${_questions.length})' : 'Self-Response Session (${_questions.length} Items)',
                       style: const TextStyle(
-                        fontSize: 12,
+                        fontSize: 12.5,
                         fontWeight: FontWeight.w700,
                         color: Colors.white,
                         letterSpacing: 0.2,
