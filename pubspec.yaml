@@ -79,6 +79,7 @@ flutter:
     - assets/images/landing/senior_fear_face.jpg
     - assets/images/auth/
     - assets/audio/
+    - assets/audio/sinhala/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
