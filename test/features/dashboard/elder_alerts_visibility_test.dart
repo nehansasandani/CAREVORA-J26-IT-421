@@ -386,7 +386,7 @@ void main() {
       expect(find.text('Cognitive Score: 48.8 / 100'), findsOneWidget);
     });
 
-    testWidgets('11. DesktopSidebar hides Cognitive Assessment, Emotional Wellness, and Metabolic Health for caregivers', (tester) async {
+    testWidgets('11. DesktopSidebar hides Cognitive Assessment and Emotional Wellness for caregivers and shows Metabolic Health', (tester) async {
       await tester.binding.setSurfaceSize(const Size(1440, 900));
 
       await tester.pumpWidget(
@@ -406,11 +406,11 @@ void main() {
       expect(find.text('Overview'), findsNothing);
       expect(find.text('Cognitive Assessment'), findsNothing);
       expect(find.text('Emotional Wellness'), findsNothing);
-      expect(find.text('Metabolic Health'), findsNothing);
+      expect(find.text('Metabolic Health'), findsOneWidget);
       expect(find.text('Resident Directory'), findsOneWidget);
     });
 
-    testWidgets('12. DesktopSidebar displays Cognitive Assessment, Emotional Wellness, and Metabolic Health for elders', (tester) async {
+    testWidgets('12. DesktopSidebar displays Cognitive Assessment and Emotional Wellness for elders and hides Metabolic Health', (tester) async {
       await tester.binding.setSurfaceSize(const Size(1440, 900));
 
       await tester.pumpWidget(
@@ -430,7 +430,7 @@ void main() {
       expect(find.text('Overview'), findsOneWidget);
       expect(find.text('Cognitive Assessment'), findsOneWidget);
       expect(find.text('Emotional Wellness'), findsOneWidget);
-      expect(find.text('Metabolic Health'), findsOneWidget);
+      expect(find.text('Metabolic Health'), findsNothing);
     });
 
     testWidgets('13. MobileBottomNav hides Assess for caregivers and shows for elders', (tester) async {

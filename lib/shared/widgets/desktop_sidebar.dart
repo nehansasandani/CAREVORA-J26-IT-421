@@ -78,6 +78,13 @@ class DesktopSidebar extends ConsumerWidget {
                     label: authState.isElder ? strings.myHealthRecord : strings.residentDirectory,
                     route: '/dashboard/residents',
                   ),
+                if (authState.isCaregiver)
+                  _buildNavItem(
+                    context,
+                    icon: LucideIcons.activity,
+                    label: 'Metabolic Health',
+                    route: '/dashboard/metabolic',
+                  ),
                 if (authState.isElder) ...[
                   _buildNavItem(
                     context,
