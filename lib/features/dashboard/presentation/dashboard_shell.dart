@@ -8,6 +8,9 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../shared/widgets/desktop_sidebar.dart';
 import '../../../shared/widgets/mobile_bottom_nav.dart';
+import '../../../shared/widgets/language_selector_button.dart';
+import '../../../core/localization/app_language.dart';
+import '../../../core/localization/app_strings.dart';
 import '../../../data/mock/mock_carevora_data.dart';
 import '../../auth/application/auth_controller.dart';
 
@@ -20,6 +23,8 @@ class DashboardShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final location = GoRouterState.of(context).matchedLocation;
     final authState = ref.watch(authProvider).state;
+    final lang = ref.watch(languageProvider).currentLanguage;
+    final strings = AppStrings(lang);
 
     return Scaffold(
       backgroundColor: AppColors.dashboardBg,
@@ -32,7 +37,7 @@ class DashboardShell extends ConsumerWidget {
       body: ResponsiveBuilder(
         mobile: (context) => Column(
           children: [
-            _buildTopBar(context, authState, isMobile: true),
+            _buildTopBar(context, authState, strings: strings, isMobile: true),
             Expanded(child: child),
             MobileBottomNav(
               currentRoute: location,
@@ -46,7 +51,7 @@ class DashboardShell extends ConsumerWidget {
             Expanded(
               child: Column(
                 children: [
-                  _buildTopBar(context, authState, isMobile: false),
+                  _buildTopBar(context, authState, strings: strings, isMobile: false),
                   Expanded(child: child),
                 ],
               ),
@@ -59,7 +64,7 @@ class DashboardShell extends ConsumerWidget {
             Expanded(
               child: Column(
                 children: [
-                  _buildTopBar(context, authState, isMobile: false),
+                  _buildTopBar(context, authState, strings: strings, isMobile: false),
                   Expanded(child: child),
                 ],
               ),
@@ -70,7 +75,12 @@ class DashboardShell extends ConsumerWidget {
     );
   }
 
-  Widget _buildTopBar(BuildContext context, AuthState authState, {required bool isMobile}) {
+  Widget _buildTopBar(
+    BuildContext context,
+    AuthState authState, {
+    required AppStrings strings,
+    required bool isMobile,
+  }) {
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: isMobile ? 12 : 24,
@@ -105,7 +115,7 @@ class DashboardShell extends ConsumerWidget {
                   children: [
                     Flexible(
                       child: Text(
-                        'Welcome back!',
+                        strings.welcomeBack,
                         style: AppTextStyles.h4.copyWith(
                           fontSize: isMobile ? 14 : 16,
                         ),
@@ -119,8 +129,8 @@ class DashboardShell extends ConsumerWidget {
                 if (!isMobile)
                   Text(
                     authState.isElder
-                        ? "Here's your personal wellness overview."
-                        : "Here's the overall wellness overview of your residents.",
+                        ? strings.personalWellnessOverview
+                        : strings.residentsWellnessOverview,
                     style: AppTextStyles.caption,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -131,6 +141,9 @@ class DashboardShell extends ConsumerWidget {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
+              // Accessible Language Switcher (English / සිංහල)
+              LanguageSelectorButton(compact: isMobile),
+              const SizedBox(width: 8),
               // Live Date and Time Chip
               if (!isMobile) const _LiveDateTimeChip(),
               if (!isMobile) const SizedBox(width: 8),

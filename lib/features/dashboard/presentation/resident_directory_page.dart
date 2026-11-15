@@ -6,6 +6,8 @@ import 'package:http/http.dart' as http;
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../core/config/app_config.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/localization/app_language.dart';
+import '../../../core/localization/app_strings.dart';
 import '../../../shared/widgets/carevora_avatar.dart';
 import '../../../shared/widgets/cognitive_shap_explanation_card.dart';
 import '../../../shared/widgets/emotional_shap_explanation_card.dart';
@@ -460,6 +462,16 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
           }
         }
       }
+
+      if (authState.isElder) {
+        final all = _liveResidents.isNotEmpty ? _liveResidents : _allEldersFallback;
+        final myRec = all.firstWhere(
+          (r) => (authState.residentId != null && r.id == authState.residentId) ||
+                 (authState.userName != null && r.name.toLowerCase().contains(authState.userName!.toLowerCase().split(' ')[0])),
+          orElse: () => all.first,
+        );
+        _selectResident(myRec);
+      }
     } catch (_) {
       _applyFallback();
     } finally {
@@ -470,6 +482,15 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
   void _applyFallback() {
     _liveResidents = _allEldersFallback;
     _liveUsers = _allUsersFallback;
+    final authState = ref.read(authProvider).state;
+    if (authState.isElder && _allEldersFallback.isNotEmpty) {
+      final myRec = _allEldersFallback.firstWhere(
+        (r) => (authState.residentId != null && r.id == authState.residentId) ||
+               (authState.userName != null && r.name.toLowerCase().contains(authState.userName!.toLowerCase().split(' ')[0])),
+        orElse: () => _allEldersFallback.first,
+      );
+      _selectResident(myRec);
+    }
   }
 
   Future<void> _selectResident(ResidentItem resident) async {
@@ -581,7 +602,7 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
         parsed.add(EmotionalAssessmentHistoryItem.fromJson(item));
       }
 
-      if (parsed.isEmpty) {
+      if (parsed.isEmpty && (residentId == 1 || residentId == 2) && _selectedResident != null && _selectedResident!.lastAssessmentDate != null && (_selectedResident!.name.contains('Sarah') || _selectedResident!.name.contains('Arthur'))) {
         parsed.addAll(_getDefaultEmotionalHistoryForResident(residentId));
       }
 
@@ -600,25 +621,31 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
       }
     } catch (err) {
       if (mounted && _selectedResident?.id == residentId) {
-        final fallbacks = _getDefaultEmotionalHistoryForResident(residentId);
-        if (fallbacks.isNotEmpty) {
-          setState(() {
-            _residentEmotionalHistory = fallbacks;
-            _isLoadingEmotionalHistory = false;
-            _emotionalHistoryError = null;
-          });
-        } else {
-          setState(() {
-            _isLoadingEmotionalHistory = false;
-            _emotionalHistoryError = err.toString();
-          });
+        if ((residentId == 1 || residentId == 2) && _selectedResident != null && _selectedResident!.lastAssessmentDate != null && (_selectedResident!.name.contains('Sarah') || _selectedResident!.name.contains('Arthur'))) {
+          final fallbacks = _getDefaultEmotionalHistoryForResident(residentId);
+          if (fallbacks.isNotEmpty) {
+            setState(() {
+              _residentEmotionalHistory = fallbacks;
+              _isLoadingEmotionalHistory = false;
+              _emotionalHistoryError = null;
+            });
+            return;
+          }
         }
+        setState(() {
+          _residentEmotionalHistory = [];
+          _isLoadingEmotionalHistory = false;
+          _emotionalHistoryError = null;
+        });
       }
     }
   }
 
   List<EmotionalAssessmentHistoryItem> _getDefaultEmotionalHistoryForResident(int residentId) {
-    if (residentId == 1) {
+    if (_selectedResident != null && _selectedResident!.lastAssessmentDate == null) {
+      return [];
+    }
+    if (residentId == 1 && (_selectedResident == null || _selectedResident!.name.contains('Sarah'))) {
       return [
         EmotionalAssessmentHistoryItem(
           id: 'EAL-101',
@@ -659,7 +686,7 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
           encouragingMessage: 'Calm and steady affective responsiveness observed.',
         ),
       ];
-    } else if (residentId == 2) {
+    } else if (residentId == 2 && (_selectedResident == null || _selectedResident!.name.contains('Arthur'))) {
       return [
         EmotionalAssessmentHistoryItem(
           id: 'EAL-201',
@@ -679,24 +706,6 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
           facialCheckIncluded: true,
           voiceCheckIncluded: true,
           encouragingMessage: 'Withdrawal noted during afternoon hours. Supportive companion check-in recommended.',
-        ),
-      ];
-    } else if (_selectedResident != null && (_selectedResident!.emotionalScore ?? 0) > 0) {
-      final sc = _selectedResident!.emotionalScore!;
-      return [
-        EmotionalAssessmentHistoryItem(
-          id: 'EAL-${_selectedResident!.id}-01',
-          createdAt: DateTime.now().subtract(const Duration(days: 3)),
-          overallScore: sc,
-          emotionalScore: sc,
-          socialScore: (sc - 5).clamp(10, 95),
-          primaryEmotion: sc >= 75 ? 'Peaceful / Calm' : (sc >= 50 ? 'Calm / Neutral' : 'Sad / Affect Flattening'),
-          lonelinessScore: (100 - sc).round().clamp(5, 95),
-          isolationScore: (100 - sc + 4).round().clamp(5, 95),
-          status: 'Completed',
-          riskLevel: sc >= 70 ? 'Low Risk' : (sc >= 50 ? 'Moderate Risk' : 'High Risk'),
-          trajectory: 'Stable Baseline',
-          assessedBy: 'Care Specialist',
         ),
       ];
     }
@@ -795,6 +804,8 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
   }
 
   Widget _buildRoleHeader(AuthState auth) {
+    final lang = ref.watch(languageProvider).currentLanguage;
+    final strings = AppStrings(lang);
     String badgeText;
     Color badgeBg;
     Color badgeColor;
@@ -813,7 +824,7 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
       badgeIcon = LucideIcons.shieldCheck;
     } else {
       final home = auth.elderHomeName ?? 'Care Community';
-      badgeText = 'ELDER PRIVACY PROTECTION • $home';
+      badgeText = strings.isSinhala ? 'වැඩිහිටි රහස්‍යතා ආරක්ෂණය • $home' : 'ELDER PRIVACY PROTECTION • $home';
       badgeBg = const Color(0xFFFEF3C7);
       badgeColor = const Color(0xFF92400E);
       badgeIcon = LucideIcons.lock;
@@ -879,7 +890,7 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
           const SizedBox(height: 12),
           Text(
             auth.isElder
-                ? 'My Confidential Health Record'
+                ? strings.myConfidentialHealthRecord
                 : 'Resident Directory',
             style: const TextStyle(
               fontSize: 24,
@@ -894,7 +905,7 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
                 ? 'Logged in as ${auth.userName}. You have clinical clearance to review all residents and registered staff across all elder homes.'
                 : auth.isCaregiver
                     ? 'Search residents assigned to your care home to view longitudinal wellness metrics, review cognitive assessments, or initiate new evaluation sessions.'
-                    : 'Logged in as ${auth.userName}. Under HIPAA and resident privacy standards, you cannot view other elders\' records.',
+                    : strings.loggedInAs(auth.userName ?? ''),
             style: const TextStyle(
               fontSize: 13,
               color: AppColors.body,
@@ -2257,17 +2268,21 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
           ? _formatDate(latestRecord.createdAt!.toIso8601String())
           : (r.lastAssessmentDate != null ? _formatDate(r.lastAssessmentDate!) : 'Latest Available');
     } else {
-      final double? emoScore = r.emotionalScore;
+      final double? emoScore = (r.lastAssessmentDate != null) ? r.emotionalScore : null;
       if (emoScore != null && emoScore > 0.0) {
         scoreDisplay = '${emoScore.toStringAsFixed(1)}%';
         hasCompletedScore = true;
+        riskLevelDisplay = '${r.riskLevel ?? "Low"} Risk';
+        statusDisplay = r.currentStatus ?? 'Stable';
+        statusBg = const Color(0xFFEFF6FF);
+        statusColor = const Color(0xFF1D4ED8);
       } else {
         scoreDisplay = 'No emotional assessments yet';
+        riskLevelDisplay = 'Not Available';
+        statusDisplay = 'Not Assessed';
+        statusBg = AppColors.surfaceSecondary;
+        statusColor = AppColors.muted;
       }
-      riskLevelDisplay = '${r.riskLevel ?? "Low"} Risk';
-      statusDisplay = r.currentStatus ?? 'Stable';
-      statusBg = const Color(0xFFEFF6FF);
-      statusColor = const Color(0xFF1D4ED8);
       dateDisplay = r.lastAssessmentDate != null
           ? _formatDate(r.lastAssessmentDate!)
           : 'None recorded';
@@ -4142,6 +4157,8 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
   // ELDER VIEW: Confidential individual record ONLY
   // ----------------------------------------------------
   Widget _buildElderView(AuthState auth) {
+    final lang = ref.watch(languageProvider).currentLanguage;
+    final strings = AppStrings(lang);
     final allResidents = _liveResidents.isNotEmpty ? _liveResidents : _allEldersFallback;
 
     final myRecord = allResidents.firstWhere(
@@ -4151,18 +4168,45 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
     );
 
     final cleanGender = (myRecord.gender.isNotEmpty && myRecord.gender != 'Unknown')
-        ? myRecord.gender
+        ? (myRecord.gender.toLowerCase() == 'female' ? strings.female : (myRecord.gender.toLowerCase() == 'male' ? strings.male : myRecord.gender))
         : ((auth.userName ?? myRecord.name).contains('Malini') || (auth.userName ?? myRecord.name).contains('Sarah') || (auth.userName ?? myRecord.name).contains('Margaret')
-            ? 'Female'
-            : 'Senior Resident');
+            ? strings.female
+            : strings.seniorResident);
 
-    final rawRisk = (myRecord.riskLevel ?? '').toUpperCase();
-    final isHighRisk = rawRisk == 'HIGH' || myRecord.riskScore >= 0.70;
-    final isModRisk = rawRisk == 'MODERATE' || (!isHighRisk && myRecord.riskScore >= 0.35);
-    final String riskLabel = isHighRisk ? 'High Risk' : (isModRisk ? 'Moderate Risk' : 'Low Risk');
-    final Color riskColor = isHighRisk ? AppColors.riskHigh : (isModRisk ? AppColors.riskModerate : AppColors.riskLow);
-    final Color riskBg = isHighRisk ? AppColors.riskHighBg : (isModRisk ? AppColors.riskModerateBg : AppColors.riskLowBg);
-    final IconData riskIcon = isHighRisk ? LucideIcons.shieldAlert : LucideIcons.shieldCheck;
+    final completedEmotional = _residentEmotionalHistory
+        .where((a) => a.status.toUpperCase() != 'CANCELLED')
+        .toList();
+    final completedCognitive = _residentCognitiveHistory
+        .where((a) => a.status.toUpperCase() == 'COMPLETED')
+        .toList();
+
+    // Check if resident has real completed assessments
+    final bool hasEmotional = completedEmotional.isNotEmpty &&
+        (myRecord.lastAssessmentDate != null || completedEmotional.any((a) => !a.id.startsWith('EAL-')));
+    final bool hasCognitive = (completedCognitive.isNotEmpty && myRecord.lastAssessmentDate != null) ||
+        (myRecord.cognitiveScore != null && myRecord.cognitiveScore! > 0 && myRecord.lastAssessmentDate != null);
+    final bool hasMetabolic = _latestMetabolic != null && _latestMetabolic!.outcomes.isNotEmpty;
+    final bool hasAnyAssessment = hasEmotional || hasCognitive || hasMetabolic;
+
+    final String riskLabel;
+    final Color riskColor;
+    final Color riskBg;
+    final IconData riskIcon;
+
+    if (!hasAnyAssessment) {
+      riskLabel = strings.notAssessedYet;
+      riskColor = const Color(0xFF64748B);
+      riskBg = const Color(0xFFF1F5F9);
+      riskIcon = LucideIcons.clock;
+    } else {
+      final rawRisk = (myRecord.riskLevel ?? '').toUpperCase();
+      final isHighRisk = rawRisk == 'HIGH' || myRecord.riskScore >= 0.70;
+      final isModRisk = rawRisk == 'MODERATE' || (!isHighRisk && myRecord.riskScore >= 0.35);
+      riskLabel = isHighRisk ? strings.highRisk : (isModRisk ? strings.moderateRisk : strings.lowRisk);
+      riskColor = isHighRisk ? AppColors.riskHigh : (isModRisk ? AppColors.riskModerate : AppColors.riskLow);
+      riskBg = isHighRisk ? AppColors.riskHighBg : (isModRisk ? AppColors.riskModerateBg : AppColors.riskLowBg);
+      riskIcon = isHighRisk ? LucideIcons.shieldAlert : LucideIcons.shieldCheck;
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -4175,25 +4219,25 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
             border: Border.all(color: const Color(0xFFFDE68A)),
           ),
           child: Row(
-            children: const [
-              Icon(LucideIcons.lock, color: Color(0xFFB45309), size: 24),
-              SizedBox(width: 12),
+            children: [
+              const Icon(LucideIcons.lock, color: Color(0xFFB45309), size: 24),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Elder Confidential Privacy Protocol Active',
-                      style: TextStyle(
+                      strings.elderPrivacyActive,
+                      style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
                         color: Color(0xFF92400E),
                       ),
                     ),
-                    SizedBox(height: 2),
+                    const SizedBox(height: 2),
                     Text(
-                      'Other resident records are confidential and hidden from view. You have exclusive private access to your own personalized health telemetry and cognitive wellness progress.',
-                      style: TextStyle(fontSize: 12, color: Color(0xFF78350F)),
+                      strings.elderPrivacyDesc,
+                      style: const TextStyle(fontSize: 12, color: Color(0xFF78350F)),
                     ),
                   ],
                 ),
@@ -4243,7 +4287,7 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
                             ),
                           ),
                           Text(
-                            'Room ${myRecord.roomNo} • Age ${myRecord.age}${myRecord.educationYears != null ? ' • Education: ${myRecord.educationYears} Years' : ''} • $cleanGender',
+                            '${strings.room(myRecord.roomNo)} • ${strings.age(myRecord.age)}${myRecord.educationYears != null ? ' • ${strings.education(myRecord.educationYears!)}' : ''} • $cleanGender',
                             style: const TextStyle(fontSize: 13, color: AppColors.body),
                           ),
                           const SizedBox(height: 6),
@@ -4300,9 +4344,9 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'Your Wellness Tracking Scores',
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.navy),
+                    Text(
+                      strings.yourWellnessTrackingScores,
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.navy),
                     ),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
@@ -4311,7 +4355,7 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
-                        'Overall Risk: $riskLabel',
+                        strings.overallRisk(riskLabel),
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
@@ -4322,11 +4366,31 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                _buildScoreBar('Cognitive Clarity', myRecord.cognitiveScore != null ? myRecord.cognitiveScore! / 100.0 : 0.0, const Color(0xFF6366F1)),
+                _buildScoreBar(
+                  strings.cognitiveClarity,
+                  hasCognitive
+                      ? (completedCognitive.isNotEmpty
+                          ? (completedCognitive.first.acrfScore != null ? completedCognitive.first.acrfScore! / 100.0 : null)
+                          : (myRecord.cognitiveScore != null ? myRecord.cognitiveScore! / 100.0 : null))
+                      : null,
+                  const Color(0xFF6366F1),
+                ),
                 const SizedBox(height: 10),
-                _buildScoreBar('Emotional Wellness', myRecord.emotionalScore != null ? myRecord.emotionalScore! / 100.0 : 0.0, const Color(0xFFEC4899)),
+                _buildScoreBar(
+                  strings.emotionalWellnessScore,
+                  hasEmotional
+                      ? (((completedEmotional.isNotEmpty
+                              ? (completedEmotional.first.overallScore ?? completedEmotional.first.emotionalScore)
+                              : (myRecord.lastAssessmentDate != null ? myRecord.emotionalScore : null)) ?? 0.0) / 100.0)
+                      : null,
+                  const Color(0xFFEC4899),
+                ),
                 const SizedBox(height: 10),
-                _buildScoreBar('Metabolic Stability', 0.70, const Color(0xFF10B981)),
+                _buildScoreBar(
+                  strings.metabolicStability,
+                  hasMetabolic ? 0.70 : null,
+                  const Color(0xFF10B981),
+                ),
                 const SizedBox(height: 20),
                 Container(
                   padding: const EdgeInsets.all(12),
@@ -4339,7 +4403,11 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
                       const Icon(LucideIcons.heartHandshake, size: 18, color: AppColors.primary),
                       const SizedBox(width: 8),
                       Text(
-                        'Assigned Primary Caregiver: ${myRecord.caregiverName}',
+                        strings.assignedCaregiver(
+                          myRecord.caregiverName == 'Assigned Care Team'
+                              ? (strings.isSinhala ? 'පැවරුණු සත්කාරක කණ්ඩායම' : 'Assigned Care Team')
+                              : myRecord.caregiverName,
+                        ),
                         style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.navy),
                       ),
                     ],
@@ -4482,7 +4550,10 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
     );
   }
 
-  Widget _buildScoreBar(String label, double score, Color color) {
+  Widget _buildScoreBar(String label, double? score, Color color) {
+    final lang = ref.watch(languageProvider).currentLanguage;
+    final strings = AppStrings(lang);
+    final bool isAssessed = score != null && score > 0.0;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -4490,17 +4561,24 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.body)),
-            Text('${(score * 100).toInt()}%', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: color)),
+            Text(
+              isAssessed ? '${(score * 100).toInt()}%' : strings.notAssessedYet,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: isAssessed ? FontWeight.bold : FontWeight.w600,
+                color: isAssessed ? color : AppColors.muted,
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 4),
         ClipRRect(
           borderRadius: BorderRadius.circular(4),
           child: LinearProgressIndicator(
-            value: score,
+            value: isAssessed ? score : 0.0,
             minHeight: 6,
             backgroundColor: AppColors.surfaceSecondary,
-            valueColor: AlwaysStoppedAnimation<Color>(color),
+            valueColor: AlwaysStoppedAnimation<Color>(isAssessed ? color : const Color(0xFFE2E8F0)),
           ),
         ),
       ],

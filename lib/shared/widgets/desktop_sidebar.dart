@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
+import '../../core/localization/app_language.dart';
+import '../../core/localization/app_strings.dart';
 import '../../features/auth/application/auth_controller.dart';
 import 'carevora_avatar.dart';
 import 'carevora_logo.dart';
@@ -21,10 +23,16 @@ class DesktopSidebar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authProvider).state;
+    final lang = ref.watch(languageProvider).currentLanguage;
+    final strings = AppStrings(lang);
     final width = isCollapsed ? 80.0 : 260.0;
 
-    final userName = authState.userName ?? 'Care Specialist';
-    final roleName = authState.role.name.toUpperCase();
+    final userName = authState.userName ?? (strings.isSinhala ? 'නේවාසිකයා' : 'Care Specialist');
+    final roleName = authState.role == UserRole.elder
+        ? (strings.isSinhala ? 'වැඩිහිටියා' : 'ELDER')
+        : (authState.role == UserRole.doctor
+            ? (strings.isSinhala ? 'වෛද්‍යවරයා' : 'DOCTOR')
+            : (strings.isSinhala ? 'භාරකරු' : 'CAREGIVER'));
     final elderHomeName = authState.elderHomeName;
 
     String initials = 'CV';
@@ -60,14 +68,14 @@ class DesktopSidebar extends ConsumerWidget {
                   _buildNavItem(
                     context,
                     icon: LucideIcons.layoutDashboard,
-                    label: 'Overview',
+                    label: strings.overview,
                     route: '/dashboard',
                   ),
                 if (!authState.isElder)
                   _buildNavItem(
                     context,
                     icon: LucideIcons.users,
-                    label: authState.isElder ? 'My Health Record' : 'Resident Directory',
+                    label: authState.isElder ? strings.myHealthRecord : strings.residentDirectory,
                     route: '/dashboard/residents',
                   ),
                 if (authState.isCaregiver)
@@ -81,34 +89,40 @@ class DesktopSidebar extends ConsumerWidget {
                   _buildNavItem(
                     context,
                     icon: LucideIcons.brain,
-                    label: 'Cognitive Assessment',
+                    label: strings.cognitiveAssessment,
                     route: '/dashboard/cognitive/session',
                   ),
                   _buildNavItem(
                     context,
                     icon: LucideIcons.heartPulse,
-                    label: 'Emotional Wellness',
+                    label: strings.emotionalWellness,
                     route: '/dashboard/emotional',
+                  ),
+                  _buildNavItem(
+                    context,
+                    icon: LucideIcons.activity,
+                    label: strings.metabolicHealth,
+                    route: '/dashboard/metabolic',
                   ),
                 ],
                 if (!authState.isElder)
                   _buildNavItem(
                     context,
                     icon: LucideIcons.bell,
-                    label: 'Alerts & Notifications',
+                    label: strings.alertsAndNotifications,
                     route: '/dashboard/alerts',
                   ),
                 _buildNavItem(
                   context,
                   icon: LucideIcons.barChart3,
-                  label: 'Reports & Analytics',
+                  label: strings.reportsAndAnalytics,
                   route: '/dashboard/reports',
                 ),
                 if (!authState.isElder)
                   _buildNavItem(
                     context,
                     icon: LucideIcons.clipboardList,
-                    label: 'Care Plans',
+                    label: strings.carePlans,
                     route: '/dashboard/care-plans',
                   ),
                 if (!authState.isElder) ...[
@@ -141,26 +155,26 @@ class DesktopSidebar extends ConsumerWidget {
                   _buildNavItem(
                     context,
                     icon: LucideIcons.gamepad2,
-                    label: 'Memory Games',
+                    label: strings.memoryGames,
                     route: '/dashboard/memory-games',
                   ),
                   _buildNavItem(
                     context,
                     icon: LucideIcons.sparkles,
-                    label: 'Emotional Wellness Games',
+                    label: strings.emotionalWellnessGames,
                     route: '/dashboard/emotional-games',
                   ),
                 ],
                 _buildNavItem(
                   context,
                   icon: LucideIcons.phoneCall,
-                  label: 'Station Help & Calls',
+                  label: strings.stationHelpAndCalls,
                   route: '/dashboard/station-help',
                 ),
                 _buildNavItem(
                   context,
                   icon: LucideIcons.settings,
-                  label: 'Settings',
+                  label: strings.settings,
                   route: '/dashboard/settings',
                 ),
               ],
@@ -245,12 +259,12 @@ class DesktopSidebar extends ConsumerWidget {
                           padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
-                            children: const [
-                              Icon(LucideIcons.logOut, size: 16, color: AppColors.riskHigh),
-                              SizedBox(width: 8),
+                            children: [
+                              const Icon(LucideIcons.logOut, size: 16, color: AppColors.riskHigh),
+                              const SizedBox(width: 8),
                               Text(
-                                'Log Out',
-                                style: TextStyle(
+                                strings.logOut,
+                                style: const TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w600,
                                   color: AppColors.riskHigh,
