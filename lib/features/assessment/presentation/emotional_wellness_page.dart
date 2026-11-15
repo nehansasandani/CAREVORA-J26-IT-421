@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
@@ -7828,6 +7829,17 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
 
     final cleanId = _currentResident.id.padLeft(4, '0');
 
+    final initials = displayName
+        .split(' ')
+        .where((w) => !w.startsWith('Mr.') && !w.startsWith('Mrs.') && !w.startsWith('Dr.'))
+        .take(2)
+        .map((w) => w.isNotEmpty ? w[0].toUpperCase() : '')
+        .join();
+
+    final effectiveAvatar = (authState.isElder ? authState.avatarUrl : null) ??
+        _currentResident.avatarUrl ??
+        authState.avatarUrl;
+
     final genderText = isSinhala
         ? (_currentResident.gender?.toLowerCase() == 'female' ? 'Female' : 'Male')
         : (_currentResident.gender?.isNotEmpty == true ? _currentResident.gender! : 'Male');
@@ -7907,25 +7919,11 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                         ),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(12.5),
-                          child: (_currentResident.avatarUrl != null && _currentResident.avatarUrl!.isNotEmpty)
-                              ? Image.network(
-                                  _currentResident.avatarUrl!,
-                                  width: 82,
-                                  height: 82,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => Image.asset(
-                                    'assets/images/landing/senior_happy_face.jpg',
-                                    width: 82,
-                                    height: 82,
-                                    fit: BoxFit.cover,
-                                  ),
-                                )
-                              : Image.asset(
-                                  'assets/images/landing/senior_happy_face.jpg',
-                                  width: 82,
-                                  height: 82,
-                                  fit: BoxFit.cover,
-                                ),
+                          child: _buildBannerAvatarContent(
+                            effectiveAvatar,
+                            displayName,
+                            initials,
+                          ),
                         ),
                       ),
                       Positioned(
@@ -8059,6 +8057,98 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildBannerAvatarContent(String? avatarUrl, String displayName, String initials) {
+    if (avatarUrl != null && avatarUrl.trim().isNotEmpty) {
+      final url = avatarUrl.trim();
+      if (url.startsWith('http://') || url.startsWith('https://')) {
+        return Image.network(
+          url,
+          width: 82,
+          height: 82,
+          fit: BoxFit.cover,
+          gaplessPlayback: true,
+          errorBuilder: (_, __, ___) => _buildInitialsSquircle(initials, displayName),
+        );
+      } else if (url.startsWith('assets/')) {
+        return Image.asset(
+          url,
+          width: 82,
+          height: 82,
+          fit: BoxFit.cover,
+          gaplessPlayback: true,
+          errorBuilder: (_, __, ___) => _buildInitialsSquircle(initials, displayName),
+        );
+      } else {
+        // Base64 data URL (e.g. data:image/jpeg;base64,...) or raw Base64 string from user upload
+        try {
+          String rawB64 = url;
+          if (rawB64.contains(',')) {
+            rawB64 = rawB64.substring(rawB64.indexOf(',') + 1);
+          }
+          final cleanBase64 = rawB64.replaceAll(RegExp(r'\s+'), '');
+          if (cleanBase64.isNotEmpty) {
+            final Uint8List bytes = base64Decode(cleanBase64);
+            if (bytes.isNotEmpty) {
+              return Image.memory(
+                bytes,
+                width: 82,
+                height: 82,
+                fit: BoxFit.cover,
+                gaplessPlayback: true,
+                errorBuilder: (_, __, ___) => _buildInitialsSquircle(initials, displayName),
+              );
+            }
+          }
+        } catch (e) {
+          debugPrint('Error decoding elder avatar base64: $e');
+        }
+      }
+    }
+
+    // Unique personalized initials squircle if no photo was uploaded by this person
+    return _buildInitialsSquircle(initials, displayName);
+  }
+
+  Widget _buildInitialsSquircle(String initials, String name) {
+    final palette = [
+      [const Color(0xFFEDE9FE), const Color(0xFFDDD6FE), const Color(0xFF5B21B6)],
+      [const Color(0xFFE0F2FE), const Color(0xFFBAE6FD), const Color(0xFF075985)],
+      [const Color(0xFFFCE7F3), const Color(0xFFFBCFE8), const Color(0xFF9D174D)],
+      [const Color(0xFFFEF3C7), const Color(0xFFFDE68A), const Color(0xFF92400E)],
+      [const Color(0xFFD1FAE5), const Color(0xFFA7F3D0), const Color(0xFF065F46)],
+    ];
+    final colorIndex = (name.hashCode.abs()) % palette.length;
+    final bgStart = palette[colorIndex][0];
+    final bgEnd = palette[colorIndex][1];
+    final textColor = palette[colorIndex][2];
+
+    final displayInitials = initials.isNotEmpty
+        ? initials
+        : (name.isNotEmpty ? name[0].toUpperCase() : 'R');
+
+    return Container(
+      width: 82,
+      height: 82,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [bgStart, bgEnd],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        displayInitials,
+        style: TextStyle(
+          fontSize: 26,
+          fontWeight: FontWeight.w800,
+          color: textColor,
+          letterSpacing: 0.5,
+        ),
       ),
     );
   }
