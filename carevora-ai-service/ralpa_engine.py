@@ -1,6 +1,15 @@
 import os
+import sys
 import logging
 from typing import List, Optional, Dict, Any
+
+# Compatibility shim for models trained with scikit-learn <= 1.6 unpickled in scikit-learn >= 1.7
+if "_loss" not in sys.modules:
+    try:
+        from sklearn._loss import _loss
+        sys.modules["_loss"] = _loss
+    except (ImportError, ModuleNotFoundError):
+        pass
 
 import joblib
 import numpy as np
@@ -136,6 +145,10 @@ class RALPAEngine:
             self.high_risk_threshold = float(h_obj.get("threshold", 0.31))
             self.trajectory_classes = list(t_obj.get("classes", ["deteriorating", "improving", "stable"]))
 
+            # Ensure pipeline estimators remain valid across scikit-learn version differences
+            self._patch_imputers(self.high_risk_artifact)
+            self._patch_imputers(self.trajectory_artifact)
+
             self.models_loaded = True
             logger.info(
                 f"Successfully loaded Colab models. High-Risk: {os.path.basename(self.high_risk_model_path)}, "
@@ -145,6 +158,27 @@ class RALPAEngine:
             self.models_loaded = False
             self.load_error = f"Failed to load joblib models: {e}"
             logger.error(self.load_error, exc_info=True)
+
+    @staticmethod
+    def _patch_imputers(artifact: Optional[Dict[str, Any]]) -> None:
+        """Adds missing _fill_dtype to SimpleImputer instances unpickled across scikit-learn versions."""
+        if not artifact or "models" not in artifact:
+            return
+        from sklearn.impute import SimpleImputer
+        from sklearn.pipeline import Pipeline
+
+        def _patch(est):
+            if isinstance(est, Pipeline):
+                for _, step in est.steps:
+                    _patch(step)
+            elif isinstance(est, SimpleImputer):
+                if not hasattr(est, "_fill_dtype"):
+                    est._fill_dtype = getattr(est, "_fit_dtype", None)
+
+        models = artifact["models"]
+        iterable = models.values() if isinstance(models, dict) else models
+        for m in iterable:
+            _patch(m)
 
     @staticmethod
     def _safe_float(val: Any, default: float = 80.0, min_val: float = 0.0, max_val: float = 100.0) -> float:
@@ -621,3 +655,49 @@ class RALPAEngine:
                 "priority": "High" if is_elevated else "Recommended",
             },
         ]
+
+
+if __name__ == "__main__":
+    import json
+
+    print("==================================================")
+    print("Initializing RALPA Engine...")
+    print("==================================================")
+    engine = RALPAEngine()
+
+    print(f"Models loaded: {engine.models_loaded}")
+    if engine.load_error:
+        print(f"Load error: {engine.load_error}")
+
+    print("\nRunning sample prediction test:")
+    sample_scores = {
+        "questionnaire": 82.0,
+        "facial": 78.0,
+        "vocal": 75.0,
+        "social": 80.0,
+    }
+    sample_history = [70.0, 75.0, 78.0]
+    result = engine.predict_progression(
+        resident_id=1,
+        current_scores=sample_scores,
+        history_scores=sample_history,
+    )
+
+    print(f"Current Wellness Index : {result.get('current_wellness_index')}")
+    print(f"Current Risk Score     : {result.get('current_risk_score')}")
+    print(f"Risk Level             : {result.get('risk_level')}")
+    print(f"Trajectory             : {result.get('trajectory')} ({result.get('trajectory_status_label')})")
+    print(f"Baseline Score         : {result.get('baseline_score')}")
+    print(f"Baseline Deviation     : {result.get('baseline_deviation')}")
+    print(f"Longitudinal Slope     : {result.get('longitudinal_slope')}")
+    print(f"14-Day Forecast        : {result.get('forecast_14_days')}")
+
+    ml_eval = result.get("ml_models_evaluation", {})
+    if ml_eval.get("high_risk_model"):
+        print(f"High-Risk Model Prob   : {ml_eval['high_risk_model'].get('high_risk_probability')}")
+    if ml_eval.get("trajectory_model"):
+        print(f"Trajectory Model Pred  : {ml_eval['trajectory_model'].get('predicted_trajectory')}")
+
+    print("==================================================")
+    print("RALPA Engine run successfully!")
+    print("==================================================")

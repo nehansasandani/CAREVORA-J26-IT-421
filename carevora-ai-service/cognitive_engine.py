@@ -147,11 +147,27 @@ class CognitiveEngine:
             self.alert_threshold = float(artifact.get("alert_threshold", 0.48))
             self.model_name = str(artifact.get("model_name", "Random Forest"))
             self.feature_set = str(artifact.get("feature_set", "B: raw + ACRF"))
+
+            # Ensure pipeline SimpleImputer compatibility across scikit-learn versions
+            self._patch_imputer(self.model_pipeline)
+
             self.model_loaded = True
             self.load_error = None
         except Exception as exc:
             self.model_loaded = False
             self.load_error = f"Failed to load model artifact: {exc}"
+
+    @staticmethod
+    def _patch_imputer(est: Any) -> None:
+        """Compatibility fix: adds missing _fill_dtype to SimpleImputer instances."""
+        from sklearn.impute import SimpleImputer
+        from sklearn.pipeline import Pipeline
+        if isinstance(est, Pipeline):
+            for _, step in est.steps:
+                CognitiveEngine._patch_imputer(step)
+        elif isinstance(est, SimpleImputer):
+            if not hasattr(est, "_fill_dtype"):
+                est._fill_dtype = getattr(est, "_fit_dtype", None)
 
     def validate_scores(self, raw_scores: Dict[str, Any]) -> Dict[str, float]:
         """
