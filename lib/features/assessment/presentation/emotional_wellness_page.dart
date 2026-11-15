@@ -7773,8 +7773,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
 
   // --- TOP HEADER BAR ---
   Widget _buildTopHeaderBar() {
-    final lang = ref.watch(languageProvider).currentLanguage;
-    final strings = AppStrings(lang);
+    final isSinhala = ref.watch(languageProvider).isSinhala;
     final isElder = ref.watch(authProvider).state.isElder;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -7786,14 +7785,17 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
             padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
             child: Row(
               children: [
-                const Icon(LucideIcons.arrowLeft, size: 16, color: AppColors.primary),
-                const SizedBox(width: 6),
+                const Icon(LucideIcons.arrowLeft, size: 16, color: Color(0xFF5E35B1)),
+                const SizedBox(width: 8),
                 Text(
-                  isElder ? strings.backToHealthRecord : 'Back to Residents',
+                  isElder
+                      ? (isSinhala ? 'භාවනා සහ සුවසාධන පරීක්ෂණය' : 'Mindfulness & Wellness Assessment')
+                      : (isSinhala ? 'ආපසු නේවාසික ලැයිස්තුවට' : 'Back to Residents'),
                   style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.primary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF4A148C),
+                    letterSpacing: 0.1,
                   ),
                 ),
               ],
@@ -7809,20 +7811,6 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
     final authState = ref.watch(authProvider).state;
     final isSinhala = ref.watch(languageProvider).isSinhala;
 
-    final initials = _currentResident.name
-        .split(' ')
-        .where((w) => !w.startsWith('Mr.') && !w.startsWith('Mrs.') && !w.startsWith('Dr.'))
-        .take(2)
-        .map((w) => w.isNotEmpty ? w[0] : '')
-        .join();
-
-    final cleanRoom = _currentResident.roomNo
-        .replaceAll('Room No: ', '')
-        .replaceAll('Room No ', '')
-        .replaceAll('Room ', '')
-        .replaceAll('Suite ', '')
-        .trim();
-
     final rawName = _currentResident.name.trim();
     final displayName = rawName.isNotEmpty
         ? rawName.split(' ').map((part) {
@@ -7831,391 +7819,299 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
           }).join(' ')
         : (isSinhala ? 'නේවාසික සාමාජිකයා' : 'Resident');
 
-    // Warm Cultural Greeting
-    final hour = DateTime.now().hour;
-    final String timeGreetingEn = hour < 12
-        ? 'Good morning'
-        : (hour < 17 ? 'Good afternoon' : 'Good evening');
+    final cleanRoom = _currentResident.roomNo
+        .replaceAll('Room No: ', '')
+        .replaceAll('Room No ', '')
+        .replaceAll('Room ', '')
+        .replaceAll('Suite ', '')
+        .trim();
 
-    final String welcomeHeadline = isSinhala
-        ? 'ආයුබෝවන්, $displayName! 🙏'
-        : '$timeGreetingEn, $displayName! 👋';
+    final cleanId = _currentResident.id.padLeft(4, '0');
 
-    final String welcomeSubline = isSinhala
-        ? 'අද දින ඔබේ මානසික සුවතාවය සහ සතුට රැකගැනීමට අපි ඔබ ළඟින්ම සිටින්නෙමු.'
-        : 'We are warmly by your side for your emotional harmony and peace today.';
+    final genderText = isSinhala
+        ? (_currentResident.gender?.toLowerCase() == 'female' ? 'Female' : 'Male')
+        : (_currentResident.gender?.isNotEmpty == true ? _currentResident.gender! : 'Male');
+
+    final wardText = cleanRoom.isNotEmpty
+        ? 'Ward: Lotus Wing ($cleanRoom)'
+        : 'Ward: Lotus Wing (A-12)';
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
       decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(22),
         gradient: const LinearGradient(
           colors: [
-            Color(0xFFFFFFFF),
-            Color(0xFFFBF9FF),
-            Color(0xFFF4EEFD),
+            Color(0xFF6B44B6),
+            Color(0xFF7A54C2),
+            Color(0xFF8B64CB),
+            Color(0xFF9E77D6),
           ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
         ),
-        borderRadius: BorderRadius.circular(26),
-        border: Border.all(color: const Color(0xFFDDD6FE), width: 1.4),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF7C3AED).withValues(alpha: 0.08),
-            blurRadius: 30,
+            color: const Color(0xFF6B44B6).withValues(alpha: 0.28),
+            blurRadius: 24,
             offset: const Offset(0, 8),
           ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(22),
+        child: Stack(
+          children: [
+            // Blooming Flowers Graphic on the Right (fading smoothly into purple gradient)
+            Positioned(
+              right: 0,
+              top: 0,
+              bottom: 0,
+              child: Opacity(
+                opacity: 0.95,
+                child: Image.asset(
+                  'assets/images/banner_flowers_fade.png',
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Image.network(
+                    'banner_flowers_fade.png',
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                  ),
+                ),
+              ),
+            ),
+
+            // Banner Content
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 18),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // Rounded Square Elder Avatar with Green Active Dot
+                  Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Container(
+                        width: 82,
+                        height: 82,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.white, width: 3.5),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.2),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12.5),
+                          child: (_currentResident.avatarUrl != null && _currentResident.avatarUrl!.isNotEmpty)
+                              ? Image.network(
+                                  _currentResident.avatarUrl!,
+                                  width: 82,
+                                  height: 82,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => Image.asset(
+                                    'assets/images/landing/senior_happy_face.jpg',
+                                    width: 82,
+                                    height: 82,
+                                    fit: BoxFit.cover,
+                                  ),
+                                )
+                              : Image.asset(
+                                  'assets/images/landing/senior_happy_face.jpg',
+                                  width: 82,
+                                  height: 82,
+                                  fit: BoxFit.cover,
+                                ),
+                        ),
+                      ),
+                      Positioned(
+                        right: -3,
+                        bottom: -3,
+                        child: Container(
+                          width: 20,
+                          height: 20,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF22C55E),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2.8),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF22C55E).withValues(alpha: 0.7),
+                                blurRadius: 6,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(width: 20),
+
+                  // Center Details: Greeting, Subtitle & White Pill Capsules
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Headline: ආදරමය, Kumara 👋
+                        Row(
+                          children: [
+                            Text(
+                              isSinhala ? 'ආදරමය, $displayName 👋' : 'Dear, $displayName 👋',
+                              style: const TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white,
+                                letterSpacing: 0.2,
+                              ),
+                            ),
+                            if (!authState.isElder && _availableResidents.length > 1) ...[
+                              const SizedBox(width: 12),
+                              _buildCaregiverCompactSwitcher(),
+                            ],
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+
+                        // Subtitle: ඔබ අදත් අප සමඟ සිටිනවට, ඔබගේ සුවසාධනය පරීක්ෂා කිරීමට සූදානම්ද?
+                        Text(
+                          isSinhala
+                              ? 'ඔබ අදත් අප සමඟ සිටිනවට, ඔබගේ සුවසාධනය පරීක්ෂා කිරීමට සූදානම්ද?'
+                              : 'So glad you are with us today, are you ready to check your wellness?',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w400,
+                            color: Colors.white.withValues(alpha: 0.95),
+                            height: 1.3,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+
+                        // White Capsule Badges Row
+                        Wrap(
+                          spacing: 10,
+                          runSpacing: 8,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            _buildScreenshot2Pill(
+                              icon: LucideIcons.contact,
+                              label: 'Resident ID: RES-$cleanId',
+                            ),
+                            _buildScreenshot2Pill(
+                              icon: LucideIcons.calendar,
+                              label: 'Age: ${_currentResident.age} Years',
+                            ),
+                            _buildScreenshot2Pill(
+                              icon: LucideIcons.user,
+                              label: genderText,
+                            ),
+                            _buildScreenshot2Pill(
+                              icon: LucideIcons.home,
+                              label: wardText,
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildScreenshot2Pill({
+    required IconData icon,
+    required String label,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6.5),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
+            color: Colors.black.withValues(alpha: 0.08),
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),
         ],
       ),
-      child: Wrap(
-        spacing: 24,
-        runSpacing: 18,
-        alignment: WrapAlignment.spaceBetween,
-        crossAxisAlignment: WrapCrossAlignment.center,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // Radiant Elder Avatar with glowing active indicator
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  RepaintBoundary(
-                    child: Container(
-                      width: 70,
-                      height: 70,
-                      padding: const EdgeInsets.all(3),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF8B5CF6), Color(0xFFEC4899), Color(0xFFF59E0B)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF8B5CF6).withValues(alpha: 0.35),
-                            blurRadius: 18,
-                            offset: const Offset(0, 5),
-                          ),
-                        ],
-                      ),
-                      child: Container(
-                        decoration: const BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.white,
-                        ),
-                        padding: const EdgeInsets.all(2),
-                        child: CarevoraAvatar(
-                          key: const ValueKey('resident_emotional_banner_avatar'),
-                          avatarUrl: _currentResident.avatarUrl ?? (authState.isElder ? authState.avatarUrl : null),
-                          radius: 32,
-                          initials: initials.isNotEmpty ? initials : 'R',
-                        ),
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    right: 2,
-                    bottom: 2,
-                    child: Container(
-                      width: 18,
-                      height: 18,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF10B981),
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2.5),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF10B981).withValues(alpha: 0.8),
-                            blurRadius: 8,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(width: 18),
-              // Resident Identity, Warm Greeting & Details
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Top Welcome and Role Tags Row
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 4,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3.5),
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFFFFFBEB), Color(0xFFFEF3C7)],
-                          ),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: const Color(0xFFFDE68A)),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(LucideIcons.sparkles, size: 12, color: Color(0xFFD97706)),
-                            const SizedBox(width: 4),
-                            Text(
-                              isSinhala ? 'ආදරණීය පිළිගැනීම' : 'Warm Welcome',
-                              style: const TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w800,
-                                color: Color(0xFFB45309),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 3.5,
-                        ),
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFFEDE9FE), Color(0xFFF3E8FF)],
-                          ),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: const Color(0xFFDDD6FE)),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              LucideIcons.userCheck,
-                              size: 11,
-                              color: AppColors.primary,
-                            ),
-                            const SizedBox(width: 5),
-                            Text(
-                              isSinhala ? 'වැඩිහිටියා / නේවාසිකයා' : 'ELDER / RESIDENT',
-                              style: const TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.primary,
-                                letterSpacing: 0.4,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (_facilityName.isNotEmpty) ...[
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 9,
-                            vertical: 3.5,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF1F5F9),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: const Color(0xFFE2E8F0)),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                LucideIcons.building2,
-                                size: 11,
-                                color: Color(0xFF475569),
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                _facilityName,
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF475569),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  // Dignified, Warm Elder Greeting Title
-                  Text(
-                    welcomeHeadline,
-                    style: const TextStyle(
-                      fontSize: 23,
-                      fontWeight: FontWeight.w900,
-                      color: Color(0xFF1E1B4B),
-                      letterSpacing: -0.4,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  // Reassuring Subtitle
-                  Text(
-                    welcomeSubline,
-                    style: const TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w500,
-                      color: Color(0xFF6B7280),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  // Rich Demographic Attribute Pills
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 6,
-                    children: [
-                      _buildResidentDetailPill(
-                        icon: LucideIcons.calendar,
-                        label: isSinhala ? 'වයස: අවු ${_currentResident.age}' : 'Age: ${_currentResident.age} yrs',
-                        color: const Color(0xFF4F46E5),
-                        bg: const Color(0xFFEEF2FF),
-                        border: const Color(0xFFE0E7FF),
-                      ),
-                      _buildResidentDetailPill(
-                        icon: LucideIcons.doorOpen,
-                        label: isSinhala
-                            ? (cleanRoom.isNotEmpty ? 'කාමර අංකය: $cleanRoom' : 'කාමරය 101')
-                            : (cleanRoom.isNotEmpty ? 'Room No: $cleanRoom' : 'Room 101'),
-                        color: const Color(0xFF059669),
-                        bg: const Color(0xFFECFDF5),
-                        border: const Color(0xFFA7F3D0),
-                      ),
-                      _buildResidentDetailPill(
-                        icon: LucideIcons.graduationCap,
-                        label: isSinhala ? 'අධ්‍යාපනය: වසර ${_educationYears ?? 12}' : 'Education: ${_educationYears ?? 12} yrs',
-                        color: const Color(0xFF7C3AED),
-                        bg: const Color(0xFFF5F3FF),
-                        border: const Color(0xFFDDD6FE),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ],
-          ),
-          Wrap(
-            spacing: 12,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              // Caregiver Switcher if multiple residents
-              if (!authState.isElder && _availableResidents.length > 1)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: _availableResidents.any((r) => r.id == _currentResident.id)
-                          ? _currentResident.id
-                          : (_availableResidents.isNotEmpty ? _availableResidents.first.id : null),
-                      icon: const Icon(LucideIcons.chevronDown, size: 14, color: AppColors.primary),
-                      style: const TextStyle(
-                        fontSize: 12.5,
-                        color: AppColors.navy,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      items: () {
-                        final seen = <String>{};
-                        final unique = <Resident>[];
-                        for (final r in _availableResidents) {
-                          if (seen.add(r.id)) unique.add(r);
-                        }
-                        return unique.map((Resident r) {
-                          final clean = (r.name.trim().isNotEmpty && r.name.trim() != '-')
-                              ? r.name.trim()
-                              : 'Resident #${r.id}';
-                          return DropdownMenuItem<String>(
-                            value: r.id,
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(LucideIcons.user, size: 13, color: AppColors.primary),
-                                const SizedBox(width: 6),
-                                Text('$clean (ID: ${_formatDisplayId(r.id)})'),
-                              ],
-                            ),
-                          );
-                        }).toList();
-                      }(),
-                      onChanged: (String? newResId) {
-                        if (newResId != null) {
-                          final selected = _availableResidents.firstWhere(
-                            (r) => r.id == newResId,
-                            orElse: () => _availableResidents.first,
-                          );
-                          setState(() {
-                            _currentResident = selected;
-                            if (_liveProfiles != null && _liveProfiles!.isNotEmpty) {
-                              final matched = _liveProfiles!.firstWhere(
-                                (p) => p.id.toString() == newResId,
-                                orElse: () => _liveProfiles!.first,
-                              );
-                              _educationYears = matched.educationYears ?? 13;
-                              if (matched.elderHomeName != null && matched.elderHomeName!.isNotEmpty) {
-                                _facilityName = matched.elderHomeName!;
-                              }
-                            }
-                            _loadResidentData(selected.id);
-                          });
-                        }
-                      },
-                    ),
-                  ),
-                ),
-              // Floating Session Battery Badge
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 9.5,
-                ),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF6C3FC5), Color(0xFF8B5CF6)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(22),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF6C3FC5).withValues(alpha: 0.32),
-                      blurRadius: 14,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(LucideIcons.sparkles, size: 14, color: Colors.white),
-                    const SizedBox(width: 7),
-                    Text(
-                      isSinhala ? 'ස්වයං-ප්‍රතිචාර සැසිය (ප්‍රශ්න ${_questions.length})' : 'Self-Response Session (${_questions.length} Items)',
-                      style: const TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                        letterSpacing: 0.2,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          Icon(icon, size: 14, color: const Color(0xFF4A148C)),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF2E1065),
+              letterSpacing: 0.1,
+            ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCaregiverCompactSwitcher() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.22),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          dropdownColor: const Color(0xFF6B44B6),
+          value: _availableResidents.any((r) => r.id == _currentResident.id)
+              ? _currentResident.id
+              : (_availableResidents.isNotEmpty ? _availableResidents.first.id : null),
+          icon: const Icon(LucideIcons.chevronDown, size: 14, color: Colors.white),
+          style: const TextStyle(
+            fontSize: 12,
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+          ),
+          items: () {
+            final seen = <String>{};
+            final unique = <Resident>[];
+            for (final r in _availableResidents) {
+              if (seen.add(r.id)) unique.add(r);
+            }
+            return unique.map((Resident r) {
+              final clean = (r.name.trim().isNotEmpty && r.name.trim() != '-')
+                  ? r.name.trim()
+                  : 'Resident #${r.id}';
+              return DropdownMenuItem<String>(
+                value: r.id,
+                child: Text(clean, style: const TextStyle(color: Colors.white)),
+              );
+            }).toList();
+          }(),
+          onChanged: (String? newResId) {
+            if (newResId != null) {
+              final selected = _availableResidents.firstWhere(
+                (r) => r.id == newResId,
+                orElse: () => _availableResidents.first,
+              );
+              setState(() {
+                _currentResident = selected;
+                _loadResidentData(selected.id);
+              });
+            }
+          },
+        ),
       ),
     );
   }
