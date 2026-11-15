@@ -288,15 +288,15 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
           age: defaultAge,
           gender: detectedGender,
           roomNo: defaultRoom,
-          lastAssessmentDate: 'Today, 10:30 AM',
-          cognitiveScore: 0.72,
-          cognitiveTrend: 0.05,
-          emotionalScore: 0.78,
-          emotionalTrend: 0.08,
-          metabolicScore: 0.68,
-          metabolicTrend: 0.02,
-          overallIndex: 0.73,
-          overallTrend: 0.05,
+          lastAssessmentDate: 'Not Assessed Yet',
+          cognitiveScore: 0.0,
+          cognitiveTrend: 0.0,
+          emotionalScore: 0.0,
+          emotionalTrend: 0.0,
+          metabolicScore: 0.0,
+          metabolicTrend: 0.0,
+          overallIndex: 0.0,
+          overallTrend: 0.0,
           avatarUrl: authState.avatarUrl,
         );
         _currentResident = newResident;
@@ -847,11 +847,12 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
   }
 
   ResidentProfileDataset _createDefaultDataset(String residentName) {
+    final bool isDemoResident = residentName.contains('Sarah') || residentName.contains('Arthur');
     return ResidentProfileDataset(
-      baselineLoneliness: 46.0,
-      baselineIsolation: 40.0,
-      baselineEstablishedDate: '12 May 2025',
-      trendSlope: 0.8,
+      baselineLoneliness: isDemoResident ? 46.0 : 0.0,
+      baselineIsolation: isDemoResident ? 40.0 : 0.0,
+      baselineEstablishedDate: isDemoResident ? '12 May 2025' : 'Pending Initial Assessment',
+      trendSlope: isDemoResident ? 0.8 : 0.0,
       activities: [
         PersonalizedActivityItem(
           id: 'ACT-1-CUSTOM',
@@ -894,30 +895,32 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
           isCompleted: false,
         ),
       ],
-      logs: [
-        EmotionalAssessmentHistoryLog(
-          id: 'EAL-001',
-          date: '12 May 2025, 10:30 AM',
-          primaryEmotion: 'Calm / Neutral',
-          lonelinessScore: 38,
-          isolationScore: 32,
-          deviation: 0.0,
-          trajectory: 'Stable Wellness Profile',
-          interventionStatus: 'Regular Monitoring Active',
-          assessedBy: 'Self-Report & Specialist',
-        ),
-        EmotionalAssessmentHistoryLog(
-          id: 'EAL-002',
-          date: '10 May 2025, 10:00 AM',
-          primaryEmotion: 'Calm / Neutral',
-          lonelinessScore: 36,
-          isolationScore: 30,
-          deviation: 0.0,
-          trajectory: 'Baseline Assessment',
-          interventionStatus: 'Initial Baseline Logged',
-          assessedBy: 'Seetha N. (RN)',
-        ),
-      ],
+      logs: isDemoResident
+          ? [
+              EmotionalAssessmentHistoryLog(
+                id: 'EAL-001',
+                date: '12 May 2025, 10:30 AM',
+                primaryEmotion: 'Calm / Neutral',
+                lonelinessScore: 38,
+                isolationScore: 32,
+                deviation: 0.0,
+                trajectory: 'Stable Wellness Profile',
+                interventionStatus: 'Regular Monitoring Active',
+                assessedBy: 'Self-Report & Specialist',
+              ),
+              EmotionalAssessmentHistoryLog(
+                id: 'EAL-002',
+                date: '10 May 2025, 10:00 AM',
+                primaryEmotion: 'Calm / Neutral',
+                lonelinessScore: 36,
+                isolationScore: 30,
+                deviation: 0.0,
+                trajectory: 'Baseline Assessment',
+                interventionStatus: 'Initial Baseline Logged',
+                assessedBy: 'Seetha N. (RN)',
+              ),
+            ]
+          : [],
     );
   }
 
@@ -9675,11 +9678,26 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
             style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.navy),
           ),
           const SizedBox(height: 10),
-          _buildBehaviorRow('• Communication Level', _commLevel, AppColors.riskModerateBg, AppColors.riskModerate),
+          _buildBehaviorRow(
+            '• Communication Level',
+            (_answers.isNotEmpty || _hasLiveAssessments) ? _commLevel : 'Pending',
+            (_answers.isNotEmpty || _hasLiveAssessments) ? AppColors.riskModerateBg : AppColors.surfaceSecondary,
+            (_answers.isNotEmpty || _hasLiveAssessments) ? AppColors.riskModerate : AppColors.muted,
+          ),
           const SizedBox(height: 8),
-          _buildBehaviorRow('• Engagement Level', _engagementLevel, AppColors.riskLowBg, AppColors.riskLow),
+          _buildBehaviorRow(
+            '• Engagement Level',
+            (_answers.isNotEmpty || _hasLiveAssessments) ? _engagementLevel : 'Pending',
+            (_answers.isNotEmpty || _hasLiveAssessments) ? AppColors.riskLowBg : AppColors.surfaceSecondary,
+            (_answers.isNotEmpty || _hasLiveAssessments) ? AppColors.riskLow : AppColors.muted,
+          ),
           const SizedBox(height: 8),
-          _buildBehaviorRow('• Response Time', _responseTime, const Color(0xFFE0F2FE), Colors.blue),
+          _buildBehaviorRow(
+            '• Response Time',
+            (_answers.isNotEmpty || _hasLiveAssessments) ? _responseTime : 'Pending',
+            (_answers.isNotEmpty || _hasLiveAssessments) ? const Color(0xFFE0F2FE) : AppColors.surfaceSecondary,
+            (_answers.isNotEmpty || _hasLiveAssessments) ? Colors.blue : AppColors.muted,
+          ),
         ],
       ),
     );
@@ -9730,18 +9748,31 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
         ? 'Pending Q3'
         : (q3Answer == true ? 'Adequate' : 'Low');
 
-    final int displayLoneliness = calculatedLoneliness != null
-        ? calculatedLoneliness.round()
-        : _lonelinessScore;
-    final String lonelinessTier = displayLoneliness >= 65
-        ? 'High Risk'
-        : (displayLoneliness >= 40 ? 'Moderate Risk' : 'Low Risk');
-    final Color lonelinessColor = displayLoneliness >= 65
-        ? AppColors.riskHigh
-        : (displayLoneliness >= 40 ? AppColors.riskModerate : AppColors.riskLow);
-    final Color lonelinessBg = displayLoneliness >= 65
-        ? AppColors.riskHighBg
-        : (displayLoneliness >= 40 ? AppColors.riskModerateBg : const Color(0xFFDCFCE7));
+    final bool hasLiveHistory = _hasLiveAssessments && _historyLogs.isNotEmpty;
+    final bool hasCurrentCalculated = calculatedLoneliness != null;
+    final bool hasValidAssessment = hasCurrentCalculated || hasLiveHistory;
+
+    final int? displayLoneliness = hasCurrentCalculated
+        ? calculatedLoneliness!.round()
+        : (hasLiveHistory ? _lonelinessScore : null);
+
+    final String lonelinessTier = !hasValidAssessment
+        ? 'Not Assessed Yet'
+        : (displayLoneliness! >= 65
+            ? 'High Risk'
+            : (displayLoneliness >= 40 ? 'Moderate Risk' : 'Low Risk'));
+
+    final Color lonelinessColor = !hasValidAssessment
+        ? AppColors.muted
+        : (displayLoneliness! >= 65
+            ? AppColors.riskHigh
+            : (displayLoneliness >= 40 ? AppColors.riskModerate : AppColors.riskLow));
+
+    final Color lonelinessBg = !hasValidAssessment
+        ? AppColors.surfaceSecondary
+        : (displayLoneliness! >= 65
+            ? AppColors.riskHighBg
+            : (displayLoneliness >= 40 ? AppColors.riskModerateBg : const Color(0xFFDCFCE7)));
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -10009,11 +10040,12 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
   }
 
   Widget _buildCircularScoreGauge({
-    required int score,
+    required int? score,
     required String riskLabel,
     required Color riskColor,
     required Color bgRingColor,
   }) {
+    final bool isAssessed = score != null;
     return Column(
       children: [
         Stack(
@@ -10023,18 +10055,18 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
               width: 58,
               height: 58,
               child: CircularProgressIndicator(
-                value: score / 100.0,
+                value: isAssessed ? (score / 100.0) : 0.0,
                 strokeWidth: 5,
                 backgroundColor: bgRingColor,
-                valueColor: AlwaysStoppedAnimation<Color>(riskColor),
+                valueColor: AlwaysStoppedAnimation<Color>(isAssessed ? riskColor : const Color(0xFFCBD5E1)),
               ),
             ),
             Text(
-              '$score',
+              isAssessed ? '$score' : '--',
               style: TextStyle(
-                fontSize: 18,
+                fontSize: isAssessed ? 18 : 16,
                 fontWeight: FontWeight.bold,
-                color: riskColor,
+                color: isAssessed ? riskColor : AppColors.muted,
               ),
             ),
           ],
@@ -10045,7 +10077,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
           style: TextStyle(
             fontSize: 10,
             fontWeight: FontWeight.bold,
-            color: riskColor,
+            color: isAssessed ? riskColor : AppColors.muted,
           ),
         ),
       ],
