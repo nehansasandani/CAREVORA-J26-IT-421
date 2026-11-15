@@ -216,7 +216,24 @@ class EmotionalAssessmentService {
 
     if (res.statusCode == 200 && decoded != null && decoded['success'] == true) {
       final data = decoded['data'] as Map<String, dynamic>;
-      return EmotionalAssessmentSubmissionResult.fromJson(data);
+      final result = EmotionalAssessmentSubmissionResult.fromJson(data);
+      cacheLocalAssessment(residentId, {
+        'id': result.id,
+        'residentId': result.residentId,
+        'overallScore': result.overallScore,
+        'emotionalScore': result.emotionalScore,
+        'socialScore': result.socialScore,
+        'status': result.status,
+        'riskLevel': result.riskLevel,
+        'trajectory': result.trajectory,
+        'encouragingMessage': result.encouragingMessage,
+        'facialCheckIncluded': result.facialCheckIncluded,
+        'voiceCheckIncluded': result.voiceCheckIncluded,
+        'dominantEmotion': dominantEmotion,
+        'timestamp': DateTime.now().toIso8601String(),
+        'assessedBy': 'Care Specialist',
+      });
+      return result;
     }
 
     final String message = decoded?['message'] as String? ??
@@ -229,6 +246,18 @@ class EmotionalAssessmentService {
                     : 'Failed to save assessment to server (HTTP ${res.statusCode}).');
 
     throw EmotionalAssessmentException(message, statusCode: res.statusCode);
+  }
+
+  static final Map<int, List<Map<String, dynamic>>> _localSubmittedAssessments = {};
+
+  static void cacheLocalAssessment(int residentId, Map<String, dynamic> record) {
+    _localSubmittedAssessments.putIfAbsent(residentId, () => []);
+    _localSubmittedAssessments[residentId]!.removeWhere((x) => x['id'] == record['id']);
+    _localSubmittedAssessments[residentId]!.insert(0, record);
+  }
+
+  static List<Map<String, dynamic>> getLocalAssessments(int residentId) {
+    return List.unmodifiable(_localSubmittedAssessments[residentId] ?? []);
   }
 
   /// Fetches historical assessments for a resident from GET /api/assessments/resident/{residentId}.
@@ -245,16 +274,28 @@ class EmotionalAssessmentService {
       headers['Authorization'] = 'Bearer $token';
     }
 
+    List<Map<String, dynamic>> serverList = [];
     try {
       final res = await http.get(uri, headers: headers).timeout(const Duration(seconds: 8));
       if (res.statusCode == 200) {
         final decoded = jsonDecode(res.body) as Map<String, dynamic>?;
         if (decoded != null && decoded['success'] == true && decoded['data'] is List) {
-          return List<Map<String, dynamic>>.from(decoded['data'] as List);
+          serverList = List<Map<String, dynamic>>.from(decoded['data'] as List);
         }
       }
     } catch (_) {}
-    return [];
+
+    final localList = _localSubmittedAssessments[residentId] ?? [];
+    final Map<String, Map<String, dynamic>> merged = {};
+    for (final item in serverList) {
+      final idKey = item['id']?.toString() ?? DateTime.now().microsecondsSinceEpoch.toString();
+      merged[idKey] = item;
+    }
+    for (final item in localList) {
+      final idKey = item['id']?.toString() ?? DateTime.now().microsecondsSinceEpoch.toString();
+      merged[idKey] = item;
+    }
+    return merged.values.toList();
   }
 
   /// Fetches real RALPA trajectory prediction from GET /api/ai/trajectory/{residentId}.
