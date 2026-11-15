@@ -459,6 +459,16 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
           }
         }
       }
+
+      if (authState.isElder) {
+        final all = _liveResidents.isNotEmpty ? _liveResidents : _allEldersFallback;
+        final myRec = all.firstWhere(
+          (r) => (authState.residentId != null && r.id == authState.residentId) ||
+                 (authState.userName != null && r.name.toLowerCase().contains(authState.userName!.toLowerCase().split(' ')[0])),
+          orElse: () => all.first,
+        );
+        _selectResident(myRec);
+      }
     } catch (_) {
       _applyFallback();
     } finally {
@@ -469,6 +479,15 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
   void _applyFallback() {
     _liveResidents = _allEldersFallback;
     _liveUsers = _allUsersFallback;
+    final authState = ref.read(authProvider).state;
+    if (authState.isElder && _allEldersFallback.isNotEmpty) {
+      final myRec = _allEldersFallback.firstWhere(
+        (r) => (authState.residentId != null && r.id == authState.residentId) ||
+               (authState.userName != null && r.name.toLowerCase().contains(authState.userName!.toLowerCase().split(' ')[0])),
+        orElse: () => _allEldersFallback.first,
+      );
+      _selectResident(myRec);
+    }
   }
 
   Future<void> _selectResident(ResidentItem resident) async {
@@ -3862,13 +3881,39 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
             ? 'Female'
             : 'Senior Resident');
 
-    final rawRisk = (myRecord.riskLevel ?? '').toUpperCase();
-    final isHighRisk = rawRisk == 'HIGH' || myRecord.riskScore >= 0.70;
-    final isModRisk = rawRisk == 'MODERATE' || (!isHighRisk && myRecord.riskScore >= 0.35);
-    final String riskLabel = isHighRisk ? 'High Risk' : (isModRisk ? 'Moderate Risk' : 'Low Risk');
-    final Color riskColor = isHighRisk ? AppColors.riskHigh : (isModRisk ? AppColors.riskModerate : AppColors.riskLow);
-    final Color riskBg = isHighRisk ? AppColors.riskHighBg : (isModRisk ? AppColors.riskModerateBg : AppColors.riskLowBg);
-    final IconData riskIcon = isHighRisk ? LucideIcons.shieldAlert : LucideIcons.shieldCheck;
+    final completedEmotional = _residentEmotionalHistory
+        .where((a) => a.status.toUpperCase() != 'CANCELLED')
+        .toList();
+    final completedCognitive = _residentCognitiveHistory
+        .where((a) => a.status.toUpperCase() == 'COMPLETED')
+        .toList();
+
+    // Check if resident has real completed assessments
+    final bool hasEmotional = completedEmotional.isNotEmpty;
+    final bool hasCognitive = completedCognitive.isNotEmpty ||
+        (myRecord.cognitiveScore != null && myRecord.cognitiveScore! > 0 && myRecord.lastAssessmentDate != null);
+    final bool hasMetabolic = _latestMetabolic != null && _latestMetabolic!.outcomes.isNotEmpty;
+    final bool hasAnyAssessment = hasEmotional || hasCognitive || hasMetabolic;
+
+    final String riskLabel;
+    final Color riskColor;
+    final Color riskBg;
+    final IconData riskIcon;
+
+    if (!hasAnyAssessment) {
+      riskLabel = 'Not Assessed Yet';
+      riskColor = const Color(0xFF64748B);
+      riskBg = const Color(0xFFF1F5F9);
+      riskIcon = LucideIcons.clock;
+    } else {
+      final rawRisk = (myRecord.riskLevel ?? '').toUpperCase();
+      final isHighRisk = rawRisk == 'HIGH' || myRecord.riskScore >= 0.70;
+      final isModRisk = rawRisk == 'MODERATE' || (!isHighRisk && myRecord.riskScore >= 0.35);
+      riskLabel = isHighRisk ? 'High Risk' : (isModRisk ? 'Moderate Risk' : 'Low Risk');
+      riskColor = isHighRisk ? AppColors.riskHigh : (isModRisk ? AppColors.riskModerate : AppColors.riskLow);
+      riskBg = isHighRisk ? AppColors.riskHighBg : (isModRisk ? AppColors.riskModerateBg : AppColors.riskLowBg);
+      riskIcon = isHighRisk ? LucideIcons.shieldAlert : LucideIcons.shieldCheck;
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -4028,11 +4073,29 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                _buildScoreBar('Cognitive Clarity', myRecord.cognitiveScore != null ? myRecord.cognitiveScore! / 100.0 : 0.0, const Color(0xFF6366F1)),
+                _buildScoreBar(
+                  'Cognitive Clarity',
+                  hasCognitive
+                      ? (completedCognitive.isNotEmpty
+                          ? (completedCognitive.first.acrfScore != null ? completedCognitive.first.acrfScore! / 100.0 : null)
+                          : (myRecord.cognitiveScore != null ? myRecord.cognitiveScore! / 100.0 : null))
+                      : null,
+                  const Color(0xFF6366F1),
+                ),
                 const SizedBox(height: 10),
-                _buildScoreBar('Emotional Wellness', myRecord.emotionalScore != null ? myRecord.emotionalScore! / 100.0 : 0.0, const Color(0xFFEC4899)),
+                _buildScoreBar(
+                  'Emotional Wellness',
+                  hasEmotional
+                      ? ((completedEmotional.first.overallScore ?? completedEmotional.first.emotionalScore ?? myRecord.emotionalScore ?? 0.0) / 100.0)
+                      : null,
+                  const Color(0xFFEC4899),
+                ),
                 const SizedBox(height: 10),
-                _buildScoreBar('Metabolic Stability', 0.70, const Color(0xFF10B981)),
+                _buildScoreBar(
+                  'Metabolic Stability',
+                  hasMetabolic ? 0.70 : null,
+                  const Color(0xFF10B981),
+                ),
                 const SizedBox(height: 20),
                 Container(
                   padding: const EdgeInsets.all(12),
@@ -4188,7 +4251,8 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
     );
   }
 
-  Widget _buildScoreBar(String label, double score, Color color) {
+  Widget _buildScoreBar(String label, double? score, Color color) {
+    final bool isAssessed = score != null && score > 0.0;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -4196,17 +4260,24 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.body)),
-            Text('${(score * 100).toInt()}%', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: color)),
+            Text(
+              isAssessed ? '${(score * 100).toInt()}%' : 'Not Assessed Yet',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: isAssessed ? FontWeight.bold : FontWeight.w600,
+                color: isAssessed ? color : AppColors.muted,
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 4),
         ClipRRect(
           borderRadius: BorderRadius.circular(4),
           child: LinearProgressIndicator(
-            value: score,
+            value: isAssessed ? score : 0.0,
             minHeight: 6,
             backgroundColor: AppColors.surfaceSecondary,
-            valueColor: AlwaysStoppedAnimation<Color>(color),
+            valueColor: AlwaysStoppedAnimation<Color>(isAssessed ? color : const Color(0xFFE2E8F0)),
           ),
         ),
       ],

@@ -141,8 +141,8 @@ public class AuthService {
                     .currentStatus(WellnessStatus.LOOKING_GOOD)
                     .riskLevel(RiskLevel.LOW)
                     .trajectory(TrajectoryStatus.STABLE)
-                    .emotionalScore(80.0)
-                    .lastAssessmentDate(LocalDateTime.now())
+                    .emotionalScore(null)
+                    .lastAssessmentDate(null)
                     .build();
             residentRepository.save(resident);
             residentId = resident.getId();

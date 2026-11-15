@@ -66,8 +66,7 @@ public class Resident {
     private TrajectoryStatus trajectory = TrajectoryStatus.IMPROVING;
 
     @Column(name = "emotional_score")
-    @Builder.Default
-    private Double emotionalScore = 85.0;
+    private Double emotionalScore;
 
     @Column(name = "social_score")
     private Double socialScore;
