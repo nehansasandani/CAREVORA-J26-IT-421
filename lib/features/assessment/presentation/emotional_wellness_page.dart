@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
@@ -7605,10 +7606,10 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
     final completedCount = _currentIndex + (_caregiverNotified ? 1 : 0);
     final remainingCount = (_questions.length - (_currentIndex + 1) - (_caregiverNotified ? 1 : 0)).clamp(0, _questions.length);
 
-    // When logged in as an Elder resident, display the full emotional wellness dashboard
-    // matching the caregiver experience, with an option to toggle the accessible conversation view.
-    if (_useSimplifiedElderView && authState.state.isElder) {
-      return _buildElderResidentView(currentQ);
+    // When logged in as an Elder resident, display the clean, accessible, senior-friendly assessment layout
+    // strictly matching the design mockup (media_1794817280296_857436aa.png).
+    if (authState.state.isElder) {
+      return _buildElderAssessmentLayout(currentQ);
     }
 
     return SingleChildScrollView(
@@ -7773,8 +7774,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
 
   // --- TOP HEADER BAR ---
   Widget _buildTopHeaderBar() {
-    final lang = ref.watch(languageProvider).currentLanguage;
-    final strings = AppStrings(lang);
+    final isSinhala = ref.watch(languageProvider).isSinhala;
     final isElder = ref.watch(authProvider).state.isElder;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -7786,14 +7786,17 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
             padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
             child: Row(
               children: [
-                const Icon(LucideIcons.arrowLeft, size: 16, color: AppColors.primary),
-                const SizedBox(width: 6),
+                const Icon(LucideIcons.arrowLeft, size: 16, color: Color(0xFF5E35B1)),
+                const SizedBox(width: 8),
                 Text(
-                  isElder ? strings.backToHealthRecord : 'Back to Residents',
+                  isElder
+                      ? (isSinhala ? 'භාවනා සහ සුවසාධන පරීක්ෂණය' : 'Mindfulness & Wellness Assessment')
+                      : (isSinhala ? 'ආපසු නේවාසික ලැයිස්තුවට' : 'Back to Residents'),
                   style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.primary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF4A148C),
+                    letterSpacing: 0.1,
                   ),
                 ),
               ],
@@ -7807,12 +7810,15 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
   // --- RESIDENT HEADER CARD ---
   Widget _buildResidentHeaderCard() {
     final authState = ref.watch(authProvider).state;
-    final initials = _currentResident.name
-        .split(' ')
-        .where((w) => !w.startsWith('Mr.') && !w.startsWith('Mrs.') && !w.startsWith('Dr.'))
-        .take(2)
-        .map((w) => w.isNotEmpty ? w[0] : '')
-        .join();
+    final isSinhala = ref.watch(languageProvider).isSinhala;
+
+    final rawName = _currentResident.name.trim();
+    final displayName = rawName.isNotEmpty
+        ? rawName.split(' ').map((part) {
+            if (part.isEmpty) return '';
+            return part[0].toUpperCase() + part.substring(1);
+          }).join(' ')
+        : (isSinhala ? 'නේවාසික සාමාජිකයා' : 'Resident');
 
     final cleanRoom = _currentResident.roomNo
         .replaceAll('Room No: ', '')
@@ -7821,317 +7827,383 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
         .replaceAll('Suite ', '')
         .trim();
 
+    final cleanId = _currentResident.id.padLeft(4, '0');
+
+    final initials = displayName
+        .split(' ')
+        .where((w) => !w.startsWith('Mr.') && !w.startsWith('Mrs.') && !w.startsWith('Dr.'))
+        .take(2)
+        .map((w) => w.isNotEmpty ? w[0].toUpperCase() : '')
+        .join();
+
+    final effectiveAvatar = (authState.isElder ? authState.avatarUrl : null) ??
+        _currentResident.avatarUrl ??
+        authState.avatarUrl;
+
+    final genderText = isSinhala
+        ? (_currentResident.gender?.toLowerCase() == 'female' ? 'Female' : 'Male')
+        : (_currentResident.gender?.isNotEmpty == true ? _currentResident.gender! : 'Male');
+
+    final wardText = cleanRoom.isNotEmpty
+        ? 'Ward: Lotus Wing ($cleanRoom)'
+        : 'Ward: Lotus Wing (A-12)';
+
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFE5E1F6), width: 1.2),
+        borderRadius: BorderRadius.circular(22),
+        gradient: const LinearGradient(
+          colors: [
+            Color(0xFF6B44B6),
+            Color(0xFF7A54C2),
+            Color(0xFF8B64CB),
+            Color(0xFF9E77D6),
+          ],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF6C3FC5).withValues(alpha: 0.07),
-            blurRadius: 28,
+            color: const Color(0xFF6B44B6).withValues(alpha: 0.28),
+            blurRadius: 24,
             offset: const Offset(0, 8),
-          ),
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 4,
-            offset: const Offset(0, 1),
           ),
         ],
       ),
-      child: Wrap(
-        spacing: 20,
-        runSpacing: 16,
-        alignment: WrapAlignment.spaceBetween,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Resident Avatar with portrait image & active status indicator
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  RepaintBoundary(
-                    child: Container(
-                      width: 62,
-                      height: 62,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: const Color(0xFFDDD6FE), width: 2.5),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF6C3FC5).withValues(alpha: 0.28),
-                            blurRadius: 16,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: CarevoraAvatar(
-                        key: const ValueKey('resident_emotional_banner_avatar'),
-                        avatarUrl: _currentResident.avatarUrl ?? (authState.isElder ? authState.avatarUrl : null),
-                        radius: 31,
-                        initials: initials.isNotEmpty ? initials : 'R',
-                      ),
-                    ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(22),
+        child: Stack(
+          children: [
+            // Blooming Flowers Graphic on the Right (fading smoothly into purple gradient)
+            Positioned(
+              right: 0,
+              top: 0,
+              bottom: 0,
+              child: Opacity(
+                opacity: 0.95,
+                child: Image.asset(
+                  'assets/images/banner_flowers_fade.png',
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Image.network(
+                    'banner_flowers_fade.png',
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const SizedBox.shrink(),
                   ),
-                  Positioned(
-                    right: 0,
-                    bottom: 0,
-                    child: Container(
-                      width: 16,
-                      height: 16,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF10B981),
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2.5),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF10B981).withValues(alpha: 0.6),
-                            blurRadius: 6,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
-              const SizedBox(width: 16),
-              // Resident Identity & Demographic Information
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            ),
+
+            // Banner Content
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 18),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
+                  // Rounded Square Elder Avatar with Green Active Dot
+                  Stack(
+                    clipBehavior: Clip.none,
                     children: [
-                      Text(
-                        _currentResident.name,
-                        style: const TextStyle(
-                          fontSize: 21,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.navy,
-                          letterSpacing: -0.3,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
                       Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 3.5,
-                        ),
+                        width: 82,
+                        height: 82,
                         decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFFEDE9FE), Color(0xFFF3E8FF)],
-                          ),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFDDD6FE)),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              LucideIcons.userCheck,
-                              size: 11,
-                              color: AppColors.primary,
-                            ),
-                            const SizedBox(width: 5),
-                            Text(
-                              ref.watch(languageProvider).isSinhala ? 'වැඩිහිටියා / නේවාසිකයා' : 'ELDER / RESIDENT',
-                              style: const TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.primary,
-                                letterSpacing: 0.4,
-                              ),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.white, width: 3.5),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.2),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
                             ),
                           ],
                         ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12.5),
+                          child: _buildBannerAvatarContent(
+                            effectiveAvatar,
+                            displayName,
+                            initials,
+                          ),
+                        ),
                       ),
-                      if (_facilityName.isNotEmpty) ...[
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 9,
-                            vertical: 3.5,
-                          ),
+                      Positioned(
+                        right: -3,
+                        bottom: -3,
+                        child: Container(
+                          width: 20,
+                          height: 20,
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF1F5F9),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: const Color(0xFFE2E8F0)),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                LucideIcons.building2,
-                                size: 11,
-                                color: Color(0xFF475569),
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                _facilityName,
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF475569),
-                                ),
+                            color: const Color(0xFF22C55E),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2.8),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF22C55E).withValues(alpha: 0.7),
+                                blurRadius: 6,
                               ),
                             ],
                           ),
                         ),
-                      ],
+                      ),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  // Rich Demographic Attribute Pills
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 6,
-                    children: [
-                      _buildResidentDetailPill(
-                        icon: LucideIcons.calendar,
-                        label: ref.watch(languageProvider).isSinhala ? 'වයස: අවු ${_currentResident.age}' : 'Age: ${_currentResident.age} yrs',
-                        color: const Color(0xFF4F46E5),
-                        bg: const Color(0xFFEEF2FF),
-                        border: const Color(0xFFE0E7FF),
-                      ),
-                      _buildResidentDetailPill(
-                        icon: LucideIcons.doorOpen,
-                        label: ref.watch(languageProvider).isSinhala
-                            ? (cleanRoom.isNotEmpty ? 'කාමරය $cleanRoom' : 'කාමරය 30')
-                            : (cleanRoom.isNotEmpty ? 'Room $cleanRoom' : 'Room 30'),
-                        color: const Color(0xFF059669),
-                        bg: const Color(0xFFECFDF5),
-                        border: const Color(0xFFA7F3D0),
-                      ),
-                      _buildResidentDetailPill(
-                        icon: LucideIcons.graduationCap,
-                        label: ref.watch(languageProvider).isSinhala ? 'අධ්‍යාපනය: වසර ${_educationYears ?? 13}' : 'Education: ${_educationYears ?? 13} yrs',
-                        color: const Color(0xFF7C3AED),
-                        bg: const Color(0xFFF5F3FF),
-                        border: const Color(0xFFDDD6FE),
-                      ),
-                    ],
+                  const SizedBox(width: 20),
+
+                  // Center Details: Greeting, Subtitle & White Pill Capsules
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Headline: ආයුබෝවන්, $displayName! 👋
+                        Row(
+                          children: [
+                            Text(
+                              isSinhala ? 'ආයුබෝවන්, $displayName! 👋' : 'Welcome, $displayName! 👋',
+                              style: TextStyle(
+                                fontSize: authState.isElder ? 24 : 22,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white,
+                                letterSpacing: 0.2,
+                              ),
+                            ),
+                            if (!authState.isElder && _availableResidents.length > 1) ...[
+                              const SizedBox(width: 12),
+                              _buildCaregiverCompactSwitcher(),
+                            ],
+                          ],
+                        ),
+                        if (!authState.isElder) ...[
+                          const SizedBox(height: 4),
+
+                          // Subtitle: ඔබ අදත් අප සමඟ සිටිනවට, ඔබගේ සුවසාධනය පරීක්ෂා කිරීමට සූදානම්ද?
+                          Text(
+                            isSinhala
+                                ? 'ඔබ අදත් අප සමඟ සිටිනවට, ඔබගේ සුවසාධනය පරීක්ෂා කිරීමට සූදානම්ද?'
+                                : 'So glad you are with us today, are you ready to check your wellness?',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w400,
+                              color: Colors.white.withValues(alpha: 0.95),
+                              height: 1.3,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+
+                          // White Capsule Badges Row
+                          Wrap(
+                            spacing: 10,
+                            runSpacing: 8,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              _buildScreenshot2Pill(
+                                icon: LucideIcons.contact,
+                                label: 'Resident ID: RES-$cleanId',
+                              ),
+                              _buildScreenshot2Pill(
+                                icon: LucideIcons.calendar,
+                                label: 'Age: ${_currentResident.age} Years',
+                              ),
+                              _buildScreenshot2Pill(
+                                icon: LucideIcons.user,
+                                label: genderText,
+                              ),
+                              _buildScreenshot2Pill(
+                                icon: LucideIcons.home,
+                                label: wardText,
+                              ),
+                            ],
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
                 ],
               ),
-            ],
-          ),
-          Wrap(
-            spacing: 12,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              // Caregiver Switcher if multiple residents
-              if (!authState.isElder && _availableResidents.length > 1)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: _availableResidents.any((r) => r.id == _currentResident.id)
-                          ? _currentResident.id
-                          : (_availableResidents.isNotEmpty ? _availableResidents.first.id : null),
-                      icon: const Icon(LucideIcons.chevronDown, size: 14, color: AppColors.primary),
-                      style: const TextStyle(
-                        fontSize: 12.5,
-                        color: AppColors.navy,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      items: () {
-                        final seen = <String>{};
-                        final unique = <Resident>[];
-                        for (final r in _availableResidents) {
-                          if (seen.add(r.id)) unique.add(r);
-                        }
-                        return unique.map((Resident r) {
-                          final clean = (r.name.trim().isNotEmpty && r.name.trim() != '-')
-                              ? r.name.trim()
-                              : 'Resident #${r.id}';
-                          return DropdownMenuItem<String>(
-                            value: r.id,
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(LucideIcons.user, size: 13, color: AppColors.primary),
-                                const SizedBox(width: 6),
-                                Text('$clean (ID: ${_formatDisplayId(r.id)})'),
-                              ],
-                            ),
-                          );
-                        }).toList();
-                      }(),
-                      onChanged: (String? newResId) {
-                        if (newResId != null) {
-                          final selected = _availableResidents.firstWhere(
-                            (r) => r.id == newResId,
-                            orElse: () => _availableResidents.first,
-                          );
-                          setState(() {
-                            _currentResident = selected;
-                            if (_liveProfiles != null && _liveProfiles!.isNotEmpty) {
-                              final matched = _liveProfiles!.firstWhere(
-                                (p) => p.id.toString() == newResId,
-                                orElse: () => _liveProfiles!.first,
-                              );
-                              _educationYears = matched.educationYears ?? 13;
-                              if (matched.elderHomeName != null && matched.elderHomeName!.isNotEmpty) {
-                                _facilityName = matched.elderHomeName!;
-                              }
-                            }
-                            _loadResidentData(selected.id);
-                          });
-                        }
-                      },
-                    ),
-                  ),
-                ),
-              // Floating Session Battery Badge
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 15,
-                  vertical: 8.5,
-                ),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF6C3FC5), Color(0xFF8B5CF6)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF6C3FC5).withValues(alpha: 0.28),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(LucideIcons.sparkles, size: 14, color: Colors.white),
-                    const SizedBox(width: 6),
-                    Text(
-                      ref.watch(languageProvider).isSinhala ? 'ස්වයං-ප්‍රතිචාර සැසිය (ප්‍රශ්න ${_questions.length})' : 'Self-Response Session (${_questions.length} Items)',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                        letterSpacing: 0.2,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildScreenshot2Pill({
+    required IconData icon,
+    required String label,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6.5),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
           ),
         ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: const Color(0xFF4A148C)),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF2E1065),
+              letterSpacing: 0.1,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBannerAvatarContent(String? avatarUrl, String displayName, String initials) {
+    if (avatarUrl != null && avatarUrl.trim().isNotEmpty) {
+      final url = avatarUrl.trim();
+      if (url.startsWith('http://') || url.startsWith('https://')) {
+        return Image.network(
+          url,
+          width: 82,
+          height: 82,
+          fit: BoxFit.cover,
+          gaplessPlayback: true,
+          errorBuilder: (_, __, ___) => _buildInitialsSquircle(initials, displayName),
+        );
+      } else if (url.startsWith('assets/')) {
+        return Image.asset(
+          url,
+          width: 82,
+          height: 82,
+          fit: BoxFit.cover,
+          gaplessPlayback: true,
+          errorBuilder: (_, __, ___) => _buildInitialsSquircle(initials, displayName),
+        );
+      } else {
+        // Base64 data URL (e.g. data:image/jpeg;base64,...) or raw Base64 string from user upload
+        try {
+          String rawB64 = url;
+          if (rawB64.contains(',')) {
+            rawB64 = rawB64.substring(rawB64.indexOf(',') + 1);
+          }
+          final cleanBase64 = rawB64.replaceAll(RegExp(r'\s+'), '');
+          if (cleanBase64.isNotEmpty) {
+            final Uint8List bytes = base64Decode(cleanBase64);
+            if (bytes.isNotEmpty) {
+              return Image.memory(
+                bytes,
+                width: 82,
+                height: 82,
+                fit: BoxFit.cover,
+                gaplessPlayback: true,
+                errorBuilder: (_, __, ___) => _buildInitialsSquircle(initials, displayName),
+              );
+            }
+          }
+        } catch (e) {
+          debugPrint('Error decoding elder avatar base64: $e');
+        }
+      }
+    }
+
+    // Unique personalized initials squircle if no photo was uploaded by this person
+    return _buildInitialsSquircle(initials, displayName);
+  }
+
+  Widget _buildInitialsSquircle(String initials, String name) {
+    final palette = [
+      [const Color(0xFFEDE9FE), const Color(0xFFDDD6FE), const Color(0xFF5B21B6)],
+      [const Color(0xFFE0F2FE), const Color(0xFFBAE6FD), const Color(0xFF075985)],
+      [const Color(0xFFFCE7F3), const Color(0xFFFBCFE8), const Color(0xFF9D174D)],
+      [const Color(0xFFFEF3C7), const Color(0xFFFDE68A), const Color(0xFF92400E)],
+      [const Color(0xFFD1FAE5), const Color(0xFFA7F3D0), const Color(0xFF065F46)],
+    ];
+    final colorIndex = (name.hashCode.abs()) % palette.length;
+    final bgStart = palette[colorIndex][0];
+    final bgEnd = palette[colorIndex][1];
+    final textColor = palette[colorIndex][2];
+
+    final displayInitials = initials.isNotEmpty
+        ? initials
+        : (name.isNotEmpty ? name[0].toUpperCase() : 'R');
+
+    return Container(
+      width: 82,
+      height: 82,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [bgStart, bgEnd],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        displayInitials,
+        style: TextStyle(
+          fontSize: 26,
+          fontWeight: FontWeight.w800,
+          color: textColor,
+          letterSpacing: 0.5,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCaregiverCompactSwitcher() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.22),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          dropdownColor: const Color(0xFF6B44B6),
+          value: _availableResidents.any((r) => r.id == _currentResident.id)
+              ? _currentResident.id
+              : (_availableResidents.isNotEmpty ? _availableResidents.first.id : null),
+          icon: const Icon(LucideIcons.chevronDown, size: 14, color: Colors.white),
+          style: const TextStyle(
+            fontSize: 12,
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+          ),
+          items: () {
+            final seen = <String>{};
+            final unique = <Resident>[];
+            for (final r in _availableResidents) {
+              if (seen.add(r.id)) unique.add(r);
+            }
+            return unique.map((Resident r) {
+              final clean = (r.name.trim().isNotEmpty && r.name.trim() != '-')
+                  ? r.name.trim()
+                  : 'Resident #${r.id}';
+              return DropdownMenuItem<String>(
+                value: r.id,
+                child: Text(clean, style: const TextStyle(color: Colors.white)),
+              );
+            }).toList();
+          }(),
+          onChanged: (String? newResId) {
+            if (newResId != null) {
+              final selected = _availableResidents.firstWhere(
+                (r) => r.id == newResId,
+                orElse: () => _availableResidents.first,
+              );
+              setState(() {
+                _currentResident = selected;
+                _loadResidentData(selected.id);
+              });
+            }
+          },
+        ),
       ),
     );
   }
@@ -8526,13 +8598,22 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
   }
 
   // --- CAMERA BOX (FACIAL EXPRESSION) ---
-  Widget _buildCameraCard() {
+  Widget _buildCameraCard({bool isElderMode = false}) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surfaceSecondary,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
+        color: isElderMode ? Colors.white : AppColors.surfaceSecondary,
+        borderRadius: BorderRadius.circular(isElderMode ? 20 : 16),
+        border: Border.all(color: isElderMode ? const Color(0xFFE2E8F0) : AppColors.border),
+        boxShadow: isElderMode
+            ? [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.02),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                ),
+              ]
+            : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -8541,16 +8622,25 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                ref.watch(languageProvider).isSinhala ? 'කැමරාව (මුහුණේ හැඟීම්)' : 'Camera (Facial Expression)',
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.navy),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(LucideIcons.camera, size: 18, color: AppColors.primary),
+                  const SizedBox(width: 8),
+                  Text(
+                    ref.watch(languageProvider).isSinhala ? 'කැමරාව (මුහුණේ හැඟීම්)' : 'Camera (Facial Expression)',
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.navy),
+                  ),
+                ],
               ),
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   _buildElderCamToggleButton(),
-                  const SizedBox(width: 8),
-                  _buildFacialCaptureStatusBadge(),
+                  if (!isElderMode) ...[
+                    const SizedBox(width: 8),
+                    _buildFacialCaptureStatusBadge(),
+                  ],
                 ],
               ),
             ],
@@ -8859,15 +8949,16 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
               ),
             ),
           ],
-          const SizedBox(height: 12),
-
-          // Real AI Detected Emotion Readout
-          Text(
-            ref.watch(languageProvider).isSinhala ? 'AI හඳුනාගත් මුහුණේ හැඟීම:' : 'AI Detected Facial Emotion:',
-            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.navy),
-          ),
-          const SizedBox(height: 8),
-          _buildAiDetectedEmotionDisplay(),
+          if (!isElderMode) ...[
+            const SizedBox(height: 12),
+            // Real AI Detected Emotion Readout
+            Text(
+              ref.watch(languageProvider).isSinhala ? 'AI හඳුනාගත් මුහුණේ හැඟීම:' : 'AI Detected Facial Emotion:',
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.navy),
+            ),
+            const SizedBox(height: 8),
+            _buildAiDetectedEmotionDisplay(),
+          ],
         ],
       ),
     );
@@ -9135,13 +9226,22 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
   }
 
   // --- VOICE RECORDING BOX ---
-  Widget _buildVoiceRecordingCard() {
+  Widget _buildVoiceRecordingCard({bool isElderMode = false}) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surfaceSecondary,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
+        color: isElderMode ? Colors.white : AppColors.surfaceSecondary,
+        borderRadius: BorderRadius.circular(isElderMode ? 20 : 16),
+        border: Border.all(color: isElderMode ? const Color(0xFFE2E8F0) : AppColors.border),
+        boxShadow: isElderMode
+            ? [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.02),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                ),
+              ]
+            : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -9150,44 +9250,33 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                ref.watch(languageProvider).isSinhala ? 'හඬ පටිගත කිරීම' : 'Voice Recording',
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.navy),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(LucideIcons.mic, size: 18, color: AppColors.primary),
+                  const SizedBox(width: 8),
+                  Text(
+                    ref.watch(languageProvider).isSinhala ? 'හඬ පටිගත කිරීම' : 'Voice Recording',
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.navy),
+                  ),
+                ],
               ),
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                    width: 7,
+                    height: 7,
                     decoration: BoxDecoration(
-                      color: _isRecording ? AppColors.riskHighBg : AppColors.border,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.fiber_manual_record,
-                          size: 8,
-                          color: _isRecording ? AppColors.riskHigh : AppColors.muted,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          _isRecording
-                              ? (ref.watch(languageProvider).isSinhala ? 'පටිගත වෙමින්...' : 'Recording...')
-                              : (ref.watch(languageProvider).isSinhala ? 'විරාමය' : 'Paused'),
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: _isRecording ? AppColors.riskHigh : AppColors.muted,
-                          ),
-                        ),
-                      ],
+                      color: _isRecording ? const Color(0xFFEF4444) : const Color(0xFF94A3B8),
+                      shape: BoxShape.circle,
                     ),
                   ),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: 5),
                   Text(
-                    _formatTimer(_recordSeconds),
+                    ref.watch(languageProvider).isSinhala
+                        ? 'පටිගත. ${_formatTimer(_recordSeconds)}'
+                        : 'Rec. ${_formatTimer(_recordSeconds)}',
                     style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
@@ -9198,7 +9287,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
 
           // Speech Language selection bar
           Row(
@@ -9208,24 +9297,16 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                 ref.watch(languageProvider).isSinhala ? 'කථා කරන භාෂාව:' : 'Speech Language:',
                 style: const TextStyle(fontSize: 11, color: AppColors.muted, fontWeight: FontWeight.w500),
               ),
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppColors.border),
-                ),
-                padding: const EdgeInsets.all(2),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _buildLangToggleItem('si-LK', '🇱🇰 සිංහල'),
-                    _buildLangToggleItem('en-US', '🇺🇸 English'),
-                  ],
-                ),
+              Row(
+                children: [
+                  _buildLangToggleItem('si-LK', '🇱🇰 සිංහල'),
+                  const SizedBox(width: 6),
+                  _buildLangToggleItem('en-US', '🌐 English'),
+                ],
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
 
           // Dynamic Animated Audio Waveform Box
           Container(
@@ -9309,109 +9390,110 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                 Text(
                   _isRecording
                       ? (ref.watch(languageProvider).isSinhala ? 'නැවැත්වීමට මයික්‍රෆෝනය ඔබන්න' : 'Tap microphone to stop')
-                      : (ref.watch(languageProvider).isSinhala ? 'පටිගත කිරීමට මයික්‍රෆෝනය ඔබන්න' : 'Tap microphone to record'),
+                      : (ref.watch(languageProvider).isSinhala ? 'පටිගත කිරීමට ආරම්භ කිරීමට මයික් බොත්තම ඔබන්න' : 'Tap microphone to speak your response...'),
                   style: const TextStyle(fontSize: 11, color: AppColors.muted),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 10),
-
-          // Spoken Transcript Preview
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: _isRecording ? AppColors.primary.withValues(alpha: 0.4) : AppColors.border),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  _isRecording ? LucideIcons.mic : LucideIcons.messageSquare,
-                  size: 14,
-                  color: _isRecording ? AppColors.riskHigh : AppColors.primary,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    _spokenText.isNotEmpty
-                        ? _spokenText
-                        : (_isRecording
-                            ? (_micStatusNotice.isNotEmpty ? _micStatusNotice : '🎙️ Listening... (Speak in $_selectedVoiceLocaleLabel)')
-                            : 'Tap the microphone to speak your response...'),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontStyle: FontStyle.italic,
-                      color: _spokenText.isNotEmpty
-                          ? AppColors.navy
-                          : (_isRecording ? AppColors.primary : AppColors.muted),
-                      fontWeight: _isRecording ? FontWeight.w600 : FontWeight.normal,
-                    ),
-                  ),
-                ),
-                if (_spokenText.isNotEmpty)
-                  GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        _spokenText = '';
-                      });
-                    },
-                    child: const Icon(LucideIcons.x, size: 14, color: AppColors.muted),
-                  ),
-              ],
-            ),
-          ),
-          if (_isRecording || _spokenText.isNotEmpty) ...[
-            const SizedBox(height: 8),
+          if (!isElderMode || _spokenText.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            // Spoken Transcript Preview
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: _getVoiceEmotionColor(_voiceEmotion).withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: _getVoiceEmotionColor(_voiceEmotion).withValues(alpha: 0.3)),
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: _isRecording ? AppColors.primary.withValues(alpha: 0.4) : AppColors.border),
               ),
               child: Row(
                 children: [
                   Icon(
-                    _isRecording ? Icons.sensors : LucideIcons.checkCircle2,
+                    _isRecording ? LucideIcons.mic : LucideIcons.messageSquare,
                     size: 14,
-                    color: _getVoiceEmotionColor(_voiceEmotion),
+                    color: _isRecording ? AppColors.riskHigh : AppColors.primary,
                   ),
-                  const SizedBox(width: 6),
-                  const Text(
-                    'Elder Voice Emotion: ',
-                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.navy),
-                  ),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      '$_voiceEmotion (${(_voiceConfidence * 100).toInt()}%)',
+                      _spokenText.isNotEmpty
+                          ? _spokenText
+                          : (_isRecording
+                              ? (_micStatusNotice.isNotEmpty ? _micStatusNotice : '🎙️ Listening... (Speak in $_selectedVoiceLocaleLabel)')
+                              : 'Tap the microphone to speak your response...'),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: _getVoiceEmotionColor(_voiceEmotion),
+                        fontStyle: FontStyle.italic,
+                        color: _spokenText.isNotEmpty
+                            ? AppColors.navy
+                            : (_isRecording ? AppColors.primary : AppColors.muted),
+                        fontWeight: _isRecording ? FontWeight.w600 : FontWeight.normal,
                       ),
                     ),
                   ),
+                  if (_spokenText.isNotEmpty)
+                    GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _spokenText = '';
+                        });
+                      },
+                      child: const Icon(LucideIcons.x, size: 14, color: AppColors.muted),
+                    ),
                 ],
               ),
             ),
           ],
           const SizedBox(height: 10),
 
+          // Voice Emotion Detection Result (matching mockup light blue container)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEFF6FF),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFFBFDBFE)),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  LucideIcons.circleCheck,
+                  size: 15,
+                  color: Color(0xFF2563EB),
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  'Elder Voice Emotion: ',
+                  style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF1E3A8A)),
+                ),
+                Expanded(
+                  child: Text(
+                    '$_voiceEmotion (${(_voiceConfidence * 100).toInt()}%)',
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF2563EB),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+
           // Quick Voice Test Prompts
           Wrap(
             spacing: 6,
-            runSpacing: 4,
+            runSpacing: 6,
             children: [
-              _buildQuickSpeechChip('😊 Feeling Happy & Fine', 'I feel very happy and fine today.'),
-              _buildQuickSpeechChip('😔 Feeling Sad & Lonely', 'I feel sad and alone today.'),
-              _buildQuickSpeechChip('😌 Calm Baseline', 'I am calm and feeling peaceful.'),
-              _buildQuickSpeechChip('😟 Anxious / Worried', 'I feel nervous and worried.'),
-              _buildQuickSpeechChip('🇱🇰 ඔව් සතුටුයි', 'ඔව් අද මට සතුටින් සැනසීමක් දැනෙනවා.'),
-              _buildQuickSpeechChip('🇱🇰 මට දුකයි', 'මට අද දුකයි සහ පාළුයි.'),
+              _buildQuickSpeechChip('😊 Feeling Happy & Fine', 'I feel very happy and fine today.', isYellow: true),
+              _buildQuickSpeechChip('😢 Feeling Sad & Lonely', 'I feel sad and alone today.', isYellow: true),
+              _buildQuickSpeechChip('😐 Calm Baseline', 'I am calm and feeling peaceful.', isYellow: true),
+              _buildQuickSpeechChip('😟 Anxious / Worried', 'I feel nervous and worried.', isYellow: true),
+              _buildQuickSpeechChip('🇱🇰 ඔව් සතුටුයි', 'ඔව් අද මට සතුටින් සැනසීමක් දැනෙනවා.', isYellow: false),
+              _buildQuickSpeechChip('🇱🇰 මම දුකයි', 'මම දුකයි සහ පාළුයි.', isYellow: false),
             ],
           ),
         ],
@@ -9442,7 +9524,11 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
     );
   }
 
-  Widget _buildQuickSpeechChip(String label, String sampleText) {
+  Widget _buildQuickSpeechChip(String label, String sampleText, {bool isYellow = true}) {
+    final bgColor = isYellow ? const Color(0xFFFEF9C3) : const Color(0xFFEDE9FE);
+    final borderColor = isYellow ? const Color(0xFFFDE047) : const Color(0xFFDDD6FE);
+    final textColor = isYellow ? const Color(0xFF854D0E) : const Color(0xFF5B21B6);
+
     return InkWell(
       onTap: () {
         setState(() {
@@ -9453,15 +9539,15 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
       },
       borderRadius: BorderRadius.circular(16),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
-          color: AppColors.lavenderBg,
+          color: bgColor,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.lilac.withValues(alpha: 0.6)),
+          border: Border.all(color: borderColor),
         ),
         child: Text(
           label,
-          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.primary),
+          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: textColor),
         ),
       ),
     );
@@ -14486,285 +14572,249 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
     );
   }
 
-  // --- ELDER RESIDENT ACCESSIBLE VIEW (SECTION 6.6 PRIVACY & DISTRESS SHIELD) ---
-  Widget _buildElderResidentView(AssessmentQuestion currentQ) {
+  // --- ELDER RESIDENT VIEW MATCHING MOCKUP (MEDIA_1794817280296_857436AA) ---
+  Widget _buildElderAssessmentLayout(AssessmentQuestion currentQ) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 800),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // Friendly Header (No clinical scores)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [AppColors.primary, AppColors.navy],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primary.withValues(alpha: 0.3),
-                      blurRadius: 16,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    const Icon(LucideIcons.smile, size: 48, color: Colors.white),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Welcome, ${_currentResident.name}!',
-                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 6),
-                    const Text(
-                      'Let\'s take a gentle moment together today. How are you feeling?',
-                      style: TextStyle(fontSize: 15, color: Colors.white70),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 14),
-                    ElevatedButton.icon(
-                      onPressed: () => setState(() => _useSimplifiedElderView = false),
-                      icon: const Icon(LucideIcons.layoutDashboard, size: 16),
-                      label: const Text('View Full Emotional Wellness Dashboard', style: TextStyle(fontWeight: FontWeight.bold)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: AppColors.primary,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 1. Elder Welcome Banner with Photo & Name (matching design mockup)
+          _buildResidentHeaderCard(),
+          const SizedBox(height: 20),
 
-              // Conversation Question Card (Big font & large tactile buttons)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: AppColors.card,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppColors.border),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.03),
-                      blurRadius: 10,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          ref.watch(languageProvider).isSinhala
-                              ? 'ප්‍රශ්න ${_questions.length} න් ${_currentIndex + 1}'
-                              : 'Question ${_currentIndex + 1} of ${_questions.length}',
-                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.primary),
-                        ),
-                        IconButton(
-                          icon: const Icon(LucideIcons.volume2, color: AppColors.primary, size: 28),
-                          tooltip: ref.watch(languageProvider).isSinhala ? 'ප්‍රශ්නයට සවන් දෙන්න' : 'Listen to Question',
-                          onPressed: _readQuestionAloud,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      ref.watch(languageProvider).isSinhala
-                          ? (currentQ.promptSi ?? currentQ.prompt)
-                          : currentQ.prompt,
-                      style: TextStyle(
-                        fontSize: ref.watch(languageProvider).isSinhala ? 21 : 20,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.navy,
-                        height: 1.4,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 20),
+          // 2. Question Prompt Card with Yes/No, Audio Replay & AI Feedback
+          _buildElderQuestionCard(currentQ),
+          const SizedBox(height: 20),
 
-                    // Microphone interaction button
-                    GestureDetector(
-                      onTap: _toggleRecording,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                        decoration: BoxDecoration(
-                          color: _isRecording ? AppColors.riskHigh : AppColors.primary,
-                          borderRadius: BorderRadius.circular(30),
-                          boxShadow: [
-                            BoxShadow(
-                              color: (_isRecording ? AppColors.riskHigh : AppColors.primary).withValues(alpha: 0.3),
-                              blurRadius: 12,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(_isRecording ? LucideIcons.square : LucideIcons.mic, color: Colors.white, size: 22),
-                            const SizedBox(width: 10),
-                            Text(
-                              _isRecording
-                                  ? (ref.watch(languageProvider).isSinhala ? 'සවන් දෙමින්... නැවැත්වීමට ඔබන්න' : 'Listening... Tap to Stop')
-                                  : (ref.watch(languageProvider).isSinhala ? 'පිළිතුර කථා කිරීමට ඔබන්න' : 'Tap to Speak Your Answer'),
-                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+          // 3. Side-by-side: Camera & Voice Recording
+          LayoutBuilder(
+            builder: (context, constraints) {
+              if (constraints.maxWidth < 720) {
+                return Column(
+                  children: [
+                    _buildCameraCard(isElderMode: true),
                     const SizedBox(height: 16),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceSecondary,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      child: Text(
-                        'Your Words: "$_spokenText"',
-                        style: const TextStyle(fontSize: 14, fontStyle: FontStyle.italic, color: AppColors.navy, height: 1.4),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        if (_currentIndex > 0)
-                          ElevatedButton.icon(
-                            onPressed: _previousQuestion,
-                            icon: const Icon(LucideIcons.chevronLeft, size: 20),
-                            label: const Text('Previous', style: TextStyle(fontSize: 15)),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.surfaceSecondary,
-                              foregroundColor: AppColors.navy,
-                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                            ),
-                          )
-                        else
-                          const SizedBox(),
-                        ElevatedButton.icon(
-                          onPressed: _nextQuestion,
-                          icon: const Icon(LucideIcons.chevronRight, size: 20),
-                          label: Text(
-                            _currentIndex < _questions.length - 1 ? 'Next Question' : 'Complete Check-In',
-                            style: const TextStyle(fontSize: 15),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                          ),
-                        ),
-                      ],
-                    ),
+                    _buildVoiceRecordingCard(isElderMode: true),
                   ],
-                ),
-              ),
-              const SizedBox(height: 28),
+                );
+              }
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(child: _buildCameraCard(isElderMode: true)),
+                  const SizedBox(width: 20),
+                  Expanded(child: _buildVoiceRecordingCard(isElderMode: true)),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
 
-              // Senior Friendly Activities List
+  Widget _buildElderQuestionCard(AssessmentQuestion currentQ) {
+    final isSinhala = ref.watch(languageProvider).isSinhala;
+    final isReversePolarityQ = currentQ.id == 4 || currentQ.id == 5;
+    final isCelebrationState = isReversePolarityQ
+        ? (_answers[currentQ.id] == false)
+        : (_answers[currentQ.id] == true);
+    final isInterventionState = isReversePolarityQ
+        ? (_answers[currentQ.id] == true)
+        : (_answers[currentQ.id] == false);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(26),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 15,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: AppColors.card,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppColors.border),
+                padding: const EdgeInsets.all(9),
+                decoration: const BoxDecoration(
+                  color: Color(0xFFF3E8FF),
+                  shape: BoxShape.circle,
                 ),
+                child: const Icon(LucideIcons.sparkles, size: 20, color: AppColors.primary),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Your Enjoyable Activities for Today',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.navy),
+                    Text(
+                      isSinhala ? (currentQ.promptSi ?? currentQ.prompt) : currentQ.prompt,
+                      style: TextStyle(
+                        fontSize: isSinhala ? 21 : 20,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.navy,
+                        height: 1.35,
+                      ),
                     ),
-                    const SizedBox(height: 6),
-                    const Text(
-                      'Choose activities you love. You can let us know when you finish them!',
-                      style: TextStyle(fontSize: 13, color: AppColors.muted),
-                    ),
-                    const SizedBox(height: 16),
-                    ..._activities.map((act) => Container(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: act.isCompleted ? AppColors.leafGreen.withValues(alpha: 0.08) : AppColors.surfaceSecondary,
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(
-                              color: act.isCompleted ? AppColors.leafGreen : AppColors.border,
+                    const SizedBox(height: 8),
+                    InkWell(
+                      onTap: _readQuestionAloud,
+                      borderRadius: BorderRadius.circular(8),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(LucideIcons.volume2, size: 16, color: AppColors.primary),
+                          const SizedBox(width: 6),
+                          Text(
+                            isSinhala ? 'හඬ නැවත ඇසීමට ඔබන්න' : 'Tap to replay voice',
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.primary,
                             ),
                           ),
-                          child: Row(
-                            children: [
-                              Icon(act.icon, color: act.isCompleted ? AppColors.leafGreen : AppColors.primary, size: 24),
-                              const SizedBox(width: 14),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      act.title,
-                                      style: TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.bold,
-                                        color: act.isCompleted ? AppColors.leafGreen : AppColors.navy,
-                                        decoration: act.isCompleted ? TextDecoration.lineThrough : null,
-                                      ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        _buildYesNoChoiceButton(
+                          label: isSinhala ? 'ඔව්' : 'Yes',
+                          isSelected: _answers[currentQ.id] == true,
+                          isYes: true,
+                          onTap: () => _selectYesNoAnswer(currentQ.id, true),
+                        ),
+                        const SizedBox(width: 14),
+                        _buildYesNoChoiceButton(
+                          label: isSinhala ? 'නැත' : 'No',
+                          isSelected: _answers[currentQ.id] == false,
+                          isYes: false,
+                          onTap: () => _selectYesNoAnswer(currentQ.id, false),
+                        ),
+                      ],
+                    ),
+
+                    // Celebratory AI feedback box (matching mockup)
+                    if (isCelebrationState) ...[
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF0FDF4),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: const Color(0xFF86EFAC)),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('👏', style: TextStyle(fontSize: 26)),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    isSinhala
+                                        ? 'AI සහායක:  ✨ මේ ගැන ඇසීමත් සතුටක්! ✨'
+                                        : 'AI Assistant:  ✨ Delighted to hear this! ✨',
+                                    style: const TextStyle(
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF15803D),
                                     ),
-                                    const SizedBox(height: 4),
-                                    Text(act.category, style: const TextStyle(fontSize: 12, color: AppColors.muted)),
-                                  ],
-                                ),
-                              ),
-                              if (act.isCompleted)
-                                const Icon(LucideIcons.checkCircle2, color: AppColors.leafGreen, size: 24)
-                              else
-                                ElevatedButton(
-                                  onPressed: () {
-                                    setState(() {
-                                      act.isCompleted = true;
-                                      act.residentFeedback = 'Completed happily during morning routine.';
-                                    });
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text('Great job completing "${act.title}"!'),
-                                        backgroundColor: AppColors.leafGreen,
-                                      ),
-                                    );
-                                  },
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: AppColors.primary,
-                                    foregroundColor: Colors.white,
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                                   ),
-                                  child: const Text('I did this!'),
-                                ),
-                            ],
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    isSinhala
+                                        ? (currentQ.id == 5
+                                            ? 'ඔබ කාමරයට පමණක් සීමා නොවී, නිරතුරුවම ක්‍රියාශීලීව සහ සමාජශීලීව කාලය ගත කිරීම ගැන මම ඉතාමත් සතුටු වෙනවා!'
+                                            : (currentQ.id == 4
+                                                ? 'අන් අය එකතු වී සිටින විට ඔබ සතුටින්, සුහදව සහ ආදරයෙන් එක්ව සිටීම ගැන මම ඉතාමත් සතුටු වෙනවා!'
+                                                : (currentQ.id == 3
+                                                    ? 'මෙහි ඔබ සමඟ සමීපව කතාබහ කිරීමට කෙනෙකු සිටීම මහත් භාග්‍යයක්! ඔබේ මිත්‍රත්වය සහ සතුට සදා රැඳේවා!'
+                                                    : (currentQ.id == 2
+                                                        ? 'ඉදිරි දින පිළිබඳව ඔබ තුළ සුබවාදී, ප්‍රීතිමත් බලාපොරොත්තු තිබීම ගැන මම ඉතාමත් සතුටු වෙනවා! ඔබ සැමදා සතුටින් සහ ජයග්‍රාහීව සිටින්න!'
+                                                        : 'ඔබවත් මේ ගැන සතුටින් අද දවසේ ඔබ සිතින් සතුටක් සහ සැනසීමෙන් පසුවීම ගැන මම ගොඩක් සතුටු වෙනවා!'))))
+                                        : (currentQ.id == 5
+                                            ? 'I am so glad to hear that you stay active, step out, and do not isolate yourself in your room all day!'
+                                            : (currentQ.id == 4
+                                                ? 'I am so glad to hear that you feel warmly included, comfortable, and happy when others gather around!'
+                                                : (currentQ.id == 3
+                                                    ? 'Having someone close to talk with is a wonderful blessing! May your friendships bring lasting warmth and happiness.'
+                                                    : (currentQ.id == 2
+                                                        ? 'I am so glad you feel hopeful and optimistic about the days ahead! May each tomorrow bring you joy and triumph.'
+                                                        : 'Thank you so much! I am very glad to hear that you are feeling peaceful and in good spirits today.')))),
+                                    style: const TextStyle(
+                                      fontSize: 13.5,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF166534),
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+
+                    // Conversational Support Card if negative answer
+                    if (isInterventionState) ...[
+                      const SizedBox(height: 16),
+                      _buildConversationalSupportCard(currentQ),
+                    ],
+
+                    // Next question action when answered
+                    if (_answers[currentQ.id] != null) ...[
+                      const SizedBox(height: 14),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          ElevatedButton.icon(
+                            onPressed: _nextQuestion,
+                            icon: const Icon(LucideIcons.arrowRight, size: 16),
+                            label: Text(
+                              isSinhala
+                                  ? (_currentIndex < _questions.length - 1 ? 'මීළඟ ප්‍රශ්නය' : 'ඇගයීම අවසන් කරන්න')
+                                  : (_currentIndex < _questions.length - 1 ? 'Next Question' : 'Complete Assessment'),
+                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              elevation: 0,
+                            ),
                           ),
-                        )),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),
             ],
           ),
-        ),
+          if (_showClapAnimation)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: _buildClapOverlayAnimation(),
+              ),
+            ),
+        ],
       ),
     );
   }
