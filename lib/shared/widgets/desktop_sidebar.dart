@@ -73,15 +73,21 @@ class DesktopSidebar extends ConsumerWidget {
                   ),
                   _buildNavItem(
                     context,
-                    icon: LucideIcons.calendar,
-                    label: strings.isSinhala ? 'මගේ ඇමතුම්' : 'Appointments & Calls',
-                    route: '/dashboard/station-help',
+                    icon: LucideIcons.brain,
+                    label: strings.isSinhala ? 'ප්‍රජානන ඇගයීම' : strings.cognitiveAssessment,
+                    route: '/dashboard/cognitive/session',
                   ),
                   _buildNavItem(
                     context,
                     icon: LucideIcons.heart,
                     label: strings.isSinhala ? 'මානසික සුවතාවය' : strings.emotionalWellness,
                     route: '/dashboard/emotional',
+                  ),
+                  _buildNavItem(
+                    context,
+                    icon: LucideIcons.calendar,
+                    label: strings.isSinhala ? 'මගේ ඇමතුම්' : 'Appointments & Calls',
+                    route: '/dashboard/station-help',
                   ),
                   _buildNavItem(
                     context,
@@ -119,6 +125,18 @@ class DesktopSidebar extends ConsumerWidget {
                     icon: LucideIcons.users,
                     label: strings.residentDirectory,
                     route: '/dashboard/residents',
+                  ),
+                  _buildNavItem(
+                    context,
+                    icon: LucideIcons.brain,
+                    label: strings.isSinhala ? 'ප්‍රජානන ඇගයීම' : strings.cognitiveAssessment,
+                    route: '/dashboard/cognitive/session',
+                  ),
+                  _buildNavItem(
+                    context,
+                    icon: LucideIcons.heart,
+                    label: strings.isSinhala ? 'මානසික සුවතාවය' : strings.emotionalWellness,
+                    route: '/dashboard/emotional',
                   ),
                   if (authState.isCaregiver)
                     _buildNavItem(
