@@ -15058,8 +15058,11 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                                   : PersonalizedActivityItem(
                                       id: 'music-1',
                                       title: 'Music Therapy',
+                                      category: 'Music Intervention',
                                       description: 'Listen to classic Sinhala songs',
                                       icon: LucideIcons.music,
+                                      priority: 'High',
+                                      priorityColor: const Color(0xFFEF4444),
                                     );
                               _showElderMusicTherapyDialog(act);
                             },
@@ -15078,7 +15081,13 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                             descSi: 'පවුලේ කෙනෙකු හෝ සත්කාරකයෙකු සමඟ සිතෙන් කතාබහක් කරන්න.',
                             buttonLabel: '📞 කතාබහ අරඹන්න',
                             onTap: () {
-                              _showCaregiverCallDialog('Mrs. Nilanthi Perera', 'Duty Caregiver', '077 123 4567');
+                              _showCaregiverCallDialog(
+                                'Mrs. Nilanthi Perera',
+                                'Duty Caregiver',
+                                '077 123 4567',
+                                _currentResident.roomNo.isNotEmpty ? _currentResident.roomNo : 'Room 101',
+                                'Serene Valley Senior Living',
+                              );
                             },
                           ),
                         ),
