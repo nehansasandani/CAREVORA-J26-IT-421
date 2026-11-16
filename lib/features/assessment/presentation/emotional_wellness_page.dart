@@ -102,6 +102,38 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
   late AnimationController _clapController;
   bool _showClapAnimation = false;
 
+  // Elder All-Day Sanctuary & Wellness State
+  int _activitiesCarouselIndex = 0;
+  String? _activeAmbientTrackTitle;
+  bool _isAmbientPlaying = false;
+  final Map<String, bool> _elderDailyPlanChecks = {
+    'music': true,
+    'talk': false,
+    'breathe': false,
+    'reading': false,
+  };
+
+  void _toggleAmbientTrack(String trackTitle, String assetPath) {
+    if (_activeAmbientTrackTitle == trackTitle && _isAmbientPlaying) {
+      AudioPlayerService.instance.stop();
+      setState(() {
+        _isAmbientPlaying = false;
+        _activeAmbientTrackTitle = null;
+      });
+    } else {
+      AudioPlayerService.instance.stop();
+      setState(() {
+        _activeAmbientTrackTitle = trackTitle;
+        _isAmbientPlaying = true;
+      });
+      AudioPlayerService.instance.play(assetPath, onEnded: () {
+        if (mounted && _isAmbientPlaying) {
+          AudioPlayerService.instance.play(assetPath);
+        }
+      });
+    }
+  }
+
   // Negative answer reason tracking & speech input
   final Map<int, String> _elderNegativeReasons = {};
   late final TextEditingController _reasonTextController;
@@ -7976,7 +8008,20 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                             ],
                           ],
                         ),
-                        if (!authState.isElder) ...[
+                        if (authState.isElder) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            isSinhala
+                                ? '🌸 සිතේ සතුට, සැනසීම සහ නිදුක් නිරෝගී සුවය ඔබ සමඟ සදා රැඳේවා!'
+                                : '🌸 May peace, joy, and wonderful health be with you throughout today!',
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.white.withValues(alpha: 0.95),
+                              height: 1.25,
+                            ),
+                          ),
+                        ] else ...[
                           const SizedBox(height: 4),
 
                           // Subtitle: ඔබ අදත් අප සමඟ සිටිනවට, ඔබගේ සුවසාධනය පරීක්ෂා කිරීමට සූදානම්ද?
@@ -14678,7 +14723,10 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
           _buildResidentHeaderCard(),
           const SizedBox(height: 10),
 
-          // 2. Interactive Multimodal Workspace (Question & Voice on Left, Real-time Camera on Right)
+          // 2. All-Day Soothing Ambient Soundscape Bar (Pirith, Flute, Nature, Songs)
+          _buildElderDailyAmbientSoundscapeBar(),
+
+          // 3. Interactive Multimodal Workspace (Question & Voice on Left, Real-time Camera on Right)
           LayoutBuilder(
             builder: (context, constraints) {
               if (constraints.maxWidth < 850) {
@@ -14720,9 +14768,147 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
           ),
           const SizedBox(height: 12),
 
-          // 3. Bottom Section: Personalized Activities Carousel (Left) & Today's Wellness Plan (Right)
+          // 4. Bottom Section: Personalized Activities Carousel (Left) & Today's Wellness Plan (Right)
           _buildElderBottomPersonalizedSection(),
         ],
+      ),
+    );
+  }
+
+  Widget _buildElderDailyAmbientSoundscapeBar() {
+    final isSinhala = ref.watch(languageProvider).isSinhala;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFAF5FF),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE9D5FF), width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF7C3AED).withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: const BoxDecoration(
+              color: Color(0xFFEDE9FE),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(LucideIcons.music, size: 14, color: Color(0xFF7C3AED)),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            isSinhala ? 'සිත සනසන සුවතා නාද:' : 'Soothing Soundscapes:',
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF5B21B6),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _buildAmbientSoundPill('🕉️ සෙත් පිරිත්', 'audio/pirith.mp3'),
+                  const SizedBox(width: 6),
+                  _buildAmbientSoundPill('🪈 වස්දඬු රාවය', 'audio/bamboo_flute.mp3'),
+                  const SizedBox(width: 6),
+                  _buildAmbientSoundPill('🍃 සොබාදහම', 'audio/nature_stream.mp3'),
+                  const SizedBox(width: 6),
+                  _buildAmbientSoundPill('🎵 අමරදේව ගීත', 'audio/amaradeva.mp3'),
+                  const SizedBox(width: 6),
+                  _buildAmbientSoundPill('🎶 නන්දා මාලිනී', 'audio/nanda_malini.mp3'),
+                  if (_isAmbientPlaying) ...[
+                    const SizedBox(width: 8),
+                    InkWell(
+                      onTap: () {
+                        AudioPlayerService.instance.stop();
+                        setState(() {
+                          _isAmbientPlaying = false;
+                          _activeAmbientTrackTitle = null;
+                        });
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFEE2E2),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFFCA5A5)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: const [
+                            Icon(LucideIcons.square, size: 10, color: Color(0xFFDC2626)),
+                            SizedBox(width: 4),
+                            Text(
+                              'නවත්වන්න (Stop)',
+                              style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Color(0xFFDC2626)),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAmbientSoundPill(String title, String assetPath) {
+    final isPlayingThis = _isAmbientPlaying && _activeAmbientTrackTitle == title;
+    return InkWell(
+      onTap: () => _toggleAmbientTrack(title, assetPath),
+      borderRadius: BorderRadius.circular(14),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: isPlayingThis ? const Color(0xFF7C3AED) : Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isPlayingThis ? const Color(0xFF7C3AED) : const Color(0xFFDDD6FE),
+            width: 1.2,
+          ),
+          boxShadow: isPlayingThis
+              ? [
+                  BoxShadow(
+                    color: const Color(0xFF7C3AED).withValues(alpha: 0.3),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: isPlayingThis ? FontWeight.bold : FontWeight.w600,
+                color: isPlayingThis ? Colors.white : const Color(0xFF4C1D95),
+              ),
+            ),
+            if (isPlayingThis) ...[
+              const SizedBox(width: 5),
+              const Icon(LucideIcons.volume2, size: 12, color: Colors.white),
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -14739,16 +14925,16 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: const Color(0xFF7C3AED).withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
@@ -14759,14 +14945,14 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                padding: const EdgeInsets.all(7),
+                padding: const EdgeInsets.all(8),
                 decoration: const BoxDecoration(
                   color: Color(0xFFF3E8FF),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(LucideIcons.user, size: 18, color: Color(0xFF7C3AED)),
+                child: const Icon(LucideIcons.user, size: 20, color: Color(0xFF7C3AED)),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -14774,26 +14960,26 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                     Text(
                       isSinhala ? (currentQ.promptSi ?? currentQ.prompt) : currentQ.prompt,
                       style: TextStyle(
-                        fontSize: isSinhala ? 17.5 : 16.5,
+                        fontSize: isSinhala ? 18.5 : 17.0,
                         fontWeight: FontWeight.w700,
                         color: AppColors.navy,
-                        height: 1.3,
+                        height: 1.35,
                       ),
                     ),
-                    const SizedBox(height: 3),
+                    const SizedBox(height: 4),
                     Text(
                       isSinhala ? 'ඔබට හැඟෙන ආකාරය තෝරන්න' : 'Choose how you feel',
                       style: const TextStyle(
-                        fontSize: 12,
+                        fontSize: 12.5,
                         fontWeight: FontWeight.w500,
                         color: Color(0xFF64748B),
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 10),
                     Row(
                       children: [
                         _buildYesNoChoiceButton(
-                          label: isSinhala ? 'ඔව්' : 'Yes',
+                          label: isSinhala ? 'ඔව්, සතුටුයි' : 'Yes',
                           isSelected: _answers[currentQ.id] == true,
                           isYes: true,
                           onTap: () => _selectYesNoAnswer(currentQ.id, true),
@@ -14804,6 +14990,34 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                           isSelected: _answers[currentQ.id] == false,
                           isYes: false,
                           onTap: () => _selectYesNoAnswer(currentQ.id, false),
+                        ),
+                        const SizedBox(width: 12),
+                        InkWell(
+                          onTap: _readQuestionAloud,
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF3E8FF),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: const Color(0xFFE9D5FF)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(LucideIcons.volume2, size: 14, color: Color(0xFF7C3AED)),
+                                const SizedBox(width: 5),
+                                Text(
+                                  isSinhala ? 'හඬ අසන්න' : 'Listen',
+                                  style: const TextStyle(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF7C3AED),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -14870,7 +15084,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFF7C3AED),
                                 foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
                                 elevation: 0,
                               ),
@@ -14935,6 +15149,111 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
 
   Widget _buildElderPersonalizedActivitiesCard() {
     final isSinhala = ref.watch(languageProvider).isSinhala;
+
+    final allCards = [
+      // 1. Music Card
+      _buildElderSingleActivityMockCard(
+        bgColor: const Color(0xFFFFF1F0),
+        borderColor: const Color(0xFFFFD5D0),
+        iconLeading: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: const [
+            Text('🎧', style: TextStyle(fontSize: 18)),
+            SizedBox(width: 4),
+            Text('🎵', style: TextStyle(fontSize: 14)),
+          ],
+        ),
+        titleSi: 'කැමති සංගීතයක් අහන්න',
+        titleEn: 'Listen to Your Favourite Music',
+        descSi: 'ඔබ කැමති සංගීතයෙන් හා පිරිත් වලින් සිත සනසන්න.',
+        buttonLabel: '▶ දැන් අහන්න',
+        onTap: () {
+          final act = _activities.isNotEmpty
+              ? _activities[0]
+              : PersonalizedActivityItem(
+                  id: 'music-1',
+                  title: 'Music Therapy',
+                  category: 'Music Intervention',
+                  description: 'Listen to classic Sinhala songs',
+                  icon: LucideIcons.music,
+                  priority: 'High',
+                  priorityColor: const Color(0xFFEF4444),
+                );
+          _showElderMusicTherapyDialog(act);
+        },
+      ),
+
+      // 2. Conversation Card
+      _buildElderSingleActivityMockCard(
+        bgColor: const Color(0xFFEFF8FF),
+        borderColor: const Color(0xFFBAE6FD),
+        iconLeading: const Text('👥', style: TextStyle(fontSize: 18)),
+        titleSi: 'කෙනෙකු සමඟ කතා කරන්න',
+        titleEn: 'Talk with Someone',
+        descSi: 'පවුලේ කෙනෙකු හෝ සත්කාරකයෙකු සමඟ සිතෙන් කතාබහක් කරන්න.',
+        buttonLabel: '📞 කතාබහ අරඹන්න',
+        onTap: () {
+          _showCaregiverCallDialog(
+            'Mrs. Nilanthi Perera',
+            'Duty Caregiver',
+            '077 123 4567',
+            _currentResident.roomNo.isNotEmpty ? _currentResident.roomNo : 'Room 101',
+            'Serene Valley Senior Living',
+          );
+        },
+      ),
+
+      // 3. Peaceful Rest Card
+      _buildElderSingleActivityMockCard(
+        bgColor: const Color(0xFFF0FDF4),
+        borderColor: const Color(0xFFBBF7D0),
+        iconLeading: const Text('🪷', style: TextStyle(fontSize: 18)),
+        titleSi: 'සැනසීමේ කාලයක් ගත කරන්න',
+        titleEn: 'Enjoy a Peaceful Moment',
+        descSi: 'ආතතිය අඩු කරගන්න සහ සුවසේ විවේක කරන්න.',
+        buttonLabel: '🧘 විවේකයක් ගන්න',
+        onTap: _showTipsDialog,
+      ),
+
+      // 4. Reading Books Card
+      _buildElderSingleActivityMockCard(
+        bgColor: const Color(0xFFFAF5FF),
+        borderColor: const Color(0xFFE9D5FF),
+        iconLeading: const Text('📖', style: TextStyle(fontSize: 18)),
+        titleSi: 'හිත සනසන කතාන්දර',
+        titleEn: 'Inspiring Stories & Books',
+        descSi: 'ප්‍රඥාව සහ සිත නිවන ධර්ම හා ආදර්ශ කතා කියවන්න.',
+        buttonLabel: '📖 කියවීම අරඹන්න',
+        onTap: () {
+          final act = _activities.length > 2
+              ? _activities[2]
+              : PersonalizedActivityItem(
+                  id: 'reading-1',
+                  title: 'Inspirational Reading',
+                  category: 'Cognitive Engagement',
+                  description: 'Read uplifting stories and moral tales',
+                  icon: LucideIcons.bookOpen,
+                  priority: 'Medium',
+                  priorityColor: const Color(0xFF8B5CF6),
+                );
+          _showElderReadingBooksDialog(act);
+        },
+      ),
+
+      // 5. Memory Games Card
+      _buildElderSingleActivityMockCard(
+        bgColor: const Color(0xFFFEF9C3),
+        borderColor: const Color(0xFFFDE047),
+        iconLeading: const Text('🎮', style: TextStyle(fontSize: 18)),
+        titleSi: 'මනස පුබුදුවන ක්‍රීඩා',
+        titleEn: 'Joyful Memory Games',
+        descSi: 'සිත ප්‍රබෝධමත් කරවන සරල මතක ක්‍රීඩා වල නිරත වන්න.',
+        buttonLabel: '🎮 ක්‍රීඩා අරඹන්න',
+        onTap: () => context.go('/dashboard/memory-games'),
+      ),
+    ];
+
+    final visibleCards = allCards.skip(_activitiesCarouselIndex).take(3).toList();
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -15017,149 +15336,94 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                 children: [
                   // Left Chevron
                   InkWell(
-                    onTap: () {},
+                    onTap: _activitiesCarouselIndex > 0
+                        ? () {
+                            setState(() {
+                              _activitiesCarouselIndex--;
+                            });
+                          }
+                        : null,
                     borderRadius: BorderRadius.circular(20),
                     child: Container(
                       padding: const EdgeInsets.all(6),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF8FAFC),
+                        color: _activitiesCarouselIndex > 0 ? const Color(0xFFF1F5F9) : const Color(0xFFF8FAFC),
                         shape: BoxShape.circle,
                         border: Border.all(color: const Color(0xFFE2E8F0)),
                       ),
-                      child: const Icon(LucideIcons.chevronLeft, size: 16, color: Color(0xFF64748B)),
+                      child: Icon(
+                        LucideIcons.chevronLeft,
+                        size: 16,
+                        color: _activitiesCarouselIndex > 0 ? const Color(0xFF7C3AED) : const Color(0xFFCBD5E1),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),
 
-                  // 3 Activity Cards
+                  // 3 Activity Cards in View
                   Expanded(
                     child: Row(
-                      children: [
-                        // 1. Music Card (Soft Coral / Peach)
-                        Expanded(
-                          child: _buildElderSingleActivityMockCard(
-                            bgColor: const Color(0xFFFFF1F0),
-                            borderColor: const Color(0xFFFFD5D0),
-                            iconLeading: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: const [
-                                Text('🎧', style: TextStyle(fontSize: 18)),
-                                SizedBox(width: 4),
-                                Text('🎵', style: TextStyle(fontSize: 14)),
-                              ],
-                            ),
-                            titleSi: 'කැමති සංගීතයක් අහන්න',
-                            titleEn: 'Listen to Your Favourite Music',
-                            descSi: 'ඔබ කැමති සංගීතයෙන් සිත සනසන්න.',
-                            buttonLabel: '▶ දැන් අහන්න',
-                            onTap: () {
-                              final act = _activities.isNotEmpty
-                                  ? _activities[0]
-                                  : PersonalizedActivityItem(
-                                      id: 'music-1',
-                                      title: 'Music Therapy',
-                                      category: 'Music Intervention',
-                                      description: 'Listen to classic Sinhala songs',
-                                      icon: LucideIcons.music,
-                                      priority: 'High',
-                                      priorityColor: const Color(0xFFEF4444),
-                                    );
-                              _showElderMusicTherapyDialog(act);
-                            },
-                          ),
+                      children: visibleCards.map((card) => Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          child: card,
                         ),
-                        const SizedBox(width: 10),
-
-                        // 2. Conversation Card (Soft Sky / Blue)
-                        Expanded(
-                          child: _buildElderSingleActivityMockCard(
-                            bgColor: const Color(0xFFEFF8FF),
-                            borderColor: const Color(0xFFBAE6FD),
-                            iconLeading: const Text('👥', style: TextStyle(fontSize: 18)),
-                            titleSi: 'කෙනෙකු සමඟ කතා කරන්න',
-                            titleEn: 'Talk with Someone',
-                            descSi: 'පවුලේ කෙනෙකු හෝ සත්කාරකයෙකු සමඟ සිතෙන් කතාබහක් කරන්න.',
-                            buttonLabel: '📞 කතාබහ අරඹන්න',
-                            onTap: () {
-                              _showCaregiverCallDialog(
-                                'Mrs. Nilanthi Perera',
-                                'Duty Caregiver',
-                                '077 123 4567',
-                                _currentResident.roomNo.isNotEmpty ? _currentResident.roomNo : 'Room 101',
-                                'Serene Valley Senior Living',
-                              );
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-
-                        // 3. Peaceful Rest Card (Soft Mint / Green)
-                        Expanded(
-                          child: _buildElderSingleActivityMockCard(
-                            bgColor: const Color(0xFFF0FDF4),
-                            borderColor: const Color(0xFFBBF7D0),
-                            iconLeading: const Text('🪷', style: TextStyle(fontSize: 18)),
-                            titleSi: 'සැනසීමේ කාලයක් ගත කරන්න',
-                            titleEn: 'Enjoy a Peaceful Moment',
-                            descSi: 'ආතතිය අඩු කරගන්න සහ විවේක කරන්න.',
-                            buttonLabel: '🧘 විවේකයක් ගන්න',
-                            onTap: _showTipsDialog,
-                          ),
-                        ),
-                      ],
+                      )).toList(),
                     ),
                   ),
                   const SizedBox(width: 8),
 
                   // Right Chevron
                   InkWell(
-                    onTap: () {},
+                    onTap: _activitiesCarouselIndex < (allCards.length - 3)
+                        ? () {
+                            setState(() {
+                              _activitiesCarouselIndex++;
+                            });
+                          }
+                        : null,
                     borderRadius: BorderRadius.circular(20),
                     child: Container(
                       padding: const EdgeInsets.all(6),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF8FAFC),
+                        color: _activitiesCarouselIndex < (allCards.length - 3) ? const Color(0xFFF1F5F9) : const Color(0xFFF8FAFC),
                         shape: BoxShape.circle,
                         border: Border.all(color: const Color(0xFFE2E8F0)),
                       ),
-                      child: const Icon(LucideIcons.chevronRight, size: 16, color: Color(0xFF64748B)),
+                      child: Icon(
+                        LucideIcons.chevronRight,
+                        size: 16,
+                        color: _activitiesCarouselIndex < (allCards.length - 3) ? const Color(0xFF7C3AED) : const Color(0xFFCBD5E1),
+                      ),
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 12),
 
-              // Pagination Dots (● ○ ○)
+              // Dynamic Pagination Dots
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    width: 7,
-                    height: 7,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF7C3AED),
-                      shape: BoxShape.circle,
+                children: List.generate(allCards.length - 2, (dotIndex) {
+                  final isActive = _activitiesCarouselIndex == dotIndex;
+                  return GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _activitiesCarouselIndex = dotIndex;
+                      });
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      margin: const EdgeInsets.symmetric(horizontal: 3),
+                      width: isActive ? 16 : 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        color: isActive ? const Color(0xFF7C3AED) : const Color(0xFFCBD5E1),
+                        borderRadius: BorderRadius.circular(3),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 5),
-                  Container(
-                    width: 6,
-                    height: 6,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFCBD5E1),
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 5),
-                  Container(
-                    width: 6,
-                    height: 6,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFCBD5E1),
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ],
+                  );
+                }),
               ),
             ],
           ),
@@ -15272,6 +15536,9 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
 
   Widget _buildElderTodayWellnessPlanCard() {
     final isSinhala = ref.watch(languageProvider).isSinhala;
+    final totalTasks = _elderDailyPlanChecks.length;
+    final completedTasks = _elderDailyPlanChecks.values.where((v) => v).length;
+    final progress = totalTasks > 0 ? (completedTasks / totalTasks) : 0.0;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -15324,25 +15591,51 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
           ),
           const SizedBox(height: 14),
 
-          // Plan Items Checklist
+          // Plan Items Checklist (Tap to toggle)
           _buildPlanCheckItem(
             icon: '🎵',
-            labelSi: 'සංගීතය අහන්න',
-            isCompleted: true,
+            labelSi: 'සංගීතය හෝ පිරිත් අහන්න',
+            isCompleted: _elderDailyPlanChecks['music'] ?? false,
+            onTap: () {
+              setState(() {
+                _elderDailyPlanChecks['music'] = !(_elderDailyPlanChecks['music'] ?? false);
+              });
+            },
           ),
           const SizedBox(height: 8),
           _buildPlanCheckItem(
             icon: '💬',
             labelSi: 'කෙනෙකු සමඟ කතා කරන්න',
-            isCompleted: false,
+            isCompleted: _elderDailyPlanChecks['talk'] ?? false,
+            onTap: () {
+              setState(() {
+                _elderDailyPlanChecks['talk'] = !(_elderDailyPlanChecks['talk'] ?? false);
+              });
+            },
           ),
           const SizedBox(height: 8),
           _buildPlanCheckItem(
             icon: '🪷',
             labelSi: 'විනාඩි කිහිපයක් මොහොතක් ගත කරන්න',
-            isCompleted: false,
+            isCompleted: _elderDailyPlanChecks['breathe'] ?? false,
+            onTap: () {
+              setState(() {
+                _elderDailyPlanChecks['breathe'] = !(_elderDailyPlanChecks['breathe'] ?? false);
+              });
+            },
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
+          _buildPlanCheckItem(
+            icon: '📖',
+            labelSi: 'සුවදායී පොතක් හෝ කතාවක් කියවන්න',
+            isCompleted: _elderDailyPlanChecks['reading'] ?? false,
+            onTap: () {
+              setState(() {
+                _elderDailyPlanChecks['reading'] = !(_elderDailyPlanChecks['reading'] ?? false);
+              });
+            },
+          ),
+          const SizedBox(height: 14),
 
           // Progress Row
           Row(
@@ -15356,10 +15649,10 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                   color: Color(0xFF475569),
                 ),
               ),
-              const Text(
-                '1 / 3',
-                style: TextStyle(
-                  fontSize: 11.5,
+              Text(
+                '$completedTasks / $totalTasks',
+                style: const TextStyle(
+                  fontSize: 12,
                   fontWeight: FontWeight.bold,
                   color: AppColors.navy,
                 ),
@@ -15369,13 +15662,36 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
           const SizedBox(height: 6),
           ClipRRect(
             borderRadius: BorderRadius.circular(6),
-            child: const LinearProgressIndicator(
-              value: 1 / 3,
+            child: LinearProgressIndicator(
+              value: progress,
               minHeight: 7,
-              backgroundColor: Color(0xFFF1F5F9),
-              valueColor: AlwaysStoppedAnimation(Color(0xFF7C3AED)),
+              backgroundColor: const Color(0xFFF1F5F9),
+              valueColor: const AlwaysStoppedAnimation(Color(0xFF7C3AED)),
             ),
           ),
+          if (completedTasks == totalTasks) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFFECFDF5),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFA7F3D0)),
+              ),
+              child: Row(
+                children: const [
+                  Text('🎉', style: TextStyle(fontSize: 12)),
+                  SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'නියමයි! අද දවසේ ඔබේ සියලු සුවතා පියවර සම්පූර්ණයි!',
+                      style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Color(0xFF047857)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -15385,39 +15701,49 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
     required String icon,
     required String labelSi,
     required bool isCompleted,
+    required VoidCallback onTap,
   }) {
-    return Row(
-      children: [
-        Text(icon, style: const TextStyle(fontSize: 15)),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Text(
-            labelSi,
-            style: const TextStyle(
-              fontSize: 12.5,
-              fontWeight: FontWeight.w600,
-              color: AppColors.navy,
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 2),
+        child: Row(
+          children: [
+            Text(icon, style: const TextStyle(fontSize: 15)),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                labelSi,
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: isCompleted ? FontWeight.w600 : FontWeight.w500,
+                  color: isCompleted ? AppColors.navy : const Color(0xFF64748B),
+                  decoration: isCompleted ? TextDecoration.lineThrough : null,
+                ),
+              ),
             ),
-          ),
-        ),
-        Container(
-          width: 20,
-          height: 20,
-          decoration: BoxDecoration(
-            color: isCompleted ? const Color(0xFF22C55E) : Colors.transparent,
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: isCompleted ? const Color(0xFF22C55E) : const Color(0xFFCBD5E1),
-              width: 1.5,
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: 20,
+              height: 20,
+              decoration: BoxDecoration(
+                color: isCompleted ? const Color(0xFF22C55E) : Colors.transparent,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: isCompleted ? const Color(0xFF22C55E) : const Color(0xFFCBD5E1),
+                  width: 1.5,
+                ),
+              ),
+              child: isCompleted
+                  ? const Center(
+                      child: Icon(Icons.check, size: 13, color: Colors.white),
+                    )
+                  : null,
             ),
-          ),
-          child: isCompleted
-              ? const Center(
-                  child: Icon(Icons.check, size: 13, color: Colors.white),
-                )
-              : null,
+          ],
         ),
-      ],
+      ),
     );
   }
 
