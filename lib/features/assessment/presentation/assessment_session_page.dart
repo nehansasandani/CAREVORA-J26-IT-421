@@ -1482,7 +1482,48 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
     );
   }
 
+  String _translateCategory(String category, bool isSinhala) {
+    if (!isSinhala) return category;
+    switch (category) {
+      case 'Orientation':
+        return 'දිශානතිය';
+      case 'Immediate Memory':
+        return 'ක්ෂණික මතකය';
+      case 'Attention & Math':
+        return 'අවධානය සහ ගණිතය';
+      case 'Attention & Number':
+        return 'අවධානය සහ සංඛ්‍යා';
+      case 'Delayed Recall':
+        return 'ප්‍රමාද වූ මතකය';
+      case 'Practical Reasoning':
+        return 'ප්‍රායෝගික තර්කනය';
+      case 'Abstract Reasoning':
+        return 'වියුක්ත තර්කනය';
+      default:
+        return category;
+    }
+  }
+
+  String _translateDomain(String domain, bool isSinhala) {
+    if (!isSinhala) return 'Domain: $domain';
+    switch (domain.toLowerCase()) {
+      case 'orientation':
+        return 'ක්ෂේත්‍රය: දිශානතිය';
+      case 'memory':
+        return 'ක්ෂේත්‍රය: මතකය';
+      case 'attention':
+        return 'ක්ෂේත්‍රය: අවධානය';
+      case 'recall':
+        return 'ක්ෂේත්‍රය: නැවත සිහිපත් කිරීම';
+      case 'reasoning':
+        return 'ක්ෂේත්‍රය: තර්කනය';
+      default:
+        return 'ක්ෂේත්‍රය: $domain';
+    }
+  }
+
   Widget _buildTopNavBar() {
+    final isSinhala = ref.watch(languageProvider).isSinhala;
     Color statusBg;
     Color statusColor;
     String statusLabel;
@@ -1491,17 +1532,19 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
     if (_sessionStatus == 'COMPLETED') {
       statusBg = const Color(0xFFDCFCE7);
       statusColor = const Color(0xFF15803D);
-      statusLabel = 'Completed';
+      statusLabel = isSinhala ? 'සම්පූර්ණයි' : 'Completed';
       statusIcon = LucideIcons.circleCheckBig;
     } else if (_sessionStatus == 'PENDING_CAREGIVER_REVIEW') {
       statusBg = const Color(0xFFFEF3C7);
       statusColor = const Color(0xFFB45309);
-      statusLabel = 'Pending Caregiver Review';
+      statusLabel = isSinhala
+          ? 'රැකවරණ නිලධාරී පරීක්ෂාව අපේක්ෂාවෙන්'
+          : 'Pending Caregiver Review';
       statusIcon = LucideIcons.alertCircle;
     } else {
       statusBg = const Color(0xFFEEF2FF);
       statusColor = const Color(0xFF4F46E5);
-      statusLabel = 'In Progress';
+      statusLabel = isSinhala ? 'ක්‍රියාත්මක වෙමින් පවතී' : 'In Progress';
       statusIcon = LucideIcons.clock;
     }
 
@@ -1535,12 +1578,12 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
-                    children: const [
-                      Icon(LucideIcons.arrowLeft, size: 15, color: AppColors.primary),
-                      SizedBox(width: 8),
+                    children: [
+                      const Icon(LucideIcons.arrowLeft, size: 15, color: AppColors.primary),
+                      const SizedBox(width: 8),
                       Text(
-                        'Resident Directory',
-                        style: TextStyle(
+                        isSinhala ? 'නේවාසික නාමාවලිය' : 'Resident Directory',
+                        style: const TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
                           color: AppColors.primary,
@@ -1609,12 +1652,12 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
-                    children: const [
-                      Icon(LucideIcons.plus, size: 14, color: AppColors.primary),
-                      SizedBox(width: 5),
+                    children: [
+                      const Icon(LucideIcons.plus, size: 14, color: AppColors.primary),
+                      const SizedBox(width: 5),
                       Text(
-                        'New Assessment',
-                        style: TextStyle(
+                        isSinhala ? 'නව ඇගයීමක්' : 'New Assessment',
+                        style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
                           color: AppColors.primary,
@@ -1645,9 +1688,9 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                 children: [
                   const Icon(LucideIcons.timer, size: 14, color: AppColors.primary),
                   const SizedBox(width: 6),
-                  const Text(
-                    'Session Elapsed: ',
-                    style: TextStyle(
+                  Text(
+                    isSinhala ? 'ගතවූ කාලය: ' : 'Session Elapsed: ',
+                    style: const TextStyle(
                       fontSize: 12,
                       color: AppColors.body,
                       fontWeight: FontWeight.w500,
@@ -1838,19 +1881,27 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
   }
 
   Widget _buildResidentBanner(bool isElder) {
+    final isSinhala = ref.watch(languageProvider).isSinhala;
     final res = _resident;
     final initials = res != null ? _getInitials(res.name) : (isElder ? 'JP' : 'R');
     final displayName = (res != null && res.name.trim().isNotEmpty && res.name.trim() != '-')
         ? res.name.trim()
         : (isElder ? 'James Perera' : 'Resident #${res?.id ?? 5}');
-    const facilityName = 'Serenity Elder Home';
-    final ageDisplay = res?.age != null ? '${res!.age} yrs' : '75 yrs';
-    final roomDisplay = (res?.roomNumber != null && res!.roomNumber.isNotEmpty)
-        ? 'Room ${res.roomNumber}'
-        : 'Room 101';
-    final educationDisplay = res?.educationYears != null
-        ? '${res!.educationYears} yrs'
-        : '12 yrs';
+    final facilityName = res?.elderHomeName ??
+        ref.read(authProvider).state.elderHomeName ??
+        'Serenity Elder Home';
+    final ageVal = res?.age ?? 75;
+    final ageDisplay = isSinhala ? 'අවු. $ageVal' : '$ageVal yrs';
+    final roomNum = (res?.roomNumber != null && res!.roomNumber.isNotEmpty)
+        ? res.roomNumber
+        : '101';
+    final roomDisplay = isSinhala
+        ? 'කාමර ${roomNum.replaceAll('Room ', '').replaceAll('Suite ', '')}'
+        : (roomNum.startsWith('Room') || roomNum.startsWith('Suite')
+            ? roomNum
+            : 'Room $roomNum');
+    final eduVal = res?.educationYears ?? 12;
+    final educationDisplay = isSinhala ? 'වසර $eduVal' : '$eduVal yrs';
 
     return Container(
       width: double.infinity,
@@ -1969,7 +2020,9 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                             ),
                             const SizedBox(width: 5),
                             Text(
-                              isElder ? 'ELDER / RESIDENT' : 'ID: ${res?.id ?? 5}',
+                              isElder
+                                  ? (isSinhala ? 'වැඩිහිටි / නේවාසික' : 'ELDER / RESIDENT')
+                                  : 'ID: ${res?.id ?? 5}',
                               style: const TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w800,
@@ -2023,7 +2076,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                     children: [
                       _buildResidentDetailPill(
                         icon: LucideIcons.calendar,
-                        label: 'Age: $ageDisplay',
+                        label: isSinhala ? 'වයස: $ageDisplay' : 'Age: $ageDisplay',
                         color: const Color(0xFF4F46E5),
                         bg: const Color(0xFFEEF2FF),
                         border: const Color(0xFFE0E7FF),
@@ -2037,7 +2090,9 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                       ),
                       _buildResidentDetailPill(
                         icon: LucideIcons.graduationCap,
-                        label: 'Education: $educationDisplay',
+                        label: isSinhala
+                            ? 'අධ්‍යාපනය: $educationDisplay'
+                            : 'Education: $educationDisplay',
                         color: const Color(0xFF7C3AED),
                         bg: const Color(0xFFF5F3FF),
                         border: const Color(0xFFDDD6FE),
@@ -2133,8 +2188,12 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                       const SizedBox(width: 6),
                       Text(
                         isElder
-                            ? 'Self-Response Session ($_totalCount Items)'
-                            : 'Standard Cognitive Battery ($_totalCount Items)',
+                            ? (isSinhala
+                                ? 'ස්වයං ප්‍රතිචාර සැසිය (ප්‍රශ්න $_totalCount)'
+                                : 'Self-Response Session ($_totalCount Items)')
+                            : (isSinhala
+                                ? 'සම්මත ප්‍රජානන ඇගයීම (ප්‍රශ්න $_totalCount)'
+                                : 'Standard Cognitive Battery ($_totalCount Items)'),
                         style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
@@ -2371,6 +2430,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
   }
 
   Widget _buildWorkspaceHeader(int progressPct, bool isElder) {
+    final isSinhala = ref.watch(languageProvider).isSinhala;
     return Row(
       children: [
         AnimatedBuilder(
@@ -2414,7 +2474,9 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Question ${_currentIndex + 1} of $_totalCount',
+                isSinhala
+                    ? 'ප්‍රශ්න $_totalCount න් ${_currentIndex + 1} වන ප්‍රශ්නය'
+                    : 'Question ${_currentIndex + 1} of $_totalCount',
                 style: const TextStyle(
                   fontSize: 21,
                   fontWeight: FontWeight.w800,
@@ -2425,8 +2487,12 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
               const SizedBox(height: 3),
               Text(
                 isElder
-                    ? 'Questions Answered: $_answeredCount/$_totalCount ($progressPct%) • Self-Paced Wellness'
-                    : 'Completed: $_fullyCompletedCount/$_totalCount ($progressPct%) • Answered: $_answeredCount • Graded: $_gradedCount',
+                    ? (isSinhala
+                        ? 'පිළිතුරු දුන් ප්‍රශ්න: $_answeredCount/$_totalCount ($progressPct%) • ඔබේ වේගයෙන් පිළිතුරු දෙන්න'
+                        : 'Questions Answered: $_answeredCount/$_totalCount ($progressPct%) • Self-Paced Wellness')
+                    : (isSinhala
+                        ? 'සම්පූර්ණ: $_fullyCompletedCount/$_totalCount ($progressPct%) • පිළිතුරු: $_answeredCount • ලකුණු: $_gradedCount'
+                        : 'Completed: $_fullyCompletedCount/$_totalCount ($progressPct%) • Answered: $_answeredCount • Graded: $_gradedCount'),
                 style: const TextStyle(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w600,
@@ -2439,7 +2505,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
         ),
         const SizedBox(width: 12),
         _buildInfoChip(
-          label: '$progressPct% completed',
+          label: isSinhala ? '$progressPct% ක් සම්පූර්ණයි' : '$progressPct% completed',
           icon: LucideIcons.listChecks,
           background: const Color(0xFFF5F3FF),
           color: AppColors.primary,
@@ -2450,6 +2516,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
   }
 
   Widget _buildStepIndicator(bool isElder) {
+    final isSinhala = ref.watch(languageProvider).isSinhala;
     return Row(
       children: List.generate(_questions.length, (i) {
         final q = _questions[i];
@@ -2459,7 +2526,9 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
         return Expanded(
           flex: isCurrent ? 3 : 2,
           child: Tooltip(
-            message: 'Question ${i + 1}: ${q.category}${isDone ? ' (Completed)' : ''}',
+            message: isSinhala
+                ? 'ප්‍රශ්නය ${i + 1}: ${_translateCategory(q.category, true)}${isDone ? ' (සම්පූර්ණයි)' : ''}'
+                : 'Question ${i + 1}: ${q.category}${isDone ? ' (Completed)' : ''}',
             child: InkWell(
               onTap: () => _goToQuestion(i),
               borderRadius: BorderRadius.circular(10),
@@ -2559,6 +2628,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
   }
 
   Widget _buildQuestionCard(CognitiveQuestionItem currentQ, bool isElder) {
+    final isSinhala = ref.watch(languageProvider).isSinhala;
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -2615,7 +2685,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                               child: child,
                             ),
                             child: _buildInfoChip(
-                              label: currentQ.category,
+                              label: _translateCategory(currentQ.category, isSinhala),
                               icon: LucideIcons.brain,
                               background: const Color(0xFFF5F3FF),
                               color: AppColors.primary,
@@ -2623,7 +2693,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                             ),
                           ),
                           _buildInfoChip(
-                            label: 'Domain: ${currentQ.domain}',
+                            label: _translateDomain(currentQ.domain, isSinhala),
                             icon: LucideIcons.compass,
                             color: const Color(0xFF475569),
                             background: const Color(0xFFF8FAFC),
@@ -2634,8 +2704,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                     ),
                     const SizedBox(width: 10),
                     _buildListenButton(
-                      (ref.watch(languageProvider).isSinhala &&
-                              currentQ.promptSinhala.isNotEmpty)
+                      (isSinhala && currentQ.promptSinhala.isNotEmpty)
                           ? currentQ.promptSinhala
                           : currentQ.prompt,
                     ),
@@ -2645,8 +2714,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
 
                 // Question Prompt (Strictly single-language based on selected language)
                 Text(
-                  (ref.watch(languageProvider).isSinhala &&
-                          currentQ.promptSinhala.isNotEmpty)
+                  (isSinhala && currentQ.promptSinhala.isNotEmpty)
                       ? currentQ.promptSinhala
                       : currentQ.prompt,
                   style: const TextStyle(
@@ -2696,7 +2764,9 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                           padding: const EdgeInsets.only(top: 2),
                           child: Text(
                             isElder
-                                ? 'Helpful Tip: Take your time. Speak clearly into the microphone or type your answer.'
+                                ? (isSinhala
+                                    ? 'උපදෙස්: කලබල නොවී ඔබේ කාලය ගන්න. මයික්‍රොෆෝනයට පැහැදිලිව කතා කරන්න හෝ ඔබේ පිළිතුර ටයිප් කරන්න.'
+                                    : 'Helpful Tip: Take your time. Speak clearly into the microphone or type your answer.')
                                 : 'AI Guidance: ${currentQ.aiTip}',
                             style: const TextStyle(
                               fontSize: 13,
@@ -2719,9 +2789,12 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
   }
 
   Widget _buildListenButton(String prompt) {
+    final isSinhala = ref.watch(languageProvider).isSinhala;
     final bool isPlaying = _isSpeaking;
     return Tooltip(
-      message: isPlaying ? 'Stop reading' : 'Read question aloud',
+      message: isPlaying
+          ? (isSinhala ? 'හඬ නවත්වන්න' : 'Stop reading')
+          : (isSinhala ? 'ප්‍රශ්නය හඬින් කියවන්න' : 'Read question aloud'),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
@@ -2792,9 +2865,9 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                   const SizedBox(width: 5),
                   const Icon(LucideIcons.square, size: 14, color: Colors.white),
                   const SizedBox(width: 7),
-                  const Text(
-                    'Stop Audio',
-                    style: TextStyle(
+                  Text(
+                    isSinhala ? 'හඬ නවත්වන්න' : 'Stop Audio',
+                    style: const TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w800,
                       color: Colors.white,
@@ -2804,9 +2877,9 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                 ] else ...[
                   const Icon(LucideIcons.volume2, size: 16, color: AppColors.primary),
                   const SizedBox(width: 8),
-                  const Text(
-                    'Read Aloud',
-                    style: TextStyle(
+                  Text(
+                    isSinhala ? 'හඬින් කියවන්න' : 'Read Aloud',
+                    style: const TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
                       color: AppColors.primary,
@@ -2923,6 +2996,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
   }
 
   Widget _buildAnimatedAnswerSavedChip(int qId) {
+    final isSinhala = ref.watch(languageProvider).isSinhala;
     final isAnswered = _isAnswered(qId);
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 250),
@@ -2969,9 +3043,9 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                           child: const Text('✨', style: TextStyle(fontSize: 13)),
                         ),
                         const SizedBox(width: 6),
-                        const Text(
-                          'Answer Saved',
-                          style: TextStyle(
+                        Text(
+                          isSinhala ? 'පිළිතුර සුරැකිණි' : 'Answer Saved',
+                          style: const TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w800,
                             color: Color(0xFF14532D),
@@ -2989,6 +3063,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
   }
 
   Widget _buildAnimatedSavedBanner(bool isElder, int qId) {
+    final isSinhala = ref.watch(languageProvider).isSinhala;
     final answered = _isAnswered(qId);
     return AnimatedContainer(
       duration: const Duration(milliseconds: 250),
@@ -3045,7 +3120,9 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                 Row(
                   children: [
                     Text(
-                      answered ? 'Answer Saved' : 'Self-Paced Response',
+                      answered
+                          ? (isSinhala ? 'පිළිතුර සුරැකිණි' : 'Answer Saved')
+                          : (isSinhala ? 'නිදහස් පිළිතුරු සැසිය' : 'Self-Paced Response'),
                       style: TextStyle(
                         fontSize: 13.5,
                         fontWeight: FontWeight.w800,
@@ -3061,9 +3138,9 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(color: const Color(0xFF86EFAC).withValues(alpha: 0.5)),
                         ),
-                        child: const Text(
-                          '✅ Auto-Saved',
-                          style: TextStyle(
+                        child: Text(
+                          isSinhala ? '✅ ස්වයංක්‍රීයව සුරැකිණි' : '✅ Auto-Saved',
+                          style: const TextStyle(
                             fontSize: 10.5,
                             fontWeight: FontWeight.w700,
                             color: Color(0xFF15803D),
@@ -3076,8 +3153,12 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                 const SizedBox(height: 3),
                 Text(
                   answered
-                      ? 'Your answer is securely recorded. The clinical engine evaluates and scores it upon submission.'
-                      : 'Type or speak your answer above. The system will safely evaluate your response.',
+                      ? (isSinhala
+                          ? 'ඔබේ පිළිතුර ආරක්ෂිතව සටහන් කර ඇත. යොමු කළ පසු පද්ධතිය මගින් එය ඇගයීමට ලක් කෙරේ.'
+                          : 'Your answer is securely recorded. The clinical engine evaluates and scores it upon submission.')
+                      : (isSinhala
+                          ? 'ඉහත ඔබේ පිළිතුර ටයිප් කරන්න හෝ මයික්‍රොෆෝනයෙන් කතා කරන්න.'
+                          : 'Type or speak your answer above. The system will safely evaluate your response.'),
                   style: TextStyle(
                     fontSize: 12.5,
                     color: answered ? const Color(0xFF166534) : AppColors.body,
@@ -3098,6 +3179,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
     double? currentGrade,
     bool isElder,
   ) {
+    final isSinhala = ref.watch(languageProvider).isSinhala;
     final bool hasStatus = _speechStatusMessage != null;
     final bool statusOk = hasStatus && _speechStatusMessage!.contains('captured');
     final bool isLastQuestion = !(_currentIndex < _questions.length - 1);
@@ -3144,8 +3226,10 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
               const SizedBox(width: 10),
               Text(
                 _isListening
-                    ? 'Listening to speech...'
-                    : (isElder ? 'Your Answer' : 'Response Capture'),
+                    ? (isSinhala ? 'ඔබේ හඬට සවන් දෙමින්...' : 'Listening to speech...')
+                    : (isElder
+                        ? (isSinhala ? 'ඔබේ පිළිතුර' : 'Your Answer')
+                        : (isSinhala ? 'පිළිතුරු සටහන' : 'Response Capture')),
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w800,
@@ -3165,7 +3249,9 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                     children: [
                       _buildAnimatedAnswerSavedChip(currentQ.id),
                       Text(
-                        isElder ? 'Voice or Keyboard' : 'Voice & Clinical Grading',
+                        isElder
+                            ? (isSinhala ? 'හඬ හෝ යතුරුපුවරුව' : 'Voice or Keyboard')
+                            : (isSinhala ? 'හඬ සහ ලකුණු ලබාදීම' : 'Voice & Clinical Grading'),
                         style: const TextStyle(
                           fontSize: 11.5,
                           fontWeight: FontWeight.w600,
@@ -3174,8 +3260,10 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                       ),
                       _buildPrimaryActionButton(
                         label: isLastQuestion
-                            ? (isElder ? 'Finish & Submit' : 'Finish Assessment')
-                            : 'Next Question →',
+                            ? (isElder
+                                ? (isSinhala ? 'අවසන් කර යොමු කරන්න' : 'Finish & Submit')
+                                : (isSinhala ? 'ඇගයීම අවසන් කරන්න' : 'Finish Assessment'))
+                            : (isSinhala ? 'ඊළඟ ප්‍රශ්නය →' : 'Next Question →'),
                         icon: isLastQuestion ? LucideIcons.send : LucideIcons.arrowRight,
                         onTap: () => _nextQuestion(isElder),
                         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
@@ -3221,8 +3309,12 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                     children: [
                       Text(
                         _isListening
-                            ? 'Listening… tap the mic to stop'
-                            : 'Tap the microphone to speak',
+                            ? (isSinhala
+                                ? 'සවන් දෙමින්… නැවැත්වීමට මයික්‍රොෆෝනය ඔබන්න'
+                                : 'Listening… tap the mic to stop')
+                            : (isSinhala
+                                ? 'කතා කිරීමට මයික්‍රොෆෝනය ඔබන්න'
+                                : 'Tap the microphone to speak'),
                         style: const TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w800,
@@ -3232,10 +3324,16 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                       const SizedBox(height: 4),
                       Text(
                         _isListening
-                            ? 'Speak clearly — your words will appear in the box below.'
+                            ? (isSinhala
+                                ? 'පැහැදිලිව කතා කරන්න — ඔබේ වචන පහත කොටුවේ සටහන් වේ.'
+                                : 'Speak clearly — your words will appear in the box below.')
                             : (isElder
-                                ? 'Or simply type your answer in the box below.'
-                                : 'Or type the resident\'s answer in the box below.'),
+                                ? (isSinhala
+                                    ? 'නැතහොත් පහත කොටුවේ ඔබේ පිළිතුර ටයිප් කරන්න.'
+                                    : 'Or simply type your answer in the box below.')
+                                : (isSinhala
+                                    ? 'නැතහොත් නේවාසිකයාගේ පිළිතුර පහත කොටුවේ ටයිප් කරන්න.'
+                                    : 'Or type the resident\'s answer in the box below.')),
                         style: const TextStyle(
                           fontSize: 12.5,
                           color: AppColors.body,
@@ -3270,8 +3368,12 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
             maxLines: 4,
             decoration: InputDecoration(
               hintText: isElder
-                  ? 'Type your answer here, or tap the microphone to speak...'
-                  : 'Type resident answer here, or tap the microphone to dictate...',
+                  ? (isSinhala
+                      ? 'ඔබේ පිළිතුර මෙහි ටයිප් කරන්න, නැතහොත් කතා කිරීමට මයික්‍රොෆෝනය ඔබන්න...'
+                      : 'Type your answer here, or tap the microphone to speak...')
+                  : (isSinhala
+                      ? 'නේවාසිකයාගේ පිළිතුර මෙහි ටයිප් කරන්න...'
+                      : 'Type resident answer here, or tap the microphone to dictate...'),
               hintStyle: const TextStyle(
                 fontSize: 14,
                 color: AppColors.muted,
@@ -3312,12 +3414,14 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
             children: [
               Row(
                 mainAxisSize: MainAxisSize.min,
-                children: const [
-                  Icon(LucideIcons.keyboard, size: 13, color: AppColors.muted),
-                  SizedBox(width: 6),
+                children: [
+                  const Icon(LucideIcons.keyboard, size: 13, color: AppColors.muted),
+                  const SizedBox(width: 6),
                   Text(
-                    'You can also type your answer.',
-                    style: TextStyle(
+                    isSinhala
+                        ? 'ඔබට පිළිතුර ටයිප් කිරීමටද හැකිය.'
+                        : 'You can also type your answer.',
+                    style: const TextStyle(
                       fontSize: 12,
                       color: AppColors.muted,
                       fontWeight: FontWeight.w500,
@@ -3335,12 +3439,12 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
-                    children: const [
-                      Text('✨', style: TextStyle(fontSize: 11)),
-                      SizedBox(width: 4),
+                    children: [
+                      const Text('✨', style: TextStyle(fontSize: 11)),
+                      const SizedBox(width: 4),
                       Text(
-                        'Saved to profile',
-                        style: TextStyle(
+                        isSinhala ? 'ගිණුමට සුරැකිණි' : 'Saved to profile',
+                        style: const TextStyle(
                           fontSize: 11.5,
                           fontWeight: FontWeight.w700,
                           color: Color(0xFF15803D),
@@ -3363,9 +3467,6 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
           ],
           const SizedBox(height: 16),
 
-          // Role-Specific Section:
-          // - CAREGIVER sees automatic scoring indicator and optional override buttons
-          // - ELDER sees confirmation that answers are auto-evaluated upon submission
           if (!isElder) ...[
             Container(
               padding: const EdgeInsets.all(16),
@@ -3382,18 +3483,22 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                     crossAxisAlignment: WrapCrossAlignment.center,
                     spacing: 8,
                     runSpacing: 4,
-                    children: const [
+                    children: [
                       Text(
-                        'Automatic Scoring (Deterministic Rubric):',
-                        style: TextStyle(
+                        isSinhala
+                            ? 'ස්වයංක්‍රීය ලකුණු ලබාදීම:'
+                            : 'Automatic Scoring (Deterministic Rubric):',
+                        style: const TextStyle(
                           fontSize: 13.5,
                           fontWeight: FontWeight.w700,
                           color: AppColors.navy,
                         ),
                       ),
                       Text(
-                        'System auto-grades answers • Optional override',
-                        style: TextStyle(
+                        isSinhala
+                            ? 'පද්ධතිය ස්වයංක්‍රීයව ලකුණු ලබා දෙයි'
+                            : 'System auto-grades answers • Optional override',
+                        style: const TextStyle(
                           fontSize: 11,
                           color: AppColors.muted,
                           fontWeight: FontWeight.w500,
@@ -3406,7 +3511,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                     children: [
                       Expanded(
                         child: _buildGradeButton(
-                          label: 'Correct (1.0)',
+                          label: isSinhala ? 'නිවැරදියි (1.0)' : 'Correct (1.0)',
                           icon: LucideIcons.checkCircle,
                           scoreValue: 1.0,
                           selectedColor: AppColors.riskLow,
@@ -3417,7 +3522,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                       const SizedBox(width: 8),
                       Expanded(
                         child: _buildGradeButton(
-                          label: 'Partial (0.5)',
+                          label: isSinhala ? 'අර්ධ නිවැරදි (0.5)' : 'Partial (0.5)',
                           icon: LucideIcons.minusCircle,
                           scoreValue: 0.5,
                           selectedColor: AppColors.riskModerate,
@@ -3428,7 +3533,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                       const SizedBox(width: 8),
                       Expanded(
                         child: _buildGradeButton(
-                          label: 'Incorrect (0.0)',
+                          label: isSinhala ? 'වැරදියි (0.0)' : 'Incorrect (0.0)',
                           icon: LucideIcons.xCircle,
                           scoreValue: 0.0,
                           selectedColor: AppColors.riskHigh,
@@ -3454,6 +3559,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
     bool isElder,
     bool isLastQuestion,
   ) {
+    final isSinhala = ref.watch(languageProvider).isSinhala;
     return Wrap(
       alignment: WrapAlignment.spaceBetween,
       crossAxisAlignment: WrapCrossAlignment.center,
@@ -3467,8 +3573,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
           children: [
             OutlinedButton.icon(
               onPressed: () => _toggleTts(
-                (ref.read(languageProvider).isSinhala &&
-                        currentQ.promptSinhala.isNotEmpty)
+                (isSinhala && currentQ.promptSinhala.isNotEmpty)
                     ? currentQ.promptSinhala
                     : currentQ.prompt,
               ),
@@ -3483,15 +3588,19 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                 elevation: 0,
               ),
               icon: const Icon(LucideIcons.rotateCcw, size: 16),
-              label: const Text(
-                'Repeat Question',
-                style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700),
+              label: Text(
+                isSinhala ? 'ප්‍රශ්නය නැවත අසන්න' : 'Repeat Question',
+                style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700),
               ),
             ),
             _buildInfoChip(
               label: isElder
-                  ? 'Self-Paced • Take Your Time'
-                  : 'Time: ${(_questionTimes[currentQ.id] ?? 0.0).toStringAsFixed(0)}s',
+                  ? (isSinhala
+                      ? 'කලබල නොවී ඔබේ කාලය ගන්න'
+                      : 'Self-Paced • Take Your Time')
+                  : (isSinhala
+                      ? 'කාලය: ${(_questionTimes[currentQ.id] ?? 0.0).toStringAsFixed(0)} තත්.'
+                      : 'Time: ${(_questionTimes[currentQ.id] ?? 0.0).toStringAsFixed(0)}s'),
               icon: LucideIcons.timer,
               color: AppColors.body,
               background: const Color(0xFFF8FAFC),
@@ -3518,9 +3627,9 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                   elevation: 0,
                 ),
                 icon: const Icon(LucideIcons.chevronLeft, size: 17),
-                label: const Text(
-                  '← Prev',
-                  style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800),
+                label: Text(
+                  isSinhala ? '← පෙර ප්‍රශ්නය' : '← Prev',
+                  style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800),
                 ),
               ),
           ],
@@ -3688,6 +3797,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
   }
 
   Widget _buildRightPanel(int progressPct, bool isElder, CognitiveQuestionItem currentQ) {
+    final isSinhala = ref.watch(languageProvider).isSinhala;
     return Column(
       children: [
         // 1. Circular Progress Card
@@ -3743,9 +3853,13 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                     Text(
                       isElder
                           ? (_answeredCount == _totalCount
-                              ? 'Submit for Caregiver Review'
-                              : 'End & Save Session')
-                          : 'End Assessment',
+                              ? (isSinhala
+                                  ? 'පරීක්ෂාව සඳහා යොමු කරන්න'
+                                  : 'Submit for Caregiver Review')
+                              : (isSinhala
+                                  ? 'සැසිය අවසන් කර සුරකින්න'
+                                  : 'End & Save Session'))
+                          : (isSinhala ? 'ඇගයීම අවසන් කරන්න' : 'End Assessment'),
                       style: TextStyle(
                         fontWeight: FontWeight.w800,
                         fontSize: 13.5,
@@ -3763,6 +3877,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
   }
 
   Widget _buildProgressCard(int progressPct, bool isElder) {
+    final isSinhala = ref.watch(languageProvider).isSinhala;
     return Container(
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
@@ -3781,7 +3896,9 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
         children: [
           _buildPanelHeader(
             LucideIcons.chartPie,
-            isElder ? 'Your Answer Progress' : 'Assessment Progress',
+            isElder
+                ? (isSinhala ? 'ඔබේ පිළිතුරු ප්‍රගතිය' : 'Your Answer Progress')
+                : (isSinhala ? 'ඇගයීම් ප්‍රගතිය' : 'Assessment Progress'),
           ),
           const SizedBox(height: 20),
           TweenAnimationBuilder<double>(
@@ -3822,7 +3939,9 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                         ),
                       ),
                       Text(
-                        isElder ? 'Answered' : 'Completed',
+                        isElder
+                            ? (isSinhala ? 'පිළිතුරු දුන්' : 'Answered')
+                            : (isSinhala ? 'සම්පූර්ණයි' : 'Completed'),
                         style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
@@ -3839,22 +3958,24 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
           if (isElder) ...[
             _buildStatGrid([
               _buildStatItem(
-                'Answered',
+                isSinhala ? 'පිළිතුරු දුන්' : 'Answered',
                 '$_answeredCount/$_totalCount',
                 AppColors.primary,
                 LucideIcons.checkCircle2,
                 const Color(0xFFEDE9FE),
               ),
               _buildStatItem(
-                'Remaining',
+                isSinhala ? 'ඉතිරි' : 'Remaining',
                 '$_remainingToAnswerCount',
                 const Color(0xFFD97706),
                 LucideIcons.clock,
                 const Color(0xFFFEF3C7),
               ),
               _buildStatItem(
-                'Status',
-                _answeredCount == _totalCount ? 'Ready' : 'In Progress',
+                isSinhala ? 'තත්ත්වය' : 'Status',
+                _answeredCount == _totalCount
+                    ? (isSinhala ? 'සූදානම්' : 'Ready')
+                    : (isSinhala ? 'ක්‍රියාත්මකයි' : 'In Progress'),
                 _answeredCount == _totalCount
                     ? const Color(0xFF15803D)
                     : const Color(0xFF4F46E5),
@@ -3864,8 +3985,8 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                     : const Color(0xFFEEF2FF),
               ),
               _buildStatItem(
-                'Reviewer',
-                'Care Specialist',
+                isSinhala ? 'පරීක්ෂක' : 'Reviewer',
+                isSinhala ? 'සත්කාරක විශේෂඥ' : 'Care Specialist',
                 AppColors.navy,
                 LucideIcons.userCheck,
                 const Color(0xFFF1F5F9),
@@ -3874,7 +3995,9 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
             const SizedBox(height: 14),
             if (_remainingToAnswerCount > 0)
               _buildNoticeBanner(
-                text: '$_remainingToAnswerCount question(s) pending your answer',
+                text: isSinhala
+                    ? 'පිළිතුරු දීමට තවත් ප්‍රශ්න $_remainingToAnswerCount ක් ඉතිරිව ඇත'
+                    : '$_remainingToAnswerCount question(s) pending your answer',
                 icon: LucideIcons.clock,
                 color: const Color(0xFF92400E),
                 background: const Color(0xFFFEF3C7),
@@ -3882,7 +4005,9 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
               )
             else
               _buildNoticeBanner(
-                text: 'All 10 questions answered — Ready for review!',
+                text: isSinhala
+                    ? 'ප්‍රශ්න 10 ටම පිළිතුරු ලබා දී ඇත — යොමු කිරීමට සූදානම්!'
+                    : 'All 10 questions answered — Ready for review!',
                 icon: LucideIcons.circleCheckBig,
                 color: const Color(0xFF15803D),
                 background: const Color(0xFFDCFCE7),
@@ -3891,28 +4016,28 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
           ] else ...[
             _buildStatGrid([
               _buildStatItem(
-                'Completed',
+                isSinhala ? 'සම්පූර්ණ' : 'Completed',
                 '$_fullyCompletedCount/$_totalCount',
                 AppColors.primary,
                 LucideIcons.checkCircle2,
                 const Color(0xFFEDE9FE),
               ),
               _buildStatItem(
-                'Answered',
+                isSinhala ? 'පිළිතුරු දුන්' : 'Answered',
                 '$_answeredCount/$_totalCount',
                 const Color(0xFFB45309),
                 LucideIcons.messageSquare,
                 const Color(0xFFFEF3C7),
               ),
               _buildStatItem(
-                'Graded',
+                isSinhala ? 'ලකුණු දුන්' : 'Graded',
                 '$_gradedCount/$_totalCount',
                 AppColors.riskLow,
                 LucideIcons.sparkles,
                 const Color(0xFFDCFCE7),
               ),
               _buildStatItem(
-                'Remaining',
+                isSinhala ? 'ඉතිරි' : 'Remaining',
                 '$_remainingToCompleteCount',
                 AppColors.muted,
                 LucideIcons.clock,
@@ -3922,7 +4047,9 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
             if (_remainingToCompleteCount > 0) ...[
               const SizedBox(height: 14),
               _buildNoticeBanner(
-                text: '$_remainingToCompleteCount item(s) pending response or score',
+                text: isSinhala
+                    ? 'ප්‍රශ්න $_remainingToCompleteCount ක් සඳහා පිළිතුරු හෝ ලකුණු ඉතිරිව ඇත'
+                    : '$_remainingToCompleteCount item(s) pending response or score',
                 icon: LucideIcons.clock,
                 color: const Color(0xFF92400E),
                 background: const Color(0xFFFEF3C7),
@@ -3955,6 +4082,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
   }
 
   Widget _buildQuestionsOverviewCard(bool isElder) {
+    final isSinhala = ref.watch(languageProvider).isSinhala;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -3974,7 +4102,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
         children: [
           _buildPanelHeader(
             LucideIcons.listChecks,
-            'Questions Overview',
+            isSinhala ? 'ප්‍රශ්න දළ විශ්ලේෂණය' : 'Questions Overview',
             trailing: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
@@ -3984,8 +4112,12 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
               ),
               child: Text(
                 isElder
-                    ? '$_answeredCount / $_totalCount Answered'
-                    : '$_fullyCompletedCount / $_totalCount Completed',
+                    ? (isSinhala
+                        ? '$_answeredCount / $_totalCount පිළිතුරු දී ඇත'
+                        : '$_answeredCount / $_totalCount Answered')
+                    : (isSinhala
+                        ? '$_fullyCompletedCount / $_totalCount සම්පූර්ණයි'
+                        : '$_fullyCompletedCount / $_totalCount Completed'),
                 style: const TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
@@ -4090,7 +4222,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                             const SizedBox(width: 10),
                             Expanded(
                               child: Text(
-                                q.category,
+                                _translateCategory(q.category, isSinhala),
                                 style: TextStyle(
                                   fontSize: 13,
                                   fontWeight: isCurrent
@@ -4114,9 +4246,9 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                                     borderRadius: BorderRadius.circular(8),
                                     border: Border.all(color: const Color(0xFF86EFAC)),
                                   ),
-                                  child: const Text(
-                                    'Answer Saved',
-                                    style: TextStyle(
+                                  child: Text(
+                                    isSinhala ? 'පිළිතුර සුරැකිණි' : 'Answer Saved',
+                                    style: const TextStyle(
                                       fontSize: 10,
                                       fontWeight: FontWeight.w700,
                                       color: Color(0xFF15803D),
@@ -4156,9 +4288,9 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                                   ),
                                 ),
                               ] else if (isGraded && !isAnswered) ...[
-                                const Text(
-                                  'Missing answer',
-                                  style: TextStyle(
+                                Text(
+                                  isSinhala ? 'පිළිතුරක් නැත' : 'Missing answer',
+                                  style: const TextStyle(
                                     fontSize: 10,
                                     fontWeight: FontWeight.w600,
                                     color: Color(0xFFB45309),
@@ -4171,9 +4303,9 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                                   color: Color(0xFFB45309),
                                 ),
                               ] else if (isAnswered && !isGraded) ...[
-                                const Text(
-                                  'Awaiting score',
-                                  style: TextStyle(
+                                Text(
+                                  isSinhala ? 'ලකුණු අපේක්ෂාවෙන්' : 'Awaiting score',
+                                  style: const TextStyle(
                                     fontSize: 10,
                                     fontWeight: FontWeight.w600,
                                     color: Color(0xFFB45309),
@@ -4212,6 +4344,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
   }
 
   Widget _buildGuidanceCard(bool isElder) {
+    final isSinhala = ref.watch(languageProvider).isSinhala;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -4232,12 +4365,16 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
         children: [
           _buildPanelHeader(
             isElder ? LucideIcons.info : LucideIcons.helpCircle,
-            isElder ? 'Elder Assessment Guidance' : 'Clinical Evaluation Tips',
+            isElder
+                ? (isSinhala ? 'වැඩිහිටි ඇගයීම් මාර්ගෝපදේශය' : 'Elder Assessment Guidance')
+                : (isSinhala ? 'සායනික ඇගයීම් උපදෙස්' : 'Clinical Evaluation Tips'),
           ),
           const SizedBox(height: 12),
           Text(
             isElder
-                ? 'Take as much time as you need for each question. You can answer using the microphone or keyboard. Your care team will review your responses.'
+                ? (isSinhala
+                    ? 'සෑම ප්‍රශ්නයකටම ඔබට අවශ්‍ය තරම් කාලය ගන්න. මයික්‍රොෆෝනය හෝ යතුරුපුවරුව භාවිතා කර පිළිතුරු ලබා දිය හැකිය. ඔබේ සත්කාරක කණ්ඩායම ඔබේ පිළිතුරු පරීක්ෂා කරනු ඇත.'
+                    : 'Take as much time as you need for each question. You can answer using the microphone or keyboard. Your care team will review your responses.')
                 : 'Guidance: ${_questions[_currentIndex].recommendedAnswerGuide}',
             style: const TextStyle(
               fontSize: 12.5,
@@ -4252,6 +4389,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
   }
 
   Widget _buildCognitiveWellnessCompanionCard(CognitiveQuestionItem currentQ) {
+    final isSinhala = ref.watch(languageProvider).isSinhala;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -4274,7 +4412,6 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header with floating sparkles icon & live pulse indicator
           Row(
             children: [
               AnimatedBuilder(
@@ -4302,10 +4439,10 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                 ),
               ),
               const SizedBox(width: 10),
-              const Expanded(
+              Expanded(
                 child: Text(
-                  'Cognitive Vitality Focus',
-                  style: TextStyle(
+                  isSinhala ? 'ප්‍රජානන සුවතා අවධානය' : 'Cognitive Vitality Focus',
+                  style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
                     color: AppColors.navy,
@@ -4313,7 +4450,6 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                   ),
                 ),
               ),
-              // Live pulsating dot
               AnimatedBuilder(
                 animation: _ambientPulseAnimation,
                 builder: (context, child) => Transform.scale(
@@ -4339,9 +4475,9 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                         ),
                       ),
                       const SizedBox(width: 4),
-                      const Text(
-                        'LIVE',
-                        style: TextStyle(
+                      Text(
+                        isSinhala ? 'සජීවී' : 'LIVE',
+                        style: const TextStyle(
                           fontSize: 9.5,
                           fontWeight: FontWeight.w800,
                           color: Color(0xFF15803D),
@@ -4356,7 +4492,6 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
           ),
           const SizedBox(height: 14),
 
-          // Active domain highlight box with gentle breathing waveform
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(12),
@@ -4373,7 +4508,9 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                     const Icon(LucideIcons.brain, size: 14, color: AppColors.primary),
                     const SizedBox(width: 6),
                     Text(
-                      'Target Domain: ${currentQ.category}',
+                      isSinhala
+                          ? 'අදාළ අංශය: ${_translateCategory(currentQ.category, true)}'
+                          : 'Target Domain: ${currentQ.category}',
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
@@ -4384,7 +4521,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  _getDomainEncouragement(currentQ.domain),
+                  _getDomainEncouragement(currentQ.domain, isSinhala),
                   style: const TextStyle(
                     fontSize: 11.5,
                     color: AppColors.body,
@@ -4397,12 +4534,11 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
           ),
           const SizedBox(height: 12),
 
-          // Gentle ambient breathing rhythm indicators (4 animated bars)
           Row(
             children: [
-              const Text(
-                'Assessment Rhythm',
-                style: TextStyle(
+              Text(
+                isSinhala ? 'ඇගයීම් රිද්මය' : 'Assessment Rhythm',
+                style: const TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
                   color: AppColors.muted,
@@ -4434,14 +4570,22 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
           ),
           const SizedBox(height: 12),
 
-          // Floating mini pills
           Wrap(
             spacing: 6,
             runSpacing: 6,
             children: [
-              _buildMiniWellnessPill('Dual-Language Sync', LucideIcons.languages),
-              _buildMiniWellnessPill('Conversational AI', LucideIcons.heart),
-              _buildMiniWellnessPill('Empathetic Care', LucideIcons.sparkles),
+              _buildMiniWellnessPill(
+                isSinhala ? 'ද්වි-භාෂා සහාය' : 'Dual-Language Sync',
+                LucideIcons.languages,
+              ),
+              _buildMiniWellnessPill(
+                isSinhala ? 'AI සහායක' : 'Conversational AI',
+                LucideIcons.heart,
+              ),
+              _buildMiniWellnessPill(
+                isSinhala ? 'කාරුණික රැකවරණය' : 'Empathetic Care',
+                LucideIcons.sparkles,
+              ),
             ],
           ),
         ],
@@ -4449,8 +4593,20 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
     );
   }
 
-  String _getDomainEncouragement(String domain) {
+  String _getDomainEncouragement(String domain, [bool isSinhala = false]) {
     final d = domain.toLowerCase();
+    if (isSinhala) {
+      if (d.contains('orientation')) {
+        return 'කාලය සහ පරිසරය පිළිබඳ අවබෝධය වැඩිහිටි මානසික සන්සුන්තාවය වර්ධනය කරයි.';
+      } else if (d.contains('memory') || d.contains('recall')) {
+        return 'සන්සුන්ව සහ ඉවසීමෙන් මතකය අවදි කිරීමට ඉඩ ලබා දෙන්න.';
+      } else if (d.contains('attention') || d.contains('calculation')) {
+        return 'සන්සුන් මනසකින් පිළිතුරු දීම අවධානය සහ මතක ශක්තිය වැඩි කරයි.';
+      } else if (d.contains('reasoning') || d.contains('judgment')) {
+        return 'එදිනෙදා ජීවිතයේ ප්‍රායෝගික තීරණ ගැනීමේ හැකියාව මෙමගින් පරීක්ෂා කෙරේ.';
+      }
+      return 'සුහදශීලී සංවාදය මගින් ප්‍රජානන සුවතාවය වඩාත් නිවැරදිව හඳුනාගත හැක.';
+    }
     if (d.contains('orientation')) {
       return 'Temporal and spatial grounding fosters resident security and reduces anxiety.';
     } else if (d.contains('memory') || d.contains('recall')) {
@@ -4553,6 +4709,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
 
   void _showFinishConfirmationDialog(bool isElder) {
     _saveCurrentQuestionState();
+    final isSinhala = ref.read(languageProvider).isSinhala;
     showDialog(
       context: context,
       barrierDismissible: !_isSubmitting,
@@ -4583,13 +4740,19 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                       size: 22,
                     ),
                     const SizedBox(width: 8),
-                    Text(
-                      isAllAnswered
-                          ? 'Submit & Auto-Score Assessment'
-                          : 'Questions Pending Answer',
-                      style: const TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.bold,
+                    Expanded(
+                      child: Text(
+                        isAllAnswered
+                            ? (isSinhala
+                                ? 'ඇගයීම ඉදිරිපත් කර ලකුණු ගණනය කරන්න'
+                                : 'Submit & Auto-Score Assessment')
+                            : (isSinhala
+                                ? 'පිළිතුරු ලබා දිය යුතු ප්‍රශ්න ඇත'
+                                : 'Questions Pending Answer'),
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ],
@@ -4600,7 +4763,9 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Session Summary: $_answeredCount of $_totalCount questions answered for ${_resident?.name ?? 'Resident'}.',
+                        isSinhala
+                            ? 'සැසි සාරාංශය: ${_resident?.name ?? 'නේවාසිකයා'} සඳහා ප්‍රශ්න $_totalCount න් $_answeredCount කට පිළිතුරු දී ඇත.'
+                            : 'Session Summary: $_answeredCount of $_totalCount questions answered for ${_resident?.name ?? 'Resident'}.',
                         style: const TextStyle(fontSize: 12, color: AppColors.body),
                       ),
                       if (!isAllAnswered) ...[
@@ -4624,7 +4789,9 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                                   ),
                                   const SizedBox(width: 6),
                                   Text(
-                                    '${unansweredIds.length} Question(s) Require Your Response',
+                                    isSinhala
+                                        ? 'ප්‍රශ්න ${unansweredIds.length} කට ඔබේ පිළිතුර අවශ්‍යයි'
+                                        : '${unansweredIds.length} Question(s) Require Your Response',
                                     style: const TextStyle(
                                       fontSize: 12,
                                       fontWeight: FontWeight.bold,
@@ -4635,7 +4802,9 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                               ),
                               const SizedBox(height: 6),
                               Text(
-                                '• Unanswered: Question(s) ${unansweredIds.join(', ')}.',
+                                isSinhala
+                                    ? '• පිළිතුරු නොදුන් ප්‍රශ්න: ${unansweredIds.join(', ')}.'
+                                    : '• Unanswered: Question(s) ${unansweredIds.join(', ')}.',
                                 style: const TextStyle(
                                   fontSize: 11,
                                   color: Color(0xFF92400E),
@@ -4643,9 +4812,11 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                                 ),
                               ),
                               const SizedBox(height: 8),
-                              const Text(
-                                'Please answer all 10 questions before submitting. Missing answers remain incomplete.',
-                                style: TextStyle(
+                              Text(
+                                isSinhala
+                                    ? 'කරුණාකර ඉදිරිපත් කිරීමට පෙර ප්‍රශ්න 10 ටම පිළිතුරු දෙන්න.'
+                                    : 'Please answer all 10 questions before submitting. Missing answers remain incomplete.',
+                                style: const TextStyle(
                                   fontSize: 10,
                                   color: Color(0xFF92400E),
                                   fontStyle: FontStyle.italic,
@@ -4658,7 +4829,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                                 children: unansweredIds.map((id) {
                                   return ActionChip(
                                     label: Text(
-                                      'Go to Q$id',
+                                      isSinhala ? 'ප්‍රශ්න $id වෙත යන්න' : 'Go to Q$id',
                                       style: const TextStyle(
                                         fontSize: 10,
                                         fontWeight: FontWeight.bold,
@@ -4690,19 +4861,21 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
-                            children: const [
+                            children: [
                               Row(
                                 children: [
-                                  Icon(
+                                  const Icon(
                                     LucideIcons.checkCircle2,
                                     size: 16,
                                     color: AppColors.riskLow,
                                   ),
-                                  SizedBox(width: 8),
+                                  const SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
-                                      'All 10 questions have saved responses.',
-                                      style: TextStyle(
+                                      isSinhala
+                                          ? 'ප්‍රශ්න 10 සඳහාම පිළිතුරු සුරකින ලදී.'
+                                          : 'All 10 questions have saved responses.',
+                                      style: const TextStyle(
                                         fontSize: 11,
                                         fontWeight: FontWeight.bold,
                                         color: AppColors.riskLow,
@@ -4711,10 +4884,12 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                                   ),
                                 ],
                               ),
-                              SizedBox(height: 6),
+                              const SizedBox(height: 6),
                               Text(
-                                'Your responses will be evaluated deterministically using question-specific scoring rules, ACRF cognitive domain scores calculated, and AI risk prediction generated.',
-                                style: TextStyle(
+                                isSinhala
+                                    ? 'ඔබේ පිළිතුරු ස්වයංක්‍රීයව ඇගයීමට ලක් කර ප්‍රජානන ලකුණු සහ AI අවදානම් විශ්ලේෂණය සකස් කරනු ලැබේ.'
+                                    : 'Your responses will be evaluated deterministically using question-specific scoring rules, ACRF cognitive domain scores calculated, and AI risk prediction generated.',
+                                style: const TextStyle(
                                   fontSize: 10,
                                   color: AppColors.navy,
                                 ),
@@ -4750,7 +4925,9 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                         ? null
                         : () => Navigator.of(context).pop(),
                     child: Text(
-                      isAllAnswered ? 'Review Answers' : 'Return to Assessment',
+                      isAllAnswered
+                          ? (isSinhala ? 'පිළිතුරු පරීක්ෂා කරන්න' : 'Review Answers')
+                          : (isSinhala ? 'ඇගයීම වෙත ආපසු යන්න' : 'Return to Assessment'),
                       style: const TextStyle(color: AppColors.muted),
                     ),
                   ),
@@ -4782,8 +4959,8 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                           )
                         : Text(
                             isAllAnswered
-                                ? 'Submit & Calculate Score'
-                                : 'Answer All 10 Questions to Submit',
+                                ? (isSinhala ? 'ඉදිරිපත් කර ලකුණු බලන්න' : 'Submit & Calculate Score')
+                                : (isSinhala ? 'ඉදිරිපත් කිරීමට ප්‍රශ්න 10 ටම පිළිතුරු දෙන්න' : 'Answer All 10 Questions to Submit'),
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
                   ),
