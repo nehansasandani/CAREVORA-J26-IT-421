@@ -93,7 +93,7 @@ class CognitiveScoring {
       category: 'Immediate Memory',
       domain: 'memory',
       prompt: 'Repeat these words: Sun, Book, Tree.',
-      promptSinhala: 'මෙම වචන නැවත කියන්න: Sun (ඉර), Book (පොත), Tree (ගස).',
+      promptSinhala: 'මෙම වචන නැවත කියන්න: ඉර, පොත, ගස.',
       aiTip: 'Immediate verbal registration of three common targets.',
       recommendedAnswerGuide:
           'Score 1.0 if all 3 repeated, 0.5 for 1-2 words, 0.0 for none.',
@@ -141,7 +141,7 @@ class CognitiveScoring {
       category: 'Delayed Recall',
       domain: 'recall',
       prompt: 'Did you hear the word Sun earlier?',
-      promptSinhala: 'කලින් Sun (ඉර) කියන වචනය ඔබට ඇසුණාද?',
+      promptSinhala: 'කලින් ඉර කියන වචනය ඔබට ඇසුණාද?',
       aiTip: 'Cued recognition memory.',
       recommendedAnswerGuide: "'Yes'.",
     ),
@@ -208,7 +208,7 @@ class CognitiveScoring {
 
     switch (questionId) {
       case 1:
-        // Q1: What day is it today?
+        // Q1: What day is it today? (English & Sinhala weekday names)
         const weekdayNames = [
           'monday',
           'tuesday',
@@ -218,10 +218,21 @@ class CognitiveScoring {
           'saturday',
           'sunday',
         ];
+        const sinhalaWeekdays = [
+          'සඳුදා',
+          'අඟහරුවාදා',
+          'බදාදා',
+          'බ්‍රහස්පතින්දා',
+          'සිකුරාදා',
+          'සෙනසුරාදා',
+          'ඉරිදා',
+        ];
         final currentWeekdayName = weekdayNames[ref.weekday - 1];
+        final currentSinhalaDay = sinhalaWeekdays[ref.weekday - 1];
         final hasTargetDay = RegExp(
-          r'\b' + currentWeekdayName + r'\b',
-        ).hasMatch(normalized);
+              r'\b' + currentWeekdayName + r'\b',
+            ).hasMatch(normalized) ||
+            rawAnswer.contains(currentSinhalaDay);
         return hasTargetDay ? 1.0 : 0.0;
 
       case 2:
@@ -229,25 +240,29 @@ class CognitiveScoring {
         final currentYear = ref.year.toString();
         final hasYear = RegExp(r'\b' + currentYear + r'\b').hasMatch(normalized) ||
             normalized.contains('twenty twenty six') ||
-            normalized.contains('twenty twenty-six');
+            normalized.contains('twenty twenty-six') ||
+            rawAnswer.contains('දෙදහස් විසි හය');
         return hasYear ? 1.0 : 0.0;
 
       case 3:
       case 4:
       case 7:
-        // Q3: Repeat these words: Sun, Book, Tree.
-        // Q4: Say those three words once more.
-        // Q7: What were the three words from earlier?
-        // Distinct target word count (avoid duplicate counting of same word e.g. "sun sun sun")
-        // Word boundary matching avoids accidental substrings like "sunny" or "street"
+        // Q3: Repeat these words: Sun, Book, Tree (ඉර, පොත, ගස).
         final distinctTargets = <String>{};
-        if (RegExp(r'\bsun\b').hasMatch(normalized)) {
+        if (RegExp(r'\bsun\b').hasMatch(normalized) ||
+            rawAnswer.contains('ඉර') ||
+            rawAnswer.contains('හිරු')) {
           distinctTargets.add('sun');
         }
-        if (RegExp(r'\bbooks?\b').hasMatch(normalized)) {
+        if (RegExp(r'\bbooks?\b').hasMatch(normalized) ||
+            rawAnswer.contains('පොත') ||
+            rawAnswer.contains('පොත්')) {
           distinctTargets.add('book');
         }
-        if (RegExp(r'\btrees?\b').hasMatch(normalized)) {
+        if (RegExp(r'\btrees?\b').hasMatch(normalized) ||
+            rawAnswer.contains('ගස') ||
+            rawAnswer.contains('ගහ') ||
+            rawAnswer.contains('ගස්')) {
           distinctTargets.add('tree');
         }
 
@@ -257,34 +272,42 @@ class CognitiveScoring {
         return 0.0;
 
       case 5:
-        // Q5: What is 2 plus 3? Accept 5, five
-        final isFive = RegExp(r'\b(5|five)\b').hasMatch(normalized);
+        // Q5: What is 2 plus 3? Accept 5, five, පහ
+        final isFive = RegExp(r'\b(5|five)\b').hasMatch(normalized) ||
+            rawAnswer.contains('පහ');
         return isFive ? 1.0 : 0.0;
 
       case 6:
-        // Q6: Which is bigger: 3 or 8? Accept 8, eight
-        final mentionsEight = RegExp(r'\b(8|eight)\b').hasMatch(normalized);
+        // Q6: Which is bigger: 3 or 8? Accept 8, eight, අට
+        final mentionsEight = RegExp(r'\b(8|eight)\b').hasMatch(normalized) ||
+            rawAnswer.contains('අට');
         final saysThreeBigger = RegExp(
           r'\b(3|three)\s+is\s+bigger\b',
         ).hasMatch(normalized);
         return (mentionsEight && !saysThreeBigger) ? 1.0 : 0.0;
 
       case 8:
-        // Q8: Did you hear the word Sun earlier? Accept unambiguous affirmative
+        // Q8: Did you hear the word Sun earlier? Accept unambiguous affirmative (English & Sinhala)
         final isAffirmative = RegExp(
-          r'\b(yes|yeah|yep|yup|i did|affirmative|certainly|sure|true|correct|heard|i heard|i heard sun|heard sun|heard it|i heard it|yes i did)\b',
-        ).hasMatch(normalized);
+              r'\b(yes|yeah|yep|yup|i did|affirmative|certainly|sure|true|correct|heard|i heard|i heard sun|heard sun|heard it|i heard it|yes i did)\b',
+            ).hasMatch(normalized) ||
+            rawAnswer.contains('ඔව්') ||
+            rawAnswer.contains('ඇසුණා') ||
+            rawAnswer.contains('ඇහුණා');
         final isNegative = RegExp(
-          r'\b(no|nope|not|never|did not|didn t|didnt)\b',
-        ).hasMatch(normalized);
+              r'\b(no|nope|not|never|did not|didn t|didnt)\b',
+            ).hasMatch(normalized) ||
+            rawAnswer.contains('නැහැ') ||
+            rawAnswer.contains('නෑ');
         return (isAffirmative && !isNegative) ? 1.0 : 0.0;
 
       case 9:
-        // Q9: What do you use to tell the time?
-        // Expected answers: clock, watch, wall clock, wristwatch, or other semantically equivalent answers
+        // Q9: What do you use to tell the time? (English & Sinhala)
         final hasValidDevice = RegExp(
-          r'\b(clock|clocks|watch|watches|wristwatch|wristwatches|smartwatch|smartwatches|pocketwatch|stopwatch|timepiece|timepieces|chronometer|chronometers|sundial|sundials|hourglass|hourglasses)\b',
-        ).hasMatch(normalized);
+              r'\b(clock|clocks|watch|watches|wristwatch|wristwatches|smartwatch|smartwatches|pocketwatch|stopwatch|timepiece|timepieces|chronometer|chronometers|sundial|sundials|hourglass|hourglasses)\b',
+            ).hasMatch(normalized) ||
+            rawAnswer.contains('ඔරලෝසු') ||
+            rawAnswer.contains('අත් ඔරලෝසුව');
 
         final isNegated = RegExp(
           r'\b(no|not|never|neither|without)\s+(a\s+|an\s+|the\s+|my\s+|any\s+)?(clock|clocks|watch|watches|wristwatch|timepiece|sundial)\b',
@@ -301,13 +324,17 @@ class CognitiveScoring {
         return (hasValidDevice && !isNegated && !isDisallowedIdiom) ? 1.0 : 0.0;
 
       case 10:
-        // Q10: Are an apple and an orange both fruits?
+        // Q10: Are an apple and an orange both fruits? (English & Sinhala)
         final isFruits = RegExp(
-          r'\b(yes|both fruits|both are fruits|fruits|fruit|they are fruits|yes they are|affirmative|correct)\b',
-        ).hasMatch(normalized);
+              r'\b(yes|both fruits|both are fruits|fruits|fruit|they are fruits|yes they are|affirmative|correct)\b',
+            ).hasMatch(normalized) ||
+            rawAnswer.contains('ඔව්') ||
+            rawAnswer.contains('පලතුරු');
         final isNegative = RegExp(
-          r'\b(no|nope|neither|vegetables?)\b',
-        ).hasMatch(normalized);
+              r'\b(no|nope|neither|vegetables?)\b',
+            ).hasMatch(normalized) ||
+            rawAnswer.contains('නැහැ') ||
+            rawAnswer.contains('නෑ');
         return (isFruits && !isNegative) ? 1.0 : 0.0;
 
       default:

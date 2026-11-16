@@ -11,7 +11,9 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 
+import '../../../core/localization/app_language.dart';
 import '../../../core/responsive/responsive_builder.dart';
+import '../../../core/services/tts_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/mock/mock_carevora_data.dart';
 import '../../../data/models/carevora_models.dart';
@@ -127,6 +129,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
     _floatingController.dispose();
     _ambientPulseController.dispose();
     _savePulseController.dispose();
+    TtsService.instance.stop();
     _flutterTts.stop();
     _speech.statusListener = null;
     _speech.errorListener = null;
@@ -646,7 +649,10 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
     _saveDebounceTimer?.cancel();
     _activeListeningSessionId++;
     _recordCurrentQuestionDuration();
-    if (_isSpeaking) _flutterTts.stop();
+    if (_isSpeaking) {
+      TtsService.instance.stop();
+      _flutterTts.stop();
+    }
     if (_isListening || _speech.isListening) {
       if (kIsWeb) {
         try {
@@ -690,6 +696,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
       }
     }
     if (_isSpeaking) {
+      TtsService.instance.stop();
       await _flutterTts.stop();
       if (mounted) {
         setState(() {
@@ -698,9 +705,24 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
         });
       }
     } else {
+      final isSinhala = ref.read(languageProvider).isSinhala;
       _isSpeakingPrompt = true;
       if (mounted) setState(() => _isSpeaking = true);
-      await _flutterTts.speak(text);
+      if (kIsWeb) {
+        await TtsService.instance.speak(text, isSinhala: isSinhala);
+        Future.delayed(const Duration(seconds: 3), () {
+          if (mounted && !TtsService.instance.isSpeaking) {
+            setState(() {
+              _isSpeaking = false;
+              _isSpeakingPrompt = false;
+            });
+          }
+        });
+      } else {
+        await _flutterTts.setLanguage(isSinhala ? 'si-LK' : 'en-US');
+        await _flutterTts.setSpeechRate(isSinhala ? 0.42 : 0.48);
+        await _flutterTts.speak(text);
+      }
     }
   }
 
@@ -715,20 +737,10 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
       }
       _isSpeakingPrompt = false;
 
-      // On Web (especially Chrome), calling stop() and then immediately speak()
-      // causes Chrome to cancel the new utterance because the cancellation event
-      // is still asynchronously processing in the browser event loop.
-      // Allowing a 250ms settle delay ensures flutter_tts_web transitions back to
-      // stopped state so 'Next question' is voiced reliably on every question transition.
+      TtsService.instance.stop();
       await _flutterTts.stop();
-      if (kIsWeb) {
-        await Future.delayed(const Duration(milliseconds: 250));
-      }
-      await _flutterTts.setLanguage('en-US');
-      await _flutterTts.setSpeechRate(0.50);
-      await _flutterTts.speak('Next question');
     } catch (e) {
-      debugPrint('[CARE-TTS] Failed to speak next question: $e');
+      debugPrint('[CARE-TTS] Failed to stop speech on next question: $e');
     }
   }
 
@@ -747,6 +759,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
 
       // 1. Promptly stop any active TTS output so audio playback does not conflict with microphone capture
       if (_isSpeaking) {
+        TtsService.instance.stop();
         await _flutterTts.stop();
         if (mounted) setState(() => _isSpeaking = false);
       }
@@ -1254,12 +1267,33 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
 
   Future<void> _submitElderResponses() => _submitCaregiverAssessment();
 
+  AppLanguage? _lastSpokenLanguage;
+
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider).state;
     final bool isElder = authState.isElder;
+    final langNotifier = ref.watch(languageProvider);
+    final bool isSinhala = langNotifier.isSinhala;
 
     final currentQ = _questions[_currentIndex];
+    if (_lastSpokenLanguage != null &&
+        _lastSpokenLanguage != langNotifier.currentLanguage) {
+      _lastSpokenLanguage = langNotifier.currentLanguage;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          TtsService.instance.stop();
+          _flutterTts.stop();
+          setState(() {
+            _isSpeaking = false;
+            _isSpeakingPrompt = false;
+          });
+        }
+      });
+    } else {
+      _lastSpokenLanguage ??= langNotifier.currentLanguage;
+    }
+
     final currentGrade = _grades[currentQ.id];
     final progressPct = _getProgressPct(isElder);
 
@@ -2599,14 +2633,22 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                       ),
                     ),
                     const SizedBox(width: 10),
-                    _buildListenButton(currentQ.prompt),
+                    _buildListenButton(
+                      (ref.watch(languageProvider).isSinhala &&
+                              currentQ.promptSinhala.isNotEmpty)
+                          ? currentQ.promptSinhala
+                          : currentQ.prompt,
+                    ),
                   ],
                 ),
                 const SizedBox(height: 20),
 
-                // Question Prompt (high-contrast, large, accessible for elderly)
+                // Question Prompt (Strictly single-language based on selected language)
                 Text(
-                  currentQ.prompt,
+                  (ref.watch(languageProvider).isSinhala &&
+                          currentQ.promptSinhala.isNotEmpty)
+                      ? currentQ.promptSinhala
+                      : currentQ.prompt,
                   style: const TextStyle(
                     fontSize: 24,
                     height: 1.45,
@@ -2616,73 +2658,6 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                   ),
                 ),
 
-                // Sinhala Bilingual Prompt Card
-                if (currentQ.promptSinhala.isNotEmpty) ...[
-                  const SizedBox(height: 14),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFFFAF8FF), Color(0xFFF3EDFD)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: const Color(0xFFDDD6FE), width: 1.3),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF6C3FC5).withValues(alpha: 0.04),
-                          blurRadius: 10,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          margin: const EdgeInsets.only(top: 3),
-                          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFF6C3FC5), Color(0xFF8B5CF6)],
-                            ),
-                            borderRadius: BorderRadius.circular(8),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFF6C3FC5).withValues(alpha: 0.28),
-                                blurRadius: 6,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: const Text(
-                            'සිංහල',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white,
-                              letterSpacing: 0.4,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Text(
-                            currentQ.promptSinhala,
-                            style: const TextStyle(
-                              fontSize: 21,
-                              height: 1.55,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF3B2F7E),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
                 const SizedBox(height: 18),
 
                 // Helpful Tip / AI Guidance Card
@@ -3491,7 +3466,12 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
           runSpacing: 8,
           children: [
             OutlinedButton.icon(
-              onPressed: () => _toggleTts(currentQ.prompt),
+              onPressed: () => _toggleTts(
+                (ref.read(languageProvider).isSinhala &&
+                        currentQ.promptSinhala.isNotEmpty)
+                    ? currentQ.promptSinhala
+                    : currentQ.prompt,
+              ),
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppColors.primary,
                 backgroundColor: Colors.white,
