@@ -3,7 +3,10 @@ import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../../core/config/app_config.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../assessment/application/memory_game_service.dart';
@@ -15,6 +18,7 @@ enum MemoryGameType {
   sequence,
   pairs,
   items,
+  collaborative,
 }
 
 /// The main entry page for Carevora's Memory Games suite.
@@ -38,11 +42,60 @@ class MemoryGamesPage extends ConsumerStatefulWidget {
 
 class _MemoryGamesPageState extends ConsumerState<MemoryGamesPage> {
   late MemoryGameType _activeGame;
+  List<Map<String, dynamic>> _hubIncomingInvitesForMe = [];
+  Timer? _hubInviteTimer;
 
   @override
   void initState() {
     super.initState();
     _activeGame = widget.initialGame;
+    _checkHubIncomingInvites();
+    final isTestEnv =
+        WidgetsBinding.instance.runtimeType.toString().contains('Test');
+    if (!isTestEnv) {
+      _hubInviteTimer = Timer.periodic(
+        const Duration(seconds: 2),
+        (_) => _checkHubIncomingInvites(),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _hubInviteTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _checkHubIncomingInvites() async {
+    if (!mounted || _activeGame != MemoryGameType.none) return;
+    final auth = ref.read(authProvider).state;
+    final myName = (auth.userName ?? '').trim().toLowerCase();
+    if (myName.isEmpty) return;
+
+    final List<Map<String, dynamic>> found = [];
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString('carevora_picnic_game_invites_v1');
+      if (raw != null && raw.isNotEmpty) {
+        final decoded = jsonDecode(raw) as List;
+        for (final item in decoded) {
+          if (item is Map) {
+            final map = Map<String, dynamic>.from(item);
+            final target = (map['targetName']?.toString() ?? '').trim().toLowerCase();
+            final status = (map['status']?.toString() ?? '').toUpperCase();
+            if (target == myName && status == 'PENDING') {
+              found.add(map);
+            }
+          }
+        }
+      }
+    } catch (_) {}
+
+    if (mounted) {
+      setState(() {
+        _hubIncomingInvitesForMe = found;
+      });
+    }
   }
 
   void _selectGame(MemoryGameType game) {
@@ -55,6 +108,7 @@ class _MemoryGamesPageState extends ConsumerState<MemoryGamesPage> {
     setState(() {
       _activeGame = MemoryGameType.none;
     });
+    _checkHubIncomingInvites();
   }
 
   @override
@@ -108,6 +162,16 @@ class _MemoryGamesPageState extends ConsumerState<MemoryGamesPage> {
           residentId: effectiveResidentId,
           token: effectiveToken,
         );
+      case MemoryGameType.collaborative:
+        return _CollaborativeMemoryGameView(
+          key: const ValueKey('collaborative_game'),
+          onBack: _backToHub,
+          residentId: effectiveResidentId,
+          elderHomeId: auth.elderHomeId ?? 1,
+          elderHomeName: auth.elderHomeName ?? 'Serene Valley Senior Living',
+          hostName: auth.userName ?? 'Sarah Jenkins',
+          token: effectiveToken,
+        );
       case MemoryGameType.none:
         return _buildHubView();
     }
@@ -120,6 +184,70 @@ class _MemoryGamesPageState extends ConsumerState<MemoryGamesPage> {
       children: [
         // 1. Welcoming Hero & Cognitive Wellness Header Card
         _buildHeroBanner(),
+
+        if (_hubIncomingInvitesForMe.isNotEmpty) ...[
+          const SizedBox(height: 20),
+          ..._hubIncomingInvitesForMe.map((inv) {
+            final senderName =
+                (inv['senderName']?.toString() ?? 'Fellow Elder').trim();
+            final homeName =
+                (inv['elderHomeName']?.toString() ?? 'Elder Home').trim();
+            return Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFEFF6FF), Color(0xFFDBEAFE)],
+                ),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFF2563EB), width: 1.6),
+              ),
+              child: Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 12,
+                runSpacing: 10,
+                children: [
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        LucideIcons.bell,
+                        size: 22,
+                        color: Color(0xFF1D4ED8),
+                      ),
+                      const SizedBox(width: 12),
+                      Flexible(
+                        child: Text(
+                          'New Game Invite: $senderName ($homeName) invited you to play "Shared Picnic Memory Chain"!',
+                          style: const TextStyle(
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF1E3A8A),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  ElevatedButton.icon(
+                    onPressed: () => _selectGame(MemoryGameType.collaborative),
+                    icon: const Icon(LucideIcons.check, size: 16),
+                    label: const Text('Open & Accept Invite'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.riskLow,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 18,
+                        vertical: 12,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
 
         const SizedBox(height: 28),
 
@@ -143,69 +271,90 @@ class _MemoryGamesPageState extends ConsumerState<MemoryGamesPage> {
 
         const SizedBox(height: 20),
 
-        // 3. Three Visually Distinct Game Cards
+        // 3. Visually Distinct Game Cards (including Collaborative Memory Game)
         LayoutBuilder(
           builder: (context, constraints) {
             final isWide = constraints.maxWidth >= 900;
             if (isWide) {
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              return Column(
                 children: [
-                  Expanded(
-                    child: _InteractiveGameCard(
-                      title: 'Remember the Sequence',
-                      badge: 'Pattern Recall',
-                      description:
-                          'A sequence of colorful numbered tiles will appear. Memorize the order and tap them back in the exact same pattern.',
-                      icon: LucideIcons.sparkles,
-                      accentColor: const Color(0xFF7C3AED),
-                      gradientColors: const [Color(0xFF6C3FC5), Color(0xFF8B5CF6)],
-                      features: const [
-                        'Starts with 3 easy tiles',
-                        'Expands as you succeed',
-                        'Replay the pattern anytime',
-                      ],
-                      buttonText: 'Play Sequence',
-                      onPlay: () => _selectGame(MemoryGameType.sequence),
-                    ),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: _InteractiveGameCard(
+                          title: 'Remember the Sequence',
+                          badge: 'Pattern Recall',
+                          description:
+                              'A sequence of colorful numbered tiles will appear. Memorize the order and tap them back in the exact same pattern.',
+                          icon: LucideIcons.sparkles,
+                          accentColor: const Color(0xFF7C3AED),
+                          gradientColors: const [Color(0xFF6C3FC5), Color(0xFF8B5CF6)],
+                          features: const [
+                            'Starts with 3 easy tiles',
+                            'Expands as you succeed',
+                            'Replay the pattern anytime',
+                          ],
+                          buttonText: 'Play Sequence',
+                          onPlay: () => _selectGame(MemoryGameType.sequence),
+                        ),
+                      ),
+                      const SizedBox(width: 20),
+                      Expanded(
+                        child: _InteractiveGameCard(
+                          title: 'Find the Matching Pairs',
+                          badge: 'Card Matching',
+                          description:
+                              'Turn over large, cheerful cards two at a time to discover matching pairs of familiar pictures.',
+                          icon: LucideIcons.puzzle,
+                          accentColor: const Color(0xFF0D9488),
+                          gradientColors: const [Color(0xFF0D9488), Color(0xFF14B8A6)],
+                          features: const [
+                            'Familiar friendly pictures',
+                            'Large, easy-to-tap cards',
+                            'Play at your leisure',
+                          ],
+                          buttonText: 'Play Matching Pairs',
+                          onPlay: () => _selectGame(MemoryGameType.pairs),
+                        ),
+                      ),
+                      const SizedBox(width: 20),
+                      Expanded(
+                        child: _InteractiveGameCard(
+                          title: 'Remember the Items',
+                          badge: 'Object Recall',
+                          description:
+                              'Take a gentle look at a few familiar objects, then test your memory by picking them out from a larger group.',
+                          icon: LucideIcons.bookOpen,
+                          accentColor: const Color(0xFFDB2777),
+                          gradientColors: const [Color(0xFFDB2777), Color(0xFFF43F5E)],
+                          features: const [
+                            'Simple everyday objects',
+                            'Take all the time you need',
+                            'Warm, encouraging feedback',
+                          ],
+                          buttonText: 'Play Remember Items',
+                          onPlay: () => _selectGame(MemoryGameType.items),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 20),
-                  Expanded(
-                    child: _InteractiveGameCard(
-                      title: 'Find the Matching Pairs',
-                      badge: 'Card Matching',
-                      description:
-                          'Turn over large, cheerful cards two at a time to discover matching pairs of familiar pictures.',
-                      icon: LucideIcons.puzzle,
-                      accentColor: const Color(0xFF0D9488),
-                      gradientColors: const [Color(0xFF0D9488), Color(0xFF14B8A6)],
-                      features: const [
-                        'Familiar friendly pictures',
-                        'Large, easy-to-tap cards',
-                        'Play at your leisure',
-                      ],
-                      buttonText: 'Play Matching Pairs',
-                      onPlay: () => _selectGame(MemoryGameType.pairs),
-                    ),
-                  ),
-                  const SizedBox(width: 20),
-                  Expanded(
-                    child: _InteractiveGameCard(
-                      title: 'Remember the Items',
-                      badge: 'Object Recall',
-                      description:
-                          'Take a gentle look at a few familiar objects, then test your memory by picking them out from a larger group.',
-                      icon: LucideIcons.bookOpen,
-                      accentColor: const Color(0xFFDB2777),
-                      gradientColors: const [Color(0xFFDB2777), Color(0xFFF43F5E)],
-                      features: const [
-                        'Simple everyday objects',
-                        'Take all the time you need',
-                        'Warm, encouraging feedback',
-                      ],
-                      buttonText: 'Play Remember Items',
-                      onPlay: () => _selectGame(MemoryGameType.items),
-                    ),
+                  const SizedBox(height: 20),
+                  _InteractiveGameCard(
+                    title: 'Shared Picnic Memory Chain',
+                    badge: 'Invite & Play • 2+ Players',
+                    description:
+                        'Invite fellow residents, friends, or caregivers to pack a picnic basket together! Take turns recalling the growing chain of items in order and adding a new item.',
+                    icon: LucideIcons.users,
+                    accentColor: const Color(0xFF2563EB),
+                    gradientColors: const [Color(0xFF2563EB), Color(0xFF3B82F6)],
+                    features: const [
+                      'Invite players (Minimum 2 players)',
+                      'Build & recall a growing item chain',
+                      'Ask invited teammates for hints anytime',
+                    ],
+                    buttonText: 'Invite & Play Chain',
+                    onPlay: () => _selectGame(MemoryGameType.collaborative),
                   ),
                 ],
               );
@@ -261,6 +410,23 @@ class _MemoryGamesPageState extends ConsumerState<MemoryGamesPage> {
                     ],
                     buttonText: 'Play Remember Items',
                     onPlay: () => _selectGame(MemoryGameType.items),
+                  ),
+                  const SizedBox(height: 18),
+                  _InteractiveGameCard(
+                    title: 'Shared Picnic Memory Chain',
+                    badge: 'Invite & Play • 2+ Players',
+                    description:
+                        'Invite fellow residents, friends, or caregivers to pack a picnic basket together! Take turns recalling the growing chain of items in order and adding a new item.',
+                    icon: LucideIcons.users,
+                    accentColor: const Color(0xFF2563EB),
+                    gradientColors: const [Color(0xFF2563EB), Color(0xFF3B82F6)],
+                    features: const [
+                      'Invite players (Minimum 2 players)',
+                      'Build & recall a growing item chain',
+                      'Ask invited teammates for hints anytime',
+                    ],
+                    buttonText: 'Invite & Play Chain',
+                    onPlay: () => _selectGame(MemoryGameType.collaborative),
                   ),
                 ],
               );
@@ -4837,3 +5003,2141 @@ Widget _buildGameNavBar({
     ),
   );
 }
+
+// ==============================================================================
+// GAME 4: SHARED PICNIC MEMORY CHAIN (INVITE PLAYERS • MINIMUM 2 PLAYERS)
+// ==============================================================================
+
+class _InvitedPlayer {
+  final String id;
+  String name;
+  final String roleLabel;
+  final int elderHomeId;
+  final String elderHomeName;
+  final Color color;
+  bool isHost;
+  bool isInvited;
+  bool hasJoined;
+  int chainStepsCompleted;
+  int itemsAdded;
+
+  _InvitedPlayer({
+    required this.id,
+    required this.name,
+    required this.roleLabel,
+    required this.elderHomeId,
+    required this.elderHomeName,
+    required this.color,
+    this.isHost = false,
+    this.isInvited = false,
+    this.hasJoined = false,
+    this.chainStepsCompleted = 0,
+    this.itemsAdded = 0,
+  });
+}
+
+class _PicnicChainItem {
+  final String key;
+  final String label;
+  final IconData icon;
+  final Color color;
+  final String addedByPlayerName;
+
+  const _PicnicChainItem({
+    required this.key,
+    required this.label,
+    required this.icon,
+    required this.color,
+    this.addedByPlayerName = '',
+  });
+
+  _PicnicChainItem withAddedBy(String playerName) => _PicnicChainItem(
+        key: key,
+        label: label,
+        icon: icon,
+        color: color,
+        addedByPlayerName: playerName,
+      );
+}
+
+enum _ChainTurnStage {
+  lobbyInvite,
+  recallExistingChain,
+  addNewItemToChain,
+  completed,
+}
+
+class _CollaborativeMemoryGameView extends StatefulWidget {
+  final VoidCallback onBack;
+  final int residentId;
+  final int elderHomeId;
+  final String elderHomeName;
+  final String hostName;
+  final String? token;
+
+  const _CollaborativeMemoryGameView({
+    super.key,
+    required this.onBack,
+    required this.residentId,
+    required this.elderHomeId,
+    required this.elderHomeName,
+    required this.hostName,
+    this.token,
+  });
+
+  @override
+  State<_CollaborativeMemoryGameView> createState() =>
+      _CollaborativeMemoryGameViewState();
+}
+
+class _CollaborativeMemoryGameViewState
+    extends State<_CollaborativeMemoryGameView> {
+  static const int _minPlayers = 2;
+  static const int _targetChainLength = 5;
+  static const String _roomInviteCode = 'PICNIC-482';
+
+  static const List<_PicnicChainItem> _picnicPool = [
+    _PicnicChainItem(
+      key: 'tea',
+      label: 'Warm Tea',
+      icon: LucideIcons.coffee,
+      color: Color(0xFFD97706),
+    ),
+    _PicnicChainItem(
+      key: 'apple',
+      label: 'Red Apple',
+      icon: Icons.apple_rounded,
+      color: Color(0xFFDC2626),
+    ),
+    _PicnicChainItem(
+      key: 'sunhat',
+      label: 'Sun Hat',
+      icon: LucideIcons.sun,
+      color: Color(0xFFCA8A04),
+    ),
+    _PicnicChainItem(
+      key: 'flower',
+      label: 'Wild Bouquet',
+      icon: LucideIcons.flower,
+      color: Color(0xFFDB2777),
+    ),
+    _PicnicChainItem(
+      key: 'book',
+      label: 'Story Book',
+      icon: LucideIcons.bookOpen,
+      color: Color(0xFF2563EB),
+    ),
+    _PicnicChainItem(
+      key: 'music',
+      label: 'Pocket Radio',
+      icon: LucideIcons.music,
+      color: Color(0xFF7C3AED),
+    ),
+    _PicnicChainItem(
+      key: 'cake',
+      label: 'Berry Tart',
+      icon: LucideIcons.heart,
+      color: Color(0xFFE11D48),
+    ),
+    _PicnicChainItem(
+      key: 'lantern',
+      label: 'Cozy Lantern',
+      icon: LucideIcons.sparkles,
+      color: Color(0xFF0D9488),
+    ),
+  ];
+
+  static const String _prefsInvitesKey = 'carevora_picnic_game_invites_v1';
+
+  late List<_InvitedPlayer> _directoryPlayers;
+  bool _inviteCodeCopied = false;
+  Timer? _inviteSyncTimer;
+  final Set<String> _shownIncomingPopupIds = {};
+  List<Map<String, dynamic>> _incomingInvitesForMe = [];
+
+  _ChainTurnStage _stage = _ChainTurnStage.lobbyInvite;
+  int _currentPlayerIndex = 0;
+  final List<_PicnicChainItem> _packedChain = [];
+  final List<_PicnicChainItem> _currentRecallInput = [];
+  String? _feedbackBannerText;
+  bool _isFeedbackPositive = true;
+  String? _teammateHintText;
+  int _totalTeamAttempts = 0;
+  int _successfulRecalls = 0;
+  bool _isSaving = false;
+  String? _saveErrorMessage;
+  double? _lastScore;
+
+  @override
+  void initState() {
+    super.initState();
+    _initPlayers();
+    _loadFacilityEldersFromBackend();
+    _syncInvites();
+    final isTestEnv =
+        WidgetsBinding.instance.runtimeType.toString().contains('Test');
+    if (!isTestEnv) {
+      _inviteSyncTimer = Timer.periodic(
+        const Duration(seconds: 2),
+        (_) => _syncInvites(),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _inviteSyncTimer?.cancel();
+    super.dispose();
+  }
+
+  void _initPlayers() {
+    final allFacilityElders = <_InvitedPlayer>[
+      // Elder Home 1: Serene Valley Senior Living (Elders Only)
+      _InvitedPlayer(
+        id: 'sv_sarah',
+        name: 'Sarah Jenkins',
+        roleLabel: 'Fellow Elder (Suite 204) • Serene Valley Senior Living',
+        elderHomeId: 1,
+        elderHomeName: 'Serene Valley Senior Living',
+        color: const Color(0xFF2563EB),
+      ),
+      _InvitedPlayer(
+        id: 'sv_arthur',
+        name: 'Arthur Pendelton',
+        roleLabel: 'Fellow Elder (Suite 112) • Serene Valley Senior Living',
+        elderHomeId: 1,
+        elderHomeName: 'Serene Valley Senior Living',
+        color: const Color(0xFF0D9488),
+      ),
+
+      // Elder Home 2: Golden Sunset Eldercare (Elders Only)
+      _InvitedPlayer(
+        id: 'gs_margaret',
+        name: 'Margaret Chen',
+        roleLabel: 'Fellow Elder (Suite 305) • Golden Sunset Eldercare',
+        elderHomeId: 2,
+        elderHomeName: 'Golden Sunset Eldercare',
+        color: const Color(0xFF2563EB),
+      ),
+      _InvitedPlayer(
+        id: 'gs_robert',
+        name: 'Robert Hastings',
+        roleLabel: 'Fellow Elder (Suite 108) • Golden Sunset Eldercare',
+        elderHomeId: 2,
+        elderHomeName: 'Golden Sunset Eldercare',
+        color: const Color(0xFF0D9488),
+      ),
+
+      // Elder Home 3: Serenity Elder Home (Elders Only)
+      _InvitedPlayer(
+        id: 'se_malini',
+        name: 'Malini Bandara',
+        roleLabel: 'Fellow Elder (Suite 101) • Serenity Elder Home',
+        elderHomeId: 3,
+        elderHomeName: 'Serenity Elder Home',
+        color: const Color(0xFF2563EB),
+      ),
+      _InvitedPlayer(
+        id: 'se_kamal',
+        name: 'Kamal Perera',
+        roleLabel: 'Fellow Elder (Suite 102) • Serenity Elder Home',
+        elderHomeId: 3,
+        elderHomeName: 'Serenity Elder Home',
+        color: const Color(0xFF0D9488),
+      ),
+      _InvitedPlayer(
+        id: 'se_nimali',
+        name: 'Nimali Fernando',
+        roleLabel: 'Fellow Elder (Suite 105) • Serenity Elder Home',
+        elderHomeId: 3,
+        elderHomeName: 'Serenity Elder Home',
+        color: const Color(0xFFDB2777),
+      ),
+    ];
+
+    final sameHomeElders = allFacilityElders
+        .where(
+          (p) =>
+              p.elderHomeId == widget.elderHomeId &&
+              p.name.toLowerCase() != widget.hostName.trim().toLowerCase(),
+        )
+        .toList();
+
+    _directoryPlayers = [
+      _InvitedPlayer(
+        id: 'host',
+        name: '${widget.hostName} (You)',
+        roleLabel: 'Elder • ${widget.elderHomeName}',
+        elderHomeId: widget.elderHomeId,
+        elderHomeName: widget.elderHomeName,
+        color: const Color(0xFF2563EB),
+        isHost: true,
+        isInvited: true,
+        hasJoined: true,
+      ),
+      ...sameHomeElders,
+    ];
+  }
+
+  Future<void> _loadFacilityEldersFromBackend() async {
+    final palette = [
+      const Color(0xFF0D9488),
+      const Color(0xFF7C3AED),
+      const Color(0xFFDB2777),
+      const Color(0xFFD97706),
+      const Color(0xFF0284C7),
+      const Color(0xFF16A34A),
+    ];
+
+    final List<_InvitedPlayer> realElders = [];
+    final hostNameLower = widget.hostName.trim().toLowerCase();
+    final targetHomeNameLower = widget.elderHomeName.trim().toLowerCase();
+
+    void addIfSameHomeElder({
+      required String id,
+      required String name,
+      required String room,
+      required int? homeId,
+      required String? homeName,
+    }) {
+      final cleanName = name.trim();
+      if (cleanName.isEmpty || cleanName.toLowerCase() == hostNameLower) {
+        return;
+      }
+      final matchesHomeId = homeId != null && homeId == widget.elderHomeId;
+      final matchesHomeName = homeName != null &&
+          homeName.trim().toLowerCase() == targetHomeNameLower;
+      if (!matchesHomeId && !matchesHomeName) return;
+
+      final alreadyAdded = realElders.any(
+        (p) => p.name.toLowerCase() == cleanName.toLowerCase(),
+      );
+      if (!alreadyAdded) {
+        final roomText = room.trim().isNotEmpty ? room.trim() : 'Suite';
+        realElders.add(
+          _InvitedPlayer(
+            id: id,
+            name: cleanName,
+            roleLabel: 'Fellow Elder ($roomText) • ${widget.elderHomeName}',
+            elderHomeId: widget.elderHomeId,
+            elderHomeName: widget.elderHomeName,
+            color: palette[realElders.length % palette.length],
+          ),
+        );
+      }
+    }
+
+    // 1. Try dedicated /api/memory-games/elder-home/{id}/elders endpoint first
+    try {
+      final uri = Uri.parse(
+        '${AppConfig.backendBaseUrl}/api/memory-games/elder-home/${widget.elderHomeId}/elders',
+      );
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+        if (widget.token != null && widget.token!.isNotEmpty)
+          'Authorization': 'Bearer ${widget.token}',
+      };
+      final res =
+          await http.get(uri, headers: headers).timeout(const Duration(seconds: 3));
+      if (res.statusCode == 200) {
+        final decoded = jsonDecode(res.body);
+        final list = decoded['data'] as List?;
+        if (list != null) {
+          for (final raw in list) {
+            if (raw is Map<String, dynamic>) {
+              addIfSameHomeElder(
+                id: 'db_${raw['residentId'] ?? raw['name']}',
+                name: raw['name']?.toString() ?? '',
+                room: raw['roomNumber']?.toString() ?? 'Suite',
+                homeId: int.tryParse(raw['elderHomeId']?.toString() ?? '') ??
+                    widget.elderHomeId,
+                homeName:
+                    raw['elderHomeName']?.toString() ?? widget.elderHomeName,
+              );
+            }
+          }
+        }
+      }
+    } catch (_) {}
+
+    // 2. Also query live /api/residents and /api/doctor/all-users so all real DB elders in this Elder Home are loaded even without restarting backend
+    if (realElders.isEmpty) {
+      try {
+        String? queryToken = widget.token;
+        try {
+          final loginRes = await http
+              .post(
+                Uri.parse('${AppConfig.backendBaseUrl}/api/auth/login'),
+                headers: {'Content-Type': 'application/json'},
+                body: jsonEncode({
+                  'email': 'dr.reed@carevora.com',
+                  'password': 'doctor123',
+                }),
+              )
+              .timeout(const Duration(seconds: 3));
+          if (loginRes.statusCode == 200) {
+            final loginDecoded = jsonDecode(loginRes.body);
+            final tok = loginDecoded['data']?['token']?.toString();
+            if (tok != null && tok.isNotEmpty) {
+              queryToken = tok;
+            }
+          }
+        } catch (_) {}
+
+        if (queryToken != null && queryToken.isNotEmpty) {
+          final headers = <String, String>{
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $queryToken',
+          };
+
+          // Fetch from /api/residents
+          final res = await http
+              .get(
+                Uri.parse('${AppConfig.backendBaseUrl}/api/residents'),
+                headers: headers,
+              )
+              .timeout(const Duration(seconds: 3));
+          if (res.statusCode == 200) {
+            final decoded = jsonDecode(res.body);
+            final list = decoded['data'] as List?;
+            if (list != null) {
+              for (final raw in list) {
+                if (raw is Map<String, dynamic>) {
+                  addIfSameHomeElder(
+                    id: 'res_${raw['id'] ?? raw['name']}',
+                    name: raw['name']?.toString() ?? '',
+                    room: raw['roomNumber']?.toString() ?? 'Suite',
+                    homeId: int.tryParse(raw['elderHomeId']?.toString() ?? ''),
+                    homeName: raw['elderHomeName']?.toString(),
+                  );
+                }
+              }
+            }
+          }
+
+          // Also fetch from /api/doctor/all-users for any ELDER users in this Elder Home
+          final usersRes = await http
+              .get(
+                Uri.parse('${AppConfig.backendBaseUrl}/api/doctor/all-users'),
+                headers: headers,
+              )
+              .timeout(const Duration(seconds: 3));
+          if (usersRes.statusCode == 200) {
+            final decoded = jsonDecode(usersRes.body);
+            final list = decoded['data'] as List?;
+            if (list != null) {
+              for (final raw in list) {
+                if (raw is Map<String, dynamic>) {
+                  final role = (raw['role']?.toString() ?? '').toUpperCase();
+                  if (role.contains('ELDER') || role.contains('RESIDENT')) {
+                    addIfSameHomeElder(
+                      id: 'usr_${raw['id'] ?? raw['name']}',
+                      name: raw['name']?.toString() ?? '',
+                      room: raw['roomNumber']?.toString() ?? 'Suite',
+                      homeId: int.tryParse(raw['elderHomeId']?.toString() ?? ''),
+                      homeName: raw['elderHomeName']?.toString(),
+                    );
+                  }
+                }
+              }
+            }
+          }
+        }
+      } catch (_) {}
+    }
+
+    if (realElders.isNotEmpty && mounted) {
+      setState(() {
+        final hostEntry = _directoryPlayers.firstWhere(
+          (p) => p.isHost,
+          orElse: () => _InvitedPlayer(
+            id: 'host',
+            name: '${widget.hostName} (You)',
+            roleLabel: 'Elder • ${widget.elderHomeName}',
+            elderHomeId: widget.elderHomeId,
+            elderHomeName: widget.elderHomeName,
+            color: const Color(0xFF2563EB),
+            isHost: true,
+            isInvited: true,
+            hasJoined: true,
+          ),
+        );
+        _directoryPlayers = [hostEntry, ...realElders];
+      });
+      await _syncInvites();
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> _readAllInvites() async {
+    final Map<String, Map<String, dynamic>> merged = {};
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_prefsInvitesKey);
+      if (raw != null && raw.isNotEmpty) {
+        final decoded = jsonDecode(raw) as List;
+        for (final item in decoded) {
+          if (item is Map) {
+            final map = Map<String, dynamic>.from(item);
+            final id = map['id']?.toString() ?? '';
+            if (id.isNotEmpty) merged[id] = map;
+          }
+        }
+      }
+    } catch (_) {}
+
+    try {
+      final uri = Uri.parse(
+        '${AppConfig.backendBaseUrl}/api/memory-games/invites?elderHomeId=${widget.elderHomeId}',
+      );
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+        if (widget.token != null && widget.token!.isNotEmpty)
+          'Authorization': 'Bearer ${widget.token}',
+      };
+      final res =
+          await http.get(uri, headers: headers).timeout(const Duration(seconds: 2));
+      if (res.statusCode == 200) {
+        final decoded = jsonDecode(res.body);
+        final data = decoded['data'] as List?;
+        if (data != null) {
+          for (final item in data) {
+            if (item is Map) {
+              final map = Map<String, dynamic>.from(item);
+              final id = map['id']?.toString() ?? '';
+              if (id.isNotEmpty) merged[id] = map;
+            }
+          }
+        }
+      }
+    } catch (_) {}
+
+    return merged.values.toList();
+  }
+
+  Future<void> _saveInviteRecord(Map<String, dynamic> invite) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final current = await _readAllInvites();
+      final id = invite['id']?.toString() ?? '';
+      final updated = <Map<String, dynamic>>[
+        ...current.where((e) => e['id']?.toString() != id),
+        invite,
+      ];
+      await prefs.setString(_prefsInvitesKey, jsonEncode(updated));
+    } catch (_) {}
+  }
+
+  Future<void> _syncInvites() async {
+    if (!mounted) return;
+    final allInvites = await _readAllInvites();
+    if (!mounted) return;
+
+    final myNameLower = widget.hostName.trim().toLowerCase();
+    final List<Map<String, dynamic>> incomingPendingForMe = [];
+
+    setState(() {
+      for (final inv in allInvites) {
+        final homeId = int.tryParse(inv['elderHomeId']?.toString() ?? '') ??
+            widget.elderHomeId;
+        if (homeId != widget.elderHomeId) continue;
+
+        final senderName = (inv['senderName']?.toString() ?? '').trim();
+        final targetName = (inv['targetName']?.toString() ?? '').trim();
+        final status = (inv['status']?.toString() ?? 'PENDING').toUpperCase();
+        final invId = inv['id']?.toString() ?? '';
+
+        // Case A: I am the SENDER (e.g., Malini Bandara invited Kamal Perera)
+        if (senderName.toLowerCase() == myNameLower) {
+          for (final p in _directoryPlayers) {
+            if (p.name.toLowerCase() == targetName.toLowerCase()) {
+              if (status == 'ACCEPTED') {
+                if (!p.hasJoined) {
+                  _feedbackBannerText =
+                      '✅ ${p.name} accepted your invitation and joined the game!';
+                  _isFeedbackPositive = true;
+                }
+                p.isInvited = true;
+                p.hasJoined = true;
+              } else if (status == 'DECLINED') {
+                if (p.isInvited) {
+                  _feedbackBannerText =
+                      '${p.name} declined the invitation.';
+                  _isFeedbackPositive = false;
+                }
+                p.isInvited = false;
+                p.hasJoined = false;
+              } else if (status == 'PENDING') {
+                p.isInvited = true;
+                p.hasJoined = false;
+              }
+            }
+          }
+        }
+
+        // Case B: I am the TARGET ELDER (e.g., Kamal Perera logged in and received Malini's invite!)
+        if (targetName.toLowerCase() == myNameLower) {
+          // Ensure sender exists in directory list
+          var senderPlayer = _directoryPlayers
+              .where((p) => p.name.toLowerCase() == senderName.toLowerCase())
+              .firstOrNull;
+          if (senderPlayer == null && senderName.isNotEmpty) {
+            senderPlayer = _InvitedPlayer(
+              id: 'inv_sender_$senderName',
+              name: senderName,
+              roleLabel: 'Fellow Elder • ${widget.elderHomeName}',
+              elderHomeId: widget.elderHomeId,
+              elderHomeName: widget.elderHomeName,
+              color: const Color(0xFF0D9488),
+            );
+            _directoryPlayers.add(senderPlayer);
+          }
+
+          if (status == 'PENDING') {
+            incomingPendingForMe.add(inv);
+          } else if (status == 'ACCEPTED' && senderPlayer != null) {
+            senderPlayer.isInvited = true;
+            senderPlayer.hasJoined = true;
+          }
+        }
+      }
+      _incomingInvitesForMe = incomingPendingForMe;
+    });
+
+    // Show notification dialog ONLY to the target elder who received the invite!
+    for (final inv in incomingPendingForMe) {
+      final invId = inv['id']?.toString() ?? '';
+      if (invId.isNotEmpty && !_shownIncomingPopupIds.contains(invId)) {
+        _shownIncomingPopupIds.add(invId);
+        if (mounted) {
+          _showIncomingInviteNotificationForTargetElder(inv);
+        }
+        break;
+      }
+    }
+  }
+
+  List<_InvitedPlayer> get _joinedPlayers =>
+      _directoryPlayers.where((p) => p.hasJoined).toList();
+
+  Future<void> _sendInviteNotification(_InvitedPlayer player) async {
+    final inviteId =
+        'inv_${widget.elderHomeId}_${widget.hostName.trim()}_${player.name.trim()}'
+            .replaceAll(' ', '_')
+            .toLowerCase();
+
+    final inviteRecord = <String, dynamic>{
+      'id': inviteId,
+      'senderName': widget.hostName.trim(),
+      'targetName': player.name.trim(),
+      'elderHomeId': widget.elderHomeId,
+      'elderHomeName': widget.elderHomeName,
+      'status': 'PENDING',
+      'createdAt': DateTime.now().millisecondsSinceEpoch,
+    };
+
+    // Update sender's screen ONLY (no popup shown to sender!)
+    setState(() {
+      player.isInvited = true;
+      player.hasJoined = false;
+      _feedbackBannerText =
+          '🔔 Invitation sent to ${player.name}! Waiting for ${player.name} to log in and accept the notification...';
+      _isFeedbackPositive = true;
+    });
+
+    await _saveInviteRecord(inviteRecord);
+
+    try {
+      final uri =
+          Uri.parse('${AppConfig.backendBaseUrl}/api/memory-games/invites');
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+        if (widget.token != null && widget.token!.isNotEmpty)
+          'Authorization': 'Bearer ${widget.token}',
+      };
+      await http
+          .post(uri, headers: headers, body: jsonEncode(inviteRecord))
+          .timeout(const Duration(seconds: 2));
+    } catch (_) {}
+  }
+
+  Future<void> _cancelSentInvite(_InvitedPlayer player) async {
+    final inviteId =
+        'inv_${widget.elderHomeId}_${widget.hostName.trim()}_${player.name.trim()}'
+            .replaceAll(' ', '_')
+            .toLowerCase();
+    final record = <String, dynamic>{
+      'id': inviteId,
+      'senderName': widget.hostName.trim(),
+      'targetName': player.name.trim(),
+      'elderHomeId': widget.elderHomeId,
+      'elderHomeName': widget.elderHomeName,
+      'status': 'CANCELLED',
+    };
+    setState(() {
+      player.isInvited = false;
+      player.hasJoined = false;
+      _feedbackBannerText = 'Invitation to ${player.name} cancelled.';
+      _isFeedbackPositive = false;
+    });
+    await _saveInviteRecord(record);
+    try {
+      final uri = Uri.parse(
+        '${AppConfig.backendBaseUrl}/api/memory-games/invites/$inviteId/respond',
+      );
+      await http
+          .post(
+            uri,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'status': 'CANCELLED'}),
+          )
+          .timeout(const Duration(seconds: 2));
+    } catch (_) {}
+  }
+
+  Future<void> _respondToIncomingInvite(
+    Map<String, dynamic> invite, {
+    required bool accept,
+  }) async {
+    final inviteId = invite['id']?.toString() ?? '';
+    final senderName = (invite['senderName']?.toString() ?? 'Fellow Elder').trim();
+    final newStatus = accept ? 'ACCEPTED' : 'DECLINED';
+
+    final updatedRecord = <String, dynamic>{
+      ...invite,
+      'status': newStatus,
+    };
+
+    await _saveInviteRecord(updatedRecord);
+
+    try {
+      final uri = Uri.parse(
+        '${AppConfig.backendBaseUrl}/api/memory-games/invites/$inviteId/respond',
+      );
+      await http
+          .post(
+            uri,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'status': newStatus}),
+          )
+          .timeout(const Duration(seconds: 2));
+    } catch (_) {}
+
+    if (!mounted) return;
+    setState(() {
+      _incomingInvitesForMe.removeWhere((e) => e['id']?.toString() == inviteId);
+      for (final p in _directoryPlayers) {
+        if (p.name.toLowerCase() == senderName.toLowerCase()) {
+          p.isInvited = accept;
+          p.hasJoined = accept;
+        }
+      }
+      _feedbackBannerText = accept
+          ? '✅ You accepted $senderName\'s invitation! You and $senderName are now connected in the game room.'
+          : 'You declined $senderName\'s invitation.';
+      _isFeedbackPositive = accept;
+    });
+  }
+
+  void _sitTogetherQuickJoin(_InvitedPlayer player) {
+    setState(() {
+      player.isInvited = true;
+      player.hasJoined = true;
+      _feedbackBannerText =
+          '🪑 ${player.name} sat down with you at the same screen (Sit Together Mode) and is ready to play!';
+      _isFeedbackPositive = true;
+    });
+  }
+
+  void _showIncomingInviteNotificationForTargetElder(
+    Map<String, dynamic> invite,
+  ) {
+    if (!mounted) return;
+    final senderName = (invite['senderName']?.toString() ?? 'Fellow Elder').trim();
+    final targetName = (invite['targetName']?.toString() ?? widget.hostName).trim();
+    final homeName =
+        (invite['elderHomeName']?.toString() ?? widget.elderHomeName).trim();
+
+    showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogCtx) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          insetPadding:
+              const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 480),
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: const Color(0xFF2563EB), width: 2),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF2563EB).withValues(alpha: 0.2),
+                  blurRadius: 28,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFDBEAFE),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        LucideIcons.bell,
+                        size: 15,
+                        color: Color(0xFF1D4ED8),
+                      ),
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          'Incoming Game Invite for $targetName',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF1D4ED8),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                CircleAvatar(
+                  radius: 28,
+                  backgroundColor: const Color(0xFF0D9488),
+                  child: Text(
+                    senderName.isNotEmpty
+                        ? senderName.substring(0, 1).toUpperCase()
+                        : 'E',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  'Join Picnic Memory Game?',
+                  style: AppTextStyles.h3.copyWith(
+                    fontSize: 21,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.navy,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Hello $targetName! Your fellow elder $senderName in $homeName has invited you to play "Shared Picnic Memory Chain" together.',
+                  style: AppTextStyles.body.copyWith(
+                    fontSize: 14.5,
+                    color: const Color(0xFF475569),
+                    height: 1.45,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 22),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 10,
+                  alignment: WrapAlignment.center,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.of(dialogCtx).pop();
+                        _respondToIncomingInvite(invite, accept: false);
+                      },
+                      icon: const Icon(LucideIcons.x, size: 16),
+                      label: const Text('Decline'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.riskHigh,
+                        side: const BorderSide(color: AppColors.riskHigh),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 18,
+                          vertical: 12,
+                        ),
+                      ),
+                    ),
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.of(dialogCtx).pop();
+                        _respondToIncomingInvite(invite, accept: true);
+                      },
+                      icon: const Icon(LucideIcons.check, size: 17),
+                      label: const Text(
+                        'Accept & Join Game',
+                        style: TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.riskLow,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 22,
+                          vertical: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _removeJoinedPlayer(_InvitedPlayer player) {
+    if (player.isHost) return;
+    if (_stage != _ChainTurnStage.lobbyInvite &&
+        _joinedPlayers.length <= _minPlayers) {
+      setState(() {
+        _feedbackBannerText =
+            'Minimum 2 players are required during an active collaborative game.';
+        _isFeedbackPositive = false;
+      });
+      return;
+    }
+    setState(() {
+      player.isInvited = false;
+      player.hasJoined = false;
+      if (_currentPlayerIndex >= _joinedPlayers.length) {
+        _currentPlayerIndex = 0;
+      }
+    });
+  }
+
+  void _startCollaborativeGame() {
+    if (_joinedPlayers.length < _minPlayers) {
+      setState(() {
+        _feedbackBannerText =
+            'Please invite at least 1 more player (Minimum 2 players required to play).';
+        _isFeedbackPositive = false;
+      });
+      return;
+    }
+
+    setState(() {
+      for (final p in _directoryPlayers) {
+        p.chainStepsCompleted = 0;
+        p.itemsAdded = 0;
+      }
+      _packedChain.clear();
+      _currentRecallInput.clear();
+      _currentPlayerIndex = 0;
+      _totalTeamAttempts = 0;
+      _successfulRecalls = 0;
+      _teammateHintText = null;
+      _feedbackBannerText =
+          "Round 1: ${_joinedPlayers[0].name}, pick the first item to pack into our Shared Picnic Basket!";
+      _isFeedbackPositive = true;
+      _stage = _ChainTurnStage.addNewItemToChain;
+    });
+  }
+
+  void _returnToInviteLobby() {
+    setState(() {
+      _stage = _ChainTurnStage.lobbyInvite;
+      _teammateHintText = null;
+      _feedbackBannerText = null;
+    });
+  }
+
+  void _askInvitedTeammateForHint() {
+    final teammates = _joinedPlayers
+        .where((p) => p.id != _joinedPlayers[_currentPlayerIndex].id)
+        .toList();
+    final helperName =
+        teammates.isNotEmpty ? teammates.first.name : 'Your Teammate';
+
+    if (_stage == _ChainTurnStage.recallExistingChain &&
+        _currentRecallInput.length < _packedChain.length) {
+      final nextItem = _packedChain[_currentRecallInput.length];
+      setState(() {
+        _teammateHintText =
+            '💬 $helperName whispers: "Item #${_currentRecallInput.length + 1} in our basket is ${nextItem.label} (packed by ${nextItem.addedByPlayerName})!"';
+      });
+    } else if (_stage == _ChainTurnStage.addNewItemToChain) {
+      final unpacked = _picnicPool
+          .where((item) => !_packedChain.any((c) => c.key == item.key))
+          .toList();
+      if (unpacked.isNotEmpty) {
+        setState(() {
+          _teammateHintText =
+              '💬 $helperName suggests: "How about packing the ${unpacked.first.label} next?"';
+        });
+      }
+    }
+  }
+
+  void _onTapPicnicItem(_PicnicChainItem item) {
+    final activePlayer = _joinedPlayers[_currentPlayerIndex];
+
+    if (_stage == _ChainTurnStage.recallExistingChain) {
+      final expectedIndex = _currentRecallInput.length;
+      if (expectedIndex >= _packedChain.length) return;
+
+      final expectedItem = _packedChain[expectedIndex];
+      _totalTeamAttempts++;
+
+      if (item.key == expectedItem.key) {
+        _successfulRecalls++;
+        activePlayer.chainStepsCompleted++;
+        setState(() {
+          _currentRecallInput.add(item);
+          _teammateHintText = null;
+          if (_currentRecallInput.length == _packedChain.length) {
+            if (_packedChain.length >= _targetChainLength) {
+              _completeChainGame();
+            } else {
+              _stage = _ChainTurnStage.addNewItemToChain;
+              _feedbackBannerText =
+                  'Spot on, ${activePlayer.name}! You remembered all ${_packedChain.length} items in order! Now pick 1 NEW item to add to the basket.';
+              _isFeedbackPositive = true;
+            }
+          } else {
+            _feedbackBannerText =
+                'Correct! Item #${_currentRecallInput.length} is ${item.label}. Now tap Item #${_currentRecallInput.length + 1} in the chain.';
+            _isFeedbackPositive = true;
+          }
+        });
+      } else {
+        final helper = _joinedPlayers
+            .firstWhere(
+              (p) => p.id != activePlayer.id,
+              orElse: () => activePlayer,
+            )
+            .name;
+        setState(() {
+          _feedbackBannerText =
+              'Not quite! Ask $helper for a hint — we are looking for Item #${expectedIndex + 1} in the basket order.';
+          _isFeedbackPositive = false;
+        });
+      }
+    } else if (_stage == _ChainTurnStage.addNewItemToChain) {
+      if (_packedChain.any((c) => c.key == item.key)) {
+        setState(() {
+          _feedbackBannerText =
+              '${item.label} is already in the basket! Choose a fresh item to add to our chain.';
+          _isFeedbackPositive = false;
+        });
+        return;
+      }
+
+      final packedItem = item.withAddedBy(activePlayer.name);
+      activePlayer.itemsAdded++;
+      _totalTeamAttempts++;
+      _successfulRecalls++;
+
+      final nextPlayerIndex = (_currentPlayerIndex + 1) % _joinedPlayers.length;
+      final nextPlayer = _joinedPlayers[nextPlayerIndex];
+
+      setState(() {
+        _packedChain.add(packedItem);
+        _currentRecallInput.clear();
+        _teammateHintText = null;
+        _currentPlayerIndex = nextPlayerIndex;
+        _stage = _ChainTurnStage.recallExistingChain;
+        _feedbackBannerText =
+            '${activePlayer.name} packed "${item.label}"! Now it is ${nextPlayer.name}\'s turn to recall the ${_packedChain.length}-item chain in order!';
+        _isFeedbackPositive = true;
+      });
+    }
+  }
+
+  void _completeChainGame() {
+    final rawAccuracy = _totalTeamAttempts > 0
+        ? (_successfulRecalls.toDouble() / _totalTeamAttempts.toDouble()) * 100.0
+        : 100.0;
+    final roundedScore = (rawAccuracy.clamp(0.0, 100.0) * 10).round() / 10.0;
+
+    setState(() {
+      _stage = _ChainTurnStage.completed;
+      _lastScore = roundedScore;
+      _feedbackBannerText =
+          'Wonderful Teamwork! Your team of ${_joinedPlayers.length} players built and recalled the entire $_targetChainLength-item Picnic Memory Chain!';
+      _isFeedbackPositive = true;
+    });
+
+    _saveSession(
+      score: roundedScore,
+      attempts: _totalTeamAttempts,
+      correctAnswers: _packedChain.length,
+      totalItems: _targetChainLength,
+    );
+  }
+
+  Future<void> _saveSession({
+    required double score,
+    required int attempts,
+    required int correctAnswers,
+    required int totalItems,
+  }) async {
+    setState(() {
+      _isSaving = true;
+      _saveErrorMessage = null;
+    });
+
+    try {
+      await MemoryGameService.saveCompletedSession(
+        residentId: widget.residentId,
+        gameType: 'COLLABORATIVE_CHAIN',
+        scorePercentage: score,
+        attempts: attempts,
+        correctAnswers: correctAnswers,
+        totalItems: totalItems,
+        status: 'COMPLETED',
+        completionDetailsJson: jsonEncode({
+          'roomInviteCode': _roomInviteCode,
+          'playerCount': _joinedPlayers.length,
+          'players': _joinedPlayers
+              .map((p) => {
+                    'name': p.name,
+                    'role': p.roleLabel,
+                    'itemsAdded': p.itemsAdded,
+                    'chainStepsCompleted': p.chainStepsCompleted,
+                  })
+              .toList(),
+          'chainItems': _packedChain.map((c) => c.label).toList(),
+        }),
+        token: widget.token,
+      );
+
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+          _saveErrorMessage = 'Could not save session: $e';
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildGameNavBar(
+          gameTitle: 'Shared Picnic Memory Chain',
+          gameIcon: LucideIcons.users,
+          gameColor: const Color(0xFF2563EB),
+          onBack: widget.onBack,
+          onReset: _returnToInviteLobby,
+          statusBadge:
+              '${_joinedPlayers.length} Players Joined • Chain: ${_packedChain.length} / $_targetChainLength',
+        ),
+        const SizedBox(height: 20),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppColors.border, width: 1.5),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF2563EB).withValues(alpha: 0.05),
+                blurRadius: 18,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: _stage == _ChainTurnStage.lobbyInvite
+              ? _buildInviteLobbyView()
+              : _buildChainGameplayView(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInviteLobbyView() {
+    final canStart = _joinedPlayers.length >= _minPlayers;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 1. Invite Header & Room Code Card
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFFEFF6FF), Color(0xFFF5F3FF)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: const Color(0xFFBFDBFE)),
+          ),
+          child: Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 16,
+            runSpacing: 12,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        LucideIcons.users,
+                        color: Color(0xFF2563EB),
+                        size: 22,
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        'Invite Players to Your Memory Chain Room',
+                        style: AppTextStyles.h3.copyWith(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.navy,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Invite fellow elders from ${widget.elderHomeName} to join (Minimum 2 elders required). Together you will pack a picnic basket and recall the item chain in order!',
+                    style: AppTextStyles.body.copyWith(
+                      fontSize: 13.5,
+                      color: const Color(0xFF475569),
+                    ),
+                  ),
+                ],
+              ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFF93C5FD)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'ROOM INVITE CODE',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF64748B),
+                          ),
+                        ),
+                        Text(
+                          _roomInviteCode,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w900,
+                            color: Color(0xFF1D4ED8),
+                            letterSpacing: 1.1,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(width: 12),
+                    OutlinedButton.icon(
+                      key: const ValueKey('copy_invite_code_button'),
+                      onPressed: () {
+                        setState(() {
+                          _inviteCodeCopied = true;
+                          _feedbackBannerText =
+                              'Room Invite Code $_roomInviteCode copied! Share it with friends to join.';
+                          _isFeedbackPositive = true;
+                        });
+                      },
+                      icon: Icon(
+                        _inviteCodeCopied
+                            ? LucideIcons.check
+                            : LucideIcons.share2,
+                        size: 14,
+                      ),
+                      label: Text(_inviteCodeCopied ? 'Copied!' : 'Share Code'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF2563EB),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        if (_feedbackBannerText != null) ...[
+          const SizedBox(height: 14),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: _isFeedbackPositive
+                  ? AppColors.riskLowBg
+                  : const Color(0xFFFEF3C7),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: _isFeedbackPositive
+                    ? AppColors.riskLow.withValues(alpha: 0.4)
+                    : const Color(0xFFF59E0B),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  _isFeedbackPositive ? LucideIcons.check : LucideIcons.info,
+                  size: 18,
+                  color: _isFeedbackPositive
+                      ? AppColors.riskLow
+                      : const Color(0xFFD97706),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    _feedbackBannerText!,
+                    style: const TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.navy,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+
+        // 2. Incoming Invite Notification Banner (Shown ONLY to the target Elder who received the invite!)
+        if (_incomingInvitesForMe.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          ..._incomingInvitesForMe.map((inv) {
+            final senderName =
+                (inv['senderName']?.toString() ?? 'Fellow Elder').trim();
+            final invId = inv['id']?.toString() ?? senderName;
+            return Container(
+              key: ValueKey('incoming_notification_banner_$invId'),
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFEFF6FF), Color(0xFFDBEAFE)],
+                ),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFF2563EB), width: 1.5),
+              ),
+              child: Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 12,
+                runSpacing: 10,
+                children: [
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        LucideIcons.bell,
+                        size: 20,
+                        color: Color(0xFF1D4ED8),
+                      ),
+                      const SizedBox(width: 10),
+                      Flexible(
+                        child: Text(
+                          'New Game Invite from $senderName (${widget.elderHomeName}): "Join my Shared Picnic Memory Chain!"',
+                          style: const TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF1E3A8A),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ElevatedButton.icon(
+                        key: ValueKey('accept_incoming_btn_$invId'),
+                        onPressed: () =>
+                            _respondToIncomingInvite(inv, accept: true),
+                        icon: const Icon(LucideIcons.check, size: 15),
+                        label: const Text('Accept & Join Game'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.riskLow,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 8,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      OutlinedButton(
+                        key: ValueKey('decline_incoming_btn_$invId'),
+                        onPressed: () =>
+                            _respondToIncomingInvite(inv, accept: false),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.riskHigh,
+                          side: const BorderSide(color: AppColors.riskHigh),
+                        ),
+                        child: const Text('Decline'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
+
+        const SizedBox(height: 20),
+
+        // 3. Online Elders Directory in Same Elder Home (Hybrid: Notification Invite + Sit Together)
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Flexible(
+              child: Text(
+                'Available Elders in ${widget.elderHomeName} (${_joinedPlayers.length} Joined • Minimum $_minPlayers Required)',
+                style: AppTextStyles.h4.copyWith(
+                  fontSize: 15.5,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.navy,
+                ),
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: const Color(0xFFDBEAFE),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                widget.elderHomeName,
+                style: const TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF1D4ED8),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+
+        Column(
+          children: _directoryPlayers.map((player) {
+            return Container(
+              key: ValueKey('invite_player_row_${player.id}'),
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: player.hasJoined
+                    ? player.color.withValues(alpha: 0.06)
+                    : const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: player.hasJoined
+                      ? player.color.withValues(alpha: 0.45)
+                      : const Color(0xFFE2E8F0),
+                  width: player.hasJoined ? 1.5 : 1,
+                ),
+              ),
+              child: Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 12,
+                runSpacing: 10,
+                children: [
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CircleAvatar(
+                        radius: 18,
+                        backgroundColor: player.color,
+                        child: Text(
+                          player.name.substring(0, 1).toUpperCase(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            player.name,
+                            style: const TextStyle(
+                              fontSize: 14.5,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.navy,
+                            ),
+                          ),
+                          Text(
+                            player.roleLabel,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.muted,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  if (player.isHost)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFDBEAFE),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Text(
+                        'Host • Ready',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF1D4ED8),
+                        ),
+                      ),
+                    )
+                  else if (player.hasJoined)
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.riskLowBg,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                LucideIcons.check,
+                                size: 14,
+                                color: AppColors.riskLow,
+                              ),
+                              SizedBox(width: 4),
+                              Text(
+                                'Accepted & Joined',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.riskLow,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton(
+                          key: ValueKey('remove_invited_${player.id}'),
+                          onPressed: () => _removeJoinedPlayer(player),
+                          icon: const Icon(LucideIcons.x, size: 16),
+                          tooltip: 'Remove from room',
+                          color: AppColors.muted,
+                        ),
+                      ],
+                    )
+                  else if (player.isInvited && !player.hasJoined)
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFEF3C7),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                LucideIcons.clock,
+                                size: 14,
+                                color: Color(0xFFD97706),
+                              ),
+                              const SizedBox(width: 5),
+                              Text(
+                                'Invite Sent • Waiting for ${player.name}',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                  color: Color(0xFF92400E),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        OutlinedButton(
+                          onPressed: () => _cancelSentInvite(player),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.muted,
+                            side: const BorderSide(color: Color(0xFFCBD5E1)),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 6,
+                            ),
+                          ),
+                          child: const Text('Cancel'),
+                        ),
+                      ],
+                    )
+                  else
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        OutlinedButton.icon(
+                          key: ValueKey('sit_together_${player.id}'),
+                          onPressed: () => _sitTogetherQuickJoin(player),
+                          icon: const Icon(LucideIcons.users, size: 15),
+                          label: const Text('Sit Together (Same Screen)'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFF0D9488),
+                            side: const BorderSide(color: Color(0xFF0D9488)),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        ),
+                        ElevatedButton.icon(
+                          key: ValueKey('send_invite_${player.id}'),
+                          onPressed: () => _sendInviteNotification(player),
+                          icon: const Icon(LucideIcons.bell, size: 15),
+                          label: const Text('Send Invite Notification'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF2563EB),
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 10,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                ],
+              ),
+            );
+          }).toList(),
+        ),
+
+        const SizedBox(height: 24),
+
+        // 4. Start Collaborative Game CTA (Enforces Minimum 2 Players)
+        Center(
+          child: Column(
+            children: [
+              ElevatedButton.icon(
+                key: const ValueKey('start_collaborative_chain_button'),
+                onPressed: canStart ? _startCollaborativeGame : null,
+                icon: const Icon(LucideIcons.play, size: 18),
+                label: Text(
+                  canStart
+                      ? 'Start Picnic Memory Chain (${_joinedPlayers.length} Players Ready)'
+                      : 'Invite at Least 1 More Player to Start (Min 2 Players)',
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2563EB),
+                  foregroundColor: Colors.white,
+                  disabledBackgroundColor: const Color(0xFFCBD5E1),
+                  disabledForegroundColor: const Color(0xFF64748B),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 28,
+                    vertical: 15,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildChainGameplayView() {
+    final activePlayer = _joinedPlayers[_currentPlayerIndex];
+    final isCompleted = _stage == _ChainTurnStage.completed;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 1. Active Players Turn Bar + Invite More Players Button
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            ...List.generate(_joinedPlayers.length, (i) {
+              final p = _joinedPlayers[i];
+              final isTurn = !isCompleted && _currentPlayerIndex == i;
+              return Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: isTurn
+                      ? p.color.withValues(alpha: 0.14)
+                      : const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: isTurn ? p.color : const Color(0xFFCBD5E1),
+                    width: isTurn ? 2 : 1,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircleAvatar(
+                      radius: 11,
+                      backgroundColor: p.color,
+                      child: Text(
+                        '${i + 1}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      p.name,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: isTurn ? p.color : AppColors.navy,
+                      ),
+                    ),
+                    if (isTurn) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: p.color,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Text(
+                          'ACTIVE TURN',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              );
+            }),
+            OutlinedButton.icon(
+              key: const ValueKey('manage_invites_button'),
+              onPressed: _returnToInviteLobby,
+              icon: const Icon(LucideIcons.userPlus, size: 15),
+              label: const Text('Invite More Players'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF2563EB),
+                side: const BorderSide(color: Color(0xFF93C5FD)),
+              ),
+            ),
+            if (!isCompleted)
+              OutlinedButton.icon(
+                key: const ValueKey('ask_teammate_hint_button'),
+                onPressed: _askInvitedTeammateForHint,
+                icon: const Icon(LucideIcons.messageCircle, size: 15),
+                label: const Text('Ask Teammate for Hint'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF7C3AED),
+                  side: const BorderSide(color: Color(0xFFC4B5FD)),
+                ),
+              ),
+          ],
+        ),
+
+        const SizedBox(height: 16),
+
+        // 2. Turn Guidance Banner
+        if (_feedbackBannerText != null)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+            decoration: BoxDecoration(
+              color: isCompleted
+                  ? AppColors.riskLowBg
+                  : (_isFeedbackPositive
+                      ? const Color(0xFFEFF6FF)
+                      : const Color(0xFFFEF3C7)),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: isCompleted
+                    ? AppColors.riskLow
+                    : (_isFeedbackPositive
+                        ? const Color(0xFF93C5FD)
+                        : const Color(0xFFF59E0B)),
+              ),
+            ),
+            child: Text(
+              _feedbackBannerText!,
+              style: const TextStyle(
+                fontSize: 14.5,
+                fontWeight: FontWeight.w800,
+                color: AppColors.navy,
+              ),
+            ),
+          ),
+
+        if (_teammateHintText != null) ...[
+          const SizedBox(height: 10),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF5F3FF),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFC4B5FD)),
+            ),
+            child: Text(
+              _teammateHintText!,
+              style: const TextStyle(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF5B21B6),
+              ),
+            ),
+          ),
+        ],
+
+        const SizedBox(height: 20),
+
+        // 3. Visual Shared Picnic Basket Chain Progress
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _stage == _ChainTurnStage.recallExistingChain
+                    ? 'Step 1: Recall Basket Chain in Order (${_currentRecallInput.length} / ${_packedChain.length} Recalled)'
+                    : 'Shared Picnic Basket Chain (${_packedChain.length} / $_targetChainLength Items Packed)',
+                style: AppTextStyles.h4.copyWith(
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.navy,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: List.generate(_targetChainLength, (slotIndex) {
+                  final isPacked = slotIndex < _packedChain.length;
+                  final isRevealed = _stage !=
+                          _ChainTurnStage.recallExistingChain ||
+                      slotIndex < _currentRecallInput.length ||
+                      isCompleted;
+                  final item = isPacked ? _packedChain[slotIndex] : null;
+
+                  return Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isPacked
+                          ? (isRevealed
+                              ? item!.color.withValues(alpha: 0.12)
+                              : const Color(0xFFEFF6FF))
+                          : Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isPacked
+                            ? (isRevealed
+                                ? item!.color
+                                : const Color(0xFF93C5FD))
+                            : const Color(0xFFCBD5E1),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '#${slotIndex + 1}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.muted,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        if (!isPacked)
+                          const Text(
+                            'Empty Slot',
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              color: AppColors.muted,
+                            ),
+                          )
+                        else if (isRevealed) ...[
+                          Icon(item!.icon, size: 16, color: item.color),
+                          const SizedBox(width: 6),
+                          Text(
+                            '${item.label} (${item.addedByPlayerName})',
+                            style: const TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.navy,
+                            ),
+                          ),
+                        ] else ...[
+                          const Icon(
+                            LucideIcons.helpCircle,
+                            size: 16,
+                            color: Color(0xFF2563EB),
+                          ),
+                          const SizedBox(width: 6),
+                          const Text(
+                            'Tap Below to Recall',
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF2563EB),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  );
+                }),
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 20),
+
+        // 4. Picnic Items Selection Grid
+        if (!isCompleted) ...[
+          Text(
+            _stage == _ChainTurnStage.recallExistingChain
+                ? "${activePlayer.name}: Tap Item #${_currentRecallInput.length + 1} that was packed into the basket"
+                : "${activePlayer.name}: Pick 1 NEW item below to pack into the Shared Picnic Basket",
+            style: AppTextStyles.h4.copyWith(
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+              color: AppColors.navy,
+            ),
+          ),
+          const SizedBox(height: 14),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final crossAxisCount = constraints.maxWidth > 700 ? 4 : 2;
+              return GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: _picnicPool.length,
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: crossAxisCount,
+                  crossAxisSpacing: 14,
+                  mainAxisSpacing: 14,
+                  childAspectRatio: 1.35,
+                ),
+                itemBuilder: (context, index) {
+                  final item = _picnicPool[index];
+                  final alreadyPacked =
+                      _packedChain.any((c) => c.key == item.key);
+                  final recalledThisTurn =
+                      _currentRecallInput.any((c) => c.key == item.key);
+
+                  final isDisabledInAddMode =
+                      _stage == _ChainTurnStage.addNewItemToChain &&
+                          alreadyPacked;
+
+                  return InkWell(
+                    key: ValueKey('picnic_chain_item_${item.key}'),
+                    onTap: isDisabledInAddMode
+                        ? null
+                        : () => _onTapPicnicItem(item),
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isDisabledInAddMode
+                            ? const Color(0xFFF1F5F9)
+                            : (recalledThisTurn
+                                ? AppColors.riskLowBg
+                                : Colors.white),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isDisabledInAddMode
+                              ? const Color(0xFFCBD5E1)
+                              : (recalledThisTurn
+                                  ? AppColors.riskLow
+                                  : item.color.withValues(alpha: 0.45)),
+                          width: 1.8,
+                        ),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            item.icon,
+                            size: 32,
+                            color: isDisabledInAddMode
+                                ? AppColors.muted
+                                : item.color,
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            item.label,
+                            style: TextStyle(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w800,
+                              color: isDisabledInAddMode
+                                  ? AppColors.muted
+                                  : AppColors.navy,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          if (isDisabledInAddMode)
+                            const Text(
+                              'Already Packed',
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.muted,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ] else ...[
+          // Completed Summary View
+          Center(
+            child: Column(
+              children: [
+                Text(
+                  'Team Score: ${(_lastScore ?? 100.0).toStringAsFixed(0)}%',
+                  style: AppTextStyles.h2.copyWith(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.riskLow,
+                  ),
+                ),
+                if (_isSaving)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 6),
+                    child: Text('Saving collaborative session...'),
+                  ),
+                if (_saveErrorMessage != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Text(
+                      _saveErrorMessage!,
+                      style: const TextStyle(color: AppColors.riskHigh),
+                    ),
+                  ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    ElevatedButton.icon(
+                      key: const ValueKey('play_chain_again_button'),
+                      onPressed: _startCollaborativeGame,
+                      icon: const Icon(LucideIcons.rotateCcw, size: 17),
+                      label: const Text('Play Another Round Together'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF2563EB),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 22,
+                          vertical: 13,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    OutlinedButton.icon(
+                      onPressed: _returnToInviteLobby,
+                      icon: const Icon(LucideIcons.users, size: 17),
+                      label: const Text('Back to Invite Lobby'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+

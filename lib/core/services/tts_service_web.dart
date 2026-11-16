@@ -2,6 +2,7 @@
 import 'dart:async';
 import 'dart:html' as html;
 import 'package:flutter/foundation.dart';
+import 'cognitive_sinhala_audio_data.dart';
 import 'tts_service.dart';
 
 TtsService createTtsService() => WebTtsService();
@@ -47,6 +48,21 @@ class WebTtsService implements TtsService {
     'ඔබේ සත්කාරක නිලධාරියාට සහ වෛද්‍යවරයාට හදිසි දැනුම්දීමක් යවන ලදී. කරුණාකර සන්සුන්ව විවේක ගන්න, ඔවුන් ඉක්මනින්ම පැමිණෙනු ඇත.': 'caregiver_alert.mp3',
     'පොත් කියවීමේ සැසිය වෙත සාදරයෙන් පිළිගනිමු. ඔබ කැමති පොතක් තෝරාගෙන සන්සුන්ව කියවන්න.': 'book_intro.mp3',
     'සන්සුන් සංගීත චිකිත්සාව වෙත සාදරයෙන් පිළිගනිමු. ඔබ කැමති ගීතයක් තෝරාගෙන මිනිත්තු 10 ක් සන්සුන්ව විවේක ගන්න.': 'music_intro.mp3',
+
+    // Cognitive Assessment Questions (Q1 - Q10) & Navigation
+    'අද මොන දවසද?': 'cog_q1.mp3',
+    'මේ මොන අවුරුද්දද?': 'cog_q2.mp3',
+    'මෙම වචන නැවත කියන්න: ඉර, පොත, ගස.': 'cog_q3.mp3',
+    'මෙම වචන නැවත කියන්න: Sun (ඉර), Book (පොත), Tree (ගස).': 'cog_q3.mp3',
+    'ඒ වචන තුන තවත් වරක් කියන්න.': 'cog_q4.mp3',
+    '2 යි 3 යි එකතු කළාම කීයද?': 'cog_q5.mp3',
+    '3 සහ 8 අතරින් විශාල අංකය කුමක්ද?': 'cog_q6.mp3',
+    'කලින් කියපු වචන තුන මොනවාද?': 'cog_q7.mp3',
+    'කලින් ඉර කියන වචනය ඔබට ඇසුණාද?': 'cog_q8.mp3',
+    'කලින් Sun (ඉර) කියන වචනය ඔබට ඇසුණාද?': 'cog_q8.mp3',
+    'වේලාව බලාගන්න ඔබ භාවිතා කරන්නේ මොනවාද?': 'cog_q9.mp3',
+    'ඇපල් සහ දොඩම් යන දෙකම පලතුරුද?': 'cog_q10.mp3',
+    'ඊළඟ ප්‍රශ්නය': 'cog_next.mp3',
   };
 
   static String? _matchSinhalaAudioFile(String rawText) {
@@ -54,6 +70,19 @@ class WebTtsService implements TtsService {
     if (_sinhalaAudioFiles.containsKey(text)) {
       return _sinhalaAudioFiles[text];
     }
+
+    // Cognitive Assessment exact/keyword match first
+    if (text.contains('අද මොන දවසද')) return 'cog_q1.mp3';
+    if (text.contains('මේ මොන අවුරුද්දද')) return 'cog_q2.mp3';
+    if (text.contains('මෙම වචන නැවත කියන්න')) return 'cog_q3.mp3';
+    if (text.contains('ඒ වචන තුන තවත් වරක් කියන්න')) return 'cog_q4.mp3';
+    if (text.contains('එකතු කළාම කීයද')) return 'cog_q5.mp3';
+    if (text.contains('විශාල අංකය කුමක්ද')) return 'cog_q6.mp3';
+    if (text.contains('කලින් කියපු වචන තුන')) return 'cog_q7.mp3';
+    if (text.contains('කියන වචනය ඔබට ඇසුණාද')) return 'cog_q8.mp3';
+    if (text.contains('වේලාව බලාගන්න')) return 'cog_q9.mp3';
+    if (text.contains('ඇපල් සහ දොඩම්')) return 'cog_q10.mp3';
+    if (text == 'ඊළඟ ප්‍රශ්නය') return 'cog_next.mp3';
 
     for (final entry in _sinhalaAudioFiles.entries) {
       if (text.contains(entry.key) || entry.key.contains(text)) {
@@ -161,6 +190,26 @@ class WebTtsService implements TtsService {
         'Poth kiyaveeme sesiya wetha saadarayen piliganimu. Oba kemathi pothak thoraagena sansunwa kiyawanna.',
     'සන්සුන් සංගීත චිකිත්සාව වෙත සාදරයෙන් පිළිගනිමු. ඔබ කැමති ගීතයක් තෝරාගෙන මිනිත්තු 10 ක් සන්සුන්ව විවේක ගන්න.':
         'Sansun sangeetha chikithsawa wetha saadarayen piliganimu. Oba kemathi geethayak thoraagena miniththu dahayak sansunwa viveka ganna.',
+    // Cognitive Assessment 10 Questions (Q1 - Q10) & Navigation
+    'අද මොන දවසද?': 'Ada mona dawasada?',
+    'මේ මොන අවුරුද්දද?': 'Mee mona awurudhdhada?',
+    'මෙම වචන නැවත කියන්න: ඉර, පොත, ගස.':
+        'Mema wachana newatha kiyanna: Ira, Potha, Gasa.',
+    'මෙම වචන නැවත කියන්න: Sun (ඉර), Book (පොත), Tree (ගස).':
+        'Mema wachana newatha kiyanna: Ira, Potha, Gasa.',
+    'ඒ වචන තුන තවත් වරක් කියන්න.': 'Ee wachana thuna thawath warak kiyanna.',
+    '2 යි 3 යි එකතු කළාම කීයද?': 'Dekai thunai ekathu kalaama keeyada?',
+    '3 සහ 8 අතරින් විශාල අංකය කුමක්ද?':
+        'Thuna saha ata atharin vishaala ankaya kumakda?',
+    'කලින් කියපු වචන තුන මොනවාද?': 'Kalin kiyapu wachana thuna monawaada?',
+    'කලින් ඉර කියන වචනය ඔබට ඇසුණාද?':
+        'Kalin Ira kiyana wachanaya obata esunaada?',
+    'කලින් Sun (ඉර) කියන වචනය ඔබට ඇසුණාද?':
+        'Kalin Ira kiyana wachanaya obata esunaada?',
+    'වේලාව බලාගන්න ඔබ භාවිතා කරන්නේ මොනවාද?':
+        'Welaawa balaa ganna oba bhaavithaa karanne monawaada?',
+    'ඇපල් සහ දොඩම් යන දෙකම පලතුරුද?': 'Epal saha dodam yana dekama palathuruda?',
+    'ඊළඟ ප්‍රශ්නය': 'Eelanga prashnaya',
   };
 
   static String _toSinglish(String text) {
@@ -293,8 +342,10 @@ class WebTtsService implements TtsService {
     stop();
     _isSpeaking = true;
 
-    // Flutter web may serve audio from root 'audio/...' or from 'assets/...'
+    // Flutter web may serve audio from embedded data URI, root 'audio/...' or 'assets/...'
+    final embeddedDataUri = cognitiveSinhalaAudioDataUris[fileName];
     final candidatePaths = [
+      if (embeddedDataUri != null) embeddedDataUri,
       'audio/sinhala/$fileName',
       'assets/audio/sinhala/$fileName',
       'assets/assets/audio/sinhala/$fileName',
