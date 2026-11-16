@@ -8628,24 +8628,55 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(LucideIcons.camera, size: 18, color: AppColors.primary),
-                  const SizedBox(width: 8),
+                  if (isElderMode)
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      margin: const EdgeInsets.only(right: 8),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFF3E8FF),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(LucideIcons.camera, size: 16, color: Color(0xFF7C3AED)),
+                    )
+                  else
+                    const Icon(LucideIcons.camera, size: 18, color: AppColors.primary),
                   Text(
-                    ref.watch(languageProvider).isSinhala ? 'කැමරාව (මුහුණේ හැඟීම්)' : 'Camera (Facial Expression)',
+                    ref.watch(languageProvider).isSinhala
+                        ? (isElderMode ? 'මුහුණේ හැඟීම් හඳුනාගැනීම' : 'කැමරාව (මුහුණේ හැඟීම්)')
+                        : (isElderMode ? 'Facial Emotion Recognition' : 'Camera (Facial Expression)'),
                     style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.navy),
                   ),
                 ],
               ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _buildElderCamToggleButton(),
-                  if (!isElderMode) ...[
+              if (isElderMode)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFDCFCE7),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFFBBF7D0)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      Icon(LucideIcons.check, size: 12, color: Color(0xFF15803D)),
+                      SizedBox(width: 4),
+                      Text(
+                        'Consent Given',
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF15803D)),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildElderCamToggleButton(),
                     const SizedBox(width: 8),
                     _buildFacialCaptureStatusBadge(),
                   ],
-                ],
-              ),
+                ),
             ],
           ),
           const SizedBox(height: 12),
@@ -8654,7 +8685,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
           ClipRRect(
             borderRadius: BorderRadius.circular(12),
             child: AspectRatio(
-              aspectRatio: isElderMode ? 1.15 : 1.35,
+              aspectRatio: 1.35,
               child: Stack(
                 fit: StackFit.expand,
                 children: [
@@ -8679,24 +8710,21 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                           ),
                         );
                       }
+
                       if (_capturedImageBytes != null) {
                         return Image.memory(
                           _capturedImageBytes!,
                           fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) =>
-                              Image.asset(
-                            'assets/images/landing/senior_neutral_calm_face.jpg',
-                            fit: BoxFit.cover,
-                          ),
                         );
                       }
+
                       return Stack(
                         fit: StackFit.expand,
                         children: [
                           Image.asset(
-                            _currentFaceAsset,
+                            'assets/images/landing/senior_happy_face.jpg',
                             fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
+                            errorBuilder: (_, __, ___) {
                               return Container(
                                 color: const Color(0xFF1E293B),
                                 child: const Center(
@@ -8710,7 +8738,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                             },
                           ),
                           Container(
-                            color: Colors.black.withValues(alpha: 0.40),
+                            color: Colors.black.withValues(alpha: 0.25),
                             child: Center(
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
@@ -8737,15 +8765,6 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
-                                  const SizedBox(height: 3),
-                                  Text(
-                                    ref.watch(languageProvider).isSinhala ? 'හඳුනාගැනීම ආරම්භ කිරීමට කැමරාව හෝ මයික්‍රෆෝනය ක්‍රියාත්මක කරන්න' : 'Turn on Elder Cam or Mic to begin capture',
-                                    style: const TextStyle(
-                                      color: Colors.white70,
-                                      fontSize: 10,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
                                 ],
                               ),
                             ),
@@ -8755,171 +8774,99 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                     },
                   ),
 
-                  // Overlay Face Tracking Box with green/purple corners
+                  // Overlay Face Tracking Box with green corners
                   Center(
-                    child: Builder(
-                      builder: (context) {
-                        final isCameraActive = _isElderCamActive ||
-                            (_facialCaptureService.cameraController != null &&
-                                _facialCaptureService.cameraController!.value.isInitialized &&
-                                _facialCaptureService.isAutoCapturing) ||
-                            _capturedImageBytes != null;
-
-                        return Container(
-                          width: 140,
-                          height: 140,
-                          decoration: BoxDecoration(
-                            border: Border.all(
-                              color: isCameraActive
-                                  ? (_selectedEmotion == 'Happy'
-                                      ? AppColors.riskLow.withValues(alpha: 0.85)
-                                      : (_selectedEmotion == 'Sad'
-                                          ? AppColors.riskHigh.withValues(alpha: 0.85)
-                                          : (_selectedEmotion == 'Confused'
-                                              ? AppColors.riskModerate.withValues(alpha: 0.85)
-                                              : (_selectedEmotion == 'Fear'
-                                                  ? AppColors.lilac.withValues(alpha: 0.85)
-                                                  : AppColors.primary.withValues(alpha: 0.85)))))
-                                  : Colors.white30,
-                              width: 2,
-                            ),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Stack(
-                            children: [
-                              Positioned(
-                                top: 4,
-                                left: 6,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: Colors.black54,
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: Text(
-                                    isCameraActive
-                                        ? (ref.watch(languageProvider).isSinhala ? 'මුහුණ හඳුනාගැනීම: ${(_facialConfidence * 100).toInt()}%' : 'Face Target: ${(_facialConfidence * 100).toInt()}%')
-                                        : (ref.watch(languageProvider).isSinhala ? 'කැමරාව ක්‍රියාවිරහිතයි • සූදානම්' : 'Camera Off • Standby'),
-                                    style: const TextStyle(color: Colors.white, fontSize: 9),
-                                  ),
+                    child: Container(
+                      width: 140,
+                      height: 140,
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.8),
+                          width: 1.5,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Stack(
+                        children: [
+                          Positioned(
+                            top: 0,
+                            left: 0,
+                            child: Container(
+                              width: 18,
+                              height: 18,
+                              decoration: const BoxDecoration(
+                                border: Border(
+                                  top: BorderSide(color: Color(0xFF22C55E), width: 3),
+                                  left: BorderSide(color: Color(0xFF22C55E), width: 3),
                                 ),
                               ),
-                            ],
+                            ),
                           ),
-                        );
-                      },
+                          Positioned(
+                            top: 0,
+                            right: 0,
+                            child: Container(
+                              width: 18,
+                              height: 18,
+                              decoration: const BoxDecoration(
+                                border: Border(
+                                  top: BorderSide(color: Color(0xFF22C55E), width: 3),
+                                  right: BorderSide(color: Color(0xFF22C55E), width: 3),
+                                ),
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            bottom: 0,
+                            left: 0,
+                            child: Container(
+                              width: 18,
+                              height: 18,
+                              decoration: const BoxDecoration(
+                                border: Border(
+                                  bottom: BorderSide(color: Color(0xFF22C55E), width: 3),
+                                  left: BorderSide(color: Color(0xFF22C55E), width: 3),
+                                ),
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: Container(
+                              width: 18,
+                              height: 18,
+                              decoration: const BoxDecoration(
+                                border: Border(
+                                  bottom: BorderSide(color: Color(0xFF22C55E), width: 3),
+                                  right: BorderSide(color: Color(0xFF22C55E), width: 3),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
 
-                  // Subtle animated scanning laser line
-                  if (_isElderCamActive ||
-                      (_facialCaptureService.cameraController != null &&
-                          _facialCaptureService.cameraController!.value.isInitialized &&
-                          _facialCaptureService.isAutoCapturing) ||
-                      _capturedImageBytes != null)
-                    AnimatedBuilder(
-                      animation: _scannerController,
-                      builder: (context, child) {
-                        return Positioned(
-                          top: 20 + (_scannerController.value * 120),
-                          left: 40,
-                          right: 40,
-                          child: Container(
-                            height: 2,
-                            decoration: BoxDecoration(
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppColors.primary.withValues(alpha: 0.8),
-                                  blurRadius: 4,
-                                  spreadRadius: 1,
-                                ),
-                              ],
-                              gradient: const LinearGradient(
-                                colors: [Colors.transparent, AppColors.primary, Colors.transparent],
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-
-                  // Action buttons: Upload Image & Capture Camera
+                  // Floating Camera On badge
                   Positioned(
                     top: 8,
                     right: 8,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Tooltip(
-                          message: 'Upload senior photo for AI Inference',
-                          child: InkWell(
-                            onTap: _pickImageFromGalleryOrFile,
-                            child: Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: const BoxDecoration(
-                                color: Colors.black54,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(LucideIcons.uploadCloud, size: 14, color: Colors.white),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Tooltip(
-                          message: 'Capture live camera photo',
-                          child: InkWell(
-                            onTap: _takeLiveCameraPhoto,
-                            child: Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: const BoxDecoration(
-                                color: Colors.black54,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(LucideIcons.camera, size: 14, color: Colors.white),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // Live auto-capture bottom status overlay
-                  Positioned(
-                    bottom: 6,
-                    left: 6,
-                    right: 6,
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: Colors.black.withValues(alpha: 0.65),
-                        borderRadius: BorderRadius.circular(6),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                       child: Row(
-                        children: [
-                          Icon(
-                            _facialCaptureService.isAutoCapturing
-                                ? LucideIcons.activity
-                                : LucideIcons.shieldCheck,
-                            size: 11,
-                            color: _facialCaptureService.isAutoCapturing
-                                ? AppColors.leafGreen
-                                : Colors.white70,
-                          ),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              _facialCaptureService.isAutoCapturing
-                                  ? 'Auto-capture active (1s interval) • ${_facialCaptureService.aggregate.validCount} valid samples'
-                                  : (_hasFacialConsent
-                                      ? 'Consent granted • Auto-captures during voice'
-                                      : 'Consent required for auto facial capture'),
-                              style: const TextStyle(
-                                fontSize: 10,
-                                color: Colors.white,
-                                fontWeight: FontWeight.w500,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
+                        mainAxisSize: MainAxisSize.min,
+                        children: const [
+                          Icon(LucideIcons.camera, size: 12, color: Colors.white),
+                          SizedBox(width: 4),
+                          Text(
+                            'Camera On',
+                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.white),
                           ),
                         ],
                       ),
@@ -8952,9 +8899,50 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
               ),
             ),
           ],
-          if (!isElderMode) ...[
+          if (isElderMode) ...[
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              height: 42,
+              child: ElevatedButton.icon(
+                onPressed: _takeLiveCameraPhoto,
+                icon: const Icon(LucideIcons.camera, size: 17, color: Colors.white),
+                label: Text(
+                  ref.watch(languageProvider).isSinhala ? 'ඡායාරූපය ගන්න' : 'Take Photo',
+                  style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: Colors.white),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF7C3AED),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+                  elevation: 0,
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(5),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFF3E8FF),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(LucideIcons.shieldCheck, size: 14, color: Color(0xFF7C3AED)),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    ref.watch(languageProvider).isSinhala
+                        ? 'මෙම ඡායාරූපය හැඟීම් විශ්ලේෂණය සඳහා පමණක් භාවිතා කරන අතර, එය සුරක්ෂිතව තබා ඇත.'
+                        : 'This photo is strictly used for emotion analysis and is kept confidential.',
+                    style: const TextStyle(fontSize: 10.5, color: Color(0xFF475569), height: 1.3),
+                  ),
+                ),
+              ],
+            ),
+          ] else ...[
             const SizedBox(height: 12),
-            // Real AI Detected Emotion Readout
             Text(
               ref.watch(languageProvider).isSinhala ? 'AI හඳුනාගත් මුහුණේ හැඟීම:' : 'AI Detected Facial Emotion:',
               style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.navy),
@@ -9249,209 +9237,279 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header with recording blinker
+          // Header
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(LucideIcons.mic, size: 18, color: AppColors.primary),
-                  const SizedBox(width: 8),
-                  Text(
-                    ref.watch(languageProvider).isSinhala ? 'හඬ පටිගත කිරීම' : 'Voice Recording',
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.navy),
-                  ),
-                ],
-              ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 7,
-                    height: 7,
-                    decoration: BoxDecoration(
-                      color: _isRecording ? const Color(0xFFEF4444) : const Color(0xFF94A3B8),
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 5),
-                  Text(
-                    ref.watch(languageProvider).isSinhala
-                        ? 'පටිගත. ${_formatTimer(_recordSeconds)}'
-                        : 'Rec. ${_formatTimer(_recordSeconds)}',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.navy,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-
-          // Speech Language selection bar
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                ref.watch(languageProvider).isSinhala ? 'කථා කරන භාෂාව:' : 'Speech Language:',
-                style: const TextStyle(fontSize: 11, color: AppColors.muted, fontWeight: FontWeight.w500),
-              ),
-              Row(
-                children: [
-                  _buildLangToggleItem('si-LK', '🇱🇰 සිංහල'),
-                  const SizedBox(width: 6),
-                  _buildLangToggleItem('en-US', '🌐 English'),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-
-          // Dynamic Animated Audio Waveform Box
-          Container(
-            height: isElderMode ? 46 : 100,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: _isRecording ? AppColors.primary.withValues(alpha: 0.5) : AppColors.border),
-            ),
-            child: AnimatedBuilder(
-              animation: _waveController,
-              builder: (context, child) {
-                return Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: List.generate(24, (i) {
-                    final factor = (1 + 0.8 * ((i % 4 == 0) ? 1.0 : 0.4));
-                    final waveValue = (_waveController.value * 6.28 + (i * 0.3)).abs();
-                    final soundBoost = (_soundLevel.abs() > 0.02) ? (_soundLevel.abs() * 50.0).clamp(0.0, 55.0) : 0.0;
-                    final dynamicHeight = _isRecording
-                        ? (8.0 + soundBoost + (28.0 * (0.3 + 0.7 * (1.0 - (waveValue % 1.0)))) * factor)
-                            .clamp(6.0, isElderMode ? 36.0 : 80.0)
-                        : 5.0;
-
-                    final emotionColor = _getVoiceEmotionColor(_voiceEmotion);
-                    return Container(
-                      width: 4,
-                      height: dynamicHeight,
-                      decoration: BoxDecoration(
-                        color: _isRecording ? emotionColor : AppColors.border,
-                        borderRadius: BorderRadius.circular(3),
-                        gradient: _isRecording
-                            ? LinearGradient(
-                                colors: [
-                                  emotionColor,
-                                  emotionColor.withValues(alpha: 0.5),
-                                ],
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                              )
-                            : null,
+                  if (isElderMode)
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      margin: const EdgeInsets.only(right: 8),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFF3E8FF),
+                        shape: BoxShape.circle,
                       ),
-                    );
-                  }),
-                );
-              },
-            ),
-          ),
-          const SizedBox(height: 10),
-
-          // Central Microphone Action Button
-          Center(
-            child: Column(
-              children: [
-                InkWell(
-                  onTap: _toggleRecording,
-                  borderRadius: BorderRadius.circular(40),
-                  child: Container(
-                    width: isElderMode ? 40 : 48,
-                    height: isElderMode ? 40 : 48,
-                    decoration: BoxDecoration(
-                      color: _isRecording ? AppColors.riskHigh : AppColors.primary,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: (_isRecording ? AppColors.riskHigh : AppColors.primary)
-                              .withValues(alpha: 0.3),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
+                      child: const Icon(LucideIcons.mic, size: 16, color: Color(0xFF7C3AED)),
+                    )
+                  else
+                    const Icon(LucideIcons.mic, size: 18, color: AppColors.primary),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        ref.watch(languageProvider).isSinhala
+                            ? (isElderMode ? 'හඬ පරීක්ෂණ තත්වය (Voice Emotional Analysis)' : 'හඬ පටිගත කිරීම')
+                            : (isElderMode ? 'Voice Emotional Analysis' : 'Voice Recording'),
+                        style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: AppColors.navy),
+                      ),
+                      if (isElderMode) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          ref.watch(languageProvider).isSinhala
+                              ? 'ඔබේ හැඟීම් තත්වය අවබෝධ කර ගැනීමට කෙටිව දැනුම් දෙන්න.'
+                              : 'Briefly share how you feel so we can understand your emotional state.',
+                          style: const TextStyle(fontSize: 10.5, color: Color(0xFF64748B)),
                         ),
                       ],
-                    ),
-                    child: Icon(
-                      _isRecording ? LucideIcons.square : LucideIcons.mic,
-                      color: Colors.white,
-                      size: isElderMode ? 18 : 20,
-                    ),
+                    ],
                   ),
+                ],
+              ),
+              if (isElderMode)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF3E8FF),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFFE9D5FF)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(LucideIcons.clock, size: 12, color: Color(0xFF7C3AED)),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Duration : ${_formatTimer(_recordSeconds > 0 ? _recordSeconds : 60)}',
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF7C3AED)),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 7,
+                      height: 7,
+                      decoration: BoxDecoration(
+                        color: _isRecording ? const Color(0xFFEF4444) : const Color(0xFF94A3B8),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      ref.watch(languageProvider).isSinhala
+                          ? 'පටිගත. ${_formatTimer(_recordSeconds)}'
+                          : 'Rec. ${_formatTimer(_recordSeconds)}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.navy,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 5),
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          // Speech Language selection bar (if not elder mode)
+          if (!isElderMode) ...[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
                 Text(
-                  _isRecording
-                      ? (ref.watch(languageProvider).isSinhala ? 'නැවැත්වීමට මයික්‍රෆෝනය ඔබන්න' : 'Tap microphone to stop')
-                      : (ref.watch(languageProvider).isSinhala ? 'පටිගත කිරීමට ආරම්භ කිරීමට මයික් බොත්තම ඔබන්න' : 'Tap microphone to speak your response...'),
-                  style: TextStyle(fontSize: isElderMode ? 10.5 : 11, color: AppColors.muted),
+                  ref.watch(languageProvider).isSinhala ? 'කථා කරන භාෂාව:' : 'Speech Language:',
+                  style: const TextStyle(fontSize: 11, color: AppColors.muted, fontWeight: FontWeight.w500),
+                ),
+                Row(
+                  children: [
+                    _buildLangToggleItem('si-LK', '🇱🇰 සිංහල'),
+                    const SizedBox(width: 6),
+                    _buildLangToggleItem('en-US', '🌐 English'),
+                  ],
                 ),
               ],
             ),
-          ),
-          if (!isElderMode || _spokenText.isNotEmpty) ...[
             const SizedBox(height: 10),
-            // Spoken Transcript Preview
+          ],
+
+          // Dynamic Animated Audio Waveform (Symmetrical in elder mode)
+          if (isElderMode) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // Left Waveform Bars
+                  Expanded(
+                    child: SizedBox(
+                      height: 48,
+                      child: _buildWaveformBars(isLeft: true),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+
+                  // Center Mic Action Button
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      InkWell(
+                        onTap: _toggleRecording,
+                        borderRadius: BorderRadius.circular(40),
+                        child: Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: _isRecording ? AppColors.riskHigh : const Color(0xFF7C3AED),
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: (_isRecording ? AppColors.riskHigh : const Color(0xFF7C3AED))
+                                    .withValues(alpha: 0.35),
+                                blurRadius: 10,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: Icon(
+                            _isRecording ? LucideIcons.square : LucideIcons.mic,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        _isRecording
+                            ? (ref.watch(languageProvider).isSinhala ? 'නැවැත්වීමට ඔබන්න' : 'Tap to Stop')
+                            : 'Tap to Start Recording',
+                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Color(0xFF64748B)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(width: 10),
+
+                  // Right Waveform Bars
+                  Expanded(
+                    child: SizedBox(
+                      height: 48,
+                      child: _buildWaveformBars(isLeft: false),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ] else ...[
             Container(
-              padding: const EdgeInsets.all(10),
+              height: 70,
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: _isRecording ? AppColors.primary.withValues(alpha: 0.4) : AppColors.border),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: _isRecording ? AppColors.primary.withValues(alpha: 0.5) : AppColors.border),
               ),
-              child: Row(
-                children: [
-                  Icon(
-                    _isRecording ? LucideIcons.mic : LucideIcons.messageSquare,
-                    size: 14,
+              child: AnimatedBuilder(
+                animation: _waveController,
+                builder: (context, child) {
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: List.generate(24, (i) {
+                      final factor = (1 + 0.8 * ((i % 4 == 0) ? 1.0 : 0.4));
+                      final waveValue = (_waveController.value * 6.28 + (i * 0.3)).abs();
+                      final soundBoost = (_soundLevel.abs() > 0.02) ? (_soundLevel.abs() * 50.0).clamp(0.0, 55.0) : 0.0;
+                      final dynamicHeight = _isRecording
+                          ? (8.0 + soundBoost + (28.0 * (0.3 + 0.7 * (1.0 - (waveValue % 1.0)))) * factor)
+                              .clamp(6.0, 60.0)
+                          : 5.0;
+
+                      final emotionColor = _getVoiceEmotionColor(_voiceEmotion);
+                      return Container(
+                        width: 4,
+                        height: dynamicHeight,
+                        decoration: BoxDecoration(
+                          color: _isRecording ? emotionColor : AppColors.border,
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                      );
+                    }),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 10),
+            Center(
+              child: InkWell(
+                onTap: _toggleRecording,
+                borderRadius: BorderRadius.circular(40),
+                child: Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
                     color: _isRecording ? AppColors.riskHigh : AppColors.primary,
+                    shape: BoxShape.circle,
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      _spokenText.isNotEmpty
-                          ? _spokenText
-                          : (_isRecording
-                              ? (_micStatusNotice.isNotEmpty ? _micStatusNotice : '🎙️ Listening... (Speak in $_selectedVoiceLocaleLabel)')
-                              : 'Tap the microphone to speak your response...'),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontStyle: FontStyle.italic,
-                        color: _spokenText.isNotEmpty
-                            ? AppColors.navy
-                            : (_isRecording ? AppColors.primary : AppColors.muted),
-                        fontWeight: _isRecording ? FontWeight.w600 : FontWeight.normal,
-                      ),
-                    ),
+                  child: Icon(
+                    _isRecording ? LucideIcons.square : LucideIcons.mic,
+                    color: Colors.white,
+                    size: 20,
                   ),
-                  if (_spokenText.isNotEmpty)
-                    GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _spokenText = '';
-                        });
-                      },
-                      child: const Icon(LucideIcons.x, size: 14, color: AppColors.muted),
-                    ),
-                ],
+                ),
               ),
             ),
           ],
           const SizedBox(height: 10),
 
-          // Voice Emotion Detection Result (matching mockup light blue container)
+          // Spoken Transcript Preview (if not empty)
+          if (_spokenText.isNotEmpty) ...[
+            Container(
+              padding: const EdgeInsets.all(8),
+              margin: const EdgeInsets.only(bottom: 8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Row(
+                children: [
+                  const Icon(LucideIcons.messageSquare, size: 14, color: AppColors.primary),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _spokenText,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 11, fontStyle: FontStyle.italic, color: AppColors.navy),
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _spokenText = '';
+                      });
+                    },
+                    child: const Icon(LucideIcons.x, size: 14, color: AppColors.muted),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
+          // Voice Emotion Detection Result
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
@@ -9486,21 +9544,55 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
           ),
           const SizedBox(height: 10),
 
-          // Quick Voice Test Prompts
+          // 4 Emotion Chips matching mockup
           Wrap(
-            spacing: 6,
+            spacing: 8,
             runSpacing: 6,
             children: [
               _buildQuickSpeechChip('😊 Feeling Happy & Fine', 'I feel very happy and fine today.', isYellow: true),
               _buildQuickSpeechChip('😢 Feeling Sad & Lonely', 'I feel sad and alone today.', isYellow: true),
               _buildQuickSpeechChip('😐 Calm Baseline', 'I am calm and feeling peaceful.', isYellow: true),
               _buildQuickSpeechChip('😟 Anxious / Worried', 'I feel nervous and worried.', isYellow: true),
-              _buildQuickSpeechChip('🇱🇰 ඔව් සතුටුයි', 'ඔව් අද මට සතුටින් සැනසීමක් දැනෙනවා.', isYellow: false),
-              _buildQuickSpeechChip('🇱🇰 මම දුකයි', 'මම දුකයි සහ පාළුයි.', isYellow: false),
+              if (!isElderMode) ...[
+                _buildQuickSpeechChip('🇱🇰 ඔව් සතුටුයි', 'ඔව් අද මට සතුටින් සැනසීමක් දැනෙනවා.', isYellow: false),
+                _buildQuickSpeechChip('🇱🇰 මම දුකයි', 'මම දුකයි සහ පාළුයි.', isYellow: false),
+              ],
             ],
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildWaveformBars({required bool isLeft}) {
+    return AnimatedBuilder(
+      animation: _waveController,
+      builder: (context, child) {
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: List.generate(14, (i) {
+            final idx = isLeft ? (13 - i) : i;
+            final dynamicHeight = _isRecording
+                ? (6.0 + 32.0 * ((idx % 4 + 1) / 4.0) * (_waveController.value * 0.8 + 0.2)).clamp(6.0, 38.0)
+                : (6.0 + (idx % 3) * 6.0);
+
+            return Container(
+              width: 3.5,
+              height: dynamicHeight,
+              decoration: BoxDecoration(
+                color: const Color(0xFF9333EA).withValues(alpha: 0.7),
+                borderRadius: BorderRadius.circular(2),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFC084FC), Color(0xFF7C3AED)],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
+              ),
+            );
+          }),
+        );
+      },
     );
   }
 
@@ -14587,7 +14679,6 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
           const SizedBox(height: 10),
 
           // 2. Interactive Multimodal Workspace (Question & Voice on Left, Real-time Camera on Right)
-          // Designed specifically so elder has face and voice captured simultaneously without ANY scrolling!
           LayoutBuilder(
             builder: (context, constraints) {
               if (constraints.maxWidth < 850) {
@@ -14627,6 +14718,10 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
               );
             },
           ),
+          const SizedBox(height: 12),
+
+          // 3. Bottom Section: Personalized Activities Carousel (Left) & Today's Wellness Plan (Right)
+          _buildElderBottomPersonalizedSection(),
         ],
       ),
     );
@@ -14669,7 +14764,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                   color: Color(0xFFF3E8FF),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(LucideIcons.sparkles, size: 16, color: AppColors.primary),
+                child: const Icon(LucideIcons.user, size: 18, color: Color(0xFF7C3AED)),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -14685,27 +14780,16 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                         height: 1.3,
                       ),
                     ),
-                    const SizedBox(height: 5),
-                    InkWell(
-                      onTap: _readQuestionAloud,
-                      borderRadius: BorderRadius.circular(6),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(LucideIcons.volume2, size: 14, color: AppColors.primary),
-                          const SizedBox(width: 5),
-                          Text(
-                            isSinhala ? 'හඬ නැවත ඇසීමට ඔබන්න' : 'Tap to replay voice',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.primary,
-                            ),
-                          ),
-                        ],
+                    const SizedBox(height: 3),
+                    Text(
+                      isSinhala ? 'ඔබට හැඟෙන ආකාරය තෝරන්න' : 'Choose how you feel',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF64748B),
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 8),
                     Row(
                       children: [
                         _buildYesNoChoiceButton(
@@ -14737,7 +14821,14 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('👏', style: TextStyle(fontSize: 22)),
+                            Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: const BoxDecoration(
+                                color: Color(0xFFF3E8FF),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Text('🤖', style: TextStyle(fontSize: 16)),
+                            ),
                             const SizedBox(width: 10),
                             Expanded(
                               child: Column(
@@ -14745,10 +14836,10 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                                 children: [
                                   Text(
                                     isSinhala
-                                        ? 'AI සහායක:  ✨ මේ ගැන ඇසීමත් සතුටක්! ✨'
-                                        : 'AI Assistant:  ✨ Delighted to hear this! ✨',
+                                        ? 'AI සහායකයා ✨'
+                                        : 'AI Assistant ✨',
                                     style: const TextStyle(
-                                      fontSize: 11.5,
+                                      fontSize: 12,
                                       fontWeight: FontWeight.bold,
                                       color: Color(0xFF15803D),
                                     ),
@@ -14756,32 +14847,32 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                                   const SizedBox(height: 3),
                                   Text(
                                     isSinhala
-                                        ? (currentQ.id == 5
-                                            ? 'ඔබ කාමරයට පමණක් සීමා නොවී, නිරතුරුවම ක්‍රියාශීලීව සහ සමාජශීලීව කාලය ගත කිරීම ගැන මම ඉතාමත් සතුටු වෙනවා!'
-                                            : (currentQ.id == 4
-                                                ? 'අන් අය එකතු වී සිටින විට ඔබ සතුටින්, සුහදව සහ ආදරයෙන් එක්ව සිටීම ගැන මම ඉතාමත් සතුටු වෙනවා!'
-                                                : (currentQ.id == 3
-                                                    ? 'මෙහි ඔබ සමඟ සමීපව කතාබහ කිරීමට කෙනෙකු සිටීම මහත් භාග්‍යයක්! ඔබේ මිත්‍රත්වය සහ සතුට සදා රැඳේවා!'
-                                                    : (currentQ.id == 2
-                                                        ? 'ඉදිරි දින පිළිබඳව ඔබ තුළ සුබවාදී, ප්‍රීතිමත් බලාපොරොත්තු තිබීම ගැන මම ඉතාමත් සතුටු වෙනවා! ඔබ සැමදා සතුටින් සහ ජයග්‍රාහීව සිටින්න!'
-                                                        : 'ඔබවත් මේ ගැන සතුටින් අද දවසේ ඔබ සිතින් සතුටක් සහ සැනසීමෙන් පසුවීම ගැන මම ගොඩක් සතුටු වෙනවා!'))))
-                                        : (currentQ.id == 5
-                                            ? 'I am so glad to hear that you stay active, step out, and do not isolate yourself in your room all day!'
-                                            : (currentQ.id == 4
-                                                ? 'I am so glad to hear that you feel warmly included, comfortable, and happy when others gather around!'
-                                                : (currentQ.id == 3
-                                                    ? 'Having someone close to talk with is a wonderful blessing! May your friendships bring lasting warmth and happiness.'
-                                                    : (currentQ.id == 2
-                                                        ? 'I am so glad you feel hopeful and optimistic about the days ahead! May each tomorrow bring you joy and triumph.'
-                                                        : 'Thank you so much! I am very glad to hear that you are feeling peaceful and in good spirits today.')))),
+                                        ? 'ඔබ අද දවසේ සැනසීමෙන් බවක් දැනෙන බවට අප සතුටුයි!\nඔබේ සතුට තවත් වැඩි කරගැනීමට කැමති නම් පහත ක්‍රියාකාරකම් දැක්ම කරන්න.'
+                                        : 'We are delighted that you feel peaceful and comfortable today!\nExplore the activities below to keep your spirits bright.',
                                     style: const TextStyle(
-                                      fontSize: 12,
+                                      fontSize: 11.5,
                                       fontWeight: FontWeight.w600,
                                       color: Color(0xFF166534),
                                       height: 1.35,
                                     ),
                                   ),
                                 ],
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            ElevatedButton.icon(
+                              onPressed: _nextQuestion,
+                              icon: const Icon(LucideIcons.arrowRight, size: 13),
+                              label: Text(
+                                isSinhala ? 'තවදුරටත් පරීක්ෂා' : 'Continue',
+                                style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF7C3AED),
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                                elevation: 0,
                               ),
                             ),
                           ],
@@ -14793,33 +14884,6 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                     if (isInterventionState) ...[
                       const SizedBox(height: 10),
                       _buildConversationalSupportCard(currentQ),
-                    ],
-
-                    // Next question action when answered
-                    if (_answers[currentQ.id] != null) ...[
-                      const SizedBox(height: 8),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          ElevatedButton.icon(
-                            onPressed: _nextQuestion,
-                            icon: const Icon(LucideIcons.arrowRight, size: 14),
-                            label: Text(
-                              isSinhala
-                                  ? (_currentIndex < _questions.length - 1 ? 'මීළඟ ප්‍රශ්නය' : 'ඇගයීම අවසන් කරන්න')
-                                  : (_currentIndex < _questions.length - 1 ? 'Next Question' : 'Complete Assessment'),
-                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                              elevation: 0,
-                            ),
-                          ),
-                        ],
-                      ),
                     ],
                   ],
                 ),
@@ -14834,6 +14898,517 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
             ),
         ],
       ),
+    );
+  }
+
+  // --- SECTION 3: PERSONALIZED ACTIVITIES & TODAY'S WELLNESS PLAN ---
+  Widget _buildElderBottomPersonalizedSection() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 950) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildElderPersonalizedActivitiesCard(),
+              const SizedBox(height: 12),
+              _buildElderTodayWellnessPlanCard(),
+            ],
+          );
+        }
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              flex: 68,
+              child: _buildElderPersonalizedActivitiesCard(),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              flex: 32,
+              child: _buildElderTodayWellnessPlanCard(),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildElderPersonalizedActivitiesCard() {
+    final isSinhala = ref.watch(languageProvider).isSinhala;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFDCFCE7),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Text('🪷', style: TextStyle(fontSize: 16)),
+                      ),
+                      const SizedBox(width: 10),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            isSinhala ? 'ඔබට අදාළ ක්‍රියාකාරකම්' : 'Personalized Activities',
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.navy,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          const Text(
+                            'Your Personalized Activities for a Happier Day',
+                            style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF3E8FF),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFFE9D5FF)),
+                    ),
+                    child: Text(
+                      isSinhala
+                          ? 'ඔබේ මනෝභාවයට ගැලපෙන ක්‍රියාකාරකම් අපි ඔබට යෝජනා කරමු 💜'
+                          : 'Activities tailored to your current mood 💜',
+                      style: const TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF7C3AED),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+
+              // Carousel of 3 cards with Left and Right chevron buttons
+              Row(
+                children: [
+                  // Left Chevron
+                  InkWell(
+                    onTap: () {},
+                    borderRadius: BorderRadius.circular(20),
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: const Icon(LucideIcons.chevronLeft, size: 16, color: Color(0xFF64748B)),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+
+                  // 3 Activity Cards
+                  Expanded(
+                    child: Row(
+                      children: [
+                        // 1. Music Card (Soft Coral / Peach)
+                        Expanded(
+                          child: _buildElderSingleActivityMockCard(
+                            bgColor: const Color(0xFFFFF1F0),
+                            borderColor: const Color(0xFFFFD5D0),
+                            iconLeading: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: const [
+                                Text('🎧', style: TextStyle(fontSize: 18)),
+                                SizedBox(width: 4),
+                                Text('🎵', style: TextStyle(fontSize: 14)),
+                              ],
+                            ),
+                            titleSi: 'කැමති සංගීතයක් අහන්න',
+                            titleEn: 'Listen to Your Favourite Music',
+                            descSi: 'ඔබ කැමති සංගීතයෙන් සිත සනසන්න.',
+                            buttonLabel: '▶ දැන් අහන්න',
+                            onTap: () {
+                              final act = _activities.isNotEmpty
+                                  ? _activities[0]
+                                  : PersonalizedActivityItem(
+                                      id: 'music-1',
+                                      title: 'Music Therapy',
+                                      description: 'Listen to classic Sinhala songs',
+                                      icon: LucideIcons.music,
+                                    );
+                              _showElderMusicTherapyDialog(act);
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+
+                        // 2. Conversation Card (Soft Sky / Blue)
+                        Expanded(
+                          child: _buildElderSingleActivityMockCard(
+                            bgColor: const Color(0xFFEFF8FF),
+                            borderColor: const Color(0xFFBAE6FD),
+                            iconLeading: const Text('👥', style: TextStyle(fontSize: 18)),
+                            titleSi: 'කෙනෙකු සමඟ කතා කරන්න',
+                            titleEn: 'Talk with Someone',
+                            descSi: 'පවුලේ කෙනෙකු හෝ සත්කාරකයෙකු සමඟ සිතෙන් කතාබහක් කරන්න.',
+                            buttonLabel: '📞 කතාබහ අරඹන්න',
+                            onTap: () {
+                              _showCaregiverCallDialog('Mrs. Nilanthi Perera', 'Duty Caregiver', '077 123 4567');
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+
+                        // 3. Peaceful Rest Card (Soft Mint / Green)
+                        Expanded(
+                          child: _buildElderSingleActivityMockCard(
+                            bgColor: const Color(0xFFF0FDF4),
+                            borderColor: const Color(0xFFBBF7D0),
+                            iconLeading: const Text('🪷', style: TextStyle(fontSize: 18)),
+                            titleSi: 'සැනසීමේ කාලයක් ගත කරන්න',
+                            titleEn: 'Enjoy a Peaceful Moment',
+                            descSi: 'ආතතිය අඩු කරගන්න සහ විවේක කරන්න.',
+                            buttonLabel: '🧘 විවේකයක් ගන්න',
+                            onTap: _showTipsDialog,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+
+                  // Right Chevron
+                  InkWell(
+                    onTap: () {},
+                    borderRadius: BorderRadius.circular(20),
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: const Icon(LucideIcons.chevronRight, size: 16, color: Color(0xFF64748B)),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+
+              // Pagination Dots (● ○ ○)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 7,
+                    height: 7,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF7C3AED),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 5),
+                  Container(
+                    width: 6,
+                    height: 6,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFCBD5E1),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 5),
+                  Container(
+                    width: 6,
+                    height: 6,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFCBD5E1),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+
+          // Floral Accent in bottom right corner
+          Positioned(
+            right: -6,
+            bottom: -6,
+            child: IgnorePointer(
+              child: Opacity(
+                opacity: 0.85,
+                child: Image.asset(
+                  'assets/images/banner_flowers_fade.png',
+                  width: 50,
+                  height: 50,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildElderSingleActivityMockCard({
+    required Color bgColor,
+    required Color borderColor,
+    required Widget iconLeading,
+    required String titleSi,
+    required String titleEn,
+    required String descSi,
+    required String buttonLabel,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: borderColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              iconLeading,
+              const Icon(LucideIcons.heart, size: 16, color: Color(0xFF94A3B8)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            titleSi,
+            style: const TextStyle(
+              fontSize: 13.5,
+              fontWeight: FontWeight.w700,
+              color: AppColors.navy,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 2),
+          Text(
+            titleEn,
+            style: const TextStyle(
+              fontSize: 10.5,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF64748B),
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            descSi,
+            style: const TextStyle(
+              fontSize: 10,
+              color: Color(0xFF475569),
+              height: 1.3,
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            height: 32,
+            child: ElevatedButton(
+              onPressed: onTap,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF7C3AED),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                elevation: 0,
+              ),
+              child: Text(
+                buttonLabel,
+                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildElderTodayWellnessPlanCard() {
+    final isSinhala = ref.watch(languageProvider).isSinhala;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: const BoxDecoration(
+                  color: Color(0xFFF3E8FF),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(LucideIcons.calendar, size: 16, color: Color(0xFF7C3AED)),
+              ),
+              const SizedBox(width: 10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    isSinhala ? 'අද දවසේ ඔබේ ක්‍රියා සැලැස්ම' : "Today's Wellness Plan",
+                    style: const TextStyle(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.navy,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  const Text(
+                    "Today's Wellness Plan",
+                    style: TextStyle(fontSize: 10.5, color: Color(0xFF64748B)),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          // Plan Items Checklist
+          _buildPlanCheckItem(
+            icon: '🎵',
+            labelSi: 'සංගීතය අහන්න',
+            isCompleted: true,
+          ),
+          const SizedBox(height: 8),
+          _buildPlanCheckItem(
+            icon: '💬',
+            labelSi: 'කෙනෙකු සමඟ කතා කරන්න',
+            isCompleted: false,
+          ),
+          const SizedBox(height: 8),
+          _buildPlanCheckItem(
+            icon: '🪷',
+            labelSi: 'විනාඩි කිහිපයක් මොහොතක් ගත කරන්න',
+            isCompleted: false,
+          ),
+          const SizedBox(height: 16),
+
+          // Progress Row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                isSinhala ? 'අද සිදු කළ ක්‍රියාකාරකම්' : 'Completed Activities Today',
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF475569),
+                ),
+              ),
+              const Text(
+                '1 / 3',
+                style: TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.navy,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: const LinearProgressIndicator(
+              value: 1 / 3,
+              minHeight: 7,
+              backgroundColor: Color(0xFFF1F5F9),
+              valueColor: AlwaysStoppedAnimation(Color(0xFF7C3AED)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPlanCheckItem({
+    required String icon,
+    required String labelSi,
+    required bool isCompleted,
+  }) {
+    return Row(
+      children: [
+        Text(icon, style: const TextStyle(fontSize: 15)),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            labelSi,
+            style: const TextStyle(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w600,
+              color: AppColors.navy,
+            ),
+          ),
+        ),
+        Container(
+          width: 20,
+          height: 20,
+          decoration: BoxDecoration(
+            color: isCompleted ? const Color(0xFF22C55E) : Colors.transparent,
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: isCompleted ? const Color(0xFF22C55E) : const Color(0xFFCBD5E1),
+              width: 1.5,
+            ),
+          ),
+          child: isCompleted
+              ? const Center(
+                  child: Icon(Icons.check, size: 13, color: Colors.white),
+                )
+              : null,
+        ),
+      ],
     );
   }
 

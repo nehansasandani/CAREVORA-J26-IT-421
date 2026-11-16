@@ -64,68 +64,87 @@ class DesktopSidebar extends ConsumerWidget {
             child: ListView(
               padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
               children: [
-                if (authState.isElder)
-                  _buildNavItem(
-                    context,
-                    icon: LucideIcons.layoutDashboard,
-                    label: strings.overview,
-                    route: '/dashboard',
-                  ),
-                if (!authState.isElder)
-                  _buildNavItem(
-                    context,
-                    icon: LucideIcons.users,
-                    label: authState.isElder ? strings.myHealthRecord : strings.residentDirectory,
-                    route: '/dashboard/residents',
-                  ),
-                if (authState.isCaregiver)
-                  _buildNavItem(
-                    context,
-                    icon: LucideIcons.activity,
-                    label: 'Metabolic Health',
-                    route: '/dashboard/metabolic',
-                  ),
                 if (authState.isElder) ...[
                   _buildNavItem(
                     context,
-                    icon: LucideIcons.brain,
-                    label: strings.cognitiveAssessment,
-                    route: '/dashboard/cognitive/session',
+                    icon: LucideIcons.home,
+                    label: strings.isSinhala ? 'මුල් පිටුව' : strings.overview,
+                    route: '/dashboard',
                   ),
                   _buildNavItem(
                     context,
-                    icon: LucideIcons.heartPulse,
-                    label: strings.emotionalWellness,
+                    icon: LucideIcons.calendar,
+                    label: strings.isSinhala ? 'මගේ ඇමතුම්' : 'Appointments & Calls',
+                    route: '/dashboard/station-help',
+                  ),
+                  _buildNavItem(
+                    context,
+                    icon: LucideIcons.heart,
+                    label: strings.isSinhala ? 'මානසික සුවතාවය' : strings.emotionalWellness,
                     route: '/dashboard/emotional',
                   ),
                   _buildNavItem(
                     context,
                     icon: LucideIcons.activity,
-                    label: strings.metabolicHealth,
+                    label: strings.isSinhala ? 'සෞඛ්‍ය තොරතුරු' : strings.metabolicHealth,
                     route: '/dashboard/metabolic',
                   ),
-                ],
-                if (!authState.isElder)
+                  _buildNavItem(
+                    context,
+                    icon: LucideIcons.barChart3,
+                    label: strings.isSinhala ? 'ප්‍රගතිය සහ වාර්තා' : strings.reportsAndAnalytics,
+                    route: '/dashboard/reports',
+                  ),
+                  _buildNavItem(
+                    context,
+                    icon: LucideIcons.gamepad2,
+                    label: strings.isSinhala ? 'ක්‍රියාකාරකම්' : strings.memoryGames,
+                    route: '/dashboard/memory-games',
+                  ),
+                  _buildNavItem(
+                    context,
+                    icon: LucideIcons.users,
+                    label: strings.isSinhala ? 'සහය ලබා ගැනීම' : strings.stationHelpAndCalls,
+                    route: '/dashboard/station-help',
+                  ),
+                  _buildNavItem(
+                    context,
+                    icon: LucideIcons.settings,
+                    label: strings.isSinhala ? 'සැකසුම්' : strings.settings,
+                    route: '/dashboard/settings',
+                  ),
+                ] else ...[
+                  _buildNavItem(
+                    context,
+                    icon: LucideIcons.users,
+                    label: strings.residentDirectory,
+                    route: '/dashboard/residents',
+                  ),
+                  if (authState.isCaregiver)
+                    _buildNavItem(
+                      context,
+                      icon: LucideIcons.activity,
+                      label: 'Metabolic Health',
+                      route: '/dashboard/metabolic',
+                    ),
                   _buildNavItem(
                     context,
                     icon: LucideIcons.bell,
                     label: strings.alertsAndNotifications,
                     route: '/dashboard/alerts',
                   ),
-                _buildNavItem(
-                  context,
-                  icon: LucideIcons.barChart3,
-                  label: strings.reportsAndAnalytics,
-                  route: '/dashboard/reports',
-                ),
-                if (!authState.isElder)
+                  _buildNavItem(
+                    context,
+                    icon: LucideIcons.barChart3,
+                    label: strings.reportsAndAnalytics,
+                    route: '/dashboard/reports',
+                  ),
                   _buildNavItem(
                     context,
                     icon: LucideIcons.clipboardList,
                     label: strings.carePlans,
                     route: '/dashboard/care-plans',
                   ),
-                if (!authState.isElder) ...[
                   _buildNavItem(
                     context,
                     icon: LucideIcons.stethoscope,
@@ -150,132 +169,161 @@ class DesktopSidebar extends ConsumerWidget {
                     label: 'Emotional RALPA Trajectory',
                     route: '/dashboard/emotional-ralpa-trajectory',
                   ),
-                ],
-                if (authState.isElder) ...[
                   _buildNavItem(
                     context,
-                    icon: LucideIcons.gamepad2,
-                    label: strings.memoryGames,
-                    route: '/dashboard/memory-games',
+                    icon: LucideIcons.phoneCall,
+                    label: strings.stationHelpAndCalls,
+                    route: '/dashboard/station-help',
                   ),
                   _buildNavItem(
                     context,
-                    icon: LucideIcons.sparkles,
-                    label: strings.emotionalWellnessGames,
-                    route: '/dashboard/emotional-games',
+                    icon: LucideIcons.settings,
+                    label: strings.settings,
+                    route: '/dashboard/settings',
                   ),
                 ],
-                _buildNavItem(
-                  context,
-                  icon: LucideIcons.phoneCall,
-                  label: strings.stationHelpAndCalls,
-                  route: '/dashboard/station-help',
-                ),
-                _buildNavItem(
-                  context,
-                  icon: LucideIcons.settings,
-                  label: strings.settings,
-                  route: '/dashboard/settings',
-                ),
               ],
             ),
           ),
           const Divider(height: 1, color: AppColors.border),
-          // User Profile Card & Log Out
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: isCollapsed
-                ? IconButton(
-                    icon: const Icon(LucideIcons.logOut, color: AppColors.riskHigh),
-                    onPressed: () async {
-                      await ref.read(authProvider).logout();
-                      if (context.mounted) context.go('/login');
-                    },
-                  )
-                : Column(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: AppColors.surfaceSecondary,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppColors.border, width: 1),
-                        ),
-                        child: Row(
-                          children: [
-                            CarevoraAvatar(
-                              avatarUrl: authState.avatarUrl,
-                              radius: 18,
-                              initials: initials,
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    userName,
-                                    style: AppTextStyles.bodyMedium.copyWith(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  Text(
-                                    roleName,
-                                    style: AppTextStyles.caption.copyWith(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w700,
-                                      color: AppColors.primary,
-                                    ),
-                                  ),
-                                  if (elderHomeName != null && elderHomeName.isNotEmpty) ...[
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      elderHomeName,
-                                      style: AppTextStyles.caption.copyWith(
-                                        fontSize: 9.5,
-                                        color: AppColors.muted,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
+          // User Profile Card & Log Out with Soft Floral Accent
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              if (!isCollapsed)
+                Positioned(
+                  left: -12,
+                  bottom: -10,
+                  child: IgnorePointer(
+                    child: Opacity(
+                      opacity: 0.85,
+                      child: Image.asset(
+                        'assets/images/banner_flowers_fade.png',
+                        width: 95,
+                        height: 95,
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, __, ___) => const SizedBox.shrink(),
                       ),
-                      const SizedBox(height: 10),
-                      InkWell(
-                        onTap: () async {
+                    ),
+                  ),
+                ),
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: isCollapsed
+                    ? IconButton(
+                        icon: const Icon(LucideIcons.logOut, color: AppColors.riskHigh),
+                        onPressed: () async {
                           await ref.read(authProvider).logout();
                           if (context.mounted) context.go('/login');
                         },
-                        borderRadius: BorderRadius.circular(8),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(LucideIcons.logOut, size: 16, color: AppColors.riskHigh),
-                              const SizedBox(width: 8),
-                              Text(
-                                strings.logOut,
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.riskHigh,
+                      )
+                    : Column(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(color: AppColors.border, width: 1),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.02),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 36,
+                                  height: 36,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFEDE9FE),
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: const Color(0xFFDDD6FE)),
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      initials,
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFF7C3AED),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        userName,
+                                        style: AppTextStyles.bodyMedium.copyWith(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      Text(
+                                        roleName,
+                                        style: AppTextStyles.caption.copyWith(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w700,
+                                          color: const Color(0xFF7C3AED),
+                                        ),
+                                      ),
+                                      if (elderHomeName != null && elderHomeName.isNotEmpty) ...[
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          elderHomeName,
+                                          style: AppTextStyles.caption.copyWith(
+                                            fontSize: 9.5,
+                                            color: AppColors.muted,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
+                          const SizedBox(height: 10),
+                          InkWell(
+                            onTap: () async {
+                              await ref.read(authProvider).logout();
+                              if (context.mounted) context.go('/login');
+                            },
+                            borderRadius: BorderRadius.circular(8),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Icon(LucideIcons.logOut, size: 16, color: AppColors.riskHigh),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    strings.logOut,
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.riskHigh,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
+              ),
+            ],
           ),
         ],
       ),
@@ -296,19 +344,28 @@ class DesktopSidebar extends ConsumerWidget {
       padding: const EdgeInsets.only(bottom: 2),
       child: InkWell(
         onTap: () => context.go(route),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(12),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
-            color: isActive ? AppColors.primarySoft : Colors.transparent,
-            borderRadius: BorderRadius.circular(10),
+            color: isActive ? const Color(0xFF7C3AED) : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: isActive
+                ? [
+                    BoxShadow(
+                      color: const Color(0xFF7C3AED).withValues(alpha: 0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ]
+                : null,
           ),
           child: Row(
             children: [
               Icon(
                 icon,
                 size: 18,
-                color: isActive ? AppColors.primary : AppColors.muted,
+                color: isActive ? Colors.white : AppColors.muted,
               ),
               if (!isCollapsed) ...[
                 const SizedBox(width: 12),
@@ -317,8 +374,8 @@ class DesktopSidebar extends ConsumerWidget {
                     label,
                     style: TextStyle(
                       fontSize: 13,
-                      fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
-                      color: isActive ? AppColors.primary : AppColors.body,
+                      fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                      color: isActive ? Colors.white : AppColors.body,
                     ),
                   ),
                 ),
@@ -326,15 +383,15 @@ class DesktopSidebar extends ConsumerWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: AppColors.primary,
+                      color: isActive ? Colors.white : AppColors.primary,
                       borderRadius: BorderRadius.circular(9999),
                     ),
                     child: Text(
                       badge,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                        color: isActive ? const Color(0xFF7C3AED) : Colors.white,
                       ),
                     ),
                   ),

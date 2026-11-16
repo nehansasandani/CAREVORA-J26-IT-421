@@ -105,36 +105,65 @@ class DashboardShell extends ConsumerWidget {
             const SizedBox(width: 6),
           ],
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
+            child: Builder(
+              builder: (context) {
+                final hour = DateTime.now().hour;
+                String timeGreetingSi = 'සුබ සවසක්';
+                String timeGreetingEn = 'Good evening';
+                if (hour >= 5 && hour < 12) {
+                  timeGreetingSi = 'සුබ උදෑසනක්';
+                  timeGreetingEn = 'Good morning';
+                } else if (hour >= 12 && hour < 16) {
+                  timeGreetingSi = 'සුබ දහවලක්';
+                  timeGreetingEn = 'Good afternoon';
+                } else if (hour >= 16 && hour < 21) {
+                  timeGreetingSi = 'සුබ සවසක්';
+                  timeGreetingEn = 'Good evening';
+                } else {
+                  timeGreetingSi = 'සුබ රාත්‍රියක්';
+                  timeGreetingEn = 'Good night';
+                }
+
+                final rawName = authState.userName ?? 'Kumara';
+                final elderGreeting = strings.isSinhala
+                    ? '$timeGreetingSi, $rawName මහත්මයා!'
+                    : '$timeGreetingEn, $rawName!';
+                final elderSubtitle = strings.isSinhala
+                    ? 'ඔබේ මනෝසෞඛ්‍ය හා සුවසාධනය වෙනුවෙන් අපි ඔබ සමඟයි.'
+                    : 'We are with you for your mental health and wellness.';
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Flexible(
-                      child: Text(
-                        strings.welcomeBack,
-                        style: AppTextStyles.h4.copyWith(
-                          fontSize: isMobile ? 14 : 16,
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            authState.isElder ? elderGreeting : strings.welcomeBack,
+                            style: AppTextStyles.h4.copyWith(
+                              fontSize: isMobile ? 14 : 16,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
+                        const SizedBox(width: 4),
+                        const Text('👋', style: TextStyle(fontSize: 15)),
+                      ],
+                    ),
+                    if (!isMobile)
+                      Text(
+                        authState.isElder
+                            ? elderSubtitle
+                            : strings.residentsWellnessOverview,
+                        style: AppTextStyles.caption,
                         overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                    const SizedBox(width: 4),
-                    const Text('👋', style: TextStyle(fontSize: 15)),
                   ],
-                ),
-                if (!isMobile)
-                  Text(
-                    authState.isElder
-                        ? strings.personalWellnessOverview
-                        : strings.residentsWellnessOverview,
-                    style: AppTextStyles.caption,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-              ],
+                );
+              },
             ),
           ),
           const SizedBox(width: 8),
@@ -147,17 +176,16 @@ class DashboardShell extends ConsumerWidget {
               // Live Date and Time Chip
               if (!isMobile) const _LiveDateTimeChip(),
               if (!isMobile) const SizedBox(width: 8),
-              // Bell Notification Icon with Badge (Caregivers/Staff only)
-              if (!authState.isElder)
-                Stack(
-                  alignment: Alignment.topRight,
-                  children: [
-                    IconButton(
-                      padding: EdgeInsets.all(isMobile ? 8 : 12),
-                      constraints: const BoxConstraints(),
-                      icon: const Icon(LucideIcons.bell, size: 20, color: AppColors.navy),
-                      onPressed: () => context.go('/dashboard/alerts'),
-                    ),
+              // Bell Notification Icon with Badge
+              Stack(
+                alignment: Alignment.topRight,
+                children: [
+                  IconButton(
+                    padding: EdgeInsets.all(isMobile ? 8 : 12),
+                    constraints: const BoxConstraints(),
+                    icon: const Icon(LucideIcons.bell, size: 20, color: AppColors.navy),
+                    onPressed: () => context.go('/dashboard/alerts'),
+                  ),
                     Positioned(
                       top: isMobile ? 2 : 4,
                       right: isMobile ? 2 : 4,
