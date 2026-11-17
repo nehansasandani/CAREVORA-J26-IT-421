@@ -15226,26 +15226,86 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _buildElderPersonalizedActivitiesCard(),
-              const SizedBox(height: 12),
+              const SizedBox(height: 14),
               _buildElderTodayWellnessPlanCard(),
             ],
           );
         }
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              flex: 68,
-              child: _buildElderPersonalizedActivitiesCard(),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              flex: 32,
-              child: _buildElderTodayWellnessPlanCard(),
-            ),
-          ],
+        return IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                flex: 68,
+                child: _buildElderPersonalizedActivitiesCard(),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                flex: 32,
+                child: _buildElderTodayWellnessPlanCard(),
+              ),
+            ],
+          ),
         );
       },
+    );
+  }
+
+  Widget _buildActivityVisualBanner({
+    required Gradient gradient,
+    required Widget centerGraphic,
+  }) {
+    return Container(
+      height: 80,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        gradient: gradient,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.7), width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          // Background soft glowing circle
+          Center(
+            child: Container(
+              width: 58,
+              height: 58,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withValues(alpha: 0.4),
+              ),
+            ),
+          ),
+          // Center graphic (emojis, icons, elder avatars)
+          Center(child: centerGraphic),
+          // Top right Heart icon badge
+          Positioned(
+            top: 6,
+            right: 6,
+            child: Container(
+              padding: const EdgeInsets.all(4.5),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.85),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 4,
+                  ),
+                ],
+              ),
+              child: const Icon(LucideIcons.heart, size: 13, color: Color(0xFF94A3B8)),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -15257,13 +15317,30 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
       _buildElderSingleActivityMockCard(
         bgColor: const Color(0xFFFFF1F0),
         borderColor: const Color(0xFFFFD5D0),
-        iconLeading: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: const [
-            Text('🎧', style: TextStyle(fontSize: 18)),
-            SizedBox(width: 4),
-            Text('🎵', style: TextStyle(fontSize: 14)),
-          ],
+        visualBanner: _buildActivityVisualBanner(
+          gradient: const LinearGradient(
+            colors: [Color(0xFFFFF1F2), Color(0xFFFFE4E6)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          centerGraphic: Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const Text('🎵', style: TextStyle(fontSize: 16)),
+              const SizedBox(width: 4),
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF7C3AED).withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: const Text('🎧', style: TextStyle(fontSize: 28)),
+              ),
+              const SizedBox(width: 4),
+              const Text('🎶', style: TextStyle(fontSize: 16)),
+            ],
+          ),
         ),
         titleSi: 'කැමති සංගීතයක් අහන්න',
         titleEn: 'Listen to Your Favourite Music',
@@ -15285,11 +15362,56 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
         },
       ),
 
-      // 2. Conversation Card
+      // 2. Conversation Card (Elder Avatars & Chat)
       _buildElderSingleActivityMockCard(
         bgColor: const Color(0xFFEFF8FF),
         borderColor: const Color(0xFFBAE6FD),
-        iconLeading: const Text('👥', style: TextStyle(fontSize: 18)),
+        visualBanner: _buildActivityVisualBanner(
+          gradient: const LinearGradient(
+            colors: [Color(0xFFF0F9FF), Color(0xFFE0F2FE)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          centerGraphic: Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.85),
+                  shape: BoxShape.circle,
+                ),
+                child: const Text('👴', style: TextStyle(fontSize: 24)),
+              ),
+              const SizedBox(width: 3),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF7C3AED),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(LucideIcons.messageCircle, size: 11, color: Colors.white),
+                    SizedBox(width: 2),
+                    Text('💬', style: TextStyle(fontSize: 10)),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 3),
+              Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.85),
+                  shape: BoxShape.circle,
+                ),
+                child: const Text('👵', style: TextStyle(fontSize: 24)),
+              ),
+            ],
+          ),
+        ),
         titleSi: 'කෙනෙකු සමඟ කතා කරන්න',
         titleEn: 'Talk with Someone',
         descSi: 'පවුලේ කෙනෙකු හෝ සත්කාරකයෙකු සමඟ සිතෙන් කතාබහක් කරන්න.',
@@ -15305,11 +15427,35 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
         },
       ),
 
-      // 3. Peaceful Rest Card
+      // 3. Peaceful Rest Card (Lotus & Zen Stones)
       _buildElderSingleActivityMockCard(
         bgColor: const Color(0xFFF0FDF4),
         borderColor: const Color(0xFFBBF7D0),
-        iconLeading: const Text('🪷', style: TextStyle(fontSize: 18)),
+        visualBanner: _buildActivityVisualBanner(
+          gradient: const LinearGradient(
+            colors: [Color(0xFFF0FDF4), Color(0xFFDCFCE7)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          centerGraphic: Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const Text('🪨', style: TextStyle(fontSize: 18)),
+              const SizedBox(width: 3),
+              Container(
+                padding: const EdgeInsets.all(5),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: const Text('🪷', style: TextStyle(fontSize: 28)),
+              ),
+              const SizedBox(width: 3),
+              const Text('🍃', style: TextStyle(fontSize: 18)),
+            ],
+          ),
+        ),
         titleSi: 'සැනසීමේ කාලයක් ගත කරන්න',
         titleEn: 'Enjoy a Peaceful Moment',
         descSi: 'ආතතිය අඩු කරගන්න සහ සුවසේ විවේක කරන්න.',
@@ -15317,11 +15463,35 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
         onTap: _showTipsDialog,
       ),
 
-      // 4. Reading Books Card
+      // 4. Reading Books Card (Stories & Glasses)
       _buildElderSingleActivityMockCard(
         bgColor: const Color(0xFFFAF5FF),
         borderColor: const Color(0xFFE9D5FF),
-        iconLeading: const Text('📖', style: TextStyle(fontSize: 18)),
+        visualBanner: _buildActivityVisualBanner(
+          gradient: const LinearGradient(
+            colors: [Color(0xFFFAF5FF), Color(0xFFF3E8FF)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          centerGraphic: Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const Text('✨', style: TextStyle(fontSize: 15)),
+              const SizedBox(width: 3),
+              Container(
+                padding: const EdgeInsets.all(5),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF8B5CF6).withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: const Text('📖', style: TextStyle(fontSize: 28)),
+              ),
+              const SizedBox(width: 3),
+              const Text('👓', style: TextStyle(fontSize: 17)),
+            ],
+          ),
+        ),
         titleSi: 'හිත සනසන කතාන්දර',
         titleEn: 'Inspiring Stories & Books',
         descSi: 'ප්‍රඥාව සහ සිත නිවන ධර්ම හා ආදර්ශ කතා කියවන්න.',
@@ -15342,11 +15512,35 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
         },
       ),
 
-      // 5. Memory Games Card
+      // 5. Memory Games Card (Puzzles & Dart)
       _buildElderSingleActivityMockCard(
         bgColor: const Color(0xFFFEF9C3),
         borderColor: const Color(0xFFFDE047),
-        iconLeading: const Text('🎮', style: TextStyle(fontSize: 18)),
+        visualBanner: _buildActivityVisualBanner(
+          gradient: const LinearGradient(
+            colors: [Color(0xFFFEFCE8), Color(0xFFFEF08A)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          centerGraphic: Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const Text('🎯', style: TextStyle(fontSize: 17)),
+              const SizedBox(width: 3),
+              Container(
+                padding: const EdgeInsets.all(5),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF59E0B).withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: const Text('🧩', style: TextStyle(fontSize: 28)),
+              ),
+              const SizedBox(width: 3),
+              const Text('⭐', style: TextStyle(fontSize: 17)),
+            ],
+          ),
+        ),
         titleSi: 'මනස පුබුදුවන ක්‍රීඩා',
         titleEn: 'Joyful Memory Games',
         descSi: 'සිත ප්‍රබෝධමත් කරවන සරල මතක ක්‍රීඩා වල නිරත වන්න.',
@@ -15358,7 +15552,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
     final visibleCards = allCards.skip(_activitiesCarouselIndex).take(3).toList();
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
@@ -15375,6 +15569,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
         children: [
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               // Header
               Row(
@@ -15383,12 +15578,12 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                   Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.all(6),
+                        padding: const EdgeInsets.all(7),
                         decoration: const BoxDecoration(
                           color: Color(0xFFDCFCE7),
                           shape: BoxShape.circle,
                         ),
-                        child: const Text('🪷', style: TextStyle(fontSize: 16)),
+                        child: const Text('🪷', style: TextStyle(fontSize: 17)),
                       ),
                       const SizedBox(width: 10),
                       Column(
@@ -15397,7 +15592,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                           Text(
                             isSinhala ? 'ඔබට අදාළ ක්‍රියාකාරකම්' : 'Personalized Activities',
                             style: const TextStyle(
-                              fontSize: 15,
+                              fontSize: 15.5,
                               fontWeight: FontWeight.w700,
                               color: AppColors.navy,
                             ),
@@ -15412,7 +15607,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                     ],
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                     decoration: BoxDecoration(
                       color: const Color(0xFFF3E8FF),
                       borderRadius: BorderRadius.circular(14),
@@ -15423,7 +15618,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                           ? 'ඔබේ මනෝභාවයට ගැලපෙන ක්‍රියාකාරකම් අපි ඔබට යෝජනා කරමු 💜'
                           : 'Activities tailored to your current mood 💜',
                       style: const TextStyle(
-                        fontSize: 10.5,
+                        fontSize: 11,
                         fontWeight: FontWeight.w600,
                         color: Color(0xFF7C3AED),
                       ),
@@ -15445,18 +15640,28 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                             });
                           }
                         : null,
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(22),
                     child: Container(
-                      padding: const EdgeInsets.all(6),
+                      width: 34,
+                      height: 34,
                       decoration: BoxDecoration(
                         color: _activitiesCarouselIndex > 0 ? const Color(0xFFF1F5F9) : const Color(0xFFF8FAFC),
                         shape: BoxShape.circle,
                         border: Border.all(color: const Color(0xFFE2E8F0)),
+                        boxShadow: [
+                          if (_activitiesCarouselIndex > 0)
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.04),
+                              blurRadius: 4,
+                            ),
+                        ],
                       ),
-                      child: Icon(
-                        LucideIcons.chevronLeft,
-                        size: 16,
-                        color: _activitiesCarouselIndex > 0 ? const Color(0xFF7C3AED) : const Color(0xFFCBD5E1),
+                      child: Center(
+                        child: Icon(
+                          LucideIcons.chevronLeft,
+                          size: 18,
+                          color: _activitiesCarouselIndex > 0 ? const Color(0xFF7C3AED) : const Color(0xFFCBD5E1),
+                        ),
                       ),
                     ),
                   ),
@@ -15465,9 +15670,10 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                   // 3 Activity Cards in View
                   Expanded(
                     child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: visibleCards.map((card) => Expanded(
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          padding: const EdgeInsets.symmetric(horizontal: 5),
                           child: card,
                         ),
                       )).toList(),
@@ -15484,24 +15690,34 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                             });
                           }
                         : null,
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(22),
                     child: Container(
-                      padding: const EdgeInsets.all(6),
+                      width: 34,
+                      height: 34,
                       decoration: BoxDecoration(
                         color: _activitiesCarouselIndex < (allCards.length - 3) ? const Color(0xFFF1F5F9) : const Color(0xFFF8FAFC),
                         shape: BoxShape.circle,
                         border: Border.all(color: const Color(0xFFE2E8F0)),
+                        boxShadow: [
+                          if (_activitiesCarouselIndex < (allCards.length - 3))
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.04),
+                              blurRadius: 4,
+                            ),
+                        ],
                       ),
-                      child: Icon(
-                        LucideIcons.chevronRight,
-                        size: 16,
-                        color: _activitiesCarouselIndex < (allCards.length - 3) ? const Color(0xFF7C3AED) : const Color(0xFFCBD5E1),
+                      child: Center(
+                        child: Icon(
+                          LucideIcons.chevronRight,
+                          size: 18,
+                          color: _activitiesCarouselIndex < (allCards.length - 3) ? const Color(0xFF7C3AED) : const Color(0xFFCBD5E1),
+                        ),
                       ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 14),
 
               // Dynamic Pagination Dots
               Row(
@@ -15516,12 +15732,12 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                     },
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
-                      margin: const EdgeInsets.symmetric(horizontal: 3),
-                      width: isActive ? 16 : 6,
-                      height: 6,
+                      margin: const EdgeInsets.symmetric(horizontal: 3.5),
+                      width: isActive ? 18 : 7,
+                      height: 7,
                       decoration: BoxDecoration(
                         color: isActive ? const Color(0xFF7C3AED) : const Color(0xFFCBD5E1),
-                        borderRadius: BorderRadius.circular(3),
+                        borderRadius: BorderRadius.circular(4),
                       ),
                     ),
                   );
@@ -15555,7 +15771,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
   Widget _buildElderSingleActivityMockCard({
     required Color bgColor,
     required Color borderColor,
-    required Widget iconLeading,
+    required Widget visualBanner,
     required String titleSi,
     required String titleEn,
     required String descSi,
@@ -15563,29 +15779,34 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
     required VoidCallback onTap,
   }) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
         color: bgColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: borderColor),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: borderColor, width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              iconLeading,
-              const Icon(LucideIcons.heart, size: 16, color: Color(0xFF94A3B8)),
-            ],
-          ),
-          const SizedBox(height: 8),
+          // 1. Top Graphic Illustration Banner with Photos/Emojis & Heart
+          visualBanner,
+          const SizedBox(height: 10),
+
+          // 2. Titles & Subtitles
           Text(
             titleSi,
             style: const TextStyle(
-              fontSize: 13.5,
+              fontSize: 14.5,
               fontWeight: FontWeight.w700,
               color: AppColors.navy,
+              height: 1.25,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -15605,29 +15826,31 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
           Text(
             descSi,
             style: const TextStyle(
-              fontSize: 10,
+              fontSize: 10.5,
               color: Color(0xFF475569),
-              height: 1.3,
+              height: 1.35,
             ),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
+
+          // 3. Large Action Button
           SizedBox(
             width: double.infinity,
-            height: 32,
+            height: 38,
             child: ElevatedButton(
               onPressed: onTap,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF7C3AED),
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(horizontal: 10),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                 elevation: 0,
               ),
               child: Text(
                 buttonLabel,
-                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold),
               ),
             ),
           ),
@@ -15643,7 +15866,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
     final progress = totalTasks > 0 ? (completedTasks / totalTasks) : 0.0;
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
@@ -15657,18 +15880,19 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
         ],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           // Header
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(6),
+                padding: const EdgeInsets.all(7),
                 decoration: const BoxDecoration(
                   color: Color(0xFFF3E8FF),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(LucideIcons.calendar, size: 16, color: Color(0xFF7C3AED)),
+                child: const Icon(LucideIcons.calendar, size: 17, color: Color(0xFF7C3AED)),
               ),
               const SizedBox(width: 10),
               Column(
@@ -15677,7 +15901,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                   Text(
                     isSinhala ? 'අද දවසේ ඔබේ ක්‍රියා සැලැස්ම' : "Today's Wellness Plan",
                     style: const TextStyle(
-                      fontSize: 14.5,
+                      fontSize: 15,
                       fontWeight: FontWeight.w700,
                       color: AppColors.navy,
                     ),
@@ -15691,11 +15915,12 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
 
           // Plan Items Checklist (Tap to toggle)
           _buildPlanCheckItem(
             icon: '🎵',
+            iconBg: const Color(0xFFF3E8FF),
             labelSi: 'සංගීතය හෝ පිරිත් අහන්න',
             isCompleted: _elderDailyPlanChecks['music'] ?? false,
             onTap: () {
@@ -15704,9 +15929,9 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
               });
             },
           ),
-          const SizedBox(height: 8),
           _buildPlanCheckItem(
             icon: '💬',
+            iconBg: const Color(0xFFE0F2FE),
             labelSi: 'කෙනෙකු සමඟ කතා කරන්න',
             isCompleted: _elderDailyPlanChecks['talk'] ?? false,
             onTap: () {
@@ -15715,9 +15940,9 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
               });
             },
           ),
-          const SizedBox(height: 8),
           _buildPlanCheckItem(
             icon: '🪷',
+            iconBg: const Color(0xFFDCFCE7),
             labelSi: 'විනාඩි කිහිපයක් මොහොතක් ගත කරන්න',
             isCompleted: _elderDailyPlanChecks['breathe'] ?? false,
             onTap: () {
@@ -15726,9 +15951,9 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
               });
             },
           ),
-          const SizedBox(height: 8),
           _buildPlanCheckItem(
             icon: '📖',
+            iconBg: const Color(0xFFFEF3C7),
             labelSi: 'සුවදායී පොතක් හෝ කතාවක් කියවන්න',
             isCompleted: _elderDailyPlanChecks['reading'] ?? false,
             onTap: () {
@@ -15737,63 +15962,75 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
               });
             },
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 8),
 
-          // Progress Row
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          // Progress Section
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                isSinhala ? 'අද සිදු කළ ක්‍රියාකාරකම්' : 'Completed Activities Today',
-                style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF475569),
-                ),
-              ),
-              Text(
-                '$completedTasks / $totalTasks',
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.navy,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(6),
-            child: LinearProgressIndicator(
-              value: progress,
-              minHeight: 7,
-              backgroundColor: const Color(0xFFF1F5F9),
-              valueColor: const AlwaysStoppedAnimation(Color(0xFF7C3AED)),
-            ),
-          ),
-          if (completedTasks == totalTasks) ...[
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: const Color(0xFFECFDF5),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFFA7F3D0)),
-              ),
-              child: Row(
-                children: const [
-                  Text('🎉', style: TextStyle(fontSize: 12)),
-                  SizedBox(width: 6),
-                  Expanded(
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    isSinhala ? 'අද සිදු කළ ක්‍රියාකාරකම්' : 'Completed Activities Today',
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF475569),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF3E8FF),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                     child: Text(
-                      'නියමයි! අද දවසේ ඔබේ සියලු සුවතා පියවර සම්පූර්ණයි!',
-                      style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Color(0xFF047857)),
+                      '$completedTasks / $totalTasks',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF7C3AED),
+                      ),
                     ),
                   ),
                 ],
               ),
-            ),
-          ],
+              const SizedBox(height: 8),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: LinearProgressIndicator(
+                  value: progress,
+                  minHeight: 8,
+                  backgroundColor: const Color(0xFFF1F5F9),
+                  valueColor: const AlwaysStoppedAnimation(Color(0xFF7C3AED)),
+                ),
+              ),
+              if (completedTasks == totalTasks) ...[
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFECFDF5),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFA7F3D0)),
+                  ),
+                  child: Row(
+                    children: const [
+                      Text('🎉', style: TextStyle(fontSize: 14)),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'නියමයි! අද දවසේ ඔබේ සියලු සුවතා පියවර සම්පූර්ණයි!',
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF047857)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
         ],
       ),
     );
@@ -15801,49 +16038,67 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
 
   Widget _buildPlanCheckItem({
     required String icon,
+    required Color iconBg,
     required String labelSi,
     required bool isCompleted,
     required VoidCallback onTap,
   }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 2),
-        child: Row(
-          children: [
-            Text(icon, style: const TextStyle(fontSize: 15)),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                labelSi,
-                style: TextStyle(
-                  fontSize: 12.5,
-                  fontWeight: isCompleted ? FontWeight.w600 : FontWeight.w500,
-                  color: isCompleted ? AppColors.navy : const Color(0xFF64748B),
-                  decoration: isCompleted ? TextDecoration.lineThrough : null,
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 8),
+          decoration: BoxDecoration(
+            color: isCompleted ? const Color(0xFFF8FAFC) : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: iconBg,
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Text(icon, style: const TextStyle(fontSize: 14)),
                 ),
               ),
-            ),
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              width: 20,
-              height: 20,
-              decoration: BoxDecoration(
-                color: isCompleted ? const Color(0xFF22C55E) : Colors.transparent,
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: isCompleted ? const Color(0xFF22C55E) : const Color(0xFFCBD5E1),
-                  width: 1.5,
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  labelSi,
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: isCompleted ? FontWeight.w600 : FontWeight.w500,
+                    color: isCompleted ? AppColors.navy : const Color(0xFF64748B),
+                    decoration: isCompleted ? TextDecoration.lineThrough : null,
+                  ),
                 ),
               ),
-              child: isCompleted
-                  ? const Center(
-                      child: Icon(Icons.check, size: 13, color: Colors.white),
-                    )
-                  : null,
-            ),
-          ],
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: 22,
+                height: 22,
+                decoration: BoxDecoration(
+                  color: isCompleted ? const Color(0xFF22C55E) : Colors.transparent,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: isCompleted ? const Color(0xFF22C55E) : const Color(0xFFCBD5E1),
+                    width: 1.5,
+                  ),
+                ),
+                child: isCompleted
+                    ? const Center(
+                        child: Icon(Icons.check, size: 14, color: Colors.white),
+                      )
+                    : null,
+              ),
+            ],
+          ),
         ),
       ),
     );
