@@ -74,7 +74,7 @@ class DesktopSidebar extends ConsumerWidget {
                   _buildNavItem(
                     context,
                     icon: LucideIcons.brain,
-                    label: strings.isSinhala ? 'ප්‍රජානන ඇගයීම' : strings.cognitiveAssessment,
+                    label: strings.isSinhala ? 'මතක පරීක්ෂාව' : strings.cognitiveAssessment,
                     route: '/dashboard/cognitive/session',
                   ),
                   _buildNavItem(
@@ -129,7 +129,7 @@ class DesktopSidebar extends ConsumerWidget {
                   _buildNavItem(
                     context,
                     icon: LucideIcons.brain,
-                    label: strings.isSinhala ? 'ප්‍රජානන ඇගයීම' : strings.cognitiveAssessment,
+                    label: strings.cognitiveAssessment,
                     route: '/dashboard/cognitive/session',
                   ),
                   _buildNavItem(
