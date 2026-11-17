@@ -33,6 +33,8 @@ import '../../../shared/widgets/emotional_shap_explanation_card.dart';
 import '../../../core/localization/app_language.dart';
 import '../../../core/localization/app_strings.dart';
 
+enum DayPeriod { morning, afternoon, evening, night }
+
 class EmotionalWellnessPage extends ConsumerStatefulWidget {
   final String? initialResidentId;
 
@@ -154,6 +156,126 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
   bool _isAiChatVoiceRecording = false;
   final List<Map<String, dynamic>> _aiConversationMessages = [];
   bool _caregiverNotified = false;
+
+  // --- SENIOR JOY & TIME-OF-DAY COMMUNITY SOCIAL STATE ---
+  final TextEditingController _elderThoughtController = TextEditingController();
+  bool _isRecordingThought = false;
+  final Set<String> _elderReactedPostIds = <String>{};
+  int _wordsOfHopeBlessingCount = 28;
+  bool _hasReactedToWordsOfHope = false;
+
+  final List<Map<String, dynamic>> _elderCommunityPosts = [
+    {
+      'id': 'post_family',
+      'authorName': 'දෝණි නිලූෂා (Daughter)',
+      'authorRole': 'Family Member • දියණිය',
+      'avatarEmoji': '👩‍👧',
+      'avatarColor': 0xFFFCE7F3,
+      'timeAgo': 'විනාඩි 15 කට පෙර',
+      'content': 'තාත්තේ/අම්මේ, අපි එන ඉරිදා ඔබව බලන්න එනවා! මල්ලිත් එනවා. අද දවසේ බෙහෙත් වේලාවට අරගෙන සතුටින් සැනසීමෙන් ඉන්න. අපි ඔබට ගොඩක් ආදරෙයි! ❤️🌸',
+      'hasAudioNote': true,
+      'audioTitle': 'දෝණිගේ ආදරණීය හඬ පණිවිඩය (Voice Note - 0:14)',
+      'likes': 16,
+      'blessings': 12,
+      'isUserPosted': false,
+    },
+    {
+      'id': 'post_activity',
+      'authorName': 'සත්කාරක නිවාසයේ මිතුරු කවය ☕',
+      'authorRole': 'Serene Valley Community',
+      'avatarEmoji': '👥',
+      'avatarColor': 0xFFFEF3C7,
+      'timeAgo': 'පැයකට පෙර',
+      'content': 'අද සවස 4:00 ට සත්කාරක නිවාසයේ නිස්කලංක මල් ගෙවත්තේදී පැරණි ගීත රසවින්දනය සහ සවස රසවත් තේ පැන් සංග්‍රහය පැවැත්වේ. ඔබ සැමට සාදරයෙන් ඇරයුම්! ☕🌿',
+      'isActivity': true,
+      'likes': 24,
+      'blessings': 19,
+      'isUserPosted': false,
+    },
+    {
+      'id': 'post_memory',
+      'authorName': 'ආචාර්ය ඩබ්.ඩී. අමරදේව ගී මිහිර 🎵',
+      'authorRole': 'Music & Memories',
+      'avatarEmoji': '🎵',
+      'avatarColor': 0xFFDCFCE7,
+      'timeAgo': 'අද උදෑසන',
+      'content': 'සිත සනසන පැරණි මතක: "ශාන්ත සන්ධ්‍යාවේ... ගලා හැලෙනා නිල් දිය දහරේ..." මිහිරි ගීත ආවර්ජනය කරමින් සිතට අලුත් සැනසීමක් ලබන්න.',
+      'hasSongLink': true,
+      'songTitle': 'ආචාර්ය ඩබ්.ඩී. අමරදේව - ශාන්ත සන්ධ්‍යාව',
+      'likes': 31,
+      'blessings': 25,
+      'isUserPosted': false,
+    },
+  ];
+
+  DayPeriod _getCurrentDayPeriod() {
+    final hour = DateTime.now().hour;
+    if (hour >= 5 && hour < 12) {
+      return DayPeriod.morning;
+    } else if (hour >= 12 && hour < 16) {
+      return DayPeriod.afternoon;
+    } else if (hour >= 16 && hour < 19) {
+      return DayPeriod.evening;
+    } else {
+      return DayPeriod.night;
+    }
+  }
+
+  void _postElderThought(String thought) {
+    final clean = thought.trim();
+    if (clean.isEmpty) return;
+    setState(() {
+      _elderCommunityPosts.insert(0, {
+        'id': 'post_${DateTime.now().millisecondsSinceEpoch}',
+        'authorName': _currentResident.name.isNotEmpty ? _currentResident.name : 'Senior Resident',
+        'authorRole': 'Resident • Room ${_currentResident.roomNo.isNotEmpty ? _currentResident.roomNo : '104'}',
+        'avatarEmoji': '😊',
+        'avatarColor': 0xFFF3E8FF,
+        'timeAgo': 'දැන් සුළු මොහොතකට පෙර',
+        'content': clean,
+        'likes': 1,
+        'blessings': 1,
+        'isUserPosted': true,
+      });
+      _elderThoughtController.clear();
+      _showClapAnimation = true;
+      _clapController.forward(from: 0.0);
+    });
+    final isSinhala = ref.read(languageProvider).isSinhala;
+    TtsService.instance.speak(
+      isSinhala
+          ? 'විශිෂ්ටයි ${_currentResident.name}! ඔබේ සුන්දර සිතුවිල්ල මිතුරු පවුරට එක් කළා. මිතුරන් එය සතුටින් නරඹනු ඇත.'
+          : 'Wonderful ${_currentResident.name}! Your lovely thought has been shared to the Joy Wall.',
+      isSinhala: isSinhala,
+    );
+  }
+
+  Future<void> _toggleThoughtVoiceRecording() async {
+    if (!_isRecordingThought) {
+      setState(() {
+        _isRecordingThought = true;
+      });
+      if (_speechEnabled) {
+        try {
+          await _speech.listen(onResult: (result) {
+            if (mounted) {
+              setState(() {
+                _elderThoughtController.text = result.recognizedWords;
+              });
+            }
+          });
+        } catch (_) {}
+      }
+    } else {
+      setState(() {
+        _isRecordingThought = false;
+      });
+      _speech.stop();
+      if (_elderThoughtController.text.trim().isNotEmpty) {
+        _postElderThought(_elderThoughtController.text);
+      }
+    }
+  }
 
   int _getTrackDurationSeconds(String trackTitle) {
     final lower = trackTitle.toLowerCase();
@@ -1709,6 +1831,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
     _clapController.dispose();
     _reasonTextController.dispose();
     _aiChatInputController.dispose();
+    _elderThoughtController.dispose();
     _aiChatScrollController.dispose();
     _conversationTimer?.cancel();
     AudioPlayerService.instance.stop();
@@ -8052,23 +8175,82 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
         ? 'Ward: Lotus Wing ($cleanRoom)'
         : 'Ward: Lotus Wing (A-12)';
 
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(22),
-        gradient: const LinearGradient(
-          colors: [
+    final dayPeriod = _getCurrentDayPeriod();
+    final List<Color> bannerGradient = authState.isElder
+        ? (dayPeriod == DayPeriod.morning
+            ? const [Color(0xFF5B21B6), Color(0xFF7C3AED), Color(0xFF9333EA), Color(0xFFD97706)]
+            : (dayPeriod == DayPeriod.afternoon
+                ? const [Color(0xFF3730A3), Color(0xFF4F46E5), Color(0xFF6366F1), Color(0xFF0284C7)]
+                : (dayPeriod == DayPeriod.evening
+                    ? const [Color(0xFF581C87), Color(0xFF7E22CE), Color(0xFF9333EA), Color(0xFFEA580C)]
+                    : const [Color(0xFF1E1B4B), Color(0xFF312E81), Color(0xFF4C1D95), Color(0xFF1E293B)])))
+        : const [
             Color(0xFF6B44B6),
             Color(0xFF7A54C2),
             Color(0xFF8B64CB),
             Color(0xFF9E77D6),
-          ],
+          ];
+
+    final String dayPeriodGreeting = isSinhala
+        ? (dayPeriod == DayPeriod.morning
+            ? 'සුබ උදෑසනක්'
+            : (dayPeriod == DayPeriod.afternoon
+                ? 'සුබ මද්දහනක්'
+                : (dayPeriod == DayPeriod.evening
+                    ? 'සුබ සැන්දෑවක්'
+                    : 'සුවබර රාත්‍රියක්')))
+        : (dayPeriod == DayPeriod.morning
+            ? 'Good Morning'
+            : (dayPeriod == DayPeriod.afternoon
+                ? 'Good Afternoon'
+                : (dayPeriod == DayPeriod.evening
+                    ? 'Good Evening'
+                    : 'Peaceful Night')));
+
+    final String dayPeriodBadgeLabel = isSinhala
+        ? (dayPeriod == DayPeriod.morning
+            ? '🌅 උදෑසන කාලය'
+            : (dayPeriod == DayPeriod.afternoon
+                ? '☀️ දහවල් කාලය'
+                : (dayPeriod == DayPeriod.evening
+                    ? '🌇 සවස කාලය'
+                    : '🌙 රාත්‍රී කාලය')))
+        : (dayPeriod == DayPeriod.morning
+            ? '🌅 Morning Time'
+            : (dayPeriod == DayPeriod.afternoon
+                ? '☀️ Afternoon Time'
+                : (dayPeriod == DayPeriod.evening
+                    ? '🌇 Evening Time'
+                    : '🌙 Night Time')));
+
+    final String dayPeriodSubtitle = isSinhala
+        ? (dayPeriod == DayPeriod.morning
+            ? '🌸 අද අලුත් බලාපොරොත්තු පිරි සුන්දර දවසක්! උදෑසන තේ පැන් සහ නීරෝගී සුවය ඔබ සමඟයි.'
+            : (dayPeriod == DayPeriod.afternoon
+                ? '🌿 සන්සුන් දිවා විවේකය සහ පෝෂණය. සිත සැහැල්ලුවෙන්, සතුටින් ගත කරමු.'
+                : (dayPeriod == DayPeriod.evening
+                    ? '☕ සවස තේ පැන් කවය සහ මිතුරු කතාබහ. සිත සනසන මිහිරි ගීත අසමින් සතුටු වෙමු.'
+                    : '🌙 අද දවස ඔබ සාර්ථකව ගත කළා. සිත නිවන සුව නින්දකට සූදානම් වෙමු.')))
+        : (dayPeriod == DayPeriod.morning
+            ? '🌸 A brand new day filled with hope! Enjoying breakfast and vibrant wellness.'
+            : (dayPeriod == DayPeriod.afternoon
+                ? '🌿 Peaceful afternoon nourishment and restful pause.'
+                : (dayPeriod == DayPeriod.evening
+                    ? '☕ Afternoon tea gathering and friendly talk with heartwarming songs.'
+                    : '🌙 You have triumphed over today with peace and blessings. Sweet dreams!')));
+
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(22),
+        gradient: LinearGradient(
+          colors: bannerGradient,
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF6B44B6).withValues(alpha: 0.28),
+            color: bannerGradient.first.withValues(alpha: 0.28),
             blurRadius: 24,
             offset: const Offset(0, 8),
           ),
@@ -8162,11 +8344,13 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // Headline: ආයුබෝවන්, $displayName! 👋
+                        // Headline: Greeting + Name + Time of Day Badge
                         Row(
                           children: [
                             Text(
-                              isSinhala ? 'ආයුබෝවන්, $displayName! 👋' : 'Welcome, $displayName! 👋',
+                              authState.isElder
+                                  ? '$dayPeriodGreeting, $displayName! 👋'
+                                  : (isSinhala ? 'ආයුබෝවන්, $displayName! 👋' : 'Welcome, $displayName! 👋'),
                               style: TextStyle(
                                 fontSize: authState.isElder ? 20 : 22,
                                 fontWeight: FontWeight.w800,
@@ -8174,6 +8358,25 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                                 letterSpacing: 0.2,
                               ),
                             ),
+                            if (authState.isElder) ...[
+                              const SizedBox(width: 10),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.22),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: Colors.white.withValues(alpha: 0.45)),
+                                ),
+                                child: Text(
+                                  dayPeriodBadgeLabel,
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ],
                             if (!authState.isElder && _availableResidents.length > 1) ...[
                               const SizedBox(width: 12),
                               _buildCaregiverCompactSwitcher(),
@@ -8183,9 +8386,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                         if (authState.isElder) ...[
                           const SizedBox(height: 4),
                           Text(
-                            isSinhala
-                                ? '🌸 සිතේ සතුට, සැනසීම සහ නිදුක් නිරෝගී සුවය ඔබ සමඟ සදා රැඳේවා!'
-                                : '🌸 May peace, joy, and wonderful health be with you throughout today!',
+                            dayPeriodSubtitle,
                             style: TextStyle(
                               fontSize: 12.5,
                               fontWeight: FontWeight.w500,
@@ -14989,14 +15190,23 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 1. Sleek Compact Elder Welcome Banner with Photo & Name
+          // 1. Sleek Compact Elder Welcome Banner with Photo & Name (Time-of-day Dynamic)
           _buildResidentHeaderCard(),
           const SizedBox(height: 10),
 
-          // 2. All-Day Soothing Ambient Soundscape Bar (Pirith, Flute, Nature, Songs)
-          _buildElderDailyAmbientSoundscapeBar(),
+          // 2. Daily Words of Hope & Blessing (අද දවසේ සිතුවිල්ල සහ ආශිර්වාදය)
+          _buildElderDailyWordsOfHopeCard(),
+          const SizedBox(height: 10),
 
-          // 3. Interactive Multimodal Workspace (Question & Voice on Left, Real-time Camera on Right)
+          // 3. All-Day Soothing Ambient Soundscape Bar (Pirith, Flute, Nature, Songs)
+          _buildElderDailyAmbientSoundscapeBar(),
+          const SizedBox(height: 10),
+
+          // 4. Daily Happiness Milestones & Badges Bar (සතුටු ජයග්‍රහණ ලාංඡන)
+          _buildElderDailyJoyBadgesBar(),
+          const SizedBox(height: 10),
+
+          // 5. Interactive Multimodal Workspace (Question & Voice on Left, Real-time Camera on Right)
           LayoutBuilder(
             builder: (context, constraints) {
               if (constraints.maxWidth < 850) {
@@ -15040,10 +15250,889 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
               );
             },
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
 
-          // 4. Bottom Section: Personalized Activities Carousel (Left) & Today's Wellness Plan (Right)
+          // 6. Facebook-Style Senior Community Joy & Memory Wall (වැඩිහිටි සුහද පවුර)
+          _buildElderCommunityJoyWall(),
+          const SizedBox(height: 14),
+
+          // 7. Bottom Section: Personalized Activities Carousel (Left) & Today's Wellness Plan (Right)
           _buildElderBottomPersonalizedSection(),
+        ],
+      ),
+    );
+  }
+
+  // --- SUB-VIEW: DAILY WORDS OF HOPE & INSPIRATION BANNER ---
+  Widget _buildElderDailyWordsOfHopeCard() {
+    final isSinhala = ref.watch(languageProvider).isSinhala;
+    final dayPeriod = _getCurrentDayPeriod();
+
+    final hopeQuote = isSinhala
+        ? (dayPeriod == DayPeriod.morning
+            ? 'ඔබ මෙතෙක් පැමිණි ජීවන ගමන අභිමානවත්ය. අද අලුත් දවස ඔබට නිදුක් නිරෝගී සතුට, සැනසීම සහ නව ජයග්‍රාහී බලාපොරොත්තු උදාකර දේවා!'
+            : (dayPeriod == DayPeriod.afternoon
+                ? 'සෑම මොහොතකම සිතට සැනසිල්ලක් ලබන්න. ඔබගේ නිහඬ සිනහව සහ ආදරණීය පැවැත්ම අප සැමට මහත් ආශිර්වාදයකි.'
+                : (dayPeriod == DayPeriod.evening
+                    ? 'හිරු බැසයන සන්ධ්‍යාවේ සිතට සැනසුම ගෙනෙමු. පැරණි මිහිරි මතකයන් හා මිතුරු සෙනෙහස ඔබේ සිත නිරතුරුව සතුටින් පුරවයි.'
+                    : 'අද දිනය නිමාවෙද්දී සිතට මහත් සැනසිල්ලක් ලබන්න. ඔබ සැමදා ආදරයෙන් රැකවරණය ලබන අපගේ වටිනාම සාමාජිකයෙකි.')))
+        : (dayPeriod == DayPeriod.morning
+            ? 'Your life journey is one of immense honor. May this new morning bring you radiant health, peace, and victorious hope!'
+            : (dayPeriod == DayPeriod.afternoon
+                ? 'Embrace calm in every passing moment. Your gentle smile and loving presence are a profound blessing to all of us.'
+                : (dayPeriod == DayPeriod.evening
+                    ? 'As the golden sunset paints the sky, find peace in cherished memories and the warm camaraderie of close friends.'
+                    : 'As today draws to a close, rest your heart in deep comfort. You are deeply cherished and protected always.')));
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFFFFBEB), Color(0xFFFEF3C7)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFFDE68A), width: 1.3),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFD97706).withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(5),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFFEF3C7),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Text('🌅', style: TextStyle(fontSize: 16)),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    isSinhala ? 'අද දවසේ සිතුවිල්ල සහ ආශිර්වාදය ✨' : 'Daily Words of Hope & Blessing ✨',
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF92400E)),
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFFFCD34D)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(LucideIcons.sparkles, size: 12, color: Color(0xFFD97706)),
+                    const SizedBox(width: 4),
+                    Text(
+                      isSinhala ? 'ජීවිතයට නව බලාපොරොත්තු' : 'Renewed Hope',
+                      style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Color(0xFFB45309)),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            hopeQuote,
+            style: const TextStyle(
+              fontSize: 13.5,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF78350F),
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // Listen button
+              InkWell(
+                onTap: () {
+                  _flutterTts.stop();
+                  TtsService.instance.speak(hopeQuote, isSinhala: isSinhala);
+                },
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: const Color(0xFFFCD34D)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(LucideIcons.volume2, size: 13, color: Color(0xFFB45309)),
+                      const SizedBox(width: 5),
+                      Text(
+                        isSinhala ? 'හඬින් අසන්න' : 'Listen Aloud',
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFB45309)),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              // Reactions
+              Row(
+                children: [
+                  InkWell(
+                    onTap: () {
+                      setState(() {
+                        if (!_hasReactedToWordsOfHope) {
+                          _wordsOfHopeBlessingCount++;
+                          _hasReactedToWordsOfHope = true;
+                          _showClapAnimation = true;
+                          _clapController.forward(from: 0.0);
+                        }
+                      });
+                    },
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: _hasReactedToWordsOfHope ? const Color(0xFFDCFCE7) : Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: _hasReactedToWordsOfHope ? const Color(0xFF86EFAC) : const Color(0xFFE2E8F0)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text('🙏', style: TextStyle(fontSize: 13)),
+                          const SizedBox(width: 4),
+                          Text(
+                            isSinhala ? 'ආශිර්වාදයි ($_wordsOfHopeBlessingCount)' : 'Blessing ($_wordsOfHopeBlessingCount)',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: _hasReactedToWordsOfHope ? const Color(0xFF15803D) : const Color(0xFF475569),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  InkWell(
+                    onTap: () {
+                      setState(() {
+                        _showClapAnimation = true;
+                        _clapController.forward(from: 0.0);
+                      });
+                    },
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text('❤️', style: TextStyle(fontSize: 13)),
+                          const SizedBox(width: 4),
+                          Text(
+                            isSinhala ? 'සතුටුයි' : 'Joyful',
+                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF475569)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- SUB-VIEW: DAILY HAPPINESS MILESTONES & BADGES ---
+  Widget _buildElderDailyJoyBadgesBar() {
+    final isSinhala = ref.watch(languageProvider).isSinhala;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: const BoxDecoration(
+              color: Color(0xFFFEF3C7),
+              shape: BoxShape.circle,
+            ),
+            child: const Text('🏆', style: TextStyle(fontSize: 14)),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            isSinhala ? 'අද දවසේ සතුටු ජයග්‍රහණ:' : 'Today\'s Joy Milestones:',
+            style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _buildSingleJoyBadge(
+                    emoji: '🌟',
+                    title: isSinhala ? 'උදෑසන පිබිදුණු සුවය' : 'Morning Sunshine',
+                    isUnlocked: true,
+                  ),
+                  const SizedBox(width: 8),
+                  _buildSingleJoyBadge(
+                    emoji: '🎵',
+                    title: isSinhala ? 'සංගීත සැනසුම' : 'Musical Peace',
+                    isUnlocked: _isPlayingMusic || _isAmbientPlaying,
+                  ),
+                  const SizedBox(width: 8),
+                  _buildSingleJoyBadge(
+                    emoji: '😊',
+                    title: isSinhala ? 'මිත්‍රශීලී සිනහව' : 'Radiant Smile',
+                    isUnlocked: _selectedEmotion == 'Happy',
+                  ),
+                  const SizedBox(width: 8),
+                  _buildSingleJoyBadge(
+                    emoji: '💖',
+                    title: isSinhala ? 'සුහද මිත්‍රත්වය' : 'Loving Companion',
+                    isUnlocked: true,
+                  ),
+                  const SizedBox(width: 8),
+                  _buildSingleJoyBadge(
+                    emoji: '🌿',
+                    title: isSinhala ? 'සන්සුන් විවේකය' : 'Mindful Rest',
+                    isUnlocked: true,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSingleJoyBadge({
+    required String emoji,
+    required String title,
+    required bool isUnlocked,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(
+        color: isUnlocked ? const Color(0xFFF0FDF4) : const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isUnlocked ? const Color(0xFF86EFAC) : const Color(0xFFE2E8F0),
+          width: 1.1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(emoji, style: const TextStyle(fontSize: 12)),
+          const SizedBox(width: 4),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: isUnlocked ? const Color(0xFF15803D) : const Color(0xFF94A3B8),
+            ),
+          ),
+          if (isUnlocked) ...[
+            const SizedBox(width: 3),
+            const Icon(LucideIcons.check, size: 10, color: Color(0xFF15803D)),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // --- SUB-VIEW: FACEBOOK-STYLE SENIOR JOY & MEMORY COMMUNITY WALL ---
+  Widget _buildElderCommunityJoyWall() {
+    final isSinhala = ref.watch(languageProvider).isSinhala;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF7C3AED).withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Wall Header
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFF3E8FF),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(LucideIcons.users, size: 18, color: Color(0xFF7C3AED)),
+                  ),
+                  const SizedBox(width: 10),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        isSinhala ? 'වැඩිහිටි සුහද පවුර (Senior Joy & Memory Wall) 🌸' : 'Senior Joy & Memory Wall 🌸',
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.navy,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        isSinhala
+                            ? 'මිතුරන් සහ පවුලේ අය සමඟ සතුට, මතකයන් හා ආදරය බෙදාගන්න'
+                            : 'Stay connected, share happy moments & cherished family memories',
+                        style: const TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF64748B),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFDCFCE7),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFBBF7D0)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    Icon(LucideIcons.radio, size: 12, color: Color(0xFF15803D)),
+                    SizedBox(width: 4),
+                    Text(
+                      'මිතුරන් 14ක් සක්‍රීයයි',
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF15803D)),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          // Facebook-style "What's on your mind?" Input Box
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFAF5FF),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFE9D5FF), width: 1.2),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 38,
+                      height: 38,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFEDE9FE),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Center(
+                        child: Text('😊', style: TextStyle(fontSize: 18)),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(color: const Color(0xFFDDD6FE)),
+                        ),
+                        child: TextField(
+                          controller: _elderThoughtController,
+                          style: const TextStyle(fontSize: 13, color: AppColors.navy),
+                          decoration: InputDecoration(
+                            hintText: isSinhala
+                                ? 'අද ඔබේ සිතේ ඇති සුන්දර සිතුවිල්ලක් මෙහි බෙදාගන්න...'
+                                : 'Share what is on your mind today...',
+                            hintStyle: const TextStyle(fontSize: 12, color: AppColors.muted),
+                            border: InputBorder.none,
+                          ),
+                          onSubmitted: (val) => _postElderThought(val),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                // Action Buttons & Quick Suggestion Chips
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // Quick Thought Chips
+                    Expanded(
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            _buildQuickThoughtChip('🌸 අද මගේ හිතට හරිම සතුටුයි!'),
+                            const SizedBox(width: 6),
+                            _buildQuickThoughtChip('☕ මිතුරන් සමඟ සවස තේ බිව්වා'),
+                            const SizedBox(width: 6),
+                            _buildQuickThoughtChip('🌿 ගෙවත්තේ මල් පිපිලා ලස්සනයි'),
+                            const SizedBox(width: 6),
+                            _buildQuickThoughtChip('🎶 පැරණි ගීතයකට සවන් දුන්නා'),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    // Voice Share & Submit
+                    Row(
+                      children: [
+                        IconButton(
+                          onPressed: _toggleThoughtVoiceRecording,
+                          icon: Icon(
+                            _isRecordingThought ? LucideIcons.square : LucideIcons.mic,
+                            size: 18,
+                            color: _isRecordingThought ? const Color(0xFFDC2626) : const Color(0xFF7C3AED),
+                          ),
+                          tooltip: isSinhala ? 'හඬින් පවසන්න' : 'Speak thought',
+                          style: IconButton.styleFrom(
+                            backgroundColor: _isRecordingThought ? const Color(0xFFFEE2E2) : const Color(0xFFEDE9FE),
+                            padding: const EdgeInsets.all(8),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        ElevatedButton.icon(
+                          onPressed: () => _postElderThought(_elderThoughtController.text),
+                          icon: const Icon(LucideIcons.send, size: 13),
+                          label: Text(
+                            isSinhala ? 'පවුරට එක් කරන්න' : 'Share Joy',
+                            style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF7C3AED),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                            elevation: 0,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Community Posts Feed
+          Column(
+            children: _elderCommunityPosts.map((post) {
+              return _buildSingleCommunityPostCard(post);
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickThoughtChip(String text) {
+    return InkWell(
+      onTap: () {
+        _elderThoughtController.text = text;
+        _postElderThought(text);
+      },
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFDDD6FE)),
+        ),
+        child: Text(
+          text,
+          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF6D28D9)),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSingleCommunityPostCard(Map<String, dynamic> post) {
+    final isSinhala = ref.watch(languageProvider).isSinhala;
+    final postId = post['id']?.toString() ?? '';
+    final hasReacted = _elderReactedPostIds.contains(postId);
+    final likes = (post['likes'] as num?)?.toInt() ?? 10;
+    final blessings = (post['blessings'] as num?)?.toInt() ?? 8;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: post['isUserPosted'] == true ? const Color(0xFFFAF5FF) : const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: post['isUserPosted'] == true ? const Color(0xFFD8B4FE) : const Color(0xFFE2E8F0),
+          width: post['isUserPosted'] == true ? 1.4 : 1.0,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Author Header
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: Color(post['avatarColor'] as int? ?? 0xFFEDE9FE),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Text(
+                        post['avatarEmoji']?.toString() ?? '🌸',
+                        style: const TextStyle(fontSize: 18),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            post['authorName']?.toString() ?? '',
+                            style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: AppColors.navy),
+                          ),
+                          if (post['isUserPosted'] == true) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF3E8FF),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                isSinhala ? 'මගේ සටහන' : 'My Post',
+                                style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.bold, color: Color(0xFF7C3AED)),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${post['authorRole']} • ${post['timeAgo']}',
+                        style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              IconButton(
+                icon: const Icon(LucideIcons.heartHandshake, size: 16, color: Color(0xFF94A3B8)),
+                onPressed: () {},
+                tooltip: 'Friendly post',
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          // Post Content Body
+          Text(
+            post['content']?.toString() ?? '',
+            style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w500, color: Color(0xFF1E293B), height: 1.4),
+          ),
+          const SizedBox(height: 10),
+
+          // Audio Note Attachment (e.g. Daughter voice note)
+          if (post['hasAudioNote'] == true) ...[
+            Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFFDF2F8), Color(0xFFFCE7F3)],
+                ),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFFBCFE8)),
+              ),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(LucideIcons.playCircle, size: 24, color: Color(0xFFDB2777)),
+                    onPressed: () {
+                      _flutterTts.stop();
+                      final isSi = ref.read(languageProvider).isSinhala;
+                      TtsService.instance.speak(
+                        isSi
+                            ? 'ආදරණීය තාත්තේ, අපි එන ඉරිදා ඔබව බලන්න සත්කාරක නිවාසයට එනවා! මල්ලිත් එනවා. බය නැතුව සතුටින් සැනසීමෙන් ඉන්න. අපි ඔබට ගොඩක් ආදරෙයි!'
+                            : 'Dear Father, we are coming to visit you this Sunday! Please stay happy and peaceful. We love you so much!',
+                        isSinhala: isSi,
+                      );
+                    },
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          post['audioTitle']?.toString() ?? 'හඬ පණිවිඩය',
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF9D174D)),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          isSinhala ? 'ස්පර්ශ කර දියණියගේ හඬට සවන් දෙන්න 🔊' : 'Tap to hear daughter\'s voice 🔊',
+                          style: const TextStyle(fontSize: 10.5, color: Color(0xFFBE185D)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
+          // Song Play Attachment (e.g. Amaradeva song)
+          if (post['hasSongLink'] == true) ...[
+            Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF0FDF4),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFBBF7D0)),
+              ),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(LucideIcons.play, size: 20, color: Color(0xFF15803D)),
+                    onPressed: () {
+                      _playSongInAiChat(post['songTitle']?.toString() ?? 'ආචාර්ය ඩබ්.ඩී. අමරදේව - ශාන්ත සන්ධ්‍යාව');
+                    },
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '${post['songTitle']} 🎵 (මිනිත්තු 05)',
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF166534)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
+          // Activity Join Button
+          if (post['isActivity'] == true) ...[
+            Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  final isSi = ref.read(languageProvider).isSinhala;
+                  TtsService.instance.speak(
+                    isSi
+                        ? 'විශිෂ්ටයි! ඔබ සවස තේ පැන් සහ සංගීත කවයට සාර්ථකව එක් විය. සවස 4:00 ට මිතුරන් හමුවෙමු!'
+                        : 'Wonderful! You have joined the afternoon tea gathering.',
+                    isSinhala: isSi,
+                  );
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(isSi ? '✓ ඔබ සවස තේ පැන් කවයට එක් විය!' : '✓ You joined the Afternoon Tea Circle!'),
+                      backgroundColor: const Color(0xFF15803D),
+                      duration: const Duration(seconds: 3),
+                    ),
+                  );
+                },
+                icon: const Text('☕', style: TextStyle(fontSize: 14)),
+                label: Text(
+                  isSinhala ? 'මමත් සහභාගී වෙනවා (Join Tea Circle)' : 'I will join',
+                  style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold),
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFFB45309),
+                  side: const BorderSide(color: Color(0xFFFCD34D), width: 1.2),
+                  backgroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                ),
+              ),
+            ),
+          ],
+
+          const Divider(height: 16, color: Color(0xFFE2E8F0)),
+
+          // Reactions Row (❤️ Love, 🙏 Blessing, 🌸 Joy)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  InkWell(
+                    onTap: () {
+                      setState(() {
+                        if (!hasReacted) {
+                          _elderReactedPostIds.add(postId);
+                          post['likes'] = likes + 1;
+                          _showClapAnimation = true;
+                          _clapController.forward(from: 0.0);
+                        }
+                      });
+                    },
+                    borderRadius: BorderRadius.circular(14),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: hasReacted ? const Color(0xFFFDF2F8) : Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: hasReacted ? const Color(0xFFF472B6) : const Color(0xFFE2E8F0),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text('❤️', style: TextStyle(fontSize: 13)),
+                          const SizedBox(width: 5),
+                          Text(
+                            isSinhala ? 'ආදරෙයි ($likes)' : 'Love ($likes)',
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.bold,
+                              color: hasReacted ? const Color(0xFFDB2777) : const Color(0xFF475569),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  InkWell(
+                    onTap: () {
+                      setState(() {
+                        post['blessings'] = blessings + 1;
+                        _showClapAnimation = true;
+                        _clapController.forward(from: 0.0);
+                      });
+                    },
+                    borderRadius: BorderRadius.circular(14),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text('🙏', style: TextStyle(fontSize: 13)),
+                          const SizedBox(width: 5),
+                          Text(
+                            isSinhala ? 'ආශිර්වාදයි ($blessings)' : 'Blessing ($blessings)',
+                            style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF475569)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  InkWell(
+                    onTap: () {
+                      setState(() {
+                        _showClapAnimation = true;
+                        _clapController.forward(from: 0.0);
+                      });
+                    },
+                    borderRadius: BorderRadius.circular(14),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text('🌸', style: TextStyle(fontSize: 13)),
+                          const SizedBox(width: 5),
+                          Text(
+                            isSinhala ? 'සතුටුයි' : 'Joyful',
+                            style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF475569)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              Text(
+                isSinhala ? 'ප්‍රතිචාර ${likes + blessings}' : '${likes + blessings} reactions',
+                style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
+              ),
+            ],
+          ),
         ],
       ),
     );
