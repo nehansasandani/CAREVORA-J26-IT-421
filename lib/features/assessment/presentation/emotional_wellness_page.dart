@@ -8664,7 +8664,8 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
             : null,
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisAlignment: isElderMode ? MainAxisAlignment.spaceBetween : MainAxisAlignment.start,
         children: [
           // Header
           Row(
@@ -8945,44 +8946,48 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
             ),
           ],
           if (isElderMode) ...[
-            const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity,
-              height: 42,
-              child: ElevatedButton.icon(
-                onPressed: _takeLiveCameraPhoto,
-                icon: const Icon(LucideIcons.camera, size: 17, color: Colors.white),
-                label: Text(
-                  ref.watch(languageProvider).isSinhala ? 'ඡායාරූපය ගන්න' : 'Take Photo',
-                  style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: Colors.white),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF7C3AED),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
-                  elevation: 0,
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            Row(
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(5),
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFF3E8FF),
-                    shape: BoxShape.circle,
+                SizedBox(
+                  width: double.infinity,
+                  height: 42,
+                  child: ElevatedButton.icon(
+                    onPressed: _takeLiveCameraPhoto,
+                    icon: const Icon(LucideIcons.camera, size: 17, color: Colors.white),
+                    label: Text(
+                      ref.watch(languageProvider).isSinhala ? 'ඡායාරූපය ගන්න' : 'Take Photo',
+                      style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: Colors.white),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF7C3AED),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+                      elevation: 0,
+                    ),
                   ),
-                  child: const Icon(LucideIcons.shieldCheck, size: 14, color: Color(0xFF7C3AED)),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    ref.watch(languageProvider).isSinhala
-                        ? 'මෙම ඡායාරූපය හැඟීම් විශ්ලේෂණය සඳහා පමණක් භාවිතා කරන අතර, එය සුරක්ෂිතව තබා ඇත.'
-                        : 'This photo is strictly used for emotion analysis and is kept confidential.',
-                    style: const TextStyle(fontSize: 10.5, color: Color(0xFF475569), height: 1.3),
-                  ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(5),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFF3E8FF),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(LucideIcons.shieldCheck, size: 14, color: Color(0xFF7C3AED)),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        ref.watch(languageProvider).isSinhala
+                            ? 'මෙම ඡායාරූපය හැඟීම් විශ්ලේෂණය සඳහා පමණක් භාවිතා කරන අතර, එය සුරක්ෂිතව තබා ඇත.'
+                            : 'This photo is strictly used for emotion analysis and is kept confidential.',
+                        style: const TextStyle(fontSize: 10.5, color: Color(0xFF475569), height: 1.3),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -9279,333 +9284,426 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
               ]
             : null,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (isElderMode)
-                    Container(
-                      padding: const EdgeInsets.all(6),
-                      margin: const EdgeInsets.only(right: 8),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFF3E8FF),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(LucideIcons.mic, size: 16, color: Color(0xFF7C3AED)),
-                    )
-                  else
-                    const Icon(LucideIcons.mic, size: 18, color: AppColors.primary),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        ref.watch(languageProvider).isSinhala
-                            ? (isElderMode ? 'හඬ පරීක්ෂණ තත්වය (Voice Emotional Analysis)' : 'හඬ පටිගත කිරීම')
-                            : (isElderMode ? 'Voice Emotional Analysis' : 'Voice Recording'),
-                        style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: AppColors.navy),
-                      ),
-                      if (isElderMode) ...[
-                        const SizedBox(height: 2),
-                        Text(
-                          ref.watch(languageProvider).isSinhala
-                              ? 'ඔබේ හැඟීම් තත්වය අවබෝධ කර ගැනීමට කෙටිව දැනුම් දෙන්න.'
-                              : 'Briefly share how you feel so we can understand your emotional state.',
-                          style: const TextStyle(fontSize: 10.5, color: Color(0xFF64748B)),
-                        ),
-                      ],
-                    ],
-                  ),
-                ],
-              ),
-              if (isElderMode)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF3E8FF),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: const Color(0xFFE9D5FF)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(LucideIcons.clock, size: 12, color: Color(0xFF7C3AED)),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Duration : ${_formatTimer(_recordSeconds > 0 ? _recordSeconds : 60)}',
-                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF7C3AED)),
-                      ),
-                    ],
-                  ),
-                )
-              else
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 7,
-                      height: 7,
-                      decoration: BoxDecoration(
-                        color: _isRecording ? const Color(0xFFEF4444) : const Color(0xFF94A3B8),
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 5),
-                    Text(
-                      ref.watch(languageProvider).isSinhala
-                          ? 'පටිගත. ${_formatTimer(_recordSeconds)}'
-                          : 'Rec. ${_formatTimer(_recordSeconds)}',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.navy,
-                      ),
-                    ),
-                  ],
-                ),
-            ],
-          ),
-          const SizedBox(height: 10),
-
-          // Speech Language selection bar (if not elder mode)
-          if (!isElderMode) ...[
-            Row(
+      child: isElderMode
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  ref.watch(languageProvider).isSinhala ? 'කථා කරන භාෂාව:' : 'Speech Language:',
-                  style: const TextStyle(fontSize: 11, color: AppColors.muted, fontWeight: FontWeight.w500),
-                ),
+                // 1. Header (Icon, Title, Subtitle, Duration Badge)
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _buildLangToggleItem('si-LK', '🇱🇰 සිංහල'),
-                    const SizedBox(width: 6),
-                    _buildLangToggleItem('en-US', '🌐 English'),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          margin: const EdgeInsets.only(right: 8),
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFF3E8FF),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(LucideIcons.mic, size: 16, color: Color(0xFF7C3AED)),
+                        ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              ref.watch(languageProvider).isSinhala
+                                  ? 'හඬ පරීක්ෂණ තත්වය (Voice Emotional Analysis)'
+                                  : 'Voice Emotional Analysis',
+                              style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: AppColors.navy),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              ref.watch(languageProvider).isSinhala
+                                  ? 'ඔබේ හැඟීම් තත්වය අවබෝධ කර ගැනීමට කෙටිව දැනුම් දෙන්න.'
+                                  : 'Briefly share how you feel so we can understand your emotional state.',
+                              style: const TextStyle(fontSize: 10.5, color: Color(0xFF64748B)),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF3E8FF),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: const Color(0xFFE9D5FF)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(LucideIcons.clock, size: 12, color: Color(0xFF7C3AED)),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Duration : ${_formatTimer(_recordSeconds > 0 ? _recordSeconds : 60)}',
+                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF7C3AED)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+
+                // 2. Dynamic Animated Audio Waveform & Center Mic Button
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      // Left Waveform Bars
+                      Expanded(
+                        child: SizedBox(
+                          height: 48,
+                          child: _buildWaveformBars(isLeft: true),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+
+                      // Center Mic Action Button
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          InkWell(
+                            onTap: _toggleRecording,
+                            borderRadius: BorderRadius.circular(40),
+                            child: Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: _isRecording ? AppColors.riskHigh : const Color(0xFF7C3AED),
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: (_isRecording ? AppColors.riskHigh : const Color(0xFF7C3AED))
+                                        .withValues(alpha: 0.35),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 3),
+                                  ),
+                                ],
+                              ),
+                              child: Icon(
+                                _isRecording ? LucideIcons.square : LucideIcons.mic,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _isRecording
+                                ? (ref.watch(languageProvider).isSinhala ? 'නැවැත්වීමට ඔබන්න' : 'Tap to Stop')
+                                : 'Tap to Start Recording',
+                            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Color(0xFF64748B)),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(width: 10),
+
+                      // Right Waveform Bars
+                      Expanded(
+                        child: SizedBox(
+                          height: 48,
+                          child: _buildWaveformBars(isLeft: false),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // 3. Spoken Transcript & Voice Emotion Detection Result
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (_spokenText.isNotEmpty) ...[
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        margin: const EdgeInsets.only(bottom: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(LucideIcons.messageSquare, size: 14, color: AppColors.primary),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _spokenText,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 11, fontStyle: FontStyle.italic, color: AppColors.navy),
+                              ),
+                            ),
+                            GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _spokenText = '';
+                                });
+                              },
+                              child: const Icon(LucideIcons.x, size: 14, color: AppColors.muted),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEFF6FF),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFFBFDBFE)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            LucideIcons.circleCheck,
+                            size: 15,
+                            color: Color(0xFF2563EB),
+                          ),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'Elder Voice Emotion: ',
+                            style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF1E3A8A)),
+                          ),
+                          Expanded(
+                            child: Text(
+                              '$_voiceEmotion (${(_voiceConfidence * 100).toInt()}%)',
+                              style: const TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF2563EB),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+
+                // 4. Emotion Chips (Anchored at the bottom)
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  children: [
+                    _buildQuickSpeechChip('😊 Feeling Happy & Fine', 'I feel very happy and fine today.', isYellow: true),
+                    _buildQuickSpeechChip('😢 Feeling Sad & Lonely', 'I feel sad and alone today.', isYellow: true),
+                    _buildQuickSpeechChip('😐 Calm Baseline', 'I am calm and feeling peaceful.', isYellow: true),
+                    _buildQuickSpeechChip('😟 Anxious / Worried', 'I feel nervous and worried.', isYellow: true),
+                  ],
+                ),
+              ],
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(LucideIcons.mic, size: 18, color: AppColors.primary),
+                        Text(
+                          ref.watch(languageProvider).isSinhala ? 'හඬ පටිගත කිරීම' : 'Voice Recording',
+                          style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: AppColors.navy),
+                        ),
+                      ],
+                    ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 7,
+                          height: 7,
+                          decoration: BoxDecoration(
+                            color: _isRecording ? const Color(0xFFEF4444) : const Color(0xFF94A3B8),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          ref.watch(languageProvider).isSinhala
+                              ? 'පටිගත. ${_formatTimer(_recordSeconds)}'
+                              : 'Rec. ${_formatTimer(_recordSeconds)}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.navy,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+
+                // Speech Language selection bar
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      ref.watch(languageProvider).isSinhala ? 'කථා කරන භාෂාව:' : 'Speech Language:',
+                      style: const TextStyle(fontSize: 11, color: AppColors.muted, fontWeight: FontWeight.w500),
+                    ),
+                    Row(
+                      children: [
+                        _buildLangToggleItem('si-LK', '🇱🇰 සිංහල'),
+                        const SizedBox(width: 6),
+                        _buildLangToggleItem('en-US', '🌐 English'),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+
+                Container(
+                  height: 70,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: _isRecording ? AppColors.primary.withValues(alpha: 0.5) : AppColors.border),
+                  ),
+                  child: AnimatedBuilder(
+                    animation: _waveController,
+                    builder: (context, child) {
+                      return Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: List.generate(24, (i) {
+                          final factor = (1 + 0.8 * ((i % 4 == 0) ? 1.0 : 0.4));
+                          final waveValue = (_waveController.value * 6.28 + (i * 0.3)).abs();
+                          final soundBoost = (_soundLevel.abs() > 0.02) ? (_soundLevel.abs() * 50.0).clamp(0.0, 55.0) : 0.0;
+                          final dynamicHeight = _isRecording
+                              ? (8.0 + soundBoost + (28.0 * (0.3 + 0.7 * (1.0 - (waveValue % 1.0)))) * factor)
+                                  .clamp(6.0, 60.0)
+                              : 5.0;
+
+                          final emotionColor = _getVoiceEmotionColor(_voiceEmotion);
+                          return Container(
+                            width: 4,
+                            height: dynamicHeight,
+                            decoration: BoxDecoration(
+                              color: _isRecording ? emotionColor : AppColors.border,
+                              borderRadius: BorderRadius.circular(3),
+                            ),
+                          );
+                        }),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Center(
+                  child: InkWell(
+                    onTap: _toggleRecording,
+                    borderRadius: BorderRadius.circular(40),
+                    child: Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: _isRecording ? AppColors.riskHigh : AppColors.primary,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        _isRecording ? LucideIcons.square : LucideIcons.mic,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                // Spoken Transcript Preview (if not empty)
+                if (_spokenText.isNotEmpty) ...[
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    margin: const EdgeInsets.only(bottom: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(LucideIcons.messageSquare, size: 14, color: AppColors.primary),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _spokenText,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 11, fontStyle: FontStyle.italic, color: AppColors.navy),
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _spokenText = '';
+                            });
+                          },
+                          child: const Icon(LucideIcons.x, size: 14, color: AppColors.muted),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
+                // Voice Emotion Detection Result
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEFF6FF),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFBFDBFE)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        LucideIcons.circleCheck,
+                        size: 15,
+                        color: Color(0xFF2563EB),
+                      ),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'Voice Emotion: ',
+                        style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF1E3A8A)),
+                      ),
+                      Expanded(
+                        child: Text(
+                          '$_voiceEmotion (${(_voiceConfidence * 100).toInt()}%)',
+                          style: const TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF2563EB),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  children: [
+                    _buildQuickSpeechChip('😊 Feeling Happy & Fine', 'I feel very happy and fine today.', isYellow: true),
+                    _buildQuickSpeechChip('😢 Feeling Sad & Lonely', 'I feel sad and alone today.', isYellow: true),
+                    _buildQuickSpeechChip('😐 Calm Baseline', 'I am calm and feeling peaceful.', isYellow: true),
+                    _buildQuickSpeechChip('😟 Anxious / Worried', 'I feel nervous and worried.', isYellow: true),
+                    _buildQuickSpeechChip('🇱🇰 ඔව් සතුටුයි', 'ඔව් අද මට සතුටින් සැනසීමක් දැනෙනවා.', isYellow: false),
+                    _buildQuickSpeechChip('🇱🇰 මම දුකයි', 'මම දුකයි සහ පාළුයි.', isYellow: false),
                   ],
                 ),
               ],
             ),
-            const SizedBox(height: 10),
-          ],
-
-          // Dynamic Animated Audio Waveform (Symmetrical in elder mode)
-          if (isElderMode) ...[
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  // Left Waveform Bars
-                  Expanded(
-                    child: SizedBox(
-                      height: 48,
-                      child: _buildWaveformBars(isLeft: true),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-
-                  // Center Mic Action Button
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      InkWell(
-                        onTap: _toggleRecording,
-                        borderRadius: BorderRadius.circular(40),
-                        child: Container(
-                          width: 44,
-                          height: 44,
-                          decoration: BoxDecoration(
-                            color: _isRecording ? AppColors.riskHigh : const Color(0xFF7C3AED),
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: (_isRecording ? AppColors.riskHigh : const Color(0xFF7C3AED))
-                                    .withValues(alpha: 0.35),
-                                blurRadius: 10,
-                                offset: const Offset(0, 3),
-                              ),
-                            ],
-                          ),
-                          child: Icon(
-                            _isRecording ? LucideIcons.square : LucideIcons.mic,
-                            color: Colors.white,
-                            size: 20,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _isRecording
-                            ? (ref.watch(languageProvider).isSinhala ? 'නැවැත්වීමට ඔබන්න' : 'Tap to Stop')
-                            : 'Tap to Start Recording',
-                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Color(0xFF64748B)),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(width: 10),
-
-                  // Right Waveform Bars
-                  Expanded(
-                    child: SizedBox(
-                      height: 48,
-                      child: _buildWaveformBars(isLeft: false),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ] else ...[
-            Container(
-              height: 70,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: _isRecording ? AppColors.primary.withValues(alpha: 0.5) : AppColors.border),
-              ),
-              child: AnimatedBuilder(
-                animation: _waveController,
-                builder: (context, child) {
-                  return Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: List.generate(24, (i) {
-                      final factor = (1 + 0.8 * ((i % 4 == 0) ? 1.0 : 0.4));
-                      final waveValue = (_waveController.value * 6.28 + (i * 0.3)).abs();
-                      final soundBoost = (_soundLevel.abs() > 0.02) ? (_soundLevel.abs() * 50.0).clamp(0.0, 55.0) : 0.0;
-                      final dynamicHeight = _isRecording
-                          ? (8.0 + soundBoost + (28.0 * (0.3 + 0.7 * (1.0 - (waveValue % 1.0)))) * factor)
-                              .clamp(6.0, 60.0)
-                          : 5.0;
-
-                      final emotionColor = _getVoiceEmotionColor(_voiceEmotion);
-                      return Container(
-                        width: 4,
-                        height: dynamicHeight,
-                        decoration: BoxDecoration(
-                          color: _isRecording ? emotionColor : AppColors.border,
-                          borderRadius: BorderRadius.circular(3),
-                        ),
-                      );
-                    }),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 10),
-            Center(
-              child: InkWell(
-                onTap: _toggleRecording,
-                borderRadius: BorderRadius.circular(40),
-                child: Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: _isRecording ? AppColors.riskHigh : AppColors.primary,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    _isRecording ? LucideIcons.square : LucideIcons.mic,
-                    color: Colors.white,
-                    size: 20,
-                  ),
-                ),
-              ),
-            ),
-          ],
-          const SizedBox(height: 10),
-
-          // Spoken Transcript Preview (if not empty)
-          if (_spokenText.isNotEmpty) ...[
-            Container(
-              padding: const EdgeInsets.all(8),
-              margin: const EdgeInsets.only(bottom: 8),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: Row(
-                children: [
-                  const Icon(LucideIcons.messageSquare, size: 14, color: AppColors.primary),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      _spokenText,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 11, fontStyle: FontStyle.italic, color: AppColors.navy),
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        _spokenText = '';
-                      });
-                    },
-                    child: const Icon(LucideIcons.x, size: 14, color: AppColors.muted),
-                  ),
-                ],
-              ),
-            ),
-          ],
-
-          // Voice Emotion Detection Result
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: const Color(0xFFEFF6FF),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xFFBFDBFE)),
-            ),
-            child: Row(
-              children: [
-                const Icon(
-                  LucideIcons.circleCheck,
-                  size: 15,
-                  color: Color(0xFF2563EB),
-                ),
-                const SizedBox(width: 8),
-                const Text(
-                  'Elder Voice Emotion: ',
-                  style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF1E3A8A)),
-                ),
-                Expanded(
-                  child: Text(
-                    '$_voiceEmotion (${(_voiceConfidence * 100).toInt()}%)',
-                    style: const TextStyle(
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF2563EB),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 10),
-
-          // 4 Emotion Chips matching mockup
-          Wrap(
-            spacing: 8,
-            runSpacing: 6,
-            children: [
-              _buildQuickSpeechChip('😊 Feeling Happy & Fine', 'I feel very happy and fine today.', isYellow: true),
-              _buildQuickSpeechChip('😢 Feeling Sad & Lonely', 'I feel sad and alone today.', isYellow: true),
-              _buildQuickSpeechChip('😐 Calm Baseline', 'I am calm and feeling peaceful.', isYellow: true),
-              _buildQuickSpeechChip('😟 Anxious / Worried', 'I feel nervous and worried.', isYellow: true),
-              if (!isElderMode) ...[
-                _buildQuickSpeechChip('🇱🇰 ඔව් සතුටුයි', 'ඔව් අද මට සතුටින් සැනසීමක් දැනෙනවා.', isYellow: false),
-                _buildQuickSpeechChip('🇱🇰 මම දුකයි', 'මම දුකයි සහ පාළුයි.', isYellow: false),
-              ],
-            ],
-          ),
-        ],
-      ),
     );
   }
 
@@ -14740,29 +14838,33 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                   ],
                 );
               }
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Left Column: Question Card & Voice Recording Response
-                  Expanded(
-                    flex: 54,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        _buildElderQuestionCard(currentQ),
-                        const SizedBox(height: 10),
-                        _buildVoiceRecordingCard(isElderMode: true),
-                      ],
+              return IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Left Column: Question Card & Voice Recording Response
+                    Expanded(
+                      flex: 54,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _buildElderQuestionCard(currentQ),
+                          const SizedBox(height: 10),
+                          Expanded(
+                            child: _buildVoiceRecordingCard(isElderMode: true),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
+                    const SizedBox(width: 12),
 
-                  // Right Column: Continuous Live Camera Face Tracking Preview
-                  Expanded(
-                    flex: 46,
-                    child: _buildCameraCard(isElderMode: true),
-                  ),
-                ],
+                    // Right Column: Continuous Live Camera Face Tracking Preview
+                    Expanded(
+                      flex: 46,
+                      child: _buildCameraCard(isElderMode: true),
+                    ),
+                  ],
+                ),
               );
             },
           ),
