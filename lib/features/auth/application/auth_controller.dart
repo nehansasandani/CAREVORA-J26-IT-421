@@ -144,6 +144,51 @@ class AuthNotifier extends ChangeNotifier {
       token: token,
     );
     notifyListeners();
+
+    if (isAuth && token != null && token.isNotEmpty) {
+      _refreshCurrentUserProfile(token);
+    }
+  }
+
+  Future<void> _refreshCurrentUserProfile(String token) async {
+    try {
+      final uri = Uri.parse('$baseUrl/api/auth/me');
+      final response = await http.get(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 4));
+
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        final data = decoded['data'];
+        if (data != null) {
+          final avatarUrl = data['avatarUrl'] as String?;
+          final name = data['name'] as String?;
+          final elderHomeId = data['elderHomeId'] as int?;
+          final elderHomeName = data['elderHomeName'] as String?;
+          final residentId = data['residentId'] as int?;
+          final caregiverId = data['caregiverId'] as int?;
+
+          final prefs = await SharedPreferences.getInstance();
+          if (avatarUrl != null && avatarUrl.isNotEmpty) {
+            await prefs.setString('carevora_avatar_url', avatarUrl);
+          }
+
+          _state = _state.copyWith(
+            userName: name ?? _state.userName,
+            elderHomeId: elderHomeId ?? _state.elderHomeId,
+            elderHomeName: elderHomeName ?? _state.elderHomeName,
+            residentId: residentId ?? _state.residentId,
+            caregiverId: caregiverId ?? _state.caregiverId,
+            avatarUrl: (avatarUrl != null && avatarUrl.isNotEmpty) ? avatarUrl : _state.avatarUrl,
+          );
+          notifyListeners();
+        }
+      }
+    } catch (_) {}
   }
 
   void setInfoMessage(String? message) {
@@ -218,7 +263,11 @@ class AuthNotifier extends ChangeNotifier {
             if (elderHomeName != null) await prefs.setString('carevora_elder_home_name', elderHomeName);
             if (residentId != null) await prefs.setInt('carevora_resident_id', residentId);
             if (caregiverId != null) await prefs.setInt('carevora_caregiver_id', caregiverId);
-            if (avatarUrl != null) await prefs.setString('carevora_avatar_url', avatarUrl);
+            if (avatarUrl != null && avatarUrl.isNotEmpty) {
+              await prefs.setString('carevora_avatar_url', avatarUrl);
+            } else {
+              await prefs.remove('carevora_avatar_url');
+            }
           }
 
           _state = _state.copyWith(
@@ -406,6 +455,7 @@ class AuthNotifier extends ChangeNotifier {
     await prefs.remove('carevora_elder_home_name');
     await prefs.remove('carevora_resident_id');
     await prefs.remove('carevora_caregiver_id');
+    await prefs.remove('carevora_avatar_url');
     _state = const AuthState(isAuthenticated: false);
     notifyListeners();
   }

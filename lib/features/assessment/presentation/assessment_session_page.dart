@@ -279,6 +279,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
 
           setState(() {
             _isListening = false;
+            final isSinhala = ref.read(languageProvider).isSinhala;
             final text = _responseController.text.trim();
             debugPrint(
               '[CARE-STT] [7. Final Save Tracking] End status "$status". '
@@ -288,12 +289,16 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
               if (text.isNotEmpty) {
                 _responses[currentQId] = text;
                 _grades[currentQId] = CognitiveScoring.scoreQuestion(currentQId, text);
-                _speechStatusMessage = 'Voice response captured.';
+                _speechStatusMessage = isSinhala
+                    ? 'හඬ පිළිතුර සටහන් විය.'
+                    : 'Voice response captured.';
                 _persistResponses();
               } else {
-                if (_speechStatusMessage == 'Listening... Speak now.') {
-                  _speechStatusMessage =
-                      'Speech not recognized. Please tap the microphone to retry or type your answer.';
+                if (_speechStatusMessage == 'Listening... Speak now.' ||
+                    _speechStatusMessage == 'සවන් දෙමින්... දැන් කතා කරන්න.') {
+                  _speechStatusMessage = isSinhala
+                      ? 'හඬ හඳුනාගත නොහැකි විය. කරුණාකර නැවත උත්සාහ කරන්න හෝ පිළිතුර ටයිප් කරන්න.'
+                      : 'Speech not recognized. Please tap the microphone to retry or type your answer.';
                 }
               }
             }
@@ -318,34 +323,40 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
       if (mounted) {
         setState(() {
           _isListening = false;
+          final isSinhala = ref.read(languageProvider).isSinhala;
           final existing = _responseController.text.trim();
           if (existing.isNotEmpty && _currentIndex < _questions.length) {
             final qId = _questions[_currentIndex].id;
             _responses[qId] = existing;
-            if (_grades[qId] == null) {
-              _grades[qId] = CognitiveScoring.scoreQuestion(qId, existing);
-            }
-            _speechStatusMessage = 'Voice response captured.';
+            _grades[qId] = CognitiveScoring.scoreQuestion(qId, existing);
+            _speechStatusMessage = isSinhala
+                ? 'හඬ පිළිතුර සටහන් විය.'
+                : 'Voice response captured.';
             _persistResponses();
           } else {
             if (errorMsg.contains('aborted')) {
               return;
             }
             if (errorMsg.contains('no-speech') || errorMsg.contains('error_no_match')) {
-              _speechStatusMessage =
-                  'Speech not recognized. Please tap the microphone to retry or type your answer.';
+              _speechStatusMessage = isSinhala
+                  ? 'හඬ හඳුනාගත නොහැකි විය. කරුණාකර නැවත උත්සාහ කරන්න හෝ පිළිතුර ටයිප් කරන්න.'
+                  : 'Speech not recognized. Please tap the microphone to retry or type your answer.';
             } else if (errorMsg.contains('not-allowed') || errorMsg.contains('permission')) {
-              _speechStatusMessage =
-                  'Microphone permission denied. Please allow microphone access in Chrome or type your answer.';
+              _speechStatusMessage = isSinhala
+                  ? 'මයික්‍රොෆෝන අවසරය ලබා දී නොමැත. කරුණාකර අවසර ලබා දෙන්න හෝ පිළිතුර ටයිප් කරන්න.'
+                  : 'Microphone permission denied. Please allow microphone access in Chrome or type your answer.';
             } else if (errorMsg.contains('network')) {
-              _speechStatusMessage =
-                  'Speech service network issue. Please check connection or type your answer.';
+              _speechStatusMessage = isSinhala
+                  ? 'ජාල ගැටලුවකි. කරුණාකර පිළිතුර පහතින් ටයිප් කරන්න.'
+                  : 'Speech service network issue. Please check connection or type your answer.';
             } else if (errorMsg.contains('already started') || errorMsg.contains('invalidstateerror')) {
-              _speechStatusMessage =
-                  'Please tap the microphone again to speak.';
+              _speechStatusMessage = isSinhala
+                  ? 'කතා කිරීමට නැවත මයික්‍රොෆෝනය ඔබන්න.'
+                  : 'Please tap the microphone again to speak.';
             } else {
-              _speechStatusMessage =
-                  'Audio note: $errorMsg. Please retry or type your answer.';
+              _speechStatusMessage = isSinhala
+                  ? 'කරුණාකර නැවත උත්සාහ කරන්න හෝ ඔබේ පිළිතුර ටයිප් කරන්න.'
+                  : 'Audio note: $errorMsg. Please retry or type your answer.';
             }
           }
         });
@@ -559,6 +570,13 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
           if (pendingSession.grades.isNotEmpty) {
             _grades.addAll(pendingSession.grades);
           }
+          // Ensure any saved responses (including Sinhala) are properly scored
+          for (final entry in _responses.entries) {
+            final computed = CognitiveScoring.scoreQuestion(entry.key, entry.value);
+            if (computed != null && (_grades[entry.key] == null || (_grades[entry.key] == 0.0 && computed > 0.0))) {
+              _grades[entry.key] = computed;
+            }
+          }
           if (pendingSession.questionTimes.isNotEmpty) {
             _questionTimes.addAll(pendingSession.questionTimes);
           }
@@ -597,6 +615,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
               final qId = int.tryParse(key);
               if (qId != null && val is String && val.trim().isNotEmpty) {
                 _responses[qId] ??= val;
+                _grades[qId] ??= CognitiveScoring.scoreQuestion(qId, val);
               }
             });
             _responseController.text =
@@ -666,8 +685,12 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
     final qId = _questions[_currentIndex].id;
     final text = _responseController.text;
     _responses[qId] = text;
-    if (_grades[qId] == null && text.trim().isNotEmpty) {
-      _grades[qId] = CognitiveScoring.scoreQuestion(qId, text);
+    if (text.trim().isNotEmpty) {
+      final isElder = ref.read(authProvider).state.isElder;
+      final computed = CognitiveScoring.scoreQuestion(qId, text);
+      if (isElder || _grades[qId] == null || (_grades[qId] == 0.0 && (computed ?? 0.0) > 0.0)) {
+        _grades[qId] = computed;
+      }
     }
     _persistResponses();
     if (text.trim().isNotEmpty) {
@@ -681,6 +704,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
       debugPrint('[CARE-STT] [6. Stop/Cancel Reason] Stopped microphone because TTS audio playback started.');
       await _speech.stop();
       if (mounted) {
+        final isSinhala = ref.read(languageProvider).isSinhala;
         setState(() {
           _isListening = false;
           final text = _responseController.text.trim();
@@ -688,7 +712,9 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
             final qId = _questions[_currentIndex].id;
             _responses[qId] = text;
             _grades[qId] = CognitiveScoring.scoreQuestion(qId, text);
-            _speechStatusMessage = 'Voice response captured.';
+            _speechStatusMessage = isSinhala
+                ? 'හඬ පිළිතුර සටහන් විය.'
+                : 'Voice response captured.';
             _persistResponses();
             _triggerSaveAnimation();
           }
@@ -749,9 +775,13 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
     _isTogglingMic = true;
 
     try {
+      final isSinhala = ref.read(languageProvider).isSinhala;
+      final sttLocale = isSinhala
+          ? (kIsWeb ? 'si-LK' : 'si_LK')
+          : (kIsWeb ? 'en-US' : 'en_US');
       final qId = _currentIndex < _questions.length ? _questions[_currentIndex].id : -1;
       debugPrint(
-        '[CARE-STT] [1. Mic Pressed] qId=$qId, isListening=$_isListening, '
+        '[CARE-STT] [1. Mic Pressed] qId=$qId, locale=$sttLocale, isListening=$_isListening, '
         'speechListening=${_speech.isListening}, isSpeaking=$_isSpeaking, '
         'speechAvailable=$_speechAvailable, speechInitialized=$_speechInitialized, '
         'currentBuffer="${_responseController.text}"',
@@ -779,12 +809,15 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
             if (text.isNotEmpty) {
               _responses[qId] = text;
               _grades[qId] = CognitiveScoring.scoreQuestion(qId, text);
-              _speechStatusMessage = 'Voice response captured.';
+              _speechStatusMessage = isSinhala
+                  ? 'හඬ පිළිතුර සටහන් විය.'
+                  : 'Voice response captured.';
               _persistResponses();
               _triggerSaveAnimation();
             } else {
-              _speechStatusMessage =
-                  'Speech not recognized. Please tap the microphone to retry or type your answer.';
+              _speechStatusMessage = isSinhala
+                  ? 'හඬ හඳුනාගත නොහැකි විය. කරුණාකර නැවත උත්සාහ කරන්න හෝ පිළිතුර ටයිප් කරන්න.'
+                  : 'Speech not recognized. Please tap the microphone to retry or type your answer.';
             }
           });
         }
@@ -797,8 +830,9 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
       if (!_speechAvailable) {
         debugPrint('[CARE-STT] [3. Listen Failed] Speech not available. Cannot start listening.');
         setState(() {
-          _speechStatusMessage =
-              'Microphone not available. Please enter the answer manually below or apply caregiver clinical scoring.';
+          _speechStatusMessage = isSinhala
+              ? 'මයික්‍රොෆෝනය භාවිතා කළ නොහැක. කරුණාකර පහතින් ඔබේ පිළිතුර ටයිප් කරන්න.'
+              : 'Microphone not available. Please enter the answer manually below or apply caregiver clinical scoring.';
         });
         return;
       }
@@ -814,7 +848,9 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
       _listeningQId = qId;
       setState(() {
         _isListening = true;
-        _speechStatusMessage = 'Listening... Speak now.';
+        _speechStatusMessage = isSinhala
+            ? 'සවන් දෙමින්... දැන් කතා කරන්න.'
+            : 'Listening... Speak now.';
       });
 
       final currentSessionId = ++_activeListeningSessionId;
@@ -823,7 +859,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
       try {
         debugPrint(
           '[CARE-STT] [3. Listen Start Attempt] Calling _speech.listen for qId=$targetQId (session $currentSessionId), '
-          'currentText="${_responseController.text}"',
+          'locale=$sttLocale, currentText="${_responseController.text}"',
         );
         await _speech.listen(
           onResult: (result) {
@@ -850,10 +886,8 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
               );
               if (incomingTrimmed.isNotEmpty) {
                 _responses[targetQId] = incoming;
-                if (_grades[targetQId] == null) {
-                  _grades[targetQId] =
-                      CognitiveScoring.scoreQuestion(targetQId, incoming);
-                }
+                _grades[targetQId] =
+                    CognitiveScoring.scoreQuestion(targetQId, incoming);
                 _persistResponses();
               }
               return;
@@ -867,6 +901,8 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                     offset: incoming.length,
                   );
                   _responses[targetQId] = incoming;
+                  _grades[targetQId] =
+                      CognitiveScoring.scoreQuestion(targetQId, incoming);
                 }
               });
               // NOTE: We do not invoke _persistResponses() on partial callbacks.
@@ -879,7 +915,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
             pauseFor: kIsWeb ? null : const Duration(seconds: 5),
             cancelOnError: false,
             partialResults: true,
-            localeId: 'en_US',
+            localeId: sttLocale,
           ),
         );
         debugPrint('[CARE-STT] [3. Listen Started] Session active: speechListening=${_speech.isListening}');
@@ -915,10 +951,8 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                       _questions[_currentIndex].id != targetQId) {
                     if (incomingTrimmed.isNotEmpty) {
                       _responses[targetQId] = incoming;
-                      if (_grades[targetQId] == null) {
-                        _grades[targetQId] =
-                            CognitiveScoring.scoreQuestion(targetQId, incoming);
-                      }
+                      _grades[targetQId] =
+                          CognitiveScoring.scoreQuestion(targetQId, incoming);
                       _persistResponses();
                     }
                     return;
@@ -932,6 +966,8 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                           offset: incoming.length,
                         );
                         _responses[targetQId] = incoming;
+                        _grades[targetQId] =
+                            CognitiveScoring.scoreQuestion(targetQId, incoming);
                       }
                     });
                   }
@@ -942,7 +978,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                   pauseFor: kIsWeb ? null : const Duration(seconds: 5),
                   cancelOnError: false,
                   partialResults: true,
-                  localeId: 'en_US',
+                  localeId: sttLocale,
                 ),
               );
               debugPrint('[CARE-STT] Retry listen active on fresh engine!');
@@ -957,10 +993,13 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
           setState(() {
             _isListening = false;
             if (errStr.contains('not-allowed') || errStr.contains('permission')) {
-              _speechStatusMessage =
-                  'Microphone permission denied. Please allow microphone access in Chrome or type your answer.';
+              _speechStatusMessage = isSinhala
+                  ? 'මයික්‍රොෆෝන අවසරය ලබා දී නොමැත. කරුණාකර අවසර ලබා දෙන්න හෝ පිළිතුර ටයිප් කරන්න.'
+                  : 'Microphone permission denied. Please allow microphone access in Chrome or type your answer.';
             } else {
-              _speechStatusMessage = 'Please tap the microphone again to speak.';
+              _speechStatusMessage = isSinhala
+                  ? 'කතා කිරීමට නැවත මයික්‍රොෆෝනය ඔබන්න.'
+                  : 'Please tap the microphone again to speak.';
             }
           });
         }
@@ -1058,11 +1097,16 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
 
   Future<void> _submitCaregiverAssessment() async {
     _saveCurrentQuestionState();
+    final authState = ref.read(authProvider).state;
+    final isElder = authState.isElder;
 
     // Auto-grade all answered questions using question-specific deterministic rubric
     final autoGrades = CognitiveScoring.autoScoreBattery(_responses);
     for (final e in autoGrades.entries) {
-      if (_grades[e.key] == null && e.value != null) {
+      if (e.value != null &&
+          (isElder ||
+              _grades[e.key] == null ||
+              (_grades[e.key] == 0.0 && e.value! > 0.0))) {
         _grades[e.key] = e.value;
       }
     }
@@ -1077,7 +1121,6 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
       return;
     }
 
-    final authState = ref.read(authProvider).state;
     final token = authState.token;
 
     setState(() {
@@ -3181,7 +3224,9 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
   ) {
     final isSinhala = ref.watch(languageProvider).isSinhala;
     final bool hasStatus = _speechStatusMessage != null;
-    final bool statusOk = hasStatus && _speechStatusMessage!.contains('captured');
+    final bool statusOk = hasStatus &&
+        (_speechStatusMessage!.contains('captured') ||
+            _speechStatusMessage!.contains('සටහන් විය'));
     final bool isLastQuestion = !(_currentIndex < _questions.length - 1);
 
     return Container(
@@ -5192,6 +5237,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
   }
 
   void _showResultDialog(CognitiveSubmissionResult result) {
+    final isSinhala = ref.read(languageProvider).isSinhala;
     final bool isHighRisk =
         (result.riskLevel?.toLowerCase().contains('high') ?? false) ||
         (result.mlPrediction?.toLowerCase().contains('high') ?? false) ||
@@ -5284,8 +5330,12 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                           const SizedBox(height: 12),
                           Text(
                             isHighRisk
-                                ? 'Let\'s Play Some Games! 🧠🎮'
-                                : 'Cognitive Assessment Saved! 🎉',
+                                ? (isSinhala
+                                    ? 'අපි මතක ක්‍රීඩා කරමු! 🧠🎮'
+                                    : 'Let\'s Play Some Games! 🧠🎮')
+                                : (isSinhala
+                                    ? 'ප්‍රජානන ඇගයීම සාර්ථකව සුරැකිණි! 🎉'
+                                    : 'Cognitive Assessment Saved! 🎉'),
                             style: const TextStyle(
                               fontSize: 22,
                               fontWeight: FontWeight.w800,
@@ -5296,7 +5346,9 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            '${result.residentName} • Evaluated by ${result.assessedBy ?? 'Care Specialist'}',
+                            isSinhala
+                                ? '${result.residentName} • ඇගයීම: ${result.assessedBy ?? 'සුවතා විශේෂඥ'}'
+                                : '${result.residentName} • Evaluated by ${result.assessedBy ?? 'Care Specialist'}',
                             style: const TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
@@ -5374,20 +5426,24 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                                       Expanded(
                                         child: Column(
                                           crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: const [
+                                          children: [
                                             Text(
-                                              'Let\'s play some memory games! 🧠🎮',
-                                              style: TextStyle(
+                                              isSinhala
+                                                  ? 'අපි මතක ක්‍රීඩා කිහිපයක් කරමු! 🧠🎮'
+                                                  : 'Let\'s play some memory games! 🧠🎮',
+                                              style: const TextStyle(
                                                 fontSize: 16.5,
                                                 fontWeight: FontWeight.w800,
                                                 color: Color(0xFF4C1D95),
                                                 letterSpacing: -0.2,
                                               ),
                                             ),
-                                            SizedBox(height: 2),
+                                            const SizedBox(height: 2),
                                             Text(
-                                              'Fun & engaging daily brain workout',
-                                              style: TextStyle(
+                                              isSinhala
+                                                  ? 'විනෝදජනක දෛනික මොළයේ ව්‍යායාම'
+                                                  : 'Fun & engaging daily brain workout',
+                                              style: const TextStyle(
                                                 fontSize: 12,
                                                 fontWeight: FontWeight.w600,
                                                 color: Color(0xFF7C3AED),
@@ -5399,9 +5455,11 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                                     ],
                                   ),
                                   const SizedBox(height: 12),
-                                  const Text(
-                                    'Exercising memory, focus, and recall through enjoyable brain games helps boost mental agility and keep your thoughts refreshed. Let\'s play a fun game right now!',
-                                    style: TextStyle(
+                                  Text(
+                                    isSinhala
+                                        ? 'විනෝදජනක මතක ක්‍රීඩා මගින් ඔබේ මතකය, අවධානය සහ සිතීමේ හැකියාව වර්ධනය කරගත හැක. අපි දැන්ම මතක ක්‍රීඩාවක් කරමු!'
+                                        : 'Exercising memory, focus, and recall through enjoyable brain games helps boost mental agility and keep your thoughts refreshed. Let\'s play a fun game right now!',
+                                    style: const TextStyle(
                                       fontSize: 13,
                                       color: Color(0xFF581C87),
                                       height: 1.45,
@@ -5418,9 +5476,11 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                                         context.go('/dashboard/memory-games');
                                       },
                                       icon: const Icon(LucideIcons.gamepad2, size: 20),
-                                      label: const Text(
-                                        'Let\'s Play Memory Games Now! 🎮',
-                                        style: TextStyle(
+                                      label: Text(
+                                        isSinhala
+                                            ? 'දැන්ම මතක ක්‍රීඩා කරමු! 🎮'
+                                            : 'Let\'s Play Memory Games Now! 🎮',
+                                        style: const TextStyle(
                                           fontSize: 15,
                                           fontWeight: FontWeight.w800,
                                           letterSpacing: 0.3,
@@ -5460,16 +5520,18 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                               children: [
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
-                                  children: const [
-                                    Icon(
+                                  children: [
+                                    const Icon(
                                       LucideIcons.sparkles,
                                       size: 13,
                                       color: AppColors.primary,
                                     ),
-                                    SizedBox(width: 6),
+                                    const SizedBox(width: 6),
                                     Text(
-                                      'ACRF COGNITIVE WELLNESS SCORE',
-                                      style: TextStyle(
+                                      isSinhala
+                                          ? 'ACRF ප්‍රජානන සුවතා ලකුණු'
+                                          : 'ACRF COGNITIVE WELLNESS SCORE',
+                                      style: const TextStyle(
                                         fontSize: 11,
                                         fontWeight: FontWeight.w800,
                                         color: AppColors.primary,
@@ -5508,8 +5570,10 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
-                                  result.methodology ??
-                                      'ACRF Fixed Base Weights • Clinical Evaluation Engine',
+                                  isSinhala
+                                      ? 'ACRF ස්ථාවර බර තැබීමේ ක්‍රමවේදය • සායනික ඇගයීම් පද්ධතිය'
+                                      : (result.methodology ??
+                                          'ACRF Fixed Base Weights • Clinical Evaluation Engine'),
                                   style: const TextStyle(
                                     fontSize: 10.5,
                                     color: AppColors.muted,
@@ -5525,15 +5589,15 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                           // Category Breakdown
                           Row(
                             children: [
-                              _buildCategoryCard('Memory', result.memory ?? 0.0, 'w:25%', LucideIcons.brain),
+                              _buildCategoryCard(isSinhala ? 'මතකය' : 'Memory', result.memory ?? 0.0, 'w:25%', LucideIcons.brain),
                               const SizedBox(width: 8),
-                              _buildCategoryCard('Attention', result.attention ?? 0.0, 'w:20%', LucideIcons.eye),
+                              _buildCategoryCard(isSinhala ? 'අවධානය' : 'Attention', result.attention ?? 0.0, 'w:20%', LucideIcons.eye),
                               const SizedBox(width: 8),
-                              _buildCategoryCard('Orientation', result.orientation ?? 0.0, 'w:20%', LucideIcons.compass),
+                              _buildCategoryCard(isSinhala ? 'දිශානතිය' : 'Orientation', result.orientation ?? 0.0, 'w:20%', LucideIcons.compass),
                               const SizedBox(width: 8),
-                              _buildCategoryCard('Recall', result.recall ?? 0.0, 'w:20%', LucideIcons.lightbulb),
+                              _buildCategoryCard(isSinhala ? 'සිහිකැඳවීම' : 'Recall', result.recall ?? 0.0, 'w:20%', LucideIcons.lightbulb),
                               const SizedBox(width: 8),
-                              _buildCategoryCard('Reasoning', result.reasoning ?? 0.0, 'w:15%', LucideIcons.puzzle),
+                              _buildCategoryCard(isSinhala ? 'තර්කනය' : 'Reasoning', result.reasoning ?? 0.0, 'w:15%', LucideIcons.puzzle),
                             ],
                           ),
                           const SizedBox(height: 16),
@@ -5550,13 +5614,15 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                               ),
                               child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
-                                children: const [
-                                  Icon(LucideIcons.sparkles, size: 14, color: Color(0xFFB45309)),
-                                  SizedBox(width: 8),
+                                children: [
+                                  const Icon(LucideIcons.sparkles, size: 14, color: Color(0xFFB45309)),
+                                  const SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
-                                      'Experimental ML Model Demo: Evaluated with Random Forest inference for wellness baseline reference.',
-                                      style: TextStyle(
+                                      isSinhala
+                                          ? 'AI ආකෘති විශ්ලේෂණය: Random Forest AI මගින් සුවතා මට්ටම තක්සේරු කර ඇත.'
+                                          : 'Experimental ML Model Demo: Evaluated with Random Forest inference for wellness baseline reference.',
+                                      style: const TextStyle(
                                         fontSize: 10.5,
                                         color: Color(0xFF92400E),
                                         height: 1.35,
@@ -5580,13 +5646,15 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                                 border: Border.all(color: const Color(0xFFDDD6FE)),
                               ),
                               child: Row(
-                                children: const [
-                                  Text('✨', style: TextStyle(fontSize: 16)),
-                                  SizedBox(width: 10),
+                                children: [
+                                  const Text('✨', style: TextStyle(fontSize: 16)),
+                                  const SizedBox(width: 10),
                                   Expanded(
                                     child: Text(
-                                      'Great performance! Keep your brain active with optional memory games, or return to the overview.',
-                                      style: TextStyle(
+                                      isSinhala
+                                          ? 'ඉතා විශිෂ්ටයි! ඔබේ මතකය තවදුරටත් ක්‍රියාශීලීව තබාගැනීමට මතක ක්‍රීඩා කරන්න, නැතහොත් ප්‍රධාන පුවරුවට පිවිසෙන්න.'
+                                          : 'Great performance! Keep your brain active with optional memory games, or return to the overview.',
+                                      style: const TextStyle(
                                         fontSize: 11.5,
                                         fontWeight: FontWeight.w600,
                                         color: Color(0xFF5B21B6),
@@ -5607,7 +5675,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                                       context.go('/dashboard');
                                     },
                                     icon: const Icon(LucideIcons.layoutDashboard, size: 16),
-                                    label: const Text('Return to Dashboard'),
+                                    label: Text(isSinhala ? 'ප්‍රධාන පුවරුවට' : 'Return to Dashboard'),
                                     style: OutlinedButton.styleFrom(
                                       foregroundColor: AppColors.navy,
                                       backgroundColor: Colors.white,
@@ -5631,7 +5699,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                                       context.go('/dashboard/memory-games');
                                     },
                                     icon: const Icon(LucideIcons.gamepad2, size: 16),
-                                    label: const Text('Play Memory Games'),
+                                    label: Text(isSinhala ? 'මතක ක්‍රීඩා කරන්න' : 'Play Memory Games'),
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: AppColors.primary,
                                       foregroundColor: Colors.white,

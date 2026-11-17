@@ -257,19 +257,15 @@ class DesktopSidebar extends ConsumerWidget {
                                   width: 36,
                                   height: 36,
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFFEDE9FE),
                                     shape: BoxShape.circle,
                                     border: Border.all(color: const Color(0xFFDDD6FE)),
                                   ),
-                                  child: Center(
-                                    child: Text(
-                                      initials,
-                                      style: const TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.bold,
-                                        color: Color(0xFF7C3AED),
-                                      ),
-                                    ),
+                                  child: CarevoraAvatar(
+                                    avatarUrl: authState.avatarUrl,
+                                    radius: 18,
+                                    initials: initials,
+                                    backgroundColor: const Color(0xFFEDE9FE),
+                                    foregroundColor: const Color(0xFF7C3AED),
                                   ),
                                 ),
                                 const SizedBox(width: 10),

@@ -224,6 +224,16 @@ public class CognitiveAssessmentService {
                     LocalDate.now());
             if (request.getGrades() == null || request.getGrades().isEmpty()) {
                 request.setGrades(autoGrades);
+            } else {
+                // Ensure Sinhala answers are properly scored if prior auto-grades had 0.0
+                Map<Integer, Double> mergedGrades = new HashMap<>(request.getGrades());
+                for (Map.Entry<Integer, Double> entry : autoGrades.entrySet()) {
+                    Double existing = mergedGrades.get(entry.getKey());
+                    if (existing == null || (existing == 0.0 && entry.getValue() != null && entry.getValue() > 0.0)) {
+                        mergedGrades.put(entry.getKey(), entry.getValue());
+                    }
+                }
+                request.setGrades(mergedGrades);
             }
 
             Map<String, Double> accs = CognitiveScoringService.calculateDomainAccuracies(request.getGrades());

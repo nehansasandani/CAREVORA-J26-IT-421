@@ -4,6 +4,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../shared/widgets/carevora_avatar.dart';
 import '../../auth/application/auth_controller.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
@@ -215,17 +216,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       ),
       child: Row(
         children: [
-          CircleAvatar(
+          CarevoraAvatar(
+            avatarUrl: authState.avatarUrl,
             radius: 26,
+            initials: name.isNotEmpty
+                ? name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).take(2).map((p) => p[0]).join().toUpperCase()
+                : (isElder ? 'S' : 'C'),
             backgroundColor: AppColors.primarySoft,
-            child: Text(
-              name.isNotEmpty ? name[0].toUpperCase() : (isElder ? 'S' : 'C'),
-              style: const TextStyle(
-                color: AppColors.primary,
-                fontWeight: FontWeight.bold,
-                fontSize: 20,
-              ),
-            ),
+            foregroundColor: AppColors.primary,
           ),
           const SizedBox(width: 16),
           Expanded(

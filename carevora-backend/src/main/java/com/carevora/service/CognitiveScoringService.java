@@ -70,36 +70,69 @@ public class CognitiveScoringService {
 
         switch (questionId) {
             case 1: {
-                // Q1: What day is it today?
+                // Q1: What day is it today? (English, Sinhala Unicode & Singlish weekday names)
                 String currentDayName = ref.getDayOfWeek().name().toLowerCase();
                 Pattern p = Pattern.compile("\\b" + currentDayName + "\\b");
-                return p.matcher(normalized).find() ? 1.0 : 0.0;
+                if (p.matcher(normalized).find()) {
+                    return 1.0;
+                }
+                Map<Integer, List<String>> sinhalaWeekdays = Map.of(
+                        1, List.of("සඳුදා", "සදුදා", "සඳුද", "සදුද", "sanduda", "saduda", "handuda"),
+                        2, List.of("අඟහරුවාදා", "අගහරුවාදා", "අඟහරුවාද", "අගහරුවාද", "අඟහරු", "අගහරු", "angaharuwada", "agaharuwada"),
+                        3, List.of("බදාදා", "බදාද", "badada", "badaada", "badhada"),
+                        4, List.of("බ්‍රහස්පතින්දා", "බ්රහස්පතින්දා", "බ්‍රහස්පතින්ද", "බ්රහස්පතින්ද", "බ්‍රහස්පති", "බ්රහස්පති", "brahaspathinda", "brahaspatinda", "brahaspathindha"),
+                        5, List.of("සිකුරාදා", "සිකුරාද", "sikurada", "sikuraada"),
+                        6, List.of("සෙනසුරාදා", "සෙනසුරාද", "senasurada", "senasuraada"),
+                        7, List.of("ඉරිදා", "ඉරිද", "irida", "iridha", "iriida")
+                );
+                String rawClean = rawAnswer.replace("\u200d", "");
+                List<String> variants = sinhalaWeekdays.getOrDefault(ref.getDayOfWeek().getValue(), List.of());
+                for (String v : variants) {
+                    if (rawAnswer.contains(v) || rawClean.contains(v.replace("\u200d", "")) || normalized.contains(v)) {
+                        return 1.0;
+                    }
+                }
+                return 0.0;
             }
             case 2: {
-                // Q2: What year is this?
+                // Q2: What year is this? (English, digits with Sinhala suffixes, Sinhala Unicode & Singlish)
                 String currentYear = String.valueOf(ref.getYear());
-                Pattern p = Pattern.compile("\\b" + currentYear + "\\b");
-                boolean matches = p.matcher(normalized).find() ||
+                Pattern p = Pattern.compile("(?<!\\d)" + currentYear + "(?!\\d)");
+                boolean matches = p.matcher(rawAnswer).find() ||
                         normalized.contains("twenty twenty six") ||
-                        normalized.contains("twenty twenty-six");
+                        normalized.contains("twenty twenty-six") ||
+                        rawAnswer.contains("දෙදහස් විසි හය") ||
+                        rawAnswer.contains("දෙදහස් විසිහය") ||
+                        rawAnswer.contains("දෙදාස් විසි හය") ||
+                        rawAnswer.contains("දෙදාස් විසිහය") ||
+                        rawAnswer.contains("විසි හය") ||
+                        rawAnswer.contains("විසිහය") ||
+                        normalized.contains("dedahas visi haya") ||
+                        normalized.contains("dedahas wisi haya") ||
+                        normalized.contains("dedaas visi haya") ||
+                        normalized.contains("dedaas wisi haya") ||
+                        normalized.contains("wisi haya") ||
+                        normalized.contains("visi haya");
                 return matches ? 1.0 : 0.0;
             }
             case 3:
             case 4:
             case 7: {
-                // Q3: Repeat these words: Sun, Book, Tree.
+                // Q3: Repeat these words: Sun, Book, Tree (ඉර, පොත, ගස).
                 // Q4: Say those three words once more.
                 // Q7: What were the three words from earlier?
-                // Distinct target word count (avoid duplicate counting of same word e.g. "sun sun sun")
-                // Word boundary matching avoids accidental substrings like "sunny" or "street"
                 Set<String> distinctTargets = new HashSet<>();
-                if (Pattern.compile("\\bsun\\b").matcher(normalized).find()) {
+                if (Pattern.compile("\\b(sun|ira|hiru)\\b").matcher(normalized).find()
+                        || rawAnswer.contains("ඉර") || rawAnswer.contains("හිරු") || rawAnswer.contains("සූර්ය")) {
                     distinctTargets.add("sun");
                 }
-                if (Pattern.compile("\\bbooks?\\b").matcher(normalized).find()) {
+                if (Pattern.compile("\\b(books?|potha|pota|poth)\\b").matcher(normalized).find()
+                        || rawAnswer.contains("පොත") || rawAnswer.contains("පොත්") || rawAnswer.contains("පුස්තක")) {
                     distinctTargets.add("book");
                 }
-                if (Pattern.compile("\\btrees?\\b").matcher(normalized).find()) {
+                if (Pattern.compile("\\b(trees?|gasa|gaha|gas)\\b").matcher(normalized).find()
+                        || rawAnswer.contains("ගස") || rawAnswer.contains("ගහ") || rawAnswer.contains("ගස්")
+                        || rawAnswer.contains("රුක") || rawAnswer.contains("වෘක්ෂ")) {
                     distinctTargets.add("tree");
                 }
 
@@ -109,38 +142,52 @@ public class CognitiveScoringService {
                 return 0.0;
             }
             case 5: {
-                // Q5: What is 2 plus 3? Accept 5, five
-                boolean isFive = Pattern.compile("\\b(5|five)\\b").matcher(normalized).find();
+                // Q5: What is 2 plus 3? Accept 5, five, පහ, paha
+                boolean isFive = Pattern.compile("(?<!\\d)5(?!\\d)").matcher(rawAnswer).find() ||
+                        Pattern.compile("\\b(5|five|paha|pahai|pahayi|pahal)\\b").matcher(normalized).find() ||
+                        rawAnswer.contains("පහ");
                 return isFive ? 1.0 : 0.0;
             }
             case 6: {
-                // Q6: Which is bigger: 3 or 8? Accept 8, eight
-                boolean mentionsEight = Pattern.compile("\\b(8|eight)\\b").matcher(normalized).find();
-                boolean saysThreeBigger = Pattern.compile("\\b(3|three)\\s+is\\s+bigger\\b").matcher(normalized).find();
+                // Q6: Which is bigger: 3 or 8? Accept 8, eight, අට, ata
+                boolean mentionsEight = Pattern.compile("(?<!\\d)8(?!\\d)").matcher(rawAnswer).find() ||
+                        Pattern.compile("\\b(8|eight|ata|atai|atayi|atha)\\b").matcher(normalized).find() ||
+                        rawAnswer.contains("අට");
+                boolean saysThreeBigger = Pattern.compile("\\b(3|three|thuna)\\s+(is\\s+)?(bigger|lokui|visalai)\\b").matcher(normalized).find() ||
+                        rawAnswer.contains("තුන ලොකු") || rawAnswer.contains("තුන විශාල") ||
+                        rawAnswer.contains("3 ලොකු") || rawAnswer.contains("3 විශාල");
                 return (mentionsEight && !saysThreeBigger) ? 1.0 : 0.0;
             }
             case 8: {
                 // Q8: Did you hear the word Sun earlier? Accept unambiguous affirmative
-                boolean isAffirmative = Pattern.compile("\\b(yes|yeah|yep|yup|i did|affirmative|certainly|sure|true|correct|heard|i heard|i heard sun|heard sun|heard it|i heard it|yes i did)\\b").matcher(normalized).find();
-                boolean isNegative = Pattern.compile("\\b(no|nope|not|never|did not|didn t|didnt)\\b").matcher(normalized).find();
+                boolean isAffirmative = Pattern.compile("\\b(yes|yeah|yep|yup|i did|affirmative|certainly|sure|true|correct|heard|i heard|i heard sun|heard sun|heard it|i heard it|yes i did|ow|ou|owu|ahuna|asuna|asuwa|ahuwa|hari|ehemai|ehemayi)\\b").matcher(normalized).find() ||
+                        rawAnswer.contains("ඔව්") || rawAnswer.contains("ඔවු") ||
+                        rawAnswer.contains("ඇසුණා") || rawAnswer.contains("ඇසුනා") ||
+                        rawAnswer.contains("ඇහුණා") || rawAnswer.contains("ඇහුනා") ||
+                        rawAnswer.contains("තිබුණා") || rawAnswer.contains("තිබුනා") ||
+                        rawAnswer.contains("කිව්වා") || rawAnswer.contains("හරි") ||
+                        rawAnswer.contains("එහෙමයි");
+                boolean isNegative = Pattern.compile("\\b(no|nope|not|never|did not|didn t|didnt|naha|naa|nae|nehe)\\b").matcher(normalized).find() ||
+                        rawAnswer.contains("නැහැ") || rawAnswer.contains("නෑ") || rawAnswer.contains("නැත");
                 return (isAffirmative && !isNegative) ? 1.0 : 0.0;
             }
             case 9: {
                 // Q9: What do you use to tell the time?
-                // Expected answers: clock, watch, wall clock, wristwatch, or other semantically equivalent answers
                 boolean hasValidDevice = Pattern.compile(
-                        "\\b(clock|clocks|watch|watches|wristwatch|wristwatches|smartwatch|smartwatches|pocketwatch|stopwatch|timepiece|timepieces|chronometer|chronometers|sundial|sundials|hourglass|hourglasses)\\b"
-                ).matcher(normalized).find();
+                        "\\b(clock|clocks|watch|watches|wristwatch|wristwatches|smartwatch|smartwatches|pocketwatch|stopwatch|timepiece|timepieces|chronometer|chronometers|sundial|sundials|hourglass|hourglasses|oralosuwa|oralosu|ath oralosuwa)\\b"
+                ).matcher(normalized).find() ||
+                        rawAnswer.contains("ඔරලෝසු") || rawAnswer.contains("අත් ඔරලෝසු") || rawAnswer.contains("බිත්ති ඔරලෝසු");
 
                 boolean isNegated = Pattern.compile(
                         "\\b(no|not|never|neither|without)\\s+(a\\s+|an\\s+|the\\s+|my\\s+|any\\s+)?(clock|clocks|watch|watches|wristwatch|timepiece|sundial)\\b"
                 ).matcher(normalized).find()
                 || Pattern.compile(
-                        "\\b(don t know|dont know|no idea|cannot tell|can t tell|cant tell|not sure|unsure|don t use|dont use|do not use)\\b"
+                        "\\b(don t know|dont know|no idea|cannot tell|can t tell|cant tell|not sure|unsure|don t use|dont use|do not use|danne na|danne naha)\\b"
                 ).matcher(normalized).find()
                 || Pattern.compile(
                         "^(no|nope|not|never|nothing|none)\\b"
-                ).matcher(normalized).find();
+                ).matcher(normalized).find()
+                || rawAnswer.contains("දන්නේ නෑ") || rawAnswer.contains("දන්නෙ නෑ");
 
                 boolean isDisallowedIdiom = Pattern.compile(
                         "\\b(biological clock|body clock|around the clock|round the clock|against the clock|clock in|clock out|punch the clock|clean your clock)\\b"
@@ -150,8 +197,14 @@ public class CognitiveScoringService {
             }
             case 10: {
                 // Q10: Are an apple and an orange both fruits?
-                boolean isFruits = Pattern.compile("\\b(yes|both fruits|both are fruits|fruits|fruit|they are fruits|yes they are|affirmative|correct)\\b").matcher(normalized).find();
-                boolean isNegative = Pattern.compile("\\b(no|nope|neither|vegetables?)\\b").matcher(normalized).find();
+                boolean isFruits = Pattern.compile("\\b(yes|both fruits|both are fruits|fruits|fruit|they are fruits|yes they are|affirmative|correct|ow|ou|owu|palathuru|palaturu|hari|ehemai|ehemayi)\\b").matcher(normalized).find() ||
+                        rawAnswer.contains("ඔව්") || rawAnswer.contains("ඔවු") ||
+                        rawAnswer.contains("පලතුරු") || rawAnswer.contains("පළතුරු") ||
+                        rawAnswer.contains("හරි") || rawAnswer.contains("එහෙමයි") ||
+                        rawAnswer.contains("සත්‍ය");
+                boolean isNegative = Pattern.compile("\\b(no|nope|neither|vegetables?|naha|naa|nae|nehe|elawalu)\\b").matcher(normalized).find() ||
+                        rawAnswer.contains("නැහැ") || rawAnswer.contains("නෑ") || rawAnswer.contains("නැත") ||
+                        rawAnswer.contains("එළවළු") || rawAnswer.contains("එලවලු");
                 return (isFruits && !isNegative) ? 1.0 : 0.0;
             }
             default:
