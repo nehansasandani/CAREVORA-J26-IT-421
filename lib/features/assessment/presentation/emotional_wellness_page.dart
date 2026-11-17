@@ -2000,6 +2000,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
         _showClapAnimation = false;
         _reasonTextController.text = _elderNegativeReasons[questionId] ?? '';
         _flutterTts.stop();
+        _interventionStage = 0;
         if (questionId == 9) {
           _routeDirectlyToDoctorForElderRoom();
         } else if (questionId == 5) {
@@ -2007,37 +2008,31 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
               ? 'ඔබේ දවසෙන් වැඩි කාලයක් කාමරය තුළ තනිවම ගත කිරීම වෙහෙසකර විය හැකිය. අපි සුහදව කතාබහ කර ඔබේ සිත සතුටු වන ක්‍රියාකාරකම් සොයා ගනිමු.'
               : 'Spending most of your day alone in your room can feel lonely and tiring. Let us have a comforting talk and find refreshing activities to brighten your day.';
           TtsService.instance.speak(text, isSinhala: isSinhala);
-          _startAiConversationIntervention();
         } else if (questionId == 4) {
           final text = isSinhala
               ? 'කරුණාකර එසේ සිතන්න එපා. ඔබ අප සැමට ඉතාමත් වටිනා සහ ආදරණීය කෙනෙක්. අපි සුහදව කතාබහ කරමු.'
               : 'Please do not feel that way. You are a truly special and deeply valued person to all of us. Let us have a comforting talk.';
           TtsService.instance.speak(text, isSinhala: isSinhala);
-          _startAiConversationIntervention();
         } else if (questionId == 2) {
           final text = isSinhala
               ? 'සිත දුකට පත් කරගන්න එපා. සෑම අලුත් දවසක්ම ජයග්‍රාහී බලාපොරොත්තුවක් සහ සැනසීමක් ගෙනෙනවා. අපි සුහදව කතා කරමු.'
               : 'Do not feel down. Every new day brings victorious hope, joy, and peace. Let us have a comforting talk.';
           TtsService.instance.speak(text, isSinhala: isSinhala);
-          _startAiConversationIntervention();
         } else if (questionId == 3) {
           final text = isSinhala
               ? 'කරුණාකර තනිකමක් දැනෙන්න දෙන්න එපා. ඔබ කිසිවිටෙකත් තනි වී නැහැ, මම ඔබ ළඟින්ම සිටිනවා. ඔබේ සිත සන්සුන් කරන ගීතයකට අපි සවන් දෙමු.'
               : 'Please do not feel lonely. You are never alone, I am right here beside you. Let us listen to peaceful songs to comfort your heart.';
           TtsService.instance.speak(text, isSinhala: isSinhala);
-          _startAiConversationIntervention();
         } else if (questionId == 6) {
           final text = isSinhala
               ? 'කරුණාකර තනිකමක් දැනෙන්න දෙන්න එපා. ඔබ කිසිවිටෙකත් තනි වී නැහැ, මම ඔබ ළඟින්ම සිටිනවා. අමරදේවයන්ගේ සහ නන්දා මාලිනියන්ගේ සන්සුන් ගීතයකට අපි සවන් දෙමු.'
               : 'Please do not feel lonely. You are never alone, I am right here beside you. Let us listen to soothing songs by maestros Amaradeva and Nanda Malini to comfort your heart.';
           TtsService.instance.speak(text, isSinhala: isSinhala);
-          _startAiConversationIntervention();
         } else {
           final text = isSinhala
-              ? 'ඒ ගැන ඇසීම කනගාටුදායකයි. ඔබට මේ ආකාරයට දැනෙන්නට හේතුව මට පැහැදිලි කරන්න පුළුවන්ද?'
-              : 'I am sorry to hear that. Could you please share what is making you feel this way?';
+              ? 'ඒ ගැන ඇසීම කනගාටුදායකයි. ඔබ කිසිවිටෙකත් තනි වී නැහැ. ඔබේ සිත සන්සුන් කරගැනීමට පහත උපකාරක විකල්ප අතරින් කැමති දෙයක් තෝරාගන්න.'
+              : 'I am sorry to hear that. You are never alone. Please choose from the supportive options below.';
           TtsService.instance.speak(text, isSinhala: isSinhala);
-          _startAiConversationIntervention();
         }
       }
     });
@@ -3687,6 +3682,11 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
     final clean = elderText.trim();
     if (clean.isEmpty) return;
     _aiChatInputController.clear();
+    final currentQ = _questions[_currentIndex];
+    setState(() {
+      _reasonTextController.text = clean;
+      _elderNegativeReasons[currentQ.id] = clean;
+    });
 
     final lower = clean.toLowerCase();
 
@@ -5591,6 +5591,8 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                   border: Border.all(color: const Color(0xFFBBF7D0)),
                 ),
                 child: ListView.builder(
+                  shrinkWrap: true,
+                  physics: const ClampingScrollPhysics(),
                   controller: _aiChatScrollController,
                   padding: const EdgeInsets.all(12),
                   itemCount: _aiConversationMessages.length,
@@ -5890,53 +5892,255 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
         );
 
       default:
+        final currentQ = _questions[_currentIndex];
+        final isSinhala = ref.watch(languageProvider).isSinhala;
         return Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             color: const Color(0xFFFFFBEB),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFFFDE68A)),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFFDE68A), width: 1.5),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFFD97706).withValues(alpha: 0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
+              ),
+            ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Header with Empathy Badge
               Row(
-                children: const [
-                  Icon(LucideIcons.heartHandshake, size: 18, color: Color(0xFFD97706)),
-                  SizedBox(width: 8),
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFFEF3C7),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(LucideIcons.heartHandshake, size: 18, color: Color(0xFFD97706)),
+                  ),
+                  const SizedBox(width: 8),
                   Text(
-                    'AI Assistant',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFFB45309)),
+                    isSinhala ? 'AI සහායකයා: සෙනෙහෙබර උපකාරක මඟපෙන්වීම් ✨' : 'AI Assistant: Caring Support & Suggestions ✨',
+                    style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF92400E)),
                   ),
                 ],
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 8),
+
+              // Empathy Message
               Text(
-                currentQ.id == 5
-                    ? 'ඔබ දවසෙන් වැඩි කාලයක් කාමරය තුළ ගත කරන්නේ නම්, මා සමඟ කතාබහ කර කම්මැලිකම දුරු කරන ප්‍රබෝධමත් ක්‍රියාකාරකම් සැලසුම් කරගන්න.'
-                    : (currentQ.id == 4
-                        ? 'අන් අය එකතු වී සිටින විට ඔබට තනි වූ හෝ කොන් වූ බවක් දැනේ නම්, මා සමඟ කතාබහ කර ඔබේ සිතේ වටිනාකම සහ සැනසීම තහවුරු කරගන්න.'
-                        : (currentQ.id == 3
-                            ? 'මෙහි සමීපව කතාබහ කිරීමට කෙනෙකු නැති බව දැනේ නම්, මා සමඟ කතාබහ කර ඔබේ සිතේ තනිකම දුරු කරගන්න.'
-                            : (currentQ.id == 2
-                                ? 'ඉදිරි දින ගැන ඔබේ සිතේ බලාපොරොත්තු අඩු වී ඇත්නම්, අපි කතාබහ කර ඔබේ හදවතට නව ජයග්‍රාහී බලාපොරොත්තුවක් එක් කරමු.'
-                                : 'මට ඒ ගැන කණගාටුයි. ඔබට අද එසේ දැනෙන්න හේතුව මට කියන්න හෝ මෙහි ලියන්න පුළුවන්ද?'))),
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF92400E), height: 1.35),
+                isSinhala
+                    ? (currentQ.id == 5
+                        ? 'ඔබ දවසෙන් වැඩි කාලයක් කාමරය තුළ ගත කරන්නේ නම්, මා සමඟ කතාබහ කර කම්මැලිකම දුරු කරන ප්‍රබෝධමත් ක්‍රියාකාරකම් සැලසුම් කරගනිමු.'
+                        : (currentQ.id == 4
+                            ? 'කරුණාකර එසේ සිතන්න එපා. ඔබ අප සැමට ඉතාමත් වටිනා සහ ආදරණීය කෙනෙක්. අපි සිතේ බර සැහැල්ලු කරගනිමු.'
+                            : (currentQ.id == 3
+                                ? 'කරුණාකර තනිකමක් දැනෙන්න දෙන්න එපා. ඔබ කිසිවිටෙකත් තනි වී නැහැ, මම ඔබ ළඟින්ම සිටිනවා. අපි සුහදව කතාබහ කරමු.'
+                                : (currentQ.id == 2
+                                    ? 'සිත දුකට පත් කරගන්න එපා. සෑම අලුත් දවසක්ම ජයග්‍රාහී බලාපොරොත්තුවක් සහ සැනසීමක් ගෙනෙනවා.'
+                                    : (currentQ.id == 6
+                                        ? 'පවුල හෝ අමුත්තන් නොපැමිණීම ගැන දුක්වෙන්න එපා. ඔබ අප සැමට ඉතාමත් ආදරණීයයි. සන්සුන් සංගීතයකට සවන් දෙමු.'
+                                        : 'ඒ ගැන ඇසීම කනගාටුදායකයි. ඔබ කිසිවිටෙකත් තනි වී නැහැ. ඔබේ සිත සන්සුන් කරගැනීමට පහත උපකාරක විකල්ප අතරින් පහසු දෙයක් තෝරාගන්න.')))))
+                    : (currentQ.id == 5
+                        ? 'If you spend most of your day alone in your room, let us talk to explore refreshing activities and beat boredom.'
+                        : (currentQ.id == 4
+                            ? 'Please do not feel that way. You are a truly special and deeply valued person to all of us.'
+                            : (currentQ.id == 3
+                                ? 'Please do not feel lonely. You are never alone, I am right here beside you.'
+                                : (currentQ.id == 2
+                                    ? 'Do not feel down. Every new day brings victorious hope, joy, and peace.'
+                                    : (currentQ.id == 6
+                                        ? 'Please do not feel lonely. We are right here beside you to bring comfort and music.'
+                                        : 'I am sorry to hear that. You are not alone. Please choose from the supportive options below.'))))),
+                style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: Color(0xFF92400E), height: 1.35),
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: 12),
+
+              // SECTION 1: Elder Action Options
+              Row(
+                children: [
+                  const Icon(LucideIcons.sparkles, size: 14, color: Color(0xFFB45309)),
+                  const SizedBox(width: 6),
+                  Text(
+                    isSinhala ? 'ඔබ වෙනුවෙන් යෝජිත උපකාරක විකල්ප (Suggested Options):' : 'Suggested Comforting Options for You:',
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF92400E)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: _startAiConversationIntervention,
+                    icon: const Text('💬', style: TextStyle(fontSize: 14)),
+                    label: Text(
+                      isSinhala
+                          ? (currentQ.id == 5
+                              ? 'කාමරයේ කම්මැලිකම දුරු කරන්න කතා කරමු'
+                              : (currentQ.id == 4
+                                  ? 'මගේ සිතේ වටිනාකම ගැන AI සමඟ කතාබහ කරමු'
+                                  : (currentQ.id == 3
+                                      ? 'AI සහායක සමඟ කතාබහ කර තනිකම දුරු කරගන්න'
+                                      : (currentQ.id == 2
+                                          ? 'නව බලාපොරොත්තු සඳහා AI සමඟ කතා කරමු'
+                                          : 'AI සහායක සමඟ කතාබහ කරමු (Talk with AI)'))))
+                          : 'Talk with AI Assistant',
+                      style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF7C3AED),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      elevation: 0,
+                    ),
+                  ),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      _playSongInAiChat('ආචාර්ය ඩබ්.ඩී. අමරදේව - ශාන්ත සන්ධ්‍යාව');
+                    },
+                    icon: const Text('🎵', style: TextStyle(fontSize: 14)),
+                    label: Text(
+                      isSinhala ? 'සන්සුන් සංගීතය හෝ පිරිත් අහන්න (Listen to Music)' : 'Listen to Music / Pirith',
+                      style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF059669),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      elevation: 0,
+                    ),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: _selectQuietPath,
+                    icon: const Text('🌿', style: TextStyle(fontSize: 14)),
+                    label: Text(
+                      isSinhala ? 'මට ටිකක් නිදහසේ ඉන්න ඕනෙ (Quiet Peace)' : 'Just need quiet rest & peace',
+                      style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF166534),
+                      side: const BorderSide(color: Color(0xFF86EFAC), width: 1.5),
+                      backgroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    ),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      _showCaregiverCallDialog(
+                        'Mrs. Nilanthi Perera',
+                        'Duty Caregiver',
+                        '077 123 4567',
+                        _currentResident.roomNo.isNotEmpty ? _currentResident.roomNo : 'Room 104',
+                        'Serene Valley Senior Living',
+                      );
+                    },
+                    icon: const Text('📞', style: TextStyle(fontSize: 14)),
+                    label: Text(
+                      isSinhala ? 'රැකවරණ නිලධාරියා අමතන්න (Call Caregiver)' : 'Call Caregiver',
+                      style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF7C3AED),
+                      side: const BorderSide(color: Color(0xFFC4B5FD), width: 1.5),
+                      backgroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    ),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: _dispatchDoctorAndCaregiverAlert,
+                    icon: const Text('🩺', style: TextStyle(fontSize: 14)),
+                    label: Text(
+                      isSinhala ? 'වෛද්‍යවරයා හමුවෙන්න අවශ්‍යයි (Alert Doctor)' : 'Alert Doctor',
+                      style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFFDC2626),
+                      side: const BorderSide(color: Color(0xFFFCA5A5), width: 1.5),
+                      backgroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+
+              // SECTION 2: Quick Feelings Suggestions Chips
               Text(
-                currentQ.id == 5
-                    ? 'If you spend most of your day alone in your room, let us talk to explore refreshing activities and beat boredom.'
-                    : (currentQ.id == 4
-                        ? 'If you feel left out when others gather around, let us talk and remind your heart how deeply valuable and cherished you are.'
-                        : (currentQ.id == 3
-                            ? 'If you feel you lack a close friend to talk with here, let us talk and bring warmth and comfort to your heart.'
-                            : (currentQ.id == 2
-                                ? 'If you feel uncertain about your upcoming days, let us talk to bring victorious and joyful hope to your heart.'
-                                : 'I am sorry to hear that. Could you tell me or type what is making you feel this way?'))),
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFFB45309)),
+                isSinhala ? 'ඔබට දැනෙන දේ පහසුවෙන් තෝරන්න (Tap how you feel):' : 'Tap how you feel:',
+                style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF92400E)),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: currentQ.id == 5
+                    ? [
+                        _buildElderQuickChip('🥱 කාමරේ ඉඳලා මට කම්මැලියි, අලස ගතියක් තියෙනවා (Feeling Bored & Sluggish)'),
+                        _buildElderQuickChip('🌿 ගෙවත්තට ගිහින් නැවුම් වාතය විඳින්න ආසයි (Want Garden Stroll & Fresh Air)'),
+                        _buildElderQuickChip('📚 කියවන්න රසවත් පොතක් හෝ පත්තරයක් ඕනෙ (Need a Book/Magazine to Read)'),
+                        _buildElderQuickChip('☕ සවස තේ බොන වෙලාවට මිතුරන් හමුවෙන්න කැමතියි (Join Afternoon Tea Circle)'),
+                        _buildElderQuickChip('🎨 මනස සැහැල්ලු කරන විනෝදාංශයක් හෝ ක්‍රීඩාවක් කරන්න ආසයි (Want Fun Hobbies/Games)'),
+                        _buildElderQuickChip('💆‍♂️ එකම තැන ඉඳලා ඇති වූ මානසික පීඩනය නැති කරන්න (Relieve Room Stress & Heaviness)'),
+                      ]
+                    : (currentQ.id == 4
+                        ? [
+                            _buildElderQuickChip('💔 මට අන් අය මාව නොසලකා හරිනවා වගේ දැනෙනවා (Feel Ignored / Left Out)'),
+                            _buildElderQuickChip('🕊️ මට කතාබහට මැදිහත් වෙන්න ලැජ්ජයි හෝ පැකිලෙනවා (Hesitant to Join In)'),
+                            _buildElderQuickChip('🌟 මම ඉතා වටිනා කෙනෙක් බව මට මතක් කර දෙන්න (Remind Me of My True Value)'),
+                            _buildElderQuickChip('🤝 මාවත් ආදරයෙන් එක් කරගන්නවාට මම කැමතියි (Want to Feel Warmly Included)'),
+                            _buildElderQuickChip('🌸 AI සහායක, මගේ සිතේ තියෙන බර සැහැල්ලු කරන්න (Soothe My Heavy Heart)'),
+                            _buildElderQuickChip('☀️ සතුටින් සහ ආත්ම විශ්වාසයෙන් ඉන්න මඟපෙන්වීමක් ඕනෙ (Need Advice for Self-Confidence)'),
+                          ]
+                        : (currentQ.id == 2
+                            ? [
+                                _buildElderQuickChip('🌅 ඉදිරිය ගැන බයක් සහ අවිනිශ්චිත බවක් තියෙනවා (Uncertain Future)'),
+                                _buildElderQuickChip('🕊️ මට තව කරන්න දෙයක් නෑ වගේ දැනෙනවා (Feeling Aimless)'),
+                                _buildElderQuickChip('☀️ නැවත සතුටින් හිනාවෙලා ඉන්න ආසයි (Want to Feel Joy Again)'),
+                                _buildElderQuickChip('🏆 ජීවිතය ජයගන්න හිත ශක්තිමත් කරගන්න ඕනෙ (Need Strength to Win)'),
+                                _buildElderQuickChip('🌸 ඉදිරියට අලුත් බලාපොරොත්තුවක් අවශ්‍යයි (Need Fresh Hope)'),
+                                _buildElderQuickChip('🤝 මගේ අනාගතයට ආදරණීය සහයෝගය ඕනෙ (Need Caring Support)'),
+                              ]
+                            : (currentQ.id == 3
+                                ? [
+                                    _buildElderQuickChip('🎵 අමරදේවයන්ගේ \'ශාන්ත සන්ධ්‍යාව\' අහන්න කැමතියි (Listen to Amaradeva)'),
+                                    _buildElderQuickChip('🎵 නන්දා මාලිනියන්ගේ \'නිවන් දොරටු පාමුල\' අහන්න කැමතියි (Listen to Nanda Malini)'),
+                                    _buildElderQuickChip('🏡 මෙහි මට කතාබහ කරන්න කවුරුත් නෑ වගේ දැනෙනවා (Feel Like No One to Talk To)'),
+                                    _buildElderQuickChip('💬 මගේ සිතේ තියෙන දේ බෙදාගන්න හොඳ මිතුරෙක් ඕනෙ (Need a Close Confidant)'),
+                                    _buildElderQuickChip('🌸 AI සහායක, ඔබ මා ළඟින් සිටීම මට ලොකු සතුටක් (Glad You Are Here with Me)'),
+                                    _buildElderQuickChip('✨ තනිකම දුරු කරගෙන සතුටින් ඉන්න මඟපෙන්වීමක් ඕනෙ (Need Guidance to Overcome Loneliness)'),
+                                  ]
+                                : (currentQ.id == 6
+                                    ? [
+                                        _buildElderQuickChip('🎵 අමරදේවයන්ගේ \'ශාන්ත සන්ධ්‍යාව\' අහන්න කැමතියි (Listen to Amaradeva)'),
+                                        _buildElderQuickChip('🎵 නන්දා මාලිනියන්ගේ \'නිවන් දොරටු පාමුල\' අහන්න කැමතියි (Listen to Nanda Malini)'),
+                                        _buildElderQuickChip('👨‍👩‍👧‍👦 මාව බලන්න කවුරුත් නෑ, පවුල මතක් වෙනවා (No Visitors / Miss Family)'),
+                                        _buildElderQuickChip('🏡 කතාබහ කරන්න කවුරුත් නෑ, තනිකම දැනෙනවා (No One to Talk To / Lonely)'),
+                                        _buildElderQuickChip('🌸 AI සහායක, ඔබ මා ළඟින් සිටීම ලොකු සතුටක් (Glad You Are With Me)'),
+                                        _buildElderQuickChip('💖 සිතට සතුටක් සහ සැනසීමක් අවශ්‍යයි (Need Peace)'),
+                                      ]
+                                    : [
+                                        _buildElderQuickChip('👨‍👩‍👧‍👦 දරුවන් සහ පවුල මතක් වෙනවා (Miss Family)'),
+                                        _buildElderQuickChip('🏡 තනිකම සහ පාළුව දැනෙනවා (Feel Lonely)'),
+                                        _buildElderQuickChip('🌧️ සිතට දුකක් සහ බරක් තියෙනවා (Feeling Sad)'),
+                                        _buildElderQuickChip('🕊️ සිතට බයක් සහ චකිතයක් තියෙනවා (Anxious)'),
+                                        _buildElderQuickChip('🩺 ඇඟට අමාරු නිසා නොසන්සුන් (Physical Discomfort)'),
+                                        _buildElderQuickChip('🌸 සිතට සතුටක් සහ සැනසීමක් අවශ්‍යයි (Need Peace)'),
+                                      ])))),
+              ),
+              const SizedBox(height: 12),
+
+              // SECTION 3: Text & Voice input for reason
               Container(
                 decoration: BoxDecoration(
                   color: Colors.white,
@@ -5953,15 +6157,17 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                     _detectKeywordsInReason(val);
                   },
                   style: const TextStyle(fontSize: 13, color: AppColors.navy),
-                  decoration: const InputDecoration(
-                    hintText: 'ඔබට එසේ දැනෙන්න හේතුව මෙහි ටයිප් කරන්න... / Type why you feel this way...',
-                    hintStyle: TextStyle(fontSize: 12, color: AppColors.muted),
+                  decoration: InputDecoration(
+                    hintText: isSinhala
+                        ? 'ඔබට එසේ දැනෙන්න හේතුව මෙහි ටයිප් කරන්න... (විකල්පයි)'
+                        : 'Type why you feel this way... (optional)',
+                    hintStyle: const TextStyle(fontSize: 12, color: AppColors.muted),
                     border: InputBorder.none,
-                    contentPadding: EdgeInsets.all(10),
+                    contentPadding: const EdgeInsets.all(10),
                   ),
                 ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -5971,7 +6177,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       decoration: BoxDecoration(
-                        color: _isRecordingReason ? AppColors.riskHigh : AppColors.primary,
+                        color: _isRecordingReason ? AppColors.riskHigh : const Color(0xFF7C3AED),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
@@ -5984,7 +6190,9 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            _isRecordingReason ? 'සවන් දෙමින්... (නැවැත්වීමට ඔබන්න)' : '🎙️ හඬින් පවසන්න (Speak Reason)',
+                            _isRecordingReason
+                                ? (isSinhala ? 'සවන් දෙමින්... (නැවැත්වීමට ඔබන්න)' : 'Listening... (Tap to stop)')
+                                : (isSinhala ? '🎙️ හඬින් පවසන්න (Speak Reason)' : '🎙️ Speak Reason'),
                             style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white),
                           ),
                         ],
@@ -5994,51 +6202,15 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                   if ((_elderNegativeReasons[currentQ.id] ?? '').trim().isNotEmpty)
                     Row(
                       mainAxisSize: MainAxisSize.min,
-                      children: const [
-                        Icon(LucideIcons.checkCheck, size: 14, color: Color(0xFF16A34A)),
-                        SizedBox(width: 4),
+                      children: [
+                        const Icon(LucideIcons.checkCheck, size: 14, color: Color(0xFF16A34A)),
+                        const SizedBox(width: 4),
                         Text(
-                          'හේතුව සටහන් විය (Saved)',
-                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF16A34A)),
+                          isSinhala ? 'හේතුව සටහන් විය (Saved)' : 'Reason Saved',
+                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF16A34A)),
                         ),
                       ],
                     ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                'නැතහොත් පහතින් පහසු විකල්පයක් තෝරන්න (Or choose below):',
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFFB45309)),
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  ActionChip(
-                    avatar: Text(currentQ.id == 5 ? '🌿' : (currentQ.id == 4 ? '🌟' : (currentQ.id == 3 ? '🤝' : (currentQ.id == 2 ? '🌅' : '💬')))),
-                    label: Text(
-                      currentQ.id == 5
-                          ? '🌿 කාමරයේ කම්මැලිකම දුරු කර ප්‍රබෝධමත් වෙන්න කතාබහ කරමු (Talk for Active Refreshment)'
-                          : (currentQ.id == 4
-                              ? '🌟 ඔබ ඉතා වටිනා කෙනෙක් බව වටහාගන්න කතාබහ කරමු (Talk to Realize Your Value)'
-                              : (currentQ.id == 3
-                                  ? '🤝 මා සමඟ කතාබහ කර තනිකම දුරු කරගන්න (Talk to Beat Loneliness)'
-                                  : (currentQ.id == 2
-                                      ? '🌅 නව බලාපොරොත්තු සහ ජයග්‍රාහී සිතුවිලි සඳහා කතාබහ කරමු (Talk for Renewed Hope)'
-                                      : 'ඔබ මාත් එක්ක කතා කරන්න කැමතිද? (Talk with me)'))),
-                    ),
-                    backgroundColor: Colors.white,
-                    side: BorderSide(color: (currentQ.id == 2 || currentQ.id == 3 || currentQ.id == 4 || currentQ.id == 5) ? const Color(0xFF86EFAC) : const Color(0xFF93C5FD)),
-                    onPressed: _startAiConversationIntervention,
-                  ),
-                  ActionChip(
-                    avatar: const Text('🌿'),
-                    label: const Text('මට ටිකක් නිදහසේ ඉන්න ඕනෙ (Just need quiet/peace)'),
-                    backgroundColor: Colors.white,
-                    side: const BorderSide(color: Color(0xFFC4B5FD)),
-                    onPressed: _selectQuietPath,
-                  ),
                 ],
               ),
             ],
