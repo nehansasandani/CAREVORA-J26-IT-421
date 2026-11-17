@@ -71,6 +71,7 @@ flutter:
   uses-material-design: true
 
   assets:
+    - assets/images/
     - assets/images/landing/
     - assets/images/landing/senior_neutral_calm_face.jpg
     - assets/images/landing/senior_happy_face.jpg
