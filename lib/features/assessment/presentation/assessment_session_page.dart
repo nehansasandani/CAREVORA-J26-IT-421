@@ -36,11 +36,17 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
   int _currentIndex = 0;
   final List<CognitiveQuestionItem> _questions = CognitiveScoring.questions;
 
-  // Single Source of Truth: Question grades (id -> 1.0, 0.5, 0.0, or null if ungraded)
-  final Map<int, double?> _grades = {};
+  // Separate English & Sinhala response and grade maps so answers in one language
+  // do not appear in the other language view.
+  final Map<int, double?> _gradesEn = {};
+  final Map<int, double?> _gradesSi = {};
+  final Map<int, String> _responsesEn = {};
+  final Map<int, String> _responsesSi = {};
 
-  // Single Source of Truth: Per-question response text (manual keyboard or voice transcribed)
-  final Map<int, String> _responses = {};
+  Map<int, double?> get _grades =>
+      ref.read(languageProvider).isSinhala ? _gradesSi : _gradesEn;
+  Map<int, String> get _responses =>
+      ref.read(languageProvider).isSinhala ? _responsesSi : _responsesEn;
   late TextEditingController _responseController;
 
   // Timing: active question viewing duration
@@ -279,6 +285,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
 
           setState(() {
             _isListening = false;
+            final isSinhala = ref.read(languageProvider).isSinhala;
             final text = _responseController.text.trim();
             debugPrint(
               '[CARE-STT] [7. Final Save Tracking] End status "$status". '
@@ -288,12 +295,16 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
               if (text.isNotEmpty) {
                 _responses[currentQId] = text;
                 _grades[currentQId] = CognitiveScoring.scoreQuestion(currentQId, text);
-                _speechStatusMessage = 'Voice response captured.';
+                _speechStatusMessage = isSinhala
+                    ? 'හඬ පිළිතුර සටහන් විය.'
+                    : 'Voice response captured.';
                 _persistResponses();
               } else {
-                if (_speechStatusMessage == 'Listening... Speak now.') {
-                  _speechStatusMessage =
-                      'Speech not recognized. Please tap the microphone to retry or type your answer.';
+                if (_speechStatusMessage == 'Listening... Speak now.' ||
+                    _speechStatusMessage == 'සවන් දෙමින්... දැන් කතා කරන්න.') {
+                  _speechStatusMessage = isSinhala
+                      ? 'හඬ හඳුනාගත නොහැකි විය. කරුණාකර නැවත උත්සාහ කරන්න හෝ පිළිතුර ටයිප් කරන්න.'
+                      : 'Speech not recognized. Please tap the microphone to retry or type your answer.';
                 }
               }
             }
@@ -318,34 +329,40 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
       if (mounted) {
         setState(() {
           _isListening = false;
+          final isSinhala = ref.read(languageProvider).isSinhala;
           final existing = _responseController.text.trim();
           if (existing.isNotEmpty && _currentIndex < _questions.length) {
             final qId = _questions[_currentIndex].id;
             _responses[qId] = existing;
-            if (_grades[qId] == null) {
-              _grades[qId] = CognitiveScoring.scoreQuestion(qId, existing);
-            }
-            _speechStatusMessage = 'Voice response captured.';
+            _grades[qId] = CognitiveScoring.scoreQuestion(qId, existing);
+            _speechStatusMessage = isSinhala
+                ? 'හඬ පිළිතුර සටහන් විය.'
+                : 'Voice response captured.';
             _persistResponses();
           } else {
             if (errorMsg.contains('aborted')) {
               return;
             }
             if (errorMsg.contains('no-speech') || errorMsg.contains('error_no_match')) {
-              _speechStatusMessage =
-                  'Speech not recognized. Please tap the microphone to retry or type your answer.';
+              _speechStatusMessage = isSinhala
+                  ? 'හඬ හඳුනාගත නොහැකි විය. කරුණාකර නැවත උත්සාහ කරන්න හෝ පිළිතුර ටයිප් කරන්න.'
+                  : 'Speech not recognized. Please tap the microphone to retry or type your answer.';
             } else if (errorMsg.contains('not-allowed') || errorMsg.contains('permission')) {
-              _speechStatusMessage =
-                  'Microphone permission denied. Please allow microphone access in Chrome or type your answer.';
+              _speechStatusMessage = isSinhala
+                  ? 'මයික්‍රොෆෝන අවසරය ලබා දී නොමැත. කරුණාකර අවසර ලබා දෙන්න හෝ පිළිතුර ටයිප් කරන්න.'
+                  : 'Microphone permission denied. Please allow microphone access in Chrome or type your answer.';
             } else if (errorMsg.contains('network')) {
-              _speechStatusMessage =
-                  'Speech service network issue. Please check connection or type your answer.';
+              _speechStatusMessage = isSinhala
+                  ? 'ජාල ගැටලුවකි. කරුණාකර පිළිතුර පහතින් ටයිප් කරන්න.'
+                  : 'Speech service network issue. Please check connection or type your answer.';
             } else if (errorMsg.contains('already started') || errorMsg.contains('invalidstateerror')) {
-              _speechStatusMessage =
-                  'Please tap the microphone again to speak.';
+              _speechStatusMessage = isSinhala
+                  ? 'කතා කිරීමට නැවත මයික්‍රොෆෝනය ඔබන්න.'
+                  : 'Please tap the microphone again to speak.';
             } else {
-              _speechStatusMessage =
-                  'Audio note: $errorMsg. Please retry or type your answer.';
+              _speechStatusMessage = isSinhala
+                  ? 'කරුණාකර නැවත උත්සාහ කරන්න හෝ ඔබේ පිළිතුර ටයිප් කරන්න.'
+                  : 'Audio note: $errorMsg. Please retry or type your answer.';
             }
           }
         });
@@ -495,8 +512,10 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
       _resident = found;
       _customEducationYears = null;
       _customAge = null;
-      _responses.clear();
-      _grades.clear();
+      _responsesEn.clear();
+      _responsesSi.clear();
+      _gradesEn.clear();
+      _gradesSi.clear();
       _questionTimes.clear();
       _currentIndex = 0;
       _responseController.clear();
@@ -527,6 +546,15 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
     });
 
     try {
+      final prefs = await SharedPreferences.getInstance();
+      final isSinhala = ref.read(languageProvider).isSinhala;
+      await prefs.remove(
+        isSinhala ? 'cognitive_responses_si_$residentId' : 'cognitive_responses_en_$residentId',
+      );
+      await prefs.remove('cognitive_responses_$residentId');
+    } catch (_) {}
+
+    try {
       final session = await CognitiveAssessmentService.startSession(
         residentId: residentId,
         token: token,
@@ -540,10 +568,48 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
     } catch (_) {}
   }
 
+  static final RegExp _sinhalaCharRegex = RegExp(r'[\u0D80-\u0DFF]');
+
   Future<void> _loadSavedResidentResponses(int residentId) async {
     final token = ref.read(authProvider).state.token;
 
-    // 1. First retrieve active/pending session from the existing backend
+    // 1. Load language-separated responses from SharedPreferences first
+    bool hasLocalLangPrefs = false;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedEnJson = prefs.getString('cognitive_responses_en_$residentId');
+      final savedSiJson = prefs.getString('cognitive_responses_si_$residentId');
+
+      if (savedEnJson != null && savedEnJson.isNotEmpty) {
+        hasLocalLangPrefs = true;
+        final decoded = json.decode(savedEnJson) as Map<String, dynamic>;
+        decoded.forEach((key, val) {
+          final qId = int.tryParse(key);
+          if (qId != null && val is String && val.trim().isNotEmpty) {
+            if (!_sinhalaCharRegex.hasMatch(val)) {
+              _responsesEn[qId] = val;
+              _gradesEn[qId] = CognitiveScoring.scoreQuestion(qId, val);
+            }
+          }
+        });
+      }
+
+      if (savedSiJson != null && savedSiJson.isNotEmpty) {
+        hasLocalLangPrefs = true;
+        final decoded = json.decode(savedSiJson) as Map<String, dynamic>;
+        decoded.forEach((key, val) {
+          final qId = int.tryParse(key);
+          if (qId != null && val is String && val.trim().isNotEmpty) {
+            if (!RegExp(r'[a-zA-Z]').hasMatch(val) || _sinhalaCharRegex.hasMatch(val)) {
+              _responsesSi[qId] = val;
+              _gradesSi[qId] = CognitiveScoring.scoreQuestion(qId, val);
+            }
+          }
+        });
+      }
+    } catch (_) {}
+
+    // 2. Retrieve active/pending session from the backend
     try {
       final pendingSession = await CognitiveAssessmentService.getPendingSession(
         residentId: residentId,
@@ -553,11 +619,19 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
         setState(() {
           _sessionId = pendingSession.sessionId;
           _sessionStatus = pendingSession.status;
-          if (pendingSession.responses.isNotEmpty) {
-            _responses.addAll(pendingSession.responses);
-          }
-          if (pendingSession.grades.isNotEmpty) {
-            _grades.addAll(pendingSession.grades);
+          if (!hasLocalLangPrefs && pendingSession.responses.isNotEmpty) {
+            for (final entry in pendingSession.responses.entries) {
+              final qId = entry.key;
+              final val = entry.value;
+              if (val.trim().isEmpty) continue;
+              if (_sinhalaCharRegex.hasMatch(val)) {
+                _responsesSi[qId] = val;
+                _gradesSi[qId] = CognitiveScoring.scoreQuestion(qId, val);
+              } else {
+                _responsesEn[qId] = val;
+                _gradesEn[qId] = CognitiveScoring.scoreQuestion(qId, val);
+              }
+            }
           }
           if (pendingSession.questionTimes.isNotEmpty) {
             _questionTimes.addAll(pendingSession.questionTimes);
@@ -569,7 +643,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
       }
     } catch (_) {}
 
-    // 2. If no pending session, start a new session on backend
+    // 3. If no pending session, start a new session on backend
     if (_sessionId == null) {
       try {
         final newSession = await CognitiveAssessmentService.startSession(
@@ -585,26 +659,12 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
       } catch (_) {}
     }
 
-    // 3. SharedPreferences offline fallback
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final savedJson = prefs.getString('cognitive_responses_$residentId');
-      if (savedJson != null && savedJson.isNotEmpty) {
-        final decoded = json.decode(savedJson) as Map<String, dynamic>;
-        if (mounted) {
-          setState(() {
-            decoded.forEach((key, val) {
-              final qId = int.tryParse(key);
-              if (qId != null && val is String && val.trim().isNotEmpty) {
-                _responses[qId] ??= val;
-              }
-            });
-            _responseController.text =
-                _responses[_questions[_currentIndex].id] ?? '';
-          });
-        }
-      }
-    } catch (_) {}
+    if (mounted) {
+      setState(() {
+        _responseController.text =
+            _responses[_questions[_currentIndex].id] ?? '';
+      });
+    }
   }
 
   Future<void> _persistResponses() async {
@@ -613,7 +673,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
 
     final token = ref.read(authProvider).state.token;
 
-    // Save to existing backend H2 database
+    // Save current active language responses to backend
     if (_sessionId != null) {
       try {
         await CognitiveAssessmentService.saveResponses(
@@ -625,13 +685,18 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
       } catch (_) {}
     }
 
-    // Local SharedPreferences fallback
+    // Save English and Sinhala responses strictly in separate keys
     try {
       final prefs = await SharedPreferences.getInstance();
-      final map = {
-        for (final e in _responses.entries) e.key.toString(): e.value,
+      final mapEn = {
+        for (final e in _responsesEn.entries) e.key.toString(): e.value,
       };
-      await prefs.setString('cognitive_responses_$rId', json.encode(map));
+      final mapSi = {
+        for (final e in _responsesSi.entries) e.key.toString(): e.value,
+      };
+      await prefs.setString('cognitive_responses_en_$rId', json.encode(mapEn));
+      await prefs.setString('cognitive_responses_si_$rId', json.encode(mapSi));
+      await prefs.remove('cognitive_responses_$rId');
     } catch (_) {}
   }
 
@@ -666,8 +731,12 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
     final qId = _questions[_currentIndex].id;
     final text = _responseController.text;
     _responses[qId] = text;
-    if (_grades[qId] == null && text.trim().isNotEmpty) {
-      _grades[qId] = CognitiveScoring.scoreQuestion(qId, text);
+    if (text.trim().isNotEmpty) {
+      final isElder = ref.read(authProvider).state.isElder;
+      final computed = CognitiveScoring.scoreQuestion(qId, text);
+      if (isElder || _grades[qId] == null || (_grades[qId] == 0.0 && (computed ?? 0.0) > 0.0)) {
+        _grades[qId] = computed;
+      }
     }
     _persistResponses();
     if (text.trim().isNotEmpty) {
@@ -681,6 +750,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
       debugPrint('[CARE-STT] [6. Stop/Cancel Reason] Stopped microphone because TTS audio playback started.');
       await _speech.stop();
       if (mounted) {
+        final isSinhala = ref.read(languageProvider).isSinhala;
         setState(() {
           _isListening = false;
           final text = _responseController.text.trim();
@@ -688,7 +758,9 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
             final qId = _questions[_currentIndex].id;
             _responses[qId] = text;
             _grades[qId] = CognitiveScoring.scoreQuestion(qId, text);
-            _speechStatusMessage = 'Voice response captured.';
+            _speechStatusMessage = isSinhala
+                ? 'හඬ පිළිතුර සටහන් විය.'
+                : 'Voice response captured.';
             _persistResponses();
             _triggerSaveAnimation();
           }
@@ -749,9 +821,13 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
     _isTogglingMic = true;
 
     try {
+      final isSinhala = ref.read(languageProvider).isSinhala;
+      final sttLocale = isSinhala
+          ? (kIsWeb ? 'si-LK' : 'si_LK')
+          : (kIsWeb ? 'en-US' : 'en_US');
       final qId = _currentIndex < _questions.length ? _questions[_currentIndex].id : -1;
       debugPrint(
-        '[CARE-STT] [1. Mic Pressed] qId=$qId, isListening=$_isListening, '
+        '[CARE-STT] [1. Mic Pressed] qId=$qId, locale=$sttLocale, isListening=$_isListening, '
         'speechListening=${_speech.isListening}, isSpeaking=$_isSpeaking, '
         'speechAvailable=$_speechAvailable, speechInitialized=$_speechInitialized, '
         'currentBuffer="${_responseController.text}"',
@@ -779,12 +855,15 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
             if (text.isNotEmpty) {
               _responses[qId] = text;
               _grades[qId] = CognitiveScoring.scoreQuestion(qId, text);
-              _speechStatusMessage = 'Voice response captured.';
+              _speechStatusMessage = isSinhala
+                  ? 'හඬ පිළිතුර සටහන් විය.'
+                  : 'Voice response captured.';
               _persistResponses();
               _triggerSaveAnimation();
             } else {
-              _speechStatusMessage =
-                  'Speech not recognized. Please tap the microphone to retry or type your answer.';
+              _speechStatusMessage = isSinhala
+                  ? 'හඬ හඳුනාගත නොහැකි විය. කරුණාකර නැවත උත්සාහ කරන්න හෝ පිළිතුර ටයිප් කරන්න.'
+                  : 'Speech not recognized. Please tap the microphone to retry or type your answer.';
             }
           });
         }
@@ -797,8 +876,9 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
       if (!_speechAvailable) {
         debugPrint('[CARE-STT] [3. Listen Failed] Speech not available. Cannot start listening.');
         setState(() {
-          _speechStatusMessage =
-              'Microphone not available. Please enter the answer manually below or apply caregiver clinical scoring.';
+          _speechStatusMessage = isSinhala
+              ? 'මයික්‍රොෆෝනය භාවිතා කළ නොහැක. කරුණාකර පහතින් ඔබේ පිළිතුර ටයිප් කරන්න.'
+              : 'Microphone not available. Please enter the answer manually below or apply caregiver clinical scoring.';
         });
         return;
       }
@@ -814,7 +894,9 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
       _listeningQId = qId;
       setState(() {
         _isListening = true;
-        _speechStatusMessage = 'Listening... Speak now.';
+        _speechStatusMessage = isSinhala
+            ? 'සවන් දෙමින්... දැන් කතා කරන්න.'
+            : 'Listening... Speak now.';
       });
 
       final currentSessionId = ++_activeListeningSessionId;
@@ -823,7 +905,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
       try {
         debugPrint(
           '[CARE-STT] [3. Listen Start Attempt] Calling _speech.listen for qId=$targetQId (session $currentSessionId), '
-          'currentText="${_responseController.text}"',
+          'locale=$sttLocale, currentText="${_responseController.text}"',
         );
         await _speech.listen(
           onResult: (result) {
@@ -850,10 +932,8 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
               );
               if (incomingTrimmed.isNotEmpty) {
                 _responses[targetQId] = incoming;
-                if (_grades[targetQId] == null) {
-                  _grades[targetQId] =
-                      CognitiveScoring.scoreQuestion(targetQId, incoming);
-                }
+                _grades[targetQId] =
+                    CognitiveScoring.scoreQuestion(targetQId, incoming);
                 _persistResponses();
               }
               return;
@@ -867,6 +947,8 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                     offset: incoming.length,
                   );
                   _responses[targetQId] = incoming;
+                  _grades[targetQId] =
+                      CognitiveScoring.scoreQuestion(targetQId, incoming);
                 }
               });
               // NOTE: We do not invoke _persistResponses() on partial callbacks.
@@ -879,7 +961,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
             pauseFor: kIsWeb ? null : const Duration(seconds: 5),
             cancelOnError: false,
             partialResults: true,
-            localeId: 'en_US',
+            localeId: sttLocale,
           ),
         );
         debugPrint('[CARE-STT] [3. Listen Started] Session active: speechListening=${_speech.isListening}');
@@ -915,10 +997,8 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                       _questions[_currentIndex].id != targetQId) {
                     if (incomingTrimmed.isNotEmpty) {
                       _responses[targetQId] = incoming;
-                      if (_grades[targetQId] == null) {
-                        _grades[targetQId] =
-                            CognitiveScoring.scoreQuestion(targetQId, incoming);
-                      }
+                      _grades[targetQId] =
+                          CognitiveScoring.scoreQuestion(targetQId, incoming);
                       _persistResponses();
                     }
                     return;
@@ -932,6 +1012,8 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                           offset: incoming.length,
                         );
                         _responses[targetQId] = incoming;
+                        _grades[targetQId] =
+                            CognitiveScoring.scoreQuestion(targetQId, incoming);
                       }
                     });
                   }
@@ -942,7 +1024,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                   pauseFor: kIsWeb ? null : const Duration(seconds: 5),
                   cancelOnError: false,
                   partialResults: true,
-                  localeId: 'en_US',
+                  localeId: sttLocale,
                 ),
               );
               debugPrint('[CARE-STT] Retry listen active on fresh engine!');
@@ -957,10 +1039,13 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
           setState(() {
             _isListening = false;
             if (errStr.contains('not-allowed') || errStr.contains('permission')) {
-              _speechStatusMessage =
-                  'Microphone permission denied. Please allow microphone access in Chrome or type your answer.';
+              _speechStatusMessage = isSinhala
+                  ? 'මයික්‍රොෆෝන අවසරය ලබා දී නොමැත. කරුණාකර අවසර ලබා දෙන්න හෝ පිළිතුර ටයිප් කරන්න.'
+                  : 'Microphone permission denied. Please allow microphone access in Chrome or type your answer.';
             } else {
-              _speechStatusMessage = 'Please tap the microphone again to speak.';
+              _speechStatusMessage = isSinhala
+                  ? 'කතා කිරීමට නැවත මයික්‍රොෆෝනය ඔබන්න.'
+                  : 'Please tap the microphone again to speak.';
             }
           });
         }
@@ -1058,11 +1143,16 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
 
   Future<void> _submitCaregiverAssessment() async {
     _saveCurrentQuestionState();
+    final authState = ref.read(authProvider).state;
+    final isElder = authState.isElder;
 
     // Auto-grade all answered questions using question-specific deterministic rubric
     final autoGrades = CognitiveScoring.autoScoreBattery(_responses);
     for (final e in autoGrades.entries) {
-      if (_grades[e.key] == null && e.value != null) {
+      if (e.value != null &&
+          (isElder ||
+              _grades[e.key] == null ||
+              (_grades[e.key] == 0.0 && e.value! > 0.0))) {
         _grades[e.key] = e.value;
       }
     }
@@ -1077,7 +1167,6 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
       return;
     }
 
-    final authState = ref.read(authProvider).state;
     final token = authState.token;
 
     setState(() {
@@ -1230,6 +1319,11 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
       try {
         final prefs = await SharedPreferences.getInstance();
         await prefs.remove('cognitive_responses_$residentId');
+        await prefs.remove(
+          ref.read(languageProvider).isSinhala
+              ? 'cognitive_responses_si_$residentId'
+              : 'cognitive_responses_en_$residentId',
+        );
       } catch (_) {}
 
       if (mounted) {
@@ -1279,14 +1373,33 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
     final currentQ = _questions[_currentIndex];
     if (_lastSpokenLanguage != null &&
         _lastSpokenLanguage != langNotifier.currentLanguage) {
+      final prevWasSinhala = _lastSpokenLanguage == AppLanguage.sinhala;
+      final prevResponses = prevWasSinhala ? _responsesSi : _responsesEn;
+      final prevGrades = prevWasSinhala ? _gradesSi : _gradesEn;
+      final prevText = _responseController.text;
+      prevResponses[currentQ.id] = prevText;
+      if (prevText.trim().isNotEmpty) {
+        prevGrades[currentQ.id] =
+            CognitiveScoring.scoreQuestion(currentQ.id, prevText);
+      }
       _lastSpokenLanguage = langNotifier.currentLanguage;
+      final nextResponses = isSinhala ? _responsesSi : _responsesEn;
+      _responseController.text = nextResponses[currentQ.id] ?? '';
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           TtsService.instance.stop();
           _flutterTts.stop();
+          if (_isListening || _speech.isListening) {
+            _activeListeningSessionId++;
+            try {
+              _speech.stop();
+            } catch (_) {}
+          }
           setState(() {
             _isSpeaking = false;
             _isSpeakingPrompt = false;
+            _isListening = false;
+            _speechStatusMessage = null;
           });
         }
       });
@@ -1298,74 +1411,962 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
     final progressPct = _getProgressPct(isElder);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFBFBFE),
-      body: Stack(
-        children: [
-          // Subtle, calm therapeutic animated background suitable for elderly users
-          Positioned.fill(
-            child: _buildSubtleTherapeuticBackground(),
-          ),
+      backgroundColor: const Color(0xFFF6F2FF),
+      body: SizedBox.expand(
+        child: Stack(
+          children: [
+            // Subtle, calm therapeutic animated background suitable for elderly users
+            Positioned.fill(
+              child: _buildSubtleTherapeuticBackground(),
+            ),
 
-          // Main scrollable workspace
-          SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Top Navigation Bar & Timer (Responsive Wrap)
-                _buildTopNavBar(),
-                const SizedBox(height: 16),
+            // Animated swaying floral garden along the bottom of the screen for Elder view
+            if (isElder)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: _buildAnimatedBottomFlowerGarden(),
+              ),
 
-                if (!isElder && _isLoadingResidents) ...[
-                  _buildLoadingResidentsState(),
-                ] else if (!isElder && _residentLoadError != null) ...[
-                  _buildResidentErrorState(_residentLoadError!),
-                ] else if (!isElder && _availableResidents.isEmpty) ...[
-                  _buildEmptyResidentsState(),
-                ] else ...[
-                  // Resident Context Banner
-                  _buildResidentBanner(isElder),
-                  const SizedBox(height: 20),
+            // Main scrollable workspace
+            SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(
+                isElder ? 20 : 24,
+                isElder ? 12 : 20,
+                isElder ? 20 : 24,
+                isElder ? 85 : 20,
+              ),
+              child: isElder
+                  ? _buildElderMinimalistView(currentQ, progressPct, isSinhala)
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Top Navigation Bar & Timer (Responsive Wrap)
+                      _buildTopNavBar(),
+                      const SizedBox(height: 16),
 
-                  // Main 2-Column Responsive Assessment Workspace
-                  ResponsiveBuilder(
-                    mobile: (context) => Column(
-                      children: [
-                        _buildMainQuestionWorkspace(
-                          currentQ,
-                          progressPct,
-                          currentGrade,
-                          isElder,
-                        ),
+                      if (_isLoadingResidents) ...[
+                        _buildLoadingResidentsState(),
+                      ] else if (_residentLoadError != null) ...[
+                        _buildResidentErrorState(_residentLoadError!),
+                      ] else if (_availableResidents.isEmpty) ...[
+                        _buildEmptyResidentsState(),
+                      ] else ...[
+                        // Resident Context Banner
+                        _buildResidentBanner(isElder),
                         const SizedBox(height: 20),
-                        _buildRightPanel(progressPct, isElder, currentQ),
-                      ],
-                    ),
-                    desktop: (context) => Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          flex: 7,
-                          child: _buildMainQuestionWorkspace(
-                            currentQ,
-                            progressPct,
-                            currentGrade,
-                            isElder,
+
+                        // Main 2-Column Responsive Assessment Workspace
+                        ResponsiveBuilder(
+                          mobile: (context) => Column(
+                            children: [
+                              _buildMainQuestionWorkspace(
+                                currentQ,
+                                progressPct,
+                                currentGrade,
+                                isElder,
+                              ),
+                              const SizedBox(height: 20),
+                              _buildRightPanel(progressPct, isElder, currentQ),
+                            ],
+                          ),
+                          desktop: (context) => Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                flex: 7,
+                                child: _buildMainQuestionWorkspace(
+                                  currentQ,
+                                  progressPct,
+                                  currentGrade,
+                                  isElder,
+                                ),
+                              ),
+                              const SizedBox(width: 20),
+                              Expanded(
+                                flex: 3,
+                                child: _buildRightPanel(progressPct, isElder, currentQ),
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(width: 20),
-                        Expanded(
-                          flex: 3,
-                          child: _buildRightPanel(progressPct, isElder, currentQ),
+                      ],
+                    ],
+                  ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAnimatedBottomFlowerGarden() {
+    return IgnorePointer(
+      child: AnimatedBuilder(
+        animation: Listenable.merge([_floatingController, _ambientBgController]),
+        builder: (context, _) {
+          final sway = _floatingController.value; // 0.0 -> 1.0 -> 0.0 (3.2s cycle)
+          final breeze = _ambientBgAnimation.value; // slow 14s drift
+          final angleLeft = (sway - 0.5) * 0.08;
+          final angleRight = (0.5 - sway) * 0.08;
+
+          return SizedBox(
+            height: 115,
+            width: double.infinity,
+            child: Stack(
+              alignment: Alignment.bottomCenter,
+              clipBehavior: Clip.none,
+              children: [
+                // Custom-painted swaying meadow of flowers, stems, leaves & floating petals
+                Positioned.fill(
+                  child: CustomPaint(
+                    painter: _SwayingFloralMeadowPainter(
+                      swayValue: sway,
+                      breezeValue: breeze,
+                    ),
+                  ),
+                ),
+
+                // Left corner swaying floral bouquet accent
+                Positioned(
+                  left: 16,
+                  bottom: -14,
+                  child: Transform.rotate(
+                    angle: angleLeft,
+                    alignment: Alignment.bottomCenter,
+                    child: Opacity(
+                      opacity: 0.72,
+                      child: Image.asset(
+                        'assets/images/banner_flowers_fade.png',
+                        width: 120,
+                        height: 110,
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                      ),
+                    ),
+                  ),
+                ),
+
+                // Right corner swaying floral bouquet accent
+                Positioned(
+                  right: 16,
+                  bottom: -14,
+                  child: Transform.scale(
+                    scaleX: -1,
+                    child: Transform.rotate(
+                      angle: angleRight,
+                      alignment: Alignment.bottomCenter,
+                      child: Opacity(
+                        opacity: 0.72,
+                        child: Image.asset(
+                          'assets/images/banner_flowers_fade.png',
+                          width: 120,
+                          height: 110,
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, __, ___) => const SizedBox.shrink(),
                         ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildElderMinimalistView(
+    CognitiveQuestionItem currentQ,
+    int progressPct,
+    bool isSinhala,
+  ) {
+    final bool isLastQuestion = _currentIndex >= _questions.length - 1;
+    final bool isAnswered = _isAnswered(currentQ.id);
+    final bool hasStatus = _speechStatusMessage != null;
+    final bool statusOk = hasStatus &&
+        (_speechStatusMessage!.contains('captured') ||
+            _speechStatusMessage!.contains('සටහන් විය'));
+    final String promptText = (isSinhala && currentQ.promptSinhala.isNotEmpty)
+        ? currentQ.promptSinhala
+        : currentQ.prompt;
+
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 920),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // 1. Attractive Welcome Elder Hero Banner (Minimal Words + Profile Picture)
+            _buildElderWelcomeHeroBanner(progressPct, isSinhala),
+            const SizedBox(height: 14),
+
+            // 2. Smart, Minimal, Attractive Question & Voice Studio Card
+            _buildElderSmartQuestionStudio(
+              currentQ: currentQ,
+              promptText: promptText,
+              progressPct: progressPct,
+              isSinhala: isSinhala,
+              isLastQuestion: isLastQuestion,
+              isAnswered: isAnswered,
+              hasStatus: hasStatus,
+              statusOk: statusOk,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildElderWelcomeHeroBanner(int progressPct, bool isSinhala) {
+    final authState = ref.watch(authProvider).state;
+    final res = _resident;
+    final rawName = (res != null && res.name.trim().isNotEmpty && res.name.trim() != '-')
+        ? res.name.trim()
+        : (authState.userName?.trim().isNotEmpty == true
+            ? authState.userName!.trim()
+            : 'Malini Bandara');
+    final displayName = isSinhala ? _toSinhalaName(rawName) : rawName;
+    final initials = _getInitials(rawName);
+    final avatarUrl = (res?.avatarUrl != null && res!.avatarUrl!.trim().isNotEmpty)
+        ? res.avatarUrl
+        : authState.avatarUrl;
+    final facilityName = res?.elderHomeName ??
+        authState.elderHomeName ??
+        'Serenity Elder Home';
+
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [
+            Color(0xFFFFFFFF),
+            Color(0xFFFAF7FF),
+            Color(0xFFF3ECFF),
+            Color(0xFFEDE4FF),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(
+          color: const Color(0xFFD8B4FE).withValues(alpha: 0.65),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF6C3FC5).withValues(alpha: 0.12),
+            blurRadius: 34,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(27),
+        child: Stack(
+          children: [
+            // Decorative glowing AI rings on the right
+            Positioned(
+              top: -70,
+              right: -50,
+              child: IgnorePointer(
+                child: AnimatedBuilder(
+                  animation: _ambientPulseAnimation,
+                  builder: (context, _) {
+                    final s = _ambientPulseAnimation.value;
+                    return Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Container(
+                          width: 260 * s,
+                          height: 260 * s,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: RadialGradient(
+                              colors: [
+                                const Color(0xFFC4B5FD).withValues(alpha: 0.42),
+                                const Color(0xFFC4B5FD).withValues(alpha: 0.0),
+                              ],
+                            ),
+                          ),
+                        ),
+                        Container(
+                          width: 190,
+                          height: 190,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: const Color(0xFF8B5CF6).withValues(alpha: 0.14),
+                              width: 1.5,
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ),
+
+            // Soft floral accent artwork in bottom-right corner
+            Positioned(
+              right: 12,
+              bottom: -18,
+              child: IgnorePointer(
+                child: Opacity(
+                  opacity: 0.35,
+                  child: Image.asset(
+                    'assets/images/banner_flowers_fade.png',
+                    width: 140,
+                    height: 140,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                  ),
+                ),
+              ),
+            ),
+
+            // Top multi-color Smart AI gradient bar
+            Container(
+              height: 5,
+              width: double.infinity,
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Color(0xFF6C3FC5),
+                    Color(0xFF8B5CF6),
+                    Color(0xFFEC4899),
+                    Color(0xFF0D9488),
+                  ],
+                ),
+              ),
+            ),
+
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
+              child: Wrap(
+                spacing: 16,
+                runSpacing: 12,
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Glowing Elder Profile Picture Avatar
+                      Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(3),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: const LinearGradient(
+                                colors: [
+                                  Color(0xFF6C3FC5),
+                                  Color(0xFFEC4899),
+                                  Color(0xFF8B5CF6),
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF6C3FC5).withValues(alpha: 0.28),
+                                  blurRadius: 14,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Container(
+                              padding: const EdgeInsets.all(2),
+                              decoration: const BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                              ),
+                              child: CarevoraAvatar(
+                                key: const ValueKey('elder_welcome_hero_avatar'),
+                                avatarUrl: avatarUrl,
+                                radius: 26,
+                                initials: initials,
+                                backgroundColor: const Color(0xFFEDE9FE),
+                                foregroundColor: const Color(0xFF6C3FC5),
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            right: 1,
+                            bottom: 1,
+                            child: Container(
+                              width: 14,
+                              height: 14,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF10B981),
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.white, width: 2),
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            top: -2,
+                            right: -2,
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [Color(0xFFF59E0B), Color(0xFFF97316)],
+                                ),
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.white, width: 1.5),
+                              ),
+                              child: const Icon(
+                                LucideIcons.sparkles,
+                                size: 9,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(width: 14),
+
+                      // Short, Clear Welcome Name & Subtitle
+                      Flexible(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              isSinhala
+                                  ? 'ආයුබෝවන්, $displayName! 👋'
+                                  : 'Welcome, $rawName! 👋',
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.navy,
+                                letterSpacing: -0.3,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  LucideIcons.sparkles,
+                                  size: 13,
+                                  color: AppColors.primary,
+                                ),
+                                const SizedBox(width: 5),
+                                Flexible(
+                                  child: Text(
+                                    isSinhala
+                                        ? 'මතක පරීක්ෂාව • $facilityName'
+                                        : 'Smart Memory Check • $facilityName',
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF5B21B6),
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  // Right-side Compact Progress Ring & Quick Buttons
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 8,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.92),
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: const Color(0xFFDDD6FE)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SizedBox(
+                              width: 38,
+                              height: 38,
+                              child: Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  CircularProgressIndicator(
+                                    value: _totalCount == 0 ? 0.0 : (progressPct / 100.0),
+                                    strokeWidth: 4.5,
+                                    strokeCap: StrokeCap.round,
+                                    backgroundColor: const Color(0xFFEDE9FE),
+                                    valueColor: const AlwaysStoppedAnimation<Color>(
+                                      Color(0xFF6C3FC5),
+                                    ),
+                                  ),
+                                  Text(
+                                    '$progressPct%',
+                                    style: const TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppColors.navy,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Text(
+                              '$_answeredCount / $_totalCount',
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.navy,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: _startNewAssessmentSession,
+                          borderRadius: BorderRadius.circular(16),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.92),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: const Color(0xFFDDD6FE)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(LucideIcons.rotateCcw, size: 15, color: AppColors.primary),
+                                const SizedBox(width: 6),
+                                Text(
+                                  isSinhala ? 'මුල සිට' : 'Reset',
+                                  style: const TextStyle(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _toSinhalaName(String name) {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) return 'කුමාර';
+
+    const Map<String, String> knownWords = {
+      'malini': 'මාලිනී',
+      'bandara': 'බණ්ඩාර',
+      'indika': 'ඉන්දික',
+      'perera': 'පෙරේරා',
+      'kumara': 'කුමාර',
+      'kamal': 'කමල්',
+      'nimal': 'නිමල්',
+      'sunil': 'සුනිල්',
+      'siripala': 'සිරිපාල',
+      'sirisena': 'සිරිසේන',
+      'seetha': 'සීතා',
+      'nanda': 'නන්දා',
+      'kusuma': 'කුසුමා',
+      'soma': 'සෝමා',
+      'senarath': 'සෙනරත්',
+      'silva': 'සිල්වා',
+      'fernando': 'ප්‍රනාන්දු',
+      'de': 'ද',
+      'jayasinghe': 'ජයසිංහ',
+      'jayawardena': 'ජයවර්ධන',
+      'dissanayake': 'දිසානායක',
+      'gunasekara': 'ගුණසේකර',
+      'rathnayake': 'රත්නායක',
+      'wickramasinghe': 'වික්‍රමසිංහ',
+      'herath': 'හේරත්',
+      'eka': 'ඒක',
+      'ekanayake': 'ඒකනායක',
+      'rajapaksa': 'රාජපක්ෂ',
+      'gamage': 'ගමගේ',
+      'liyana': 'ලියන',
+      'liyanage': 'ලියනගේ',
+      'peiris': 'පීරිස්',
+      'fonseka': 'ෆොන්සේකා',
+      'wijesinghe': 'විජේසිංහ',
+      'karunaratne': 'කරුණාරත්න',
+      'samaraweera': 'සමරවීර',
+      'samarasinghe': 'සමරසිංහ',
+      'gunawardena': 'ගුණවර්ධන',
+      'weerasekara': 'වීරසේකර',
+      'weerasinghe': 'වීරසිංහ',
+      'pathirana': 'පතිරණ',
+      'ranasinghe': 'රණසිංහ',
+      'amarasinghe': 'අමරසිංහ',
+      'sarah': 'සාරා',
+      'jenkins': 'ජෙන්කින්ස්',
+      'arthur': 'ආතර්',
+      'pendelton': 'පෙන්ඩල්ටන්',
+      'margaret': 'මාගරට්',
+      'chen': 'චෙන්',
+      'robert': 'රොබට්',
+      'hastings': 'හේස්ටින්ග්ස්',
+      'david': 'ඩේවිඩ්',
+      'eleanor': 'එලිනෝර්',
+      'vance': 'වෑන්ස්',
+      'samantha': 'සමන්තා',
+      'reed': 'රීඩ්',
+      'pasidi': 'පසිඳි',
+      'sarangi': 'සාරංගි',
+      'james': 'ජේම්ස්',
+      'mr.': '',
+      'mrs.': '',
+      'ms.': '',
+      'dr.': 'වෛද්‍ය',
+    };
+
+    final parts = trimmed.split(RegExp(r'\s+'));
+    final converted = <String>[];
+    for (final part in parts) {
+      final lower = part.toLowerCase();
+      if (knownWords.containsKey(lower)) {
+        final mapped = knownWords[lower]!;
+        if (mapped.isNotEmpty) converted.add(mapped);
+      } else {
+        converted.add(part);
+      }
+    }
+    return converted.isEmpty ? trimmed : converted.join(' ');
+  }
+
+  Widget _buildElderSmartQuestionStudio({
+    required CognitiveQuestionItem currentQ,
+    required String promptText,
+    required int progressPct,
+    required bool isSinhala,
+    required bool isLastQuestion,
+    required bool isAnswered,
+    required bool hasStatus,
+    required bool statusOk,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: const Color(0xFFE5E1F6), width: 1.4),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF6C3FC5).withValues(alpha: 0.08),
+            blurRadius: 32,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(27),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Top subtle gradient strip
+            Container(
+              height: 4.5,
+              width: double.infinity,
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF6C3FC5), Color(0xFF8B5CF6), Color(0xFFA78BFA)],
+                ),
+              ),
+            ),
+
+            Padding(
+              padding: const EdgeInsets.fromLTRB(22, 18, 22, 18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 1. Question Header + Saved Badge + Top Prev/Next Controls (No Scrolling Needed!)
+                  Wrap(
+                    alignment: WrapAlignment.spaceBetween,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 12,
+                    runSpacing: 10,
+                    children: [
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 40,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFF6C3FC5), Color(0xFF8B5CF6)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF6C3FC5).withValues(alpha: 0.28),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: Text(
+                              '${_currentIndex + 1}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            isSinhala
+                                ? 'ප්‍රශ්නය ${_currentIndex + 1} / $_totalCount'
+                                : 'Question ${_currentIndex + 1} of $_totalCount',
+                            style: const TextStyle(
+                              fontSize: 19,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.navy,
+                            ),
+                          ),
+                        ],
+                      ),
+                      _buildAnimatedAnswerSavedChip(currentQ.id),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
+                  // 2. Interactive 10-Step Bar
+                  _buildStepIndicator(true),
+                  const SizedBox(height: 16),
+
+                  // 3. Attractive Question Card (Minimal Text + Read Aloud Button)
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 280),
+                    switchInCurve: Curves.easeOutCubic,
+                    switchOutCurve: Curves.easeInCubic,
+                    child: KeyedSubtree(
+                      key: ValueKey<int>(_currentIndex),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 18),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFFFAF7FF), Color(0xFFF3ECFF)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: const Color(0xFFDDD6FE), width: 1.3),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                _buildInfoChip(
+                                  label: _translateCategory(currentQ.category, isSinhala),
+                                  icon: LucideIcons.brain,
+                                  background: Colors.white,
+                                  color: AppColors.primary,
+                                  borderColor: const Color(0xFFDDD6FE),
+                                ),
+                                _buildListenButton(promptText),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              promptText,
+                              style: const TextStyle(
+                                fontSize: 23,
+                                height: 1.4,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.navy,
+                                letterSpacing: -0.2,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // 4. Smart Voice + Text Input Studio (With Inline Next Button & Zero Scroll)
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: _isListening ? const Color(0xFFF0FDF4) : const Color(0xFFFBFBFE),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: _isListening ? const Color(0xFF86EFAC) : const Color(0xFFE5E1F6),
+                        width: _isListening ? 1.8 : 1.2,
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            _buildMicButton(),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _isListening
+                                        ? (isSinhala
+                                            ? 'සවන් දෙමින් පවතී... නැවැත්වීමට ඔබන්න'
+                                            : 'Listening... Tap mic to stop')
+                                        : (isSinhala
+                                            ? 'කතා කිරීමට මයික්‍රොෆෝනය ඔබන්න'
+                                            : 'Tap the microphone to speak'),
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppColors.navy,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  _buildAnimatedWaveform(),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: _responseController,
+                                onChanged: (val) {
+                                  final qId = currentQ.id;
+                                  setState(() {
+                                    _responses[qId] = val;
+                                    _grades[qId] = CognitiveScoring.scoreQuestion(qId, val);
+                                  });
+                                  _saveDebounceTimer?.cancel();
+                                  _saveDebounceTimer = Timer(const Duration(milliseconds: 500), () {
+                                    _persistResponses();
+                                  });
+                                },
+                                minLines: 1,
+                                maxLines: 2,
+                                decoration: InputDecoration(
+                                  hintText: isSinhala
+                                      ? 'නැතහොත් පිළිතුර මෙහි ටයිප් කරන්න...'
+                                      : 'Or type your answer here...',
+                                  hintStyle: const TextStyle(
+                                    fontSize: 15,
+                                    color: AppColors.muted,
+                                  ),
+                                  filled: true,
+                                  fillColor: Colors.white,
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                    borderSide: const BorderSide(color: Color(0xFFE5E1F6), width: 1.2),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                    borderSide: const BorderSide(color: Color(0xFFE5E1F6), width: 1.2),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                    borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 14,
+                                  ),
+                                ),
+                                style: const TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.navy,
+                                  height: 1.35,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            if (_currentIndex > 0) ...[
+                              OutlinedButton.icon(
+                                onPressed: _prevQuestion,
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: AppColors.navy,
+                                  backgroundColor: Colors.white,
+                                  side: const BorderSide(color: Color(0xFFE5E1F6), width: 1.5),
+                                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                ),
+                                icon: const Icon(LucideIcons.chevronLeft, size: 17),
+                                label: Text(
+                                  isSinhala ? 'පෙර' : 'Prev',
+                                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                            ],
+                            _buildPrimaryActionButton(
+                              label: isLastQuestion
+                                  ? (isSinhala ? 'අවසන් කර යොමු කරන්න' : 'Finish & Submit')
+                                  : (isSinhala ? 'ඊළඟ ප්‍රශ්නය' : 'Next Question'),
+                              icon: isLastQuestion ? LucideIcons.send : LucideIcons.arrowRight,
+                              onTap: () => _nextQuestion(true),
+                              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 15),
+                            ),
+                          ],
+                        ),
+                        if (hasStatus) ...[
+                          const SizedBox(height: 8),
+                          Text(
+                            _speechStatusMessage!,
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w600,
+                              color: statusOk
+                                  ? const Color(0xFF15803D)
+                                  : const Color(0xFF92400E),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
                 ],
-              ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -1385,10 +2386,10 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
-                      Color(0xFFFAF9FF),
-                      Color(0xFFF5F1FD),
-                      Color(0xFFF7F4FE),
-                      Color(0xFFFBF9FE),
+                      Color(0xFFF6F2FF),
+                      Color(0xFFEDE4FF),
+                      Color(0xFFF3ECFF),
+                      Color(0xFFFAF7FF),
                     ],
                   ),
                 ),
@@ -1405,13 +2406,13 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                 top: -90 + (t * 35),
                 right: -50 + ((1.0 - t) * 45),
                 child: Container(
-                  width: 460,
-                  height: 460,
+                  width: 480,
+                  height: 480,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: RadialGradient(
                       colors: [
-                        const Color(0xFF8B5CF6).withValues(alpha: 0.08),
+                        const Color(0xFF8B5CF6).withValues(alpha: 0.14),
                         const Color(0xFF8B5CF6).withValues(alpha: 0.0),
                       ],
                     ),
@@ -1424,13 +2425,13 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                 top: 240 + ((1.0 - t) * 40),
                 left: -90 + (t * 30),
                 child: Container(
-                  width: 420,
-                  height: 420,
+                  width: 440,
+                  height: 440,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: RadialGradient(
                       colors: [
-                        const Color(0xFF6366F1).withValues(alpha: 0.065),
+                        const Color(0xFF6366F1).withValues(alpha: 0.11),
                         const Color(0xFF6366F1).withValues(alpha: 0.0),
                       ],
                     ),
@@ -1443,13 +2444,13 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                 bottom: -80 + (t * 30),
                 right: 50 + (t * 40),
                 child: Container(
-                  width: 380,
-                  height: 380,
+                  width: 400,
+                  height: 400,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: RadialGradient(
                       colors: [
-                        const Color(0xFF0D9488).withValues(alpha: 0.038),
+                        const Color(0xFF0D9488).withValues(alpha: 0.06),
                         const Color(0xFF0D9488).withValues(alpha: 0.0),
                       ],
                     ),
@@ -3181,7 +4182,9 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
   ) {
     final isSinhala = ref.watch(languageProvider).isSinhala;
     final bool hasStatus = _speechStatusMessage != null;
-    final bool statusOk = hasStatus && _speechStatusMessage!.contains('captured');
+    final bool statusOk = hasStatus &&
+        (_speechStatusMessage!.contains('captured') ||
+            _speechStatusMessage!.contains('සටහන් විය'));
     final bool isLastQuestion = !(_currentIndex < _questions.length - 1);
 
     return Container(
@@ -3985,11 +4988,11 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                     : const Color(0xFFEEF2FF),
               ),
               _buildStatItem(
-                isSinhala ? 'පරීක්ෂක' : 'Reviewer',
-                isSinhala ? 'සත්කාරක විශේෂඥ' : 'Care Specialist',
-                AppColors.navy,
-                LucideIcons.userCheck,
-                const Color(0xFFF1F5F9),
+                isSinhala ? 'AI සහායක' : 'AI Companion',
+                isSinhala ? 'සජීවී හඬ සහ පෙළ' : 'Smart Voice & Text',
+                AppColors.primary,
+                LucideIcons.sparkles,
+                const Color(0xFFF5F3FF),
               ),
             ]),
             const SizedBox(height: 14),
@@ -4744,13 +5747,13 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                       child: Text(
                         isAllAnswered
                             ? (isSinhala
-                                ? 'ඇගයීම ඉදිරිපත් කර ලකුණු ගණනය කරන්න'
-                                : 'Submit & Auto-Score Assessment')
+                                ? 'ඔබේ පිළිතුරු යොමු කරන්න'
+                                : 'Submit Your Answers')
                             : (isSinhala
                                 ? 'පිළිතුරු ලබා දිය යුතු ප්‍රශ්න ඇත'
                                 : 'Questions Pending Answer'),
                         style: const TextStyle(
-                          fontSize: 17,
+                          fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -4764,9 +5767,9 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                     children: [
                       Text(
                         isSinhala
-                            ? 'සැසි සාරාංශය: ${_resident?.name ?? 'නේවාසිකයා'} සඳහා ප්‍රශ්න $_totalCount න් $_answeredCount කට පිළිතුරු දී ඇත.'
-                            : 'Session Summary: $_answeredCount of $_totalCount questions answered for ${_resident?.name ?? 'Resident'}.',
-                        style: const TextStyle(fontSize: 12, color: AppColors.body),
+                            ? 'ඔබ ප්‍රශ්න $_totalCount න් $_answeredCount කට පිළිතුරු ලබා දී ඇත.'
+                            : 'You have answered $_answeredCount of $_totalCount questions.',
+                        style: const TextStyle(fontSize: 13.5, color: AppColors.body),
                       ),
                       if (!isAllAnswered) ...[
                         const SizedBox(height: 12),
@@ -4887,10 +5890,10 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                               const SizedBox(height: 6),
                               Text(
                                 isSinhala
-                                    ? 'ඔබේ පිළිතුරු ස්වයංක්‍රීයව ඇගයීමට ලක් කර ප්‍රජානන ලකුණු සහ AI අවදානම් විශ්ලේෂණය සකස් කරනු ලැබේ.'
-                                    : 'Your responses will be evaluated deterministically using question-specific scoring rules, ACRF cognitive domain scores calculated, and AI risk prediction generated.',
+                                    ? 'දැන් ඔබේ පිළිතුරු යොමු කර ඔබේ ප්‍රතිඵල බලාගත හැකිය.'
+                                    : 'You are ready to submit your answers and view your wellness summary.',
                                 style: const TextStyle(
-                                  fontSize: 10,
+                                  fontSize: 12,
                                   color: AppColors.navy,
                                 ),
                               ),
@@ -5192,6 +6195,8 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
   }
 
   void _showResultDialog(CognitiveSubmissionResult result) {
+    final isSinhala = ref.read(languageProvider).isSinhala;
+    final bool isElder = ref.read(authProvider).state.isElder;
     final bool isHighRisk =
         (result.riskLevel?.toLowerCase().contains('high') ?? false) ||
         (result.mlPrediction?.toLowerCase().contains('high') ?? false) ||
@@ -5284,8 +6289,12 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                           const SizedBox(height: 12),
                           Text(
                             isHighRisk
-                                ? 'Let\'s Play Some Games! 🧠🎮'
-                                : 'Cognitive Assessment Saved! 🎉',
+                                ? (isSinhala
+                                    ? 'අපි මතක ක්‍රීඩා කරමු! 🧠🎮'
+                                    : 'Let\'s Play Some Games! 🧠🎮')
+                                : (isSinhala
+                                    ? 'ප්‍රජානන ඇගයීම සාර්ථකව සුරැකිණි! 🎉'
+                                    : 'Cognitive Assessment Saved! 🎉'),
                             style: const TextStyle(
                               fontSize: 22,
                               fontWeight: FontWeight.w800,
@@ -5294,16 +6303,20 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                             ),
                             textAlign: TextAlign.center,
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '${result.residentName} • Evaluated by ${result.assessedBy ?? 'Care Specialist'}',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.muted,
+                          if (!isElder) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              isSinhala
+                                  ? '${result.residentName} • ඇගයීම: ${result.assessedBy ?? 'සුවතා විශේෂඥ'}'
+                                  : '${result.residentName} • Evaluated by ${result.assessedBy ?? 'Care Specialist'}',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.muted,
+                              ),
+                              textAlign: TextAlign.center,
                             ),
-                            textAlign: TextAlign.center,
-                          ),
+                          ],
                         ],
                       ),
                     ),
@@ -5374,20 +6387,24 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                                       Expanded(
                                         child: Column(
                                           crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: const [
+                                          children: [
                                             Text(
-                                              'Let\'s play some memory games! 🧠🎮',
-                                              style: TextStyle(
+                                              isSinhala
+                                                  ? 'අපි මතක ක්‍රීඩා කිහිපයක් කරමු! 🧠🎮'
+                                                  : 'Let\'s play some memory games! 🧠🎮',
+                                              style: const TextStyle(
                                                 fontSize: 16.5,
                                                 fontWeight: FontWeight.w800,
                                                 color: Color(0xFF4C1D95),
                                                 letterSpacing: -0.2,
                                               ),
                                             ),
-                                            SizedBox(height: 2),
+                                            const SizedBox(height: 2),
                                             Text(
-                                              'Fun & engaging daily brain workout',
-                                              style: TextStyle(
+                                              isSinhala
+                                                  ? 'විනෝදජනක දෛනික මොළයේ ව්‍යායාම'
+                                                  : 'Fun & engaging daily brain workout',
+                                              style: const TextStyle(
                                                 fontSize: 12,
                                                 fontWeight: FontWeight.w600,
                                                 color: Color(0xFF7C3AED),
@@ -5399,9 +6416,11 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                                     ],
                                   ),
                                   const SizedBox(height: 12),
-                                  const Text(
-                                    'Exercising memory, focus, and recall through enjoyable brain games helps boost mental agility and keep your thoughts refreshed. Let\'s play a fun game right now!',
-                                    style: TextStyle(
+                                  Text(
+                                    isSinhala
+                                        ? 'විනෝදජනක මතක ක්‍රීඩා මගින් ඔබේ මතකය, අවධානය සහ සිතීමේ හැකියාව වර්ධනය කරගත හැක. අපි දැන්ම මතක ක්‍රීඩාවක් කරමු!'
+                                        : 'Exercising memory, focus, and recall through enjoyable brain games helps boost mental agility and keep your thoughts refreshed. Let\'s play a fun game right now!',
+                                    style: const TextStyle(
                                       fontSize: 13,
                                       color: Color(0xFF581C87),
                                       height: 1.45,
@@ -5418,9 +6437,11 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                                         context.go('/dashboard/memory-games');
                                       },
                                       icon: const Icon(LucideIcons.gamepad2, size: 20),
-                                      label: const Text(
-                                        'Let\'s Play Memory Games Now! 🎮',
-                                        style: TextStyle(
+                                      label: Text(
+                                        isSinhala
+                                            ? 'දැන්ම මතක ක්‍රීඩා කරමු! 🎮'
+                                            : 'Let\'s Play Memory Games Now! 🎮',
+                                        style: const TextStyle(
                                           fontSize: 15,
                                           fontWeight: FontWeight.w800,
                                           letterSpacing: 0.3,
@@ -5460,16 +6481,22 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                               children: [
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
-                                  children: const [
-                                    Icon(
+                                  children: [
+                                    const Icon(
                                       LucideIcons.sparkles,
                                       size: 13,
                                       color: AppColors.primary,
                                     ),
-                                    SizedBox(width: 6),
+                                    const SizedBox(width: 6),
                                     Text(
-                                      'ACRF COGNITIVE WELLNESS SCORE',
-                                      style: TextStyle(
+                                      isElder
+                                          ? (isSinhala
+                                              ? 'ඔබේ මතක සුවතා ලකුණු'
+                                              : 'YOUR WELLNESS SCORE')
+                                          : (isSinhala
+                                              ? 'ACRF ප්‍රජානන සුවතා ලකුණු'
+                                              : 'ACRF COGNITIVE WELLNESS SCORE'),
+                                      style: const TextStyle(
                                         fontSize: 11,
                                         fontWeight: FontWeight.w800,
                                         color: AppColors.primary,
@@ -5506,40 +6533,46 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  result.methodology ??
-                                      'ACRF Fixed Base Weights • Clinical Evaluation Engine',
-                                  style: const TextStyle(
-                                    fontSize: 10.5,
-                                    color: AppColors.muted,
-                                    fontWeight: FontWeight.w500,
+                                if (!isElder) ...[
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    isSinhala
+                                        ? 'ACRF ස්ථාවර බර තැබීමේ ක්‍රමවේදය • සායනික ඇගයීම් පද්ධතිය'
+                                        : (result.methodology ??
+                                            'ACRF Fixed Base Weights • Clinical Evaluation Engine'),
+                                    style: const TextStyle(
+                                      fontSize: 10.5,
+                                      color: AppColors.muted,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                    textAlign: TextAlign.center,
                                   ),
-                                  textAlign: TextAlign.center,
-                                ),
+                                ],
                               ],
                             ),
                           ),
                           const SizedBox(height: 16),
 
-                          // Category Breakdown
-                          Row(
-                            children: [
-                              _buildCategoryCard('Memory', result.memory ?? 0.0, 'w:25%', LucideIcons.brain),
-                              const SizedBox(width: 8),
-                              _buildCategoryCard('Attention', result.attention ?? 0.0, 'w:20%', LucideIcons.eye),
-                              const SizedBox(width: 8),
-                              _buildCategoryCard('Orientation', result.orientation ?? 0.0, 'w:20%', LucideIcons.compass),
-                              const SizedBox(width: 8),
-                              _buildCategoryCard('Recall', result.recall ?? 0.0, 'w:20%', LucideIcons.lightbulb),
-                              const SizedBox(width: 8),
-                              _buildCategoryCard('Reasoning', result.reasoning ?? 0.0, 'w:15%', LucideIcons.puzzle),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
+                          // Category Breakdown (Caregiver/Clinical View Only)
+                          if (!isElder) ...[
+                            Row(
+                              children: [
+                                _buildCategoryCard(isSinhala ? 'මතකය' : 'Memory', result.memory ?? 0.0, 'w:25%', LucideIcons.brain),
+                                const SizedBox(width: 8),
+                                _buildCategoryCard(isSinhala ? 'අවධානය' : 'Attention', result.attention ?? 0.0, 'w:20%', LucideIcons.eye),
+                                const SizedBox(width: 8),
+                                _buildCategoryCard(isSinhala ? 'දිශානතිය' : 'Orientation', result.orientation ?? 0.0, 'w:20%', LucideIcons.compass),
+                                const SizedBox(width: 8),
+                                _buildCategoryCard(isSinhala ? 'සිහිකැඳවීම' : 'Recall', result.recall ?? 0.0, 'w:20%', LucideIcons.lightbulb),
+                                const SizedBox(width: 8),
+                                _buildCategoryCard(isSinhala ? 'තර්කනය' : 'Reasoning', result.reasoning ?? 0.0, 'w:15%', LucideIcons.puzzle),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                          ],
 
-                          // ML / Caregiver Notice
-                          if (result.mlAvailable) ...[
+                          // ML / Caregiver Notice (Caregiver/Clinical View Only)
+                          if (!isElder && result.mlAvailable) ...[
                             Container(
                               width: double.infinity,
                               padding: const EdgeInsets.all(12),
@@ -5550,13 +6583,15 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                               ),
                               child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
-                                children: const [
-                                  Icon(LucideIcons.sparkles, size: 14, color: Color(0xFFB45309)),
-                                  SizedBox(width: 8),
+                                children: [
+                                  const Icon(LucideIcons.sparkles, size: 14, color: Color(0xFFB45309)),
+                                  const SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
-                                      'Experimental ML Model Demo: Evaluated with Random Forest inference for wellness baseline reference.',
-                                      style: TextStyle(
+                                      isSinhala
+                                          ? 'AI ආකෘති විශ්ලේෂණය: Random Forest AI මගින් සුවතා මට්ටම තක්සේරු කර ඇත.'
+                                          : 'Experimental ML Model Demo: Evaluated with Random Forest inference for wellness baseline reference.',
+                                      style: const TextStyle(
                                         fontSize: 10.5,
                                         color: Color(0xFF92400E),
                                         height: 1.35,
@@ -5580,13 +6615,15 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                                 border: Border.all(color: const Color(0xFFDDD6FE)),
                               ),
                               child: Row(
-                                children: const [
-                                  Text('✨', style: TextStyle(fontSize: 16)),
-                                  SizedBox(width: 10),
+                                children: [
+                                  const Text('✨', style: TextStyle(fontSize: 16)),
+                                  const SizedBox(width: 10),
                                   Expanded(
                                     child: Text(
-                                      'Great performance! Keep your brain active with optional memory games, or return to the overview.',
-                                      style: TextStyle(
+                                      isSinhala
+                                          ? 'ඉතා විශිෂ්ටයි! ඔබේ මතකය තවදුරටත් ක්‍රියාශීලීව තබාගැනීමට මතක ක්‍රීඩා කරන්න, නැතහොත් ප්‍රධාන පුවරුවට පිවිසෙන්න.'
+                                          : 'Great performance! Keep your brain active with optional memory games, or return to the overview.',
+                                      style: const TextStyle(
                                         fontSize: 11.5,
                                         fontWeight: FontWeight.w600,
                                         color: Color(0xFF5B21B6),
@@ -5607,7 +6644,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                                       context.go('/dashboard');
                                     },
                                     icon: const Icon(LucideIcons.layoutDashboard, size: 16),
-                                    label: const Text('Return to Dashboard'),
+                                    label: Text(isSinhala ? 'ප්‍රධාන පුවරුවට' : 'Return to Dashboard'),
                                     style: OutlinedButton.styleFrom(
                                       foregroundColor: AppColors.navy,
                                       backgroundColor: Colors.white,
@@ -5631,7 +6668,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                                       context.go('/dashboard/memory-games');
                                     },
                                     icon: const Icon(LucideIcons.gamepad2, size: 16),
-                                    label: const Text('Play Memory Games'),
+                                    label: Text(isSinhala ? 'මතක ක්‍රීඩා කරන්න' : 'Play Memory Games'),
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: AppColors.primary,
                                       foregroundColor: Colors.white,
@@ -5773,5 +6810,206 @@ class _TherapeuticRipplesPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _TherapeuticRipplesPainter oldDelegate) {
     return oldDelegate.animationValue != animationValue;
+  }
+}
+
+/// Animated swaying flower garden painter for the bottom of the Elder Cognitive Assessment view
+class _SwayingFloralMeadowPainter extends CustomPainter {
+  final double swayValue;
+  final double breezeValue;
+
+  _SwayingFloralMeadowPainter({
+    required this.swayValue,
+    required this.breezeValue,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.width <= 0 || size.height <= 0) return;
+
+    // 1. Soft rolling pastel garden hill at the base
+    final hillPath1 = Path()
+      ..moveTo(0, size.height)
+      ..lineTo(0, size.height * 0.68)
+      ..quadraticBezierTo(
+        size.width * 0.25,
+        size.height * (0.50 + 0.04 * swayValue),
+        size.width * 0.52,
+        size.height * 0.66,
+      )
+      ..quadraticBezierTo(
+        size.width * 0.78,
+        size.height * (0.80 - 0.04 * swayValue),
+        size.width,
+        size.height * 0.60,
+      )
+      ..lineTo(size.width, size.height)
+      ..close();
+
+    final hillPaint1 = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          const Color(0xFFDDD6FE).withValues(alpha: 0.42),
+          const Color(0xFFC4B5FD).withValues(alpha: 0.68),
+        ],
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+    canvas.drawPath(hillPath1, hillPaint1);
+
+    final hillPath2 = Path()
+      ..moveTo(0, size.height)
+      ..lineTo(0, size.height * 0.78)
+      ..quadraticBezierTo(
+        size.width * 0.35,
+        size.height * (0.64 - 0.03 * swayValue),
+        size.width * 0.68,
+        size.height * 0.76,
+      )
+      ..quadraticBezierTo(
+        size.width * 0.88,
+        size.height * (0.84 + 0.03 * swayValue),
+        size.width,
+        size.height * 0.72,
+      )
+      ..lineTo(size.width, size.height)
+      ..close();
+
+    final hillPaint2 = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          const Color(0xFFEDE9FE).withValues(alpha: 0.55),
+          const Color(0xFFD8B4FE).withValues(alpha: 0.75),
+        ],
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+    canvas.drawPath(hillPath2, hillPaint2);
+
+    // 2. Swaying Flowers across the meadow
+    final flowerSpecs = <List<double>>[
+      // [xRatio, stemHeight, petalRadius, phaseOffset, colorIdx]
+      [0.06, 56, 10.5, 0.0, 0],
+      [0.12, 42, 8.5, 0.8, 1],
+      [0.18, 64, 12.0, 1.5, 2],
+      [0.25, 48, 9.5, 2.2, 3],
+      [0.32, 58, 11.0, 0.4, 0],
+      [0.39, 44, 8.5, 1.9, 1],
+      [0.46, 62, 11.5, 2.8, 2],
+      [0.54, 50, 9.5, 0.7, 3],
+      [0.61, 60, 11.0, 1.3, 0],
+      [0.68, 45, 8.5, 2.5, 1],
+      [0.75, 65, 12.0, 0.3, 2],
+      [0.82, 47, 9.0, 1.7, 3],
+      [0.88, 58, 11.0, 2.1, 0],
+      [0.94, 44, 8.5, 0.9, 1],
+    ];
+
+    const petalPalettes = <List<Color>>[
+      [Color(0xFFA78BFA), Color(0xFF7C3AED)], // Lavender Violet
+      [Color(0xFFF472B6), Color(0xFFEC4899)], // Soft Rose Pink
+      [Color(0xFFC084FC), Color(0xFF9333EA)], // Orchid Purple
+      [Color(0xFF818CF8), Color(0xFF6366F1)], // Periwinkle Indigo
+    ];
+
+    for (final spec in flowerSpecs) {
+      final xBase = size.width * spec[0];
+      final yBase = size.height;
+      final stemH = spec[1];
+      final petalR = spec[2];
+      final phase = spec[3];
+      final palette = petalPalettes[spec[4].toInt() % petalPalettes.length];
+
+      // Smooth sinusoidal sway offset
+      final wave = math.sin((swayValue * math.pi) + phase) * 11.0 +
+          math.cos((breezeValue * 2 * math.pi) + phase) * 4.0;
+      final xTip = xBase + wave;
+      final yTip = yBase - stemH;
+
+      // Draw curved stem
+      final stemPath = Path()
+        ..moveTo(xBase, yBase)
+        ..quadraticBezierTo(
+          xBase + wave * 0.45,
+          yBase - stemH * 0.55,
+          xTip,
+          yTip,
+        );
+
+      final stemPaint = Paint()
+        ..color = const Color(0xFF10B981).withValues(alpha: 0.55)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.4
+        ..strokeCap = StrokeCap.round;
+      canvas.drawPath(stemPath, stemPaint);
+
+      // Draw pair of small swaying leaves on the stem
+      final leafX = xBase + wave * 0.48;
+      final leafY = yBase - stemH * 0.45;
+      final leafPaint = Paint()
+        ..color = const Color(0xFF34D399).withValues(alpha: 0.60)
+        ..style = PaintingStyle.fill;
+
+      final leftLeaf = Path()
+        ..moveTo(leafX, leafY)
+        ..quadraticBezierTo(leafX - 11, leafY - 7, leafX - 14, leafY - 1)
+        ..quadraticBezierTo(leafX - 7, leafY + 4, leafX, leafY);
+      canvas.drawPath(leftLeaf, leafPaint);
+
+      final rightLeaf = Path()
+        ..moveTo(leafX, leafY - 5)
+        ..quadraticBezierTo(leafX + 11, leafY - 12, leafX + 14, leafY - 6)
+        ..quadraticBezierTo(leafX + 7, leafY - 1, leafX, leafY - 5);
+      canvas.drawPath(rightLeaf, leafPaint);
+
+      // Draw 6 blooming petals around (xTip, yTip)
+      final petalPaint = Paint()
+        ..color = palette[0].withValues(alpha: 0.85)
+        ..style = PaintingStyle.fill;
+      final petalInnerPaint = Paint()
+        ..color = palette[1].withValues(alpha: 0.55)
+        ..style = PaintingStyle.fill;
+
+      final rotOffset = wave * 0.03;
+      for (int p = 0; p < 6; p++) {
+        final angle = (p * math.pi / 3.0) + rotOffset;
+        final px = xTip + math.cos(angle) * (petalR * 0.68);
+        final py = yTip + math.sin(angle) * (petalR * 0.68);
+        canvas.drawCircle(Offset(px, py), petalR * 0.56, petalPaint);
+        canvas.drawCircle(Offset(px, py), petalR * 0.30, petalInnerPaint);
+      }
+
+      // Warm golden flower center
+      final centerGlow = Paint()
+        ..color = const Color(0xFFFDE68A)
+        ..style = PaintingStyle.fill;
+      final centerCore = Paint()
+        ..color = const Color(0xFFF59E0B)
+        ..style = PaintingStyle.fill;
+      canvas.drawCircle(Offset(xTip, yTip), petalR * 0.42, centerGlow);
+      canvas.drawCircle(Offset(xTip, yTip), petalR * 0.25, centerCore);
+    }
+
+    // 3. Gentle floating petals & sparkles drifting above the flowers
+    for (int i = 0; i < 8; i++) {
+      final px = size.width * (0.10 + i * 0.11) +
+          math.sin((breezeValue * 2 * math.pi) + i) * 14.0;
+      final py = size.height * 0.22 +
+          math.cos((swayValue * math.pi) + i * 0.9) * 10.0;
+      final dotPaint = Paint()
+        ..color = (i.isEven ? const Color(0xFFF472B6) : const Color(0xFFA78BFA))
+            .withValues(alpha: 0.45)
+        ..style = PaintingStyle.fill;
+      canvas.drawOval(
+        Rect.fromCenter(center: Offset(px, py), width: 7, height: 4.5),
+        dotPaint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _SwayingFloralMeadowPainter oldDelegate) {
+    return oldDelegate.swayValue != swayValue ||
+        oldDelegate.breezeValue != breezeValue;
   }
 }
