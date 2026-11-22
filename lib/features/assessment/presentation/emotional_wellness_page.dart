@@ -232,6 +232,77 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
     },
   ];
 
+  String _toSinhalaResidentName(String name) {
+    if (name.isEmpty) return 'නේවාසික සාමාජිකයා';
+    final trimmed = name.trim();
+    if (RegExp(r'[\u0D80-\u0DFF]').hasMatch(trimmed)) {
+      return trimmed;
+    }
+
+    final lower = trimmed.toLowerCase();
+    if (lower == 'kumara' || lower == 'mr. kumara' || lower == 'mr kumara') return 'කුමාර';
+    if (lower == 'malini' || lower == 'malini bandara' || lower == 'mrs. malini bandara') return 'මාලිනී බණ්ඩාර';
+    if (lower == 'arthur' || lower == 'arthur pendleton' || lower == 'mr. arthur pendleton' || lower == 'arthur pendelton') return 'ආතර් පෙන්ඩ්ල්ටන්';
+    if (lower == 'sarah' || lower == 'sarah jenkins' || lower == 'mrs. sarah jenkins') return 'සාරා ජෙන්කින්ස්';
+    if (lower == 'margaret' || lower == 'margaret chen' || lower == 'mrs. margaret chen') return 'මාග්‍රට් චෙන්';
+    if (lower == 'kamal' || lower == 'kamal perera' || lower == 'mr. kamal perera') return 'කමල් පෙරේරා';
+    if (lower == 'sunil' || lower == 'sunil silva' || lower == 'mr. sunil silva') return 'සුනිල් සිල්වා';
+    if (lower == 'resident' || lower == 'senior resident') return 'නේවාසික සාමාජිකයා';
+
+    final nameDict = <String, String>{
+      'kumara': 'කුමාර',
+      'kumar': 'කුමාර්',
+      'kamal': 'කමල්',
+      'sunil': 'සුනිල්',
+      'nimal': 'නිමල්',
+      'anura': 'අනුර',
+      'chaminda': 'චමින්ද',
+      'perera': 'පෙරේරා',
+      'silva': 'සිල්වා',
+      'fernando': 'ප්‍රනාන්දු',
+      'bandara': 'බණ්ඩාර',
+      'jayasinghe': 'ජයසිංහ',
+      'wijesinghe': 'විජේසිංහ',
+      'arthur': 'ආතර්',
+      'pendleton': 'පෙන්ඩ්ල්ටන්',
+      'pendelton': 'පෙන්ඩ්ල්ටන්',
+      'sarah': 'සාරා',
+      'jenkins': 'ජෙන්කින්ස්',
+      'margaret': 'මාග්‍රට්',
+      'chen': 'චෙන්',
+      'malini': 'මාලිනී',
+      'seetha': 'සීතා',
+      'nanda': 'නන්දා',
+      'senarath': 'සෙනරත්',
+      'james': 'ජේම්ස්',
+      'robert': 'රොබට්',
+      'mr': '',
+      'mr.': '',
+      'mrs': '',
+      'mrs.': '',
+      'dr': 'වෛද්‍ය',
+      'dr.': 'වෛද්‍ය',
+      'resident': 'නේවාසික සාමාජිකයා',
+      'senior': 'වැඩිහිටි',
+    };
+
+    final words = trimmed.split(RegExp(r'\s+'));
+    final convertedWords = <String>[];
+    for (final word in words) {
+      final clean = word.replaceAll(RegExp(r'[^a-zA-Z.]'), '').toLowerCase();
+      if (nameDict.containsKey(clean)) {
+        final mapped = nameDict[clean]!;
+        if (mapped.isNotEmpty) {
+          convertedWords.add(mapped);
+        }
+      } else {
+        convertedWords.add(word);
+      }
+    }
+    if (convertedWords.isEmpty) return 'කුමාර';
+    return convertedWords.join(' ');
+  }
+
   DayPeriod _getCurrentDayPeriod() {
     final hour = DateTime.now().hour;
     if (hour >= 5 && hour < 12) {
@@ -248,18 +319,26 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
   void _postElderThought(String thought) {
     final clean = thought.trim();
     if (clean.isEmpty) return;
+    final isSinhala = ref.read(languageProvider).isSinhala;
+    final rawName = _currentResident.name.isNotEmpty ? _currentResident.name : 'Senior Resident';
+    final authorName = isSinhala ? _toSinhalaResidentName(rawName) : rawName;
+    final roomNumber = _currentResident.roomNo.isNotEmpty ? _currentResident.roomNo : '104';
+    final authorRole = isSinhala
+        ? 'නේවාසික සාමාජික • කාමර අංක $roomNumber'
+        : 'Resident • Room $roomNumber';
+
     setState(() {
       _elderCommunityPosts.insert(0, {
         'id': 'post_${DateTime.now().millisecondsSinceEpoch}',
-        'authorName': _currentResident.name.isNotEmpty ? _currentResident.name : 'Senior Resident',
-        'authorRole': 'Resident • Room ${_currentResident.roomNo.isNotEmpty ? _currentResident.roomNo : '104'}',
+        'authorName': authorName,
+        'authorRole': authorRole,
         'avatarEmoji': '😊',
         'avatarImage': 'assets/images/landing/senior_happy_face.jpg',
         'avatarColor': 0xFFF3E8FF,
-        'timeAgo': 'දැන් සුළු මොහොතකට පෙර',
+        'timeAgo': isSinhala ? 'දැන් සුළු මොහොතකට පෙර' : 'Just now',
         'content': clean,
         'postImage': 'assets/images/landing/hero_caregiver_hug.jpg',
-        'imageCaption': 'අද දවසේ සුන්දර මතක සටහනක් 🌸',
+        'imageCaption': isSinhala ? 'අද දවසේ සුන්දර මතක සටහනක් 🌸' : 'A lovely memory from today 🌸',
         'likes': 1,
         'blessings': 1,
         'isUserPosted': true,
@@ -268,11 +347,10 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
       _showClapAnimation = true;
       _clapController.forward(from: 0.0);
     });
-    final isSinhala = ref.read(languageProvider).isSinhala;
     TtsService.instance.speak(
       isSinhala
-          ? 'විශිෂ්ටයි ${_currentResident.name}! ඔබේ සුන්දර සිතුවිල්ල මිතුරු පවුරට එක් කළා. මිතුරන් එය සතුටින් නරඹනු ඇත.'
-          : 'Wonderful ${_currentResident.name}! Your lovely thought has been shared to the Joy Wall.',
+          ? 'විශිෂ්ටයි $authorName! ඔබේ සුන්දර සිතුවිල්ල මිතුරු පවුරට එක් කළා. මිතුරන් එය සතුටින් නරඹනු ඇත.'
+          : 'Wonderful $authorName! Your lovely thought has been shared to the Joy Wall.',
       isSinhala: isSinhala,
     );
   }
@@ -8166,13 +8244,19 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
     final authState = ref.watch(authProvider).state;
     final isSinhala = ref.watch(languageProvider).isSinhala;
 
-    final rawName = _currentResident.name.trim();
-    final displayName = rawName.isNotEmpty
-        ? rawName.split(' ').map((part) {
-            if (part.isEmpty) return '';
-            return part[0].toUpperCase() + part.substring(1);
-          }).join(' ')
-        : (isSinhala ? 'නේවාසික සාමාජිකයා' : 'Resident');
+    final rawName = (authState.isElder && authState.userName != null && authState.userName!.trim().isNotEmpty
+            ? authState.userName!
+            : _currentResident.name)
+        .trim();
+
+    final displayName = isSinhala
+        ? _toSinhalaResidentName(rawName)
+        : (rawName.isNotEmpty
+            ? rawName.split(' ').map((part) {
+                if (part.isEmpty) return '';
+                return part[0].toUpperCase() + part.substring(1);
+              }).join(' ')
+            : 'Resident');
 
     final cleanRoom = _currentResident.roomNo
         .replaceAll('Room No: ', '')
@@ -8183,24 +8267,30 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
 
     final cleanId = _currentResident.id.padLeft(4, '0');
 
-    final initials = displayName
-        .split(' ')
-        .where((w) => !w.startsWith('Mr.') && !w.startsWith('Mrs.') && !w.startsWith('Dr.'))
-        .take(2)
-        .map((w) => w.isNotEmpty ? w[0].toUpperCase() : '')
-        .join();
+    final initials = rawName.isNotEmpty
+        ? rawName
+            .split(' ')
+            .where((w) => !w.startsWith('Mr.') && !w.startsWith('Mrs.') && !w.startsWith('Dr.'))
+            .take(2)
+            .map((w) => w.isNotEmpty ? w[0].toUpperCase() : '')
+            .join()
+        : 'R';
 
     final effectiveAvatar = (authState.isElder ? authState.avatarUrl : null) ??
         _currentResident.avatarUrl ??
         authState.avatarUrl;
 
     final genderText = isSinhala
-        ? (_currentResident.gender?.toLowerCase() == 'female' ? 'Female' : 'Male')
+        ? (_currentResident.gender?.toLowerCase() == 'female' ? 'ස්ත්‍රී' : 'පුරුෂ')
         : (_currentResident.gender?.isNotEmpty == true ? _currentResident.gender! : 'Male');
 
-    final wardText = cleanRoom.isNotEmpty
-        ? 'Ward: Lotus Wing ($cleanRoom)'
-        : 'Ward: Lotus Wing (A-12)';
+    final wardText = isSinhala
+        ? (cleanRoom.isNotEmpty
+            ? 'වාට්ටුව: නෙළුම් අංශය ($cleanRoom)'
+            : 'වාට්ටුව: නෙළුම් අංශය (A-12)')
+        : (cleanRoom.isNotEmpty
+            ? 'Ward: Lotus Wing ($cleanRoom)'
+            : 'Ward: Lotus Wing (A-12)');
 
     final dayPeriod = _getCurrentDayPeriod();
     final List<Color> bannerGradient = authState.isElder
@@ -8222,7 +8312,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
         ? (dayPeriod == DayPeriod.morning
             ? 'සුබ උදෑසනක්'
             : (dayPeriod == DayPeriod.afternoon
-                ? 'සුබ මද්දහනක්'
+                ? 'සුබ දහවල් කාලයක්'
                 : (dayPeriod == DayPeriod.evening
                     ? 'සුබ සැන්දෑවක්'
                     : 'සුවබර රාත්‍රියක්')))
@@ -8234,21 +8324,29 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                     ? 'Good Evening'
                     : 'Peaceful Night')));
 
-    final String dayPeriodBadgeLabel = isSinhala
+    final String dayPeriodBadgeText = isSinhala
         ? (dayPeriod == DayPeriod.morning
-            ? '🌅 උදෑසන කාලය'
+            ? 'උදෑසන කාලය'
             : (dayPeriod == DayPeriod.afternoon
-                ? '☀️ දහවල් කාලය'
+                ? 'දහවල් කාලය'
                 : (dayPeriod == DayPeriod.evening
-                    ? '🌇 සවස කාලය'
-                    : '🌙 රාත්‍රී කාලය')))
+                    ? 'සවස කාලය'
+                    : 'රාත්‍රී කාලය')))
         : (dayPeriod == DayPeriod.morning
-            ? '🌅 Morning Time'
+            ? 'Morning Time'
             : (dayPeriod == DayPeriod.afternoon
-                ? '☀️ Afternoon Time'
+                ? 'Afternoon Time'
                 : (dayPeriod == DayPeriod.evening
-                    ? '🌇 Evening Time'
-                    : '🌙 Night Time')));
+                    ? 'Evening Time'
+                    : 'Night Time')));
+
+    final IconData dayPeriodIcon = dayPeriod == DayPeriod.morning
+        ? LucideIcons.sunrise
+        : (dayPeriod == DayPeriod.afternoon
+            ? LucideIcons.sun
+            : (dayPeriod == DayPeriod.evening
+                ? LucideIcons.sunset
+                : LucideIcons.moon));
 
     final String dayPeriodSubtitle = isSinhala
         ? (dayPeriod == DayPeriod.morning
@@ -8339,6 +8437,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                             effectiveAvatar,
                             displayName,
                             initials,
+                            isSinhala: isSinhala,
                           ),
                         ),
                       ),
@@ -8388,19 +8487,30 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                             if (authState.isElder) ...[
                               const SizedBox(width: 10),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                 decoration: BoxDecoration(
                                   color: Colors.white.withValues(alpha: 0.22),
                                   borderRadius: BorderRadius.circular(12),
                                   border: Border.all(color: Colors.white.withValues(alpha: 0.45)),
                                 ),
-                                child: Text(
-                                  dayPeriodBadgeLabel,
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      dayPeriodIcon,
+                                      size: 13,
+                                      color: const Color(0xFFFDE047),
+                                    ),
+                                    const SizedBox(width: 5),
+                                    Text(
+                                      dayPeriodBadgeText,
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
@@ -8446,11 +8556,11 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                             children: [
                               _buildScreenshot2Pill(
                                 icon: LucideIcons.contact,
-                                label: 'Resident ID: RES-$cleanId',
+                                label: isSinhala ? 'හැඳුනුම් අංකය: RES-$cleanId' : 'Resident ID: RES-$cleanId',
                               ),
                               _buildScreenshot2Pill(
                                 icon: LucideIcons.calendar,
-                                label: 'Age: ${_currentResident.age} Years',
+                                label: isSinhala ? 'වයස: ${_currentResident.age} වසර' : 'Age: ${_currentResident.age} Years',
                               ),
                               _buildScreenshot2Pill(
                                 icon: LucideIcons.user,
@@ -8511,7 +8621,12 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
     );
   }
 
-  Widget _buildBannerAvatarContent(String? avatarUrl, String displayName, String initials) {
+  Widget _buildBannerAvatarContent(
+    String? avatarUrl,
+    String displayName,
+    String initials, {
+    bool isSinhala = false,
+  }) {
     if (avatarUrl != null && avatarUrl.trim().isNotEmpty) {
       final url = avatarUrl.trim();
       if (url.startsWith('http://') || url.startsWith('https://')) {
@@ -8521,7 +8636,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
           height: 82,
           fit: BoxFit.cover,
           gaplessPlayback: true,
-          errorBuilder: (_, __, ___) => _buildInitialsSquircle(initials, displayName),
+          errorBuilder: (_, __, ___) => _buildInitialsSquircle(initials, displayName, isSinhala: isSinhala),
         );
       } else if (url.startsWith('assets/')) {
         return Image.asset(
@@ -8530,7 +8645,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
           height: 82,
           fit: BoxFit.cover,
           gaplessPlayback: true,
-          errorBuilder: (_, __, ___) => _buildInitialsSquircle(initials, displayName),
+          errorBuilder: (_, __, ___) => _buildInitialsSquircle(initials, displayName, isSinhala: isSinhala),
         );
       } else {
         // Base64 data URL (e.g. data:image/jpeg;base64,...) or raw Base64 string from user upload
@@ -8549,7 +8664,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                 height: 82,
                 fit: BoxFit.cover,
                 gaplessPlayback: true,
-                errorBuilder: (_, __, ___) => _buildInitialsSquircle(initials, displayName),
+                errorBuilder: (_, __, ___) => _buildInitialsSquircle(initials, displayName, isSinhala: isSinhala),
               );
             }
           }
@@ -8560,10 +8675,10 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
     }
 
     // Unique personalized initials squircle if no photo was uploaded by this person
-    return _buildInitialsSquircle(initials, displayName);
+    return _buildInitialsSquircle(initials, displayName, isSinhala: isSinhala);
   }
 
-  Widget _buildInitialsSquircle(String initials, String name) {
+  Widget _buildInitialsSquircle(String initials, String name, {bool isSinhala = false}) {
     final palette = [
       [const Color(0xFFEDE9FE), const Color(0xFFDDD6FE), const Color(0xFF5B21B6)],
       [const Color(0xFFE0F2FE), const Color(0xFFBAE6FD), const Color(0xFF075985)],
@@ -8576,9 +8691,24 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
     final bgEnd = palette[colorIndex][1];
     final textColor = palette[colorIndex][2];
 
-    final displayInitials = initials.isNotEmpty
-        ? initials
-        : (name.isNotEmpty ? name[0].toUpperCase() : 'R');
+    String displayInitials;
+    if (isSinhala) {
+      if (name.isNotEmpty) {
+        if (name.startsWith('කු')) {
+          displayInitials = 'කු';
+        } else if (name.length >= 2 && name.codeUnitAt(1) >= 0x0DCA && name.codeUnitAt(1) <= 0x0DDF) {
+          displayInitials = name.substring(0, 2);
+        } else {
+          displayInitials = name.substring(0, 1);
+        }
+      } else {
+        displayInitials = 'නේ';
+      }
+    } else {
+      displayInitials = initials.isNotEmpty
+          ? initials
+          : (name.isNotEmpty ? name[0].toUpperCase() : 'R');
+    }
 
     return Container(
       width: 82,
@@ -8594,7 +8724,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
       child: Text(
         displayInitials,
         style: TextStyle(
-          fontSize: 26,
+          fontSize: isSinhala ? 22 : 26,
           fontWeight: FontWeight.w800,
           color: textColor,
           letterSpacing: 0.5,
@@ -8604,6 +8734,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
   }
 
   Widget _buildCaregiverCompactSwitcher() {
+    final isSinhala = ref.watch(languageProvider).isSinhala;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
       decoration: BoxDecoration(
@@ -8630,9 +8761,10 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
               if (seen.add(r.id)) unique.add(r);
             }
             return unique.map((Resident r) {
-              final clean = (r.name.trim().isNotEmpty && r.name.trim() != '-')
+              final rawRName = (r.name.trim().isNotEmpty && r.name.trim() != '-')
                   ? r.name.trim()
                   : 'Resident #${r.id}';
+              final clean = isSinhala ? _toSinhalaResidentName(rawRName) : rawRName;
               return DropdownMenuItem<String>(
                 value: r.id,
                 child: Text(clean, style: const TextStyle(color: Colors.white)),
@@ -13069,7 +13201,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
     _flutterTts.stop();
     final isSinhala = ref.read(languageProvider).isSinhala;
     final text = isSinhala
-        ? 'විශිෂ්ටයි ${_currentResident.name}! ඔබ අද දවසේ $durationText සන්සුන් සංගීත චිකිත්සාව සාර්ථකව අවසන් කළා. මෙම තොරතුරු සත්කාරක වාර්තාවට සහ සමාජ විගණනයට යොමු කරන ලදී.'
+        ? 'විශිෂ්ටයි ${_toSinhalaResidentName(_currentResident.name)}! ඔබ අද දවසේ $durationText සන්සුන් සංගීත චිකිත්සාව සාර්ථකව අවසන් කළා. මෙම තොරතුරු සත්කාරක වාර්තාවට සහ සමාජ විගණනයට යොමු කරන ලදී.'
         : 'Wonderful ${_currentResident.name}! You have successfully completed $durationText of calming music therapy today.';
     TtsService.instance.speak(text, isSinhala: isSinhala);
 
