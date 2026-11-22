@@ -15543,12 +15543,12 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
 
     if (dayPeriod == DayPeriod.morning) {
       titleGreeting = isSinhala ? 'සුබ උදෑසනක්, $displayName මහත්මයා!' : 'Good Morning, Mr. $displayName!';
-      subGreeting1 = 'Good Morning, $displayName! 💕';
+      subGreeting1 = isSinhala ? 'ප්‍රීතිමත්, සුවබර උදෑසනක්! 💕' : 'Good Morning, $displayName! 💕';
       subGreeting2 = isSinhala ? 'අදත් සුවපහසු, සතුටුදායක දිනයක් එක්ව ආරම්භ කරමු! ♡' : "Let's start another peaceful, joyful day together! ♡";
 
       card1TitleSi = 'උදේ තේ බිව්වද?';
       card1TitleEn = 'Had your morning tea?';
-      card1SubSi = 'Have you had your morning tea?';
+      card1SubSi = 'සුවබර උදෑසනකට උණුසුම් තේ පැන්';
       card1SubEn = 'A warm comforting cup for wellness';
       card1YesSi = 'ඔව්, බිව්වා';
       card1YesEn = 'Yes, I have';
@@ -15558,7 +15558,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
 
       card2TitleSi = 'මුහුණ හෝදාගත්තාද?';
       card2TitleEn = 'Washed your face?';
-      card2SubSi = 'Have you washed your face?';
+      card2SubSi = 'ප්‍රබෝධමත් දවසකට මුහුණ සෝදා පිරිසිදු වීම';
       card2SubEn = 'Freshen up for a radiant day';
       card2YesSi = 'ඔව්';
       card2YesEn = 'Yes';
@@ -15567,12 +15567,12 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
       card2Asset = 'assets/images/elder_face_wash.png';
     } else if (dayPeriod == DayPeriod.afternoon) {
       titleGreeting = isSinhala ? 'සුබ දහවල් කාලයක්, $displayName මහත්මයා!' : 'Good Afternoon, Mr. $displayName!';
-      subGreeting1 = 'Good Afternoon, $displayName! 💕';
-      subGreeting2 = isSinhala ? 'ප්‍රබෝධමත් සුවදායක දිවා විවේකයක් ගත කරමු! ♡' : "Enjoy a refreshing, restful afternoon pause! ♡";
+      subGreeting1 = isSinhala ? 'ප්‍රබෝධමත්, සුවදායක දහවලක්! 💕' : 'Good Afternoon, $displayName! 💕';
+      subGreeting2 = isSinhala ? 'සුවපහසු දිවා විවේකයක් ගත කරමු! ♡' : "Enjoy a refreshing, restful afternoon pause! ♡";
 
       card1TitleSi = 'දිවා ආහාරය ගත්තාද?';
       card1TitleEn = 'Had your lunch?';
-      card1SubSi = 'Have you had your healthy lunch?';
+      card1SubSi = 'නීරෝගී සුවය සඳහා පෝෂ්‍යදායී දිවා ආහාරය';
       card1SubEn = 'Healthy meal for vitality';
       card1YesSi = 'ඔව්, ගත්තා';
       card1YesEn = 'Yes, I have';
@@ -15582,7 +15582,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
 
       card2TitleSi = 'කෙටි විවේකයක් ගත්තාද?';
       card2TitleEn = 'Taken a short rest?';
-      card2SubSi = 'Did you enjoy a short peaceful rest?';
+      card2SubSi = 'සිරුරට සහ මනසට සුවදායක කෙටි විවේකයක්';
       card2SubEn = 'Comfortable pause to recharge';
       card2YesSi = 'ඔව්';
       card2YesEn = 'Yes';
@@ -15591,12 +15591,12 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
       card2Asset = 'assets/images/elder_face_wash.png';
     } else if (dayPeriod == DayPeriod.evening) {
       titleGreeting = isSinhala ? 'සුබ සන්ධ්‍යාවක්, $displayName මහත්මයා!' : 'Good Evening, Mr. $displayName!';
-      subGreeting1 = 'Good Evening, $displayName! 💕';
-      subGreeting2 = isSinhala ? 'සන්සුන්, ප්‍රීතිමත් සන්ධ්‍යා කාලයක් ගත කරමු! ♡' : "Wishing you a serene, heartwarming evening! ♡";
+      subGreeting1 = isSinhala ? 'සන්සුන්, ප්‍රීතිමත් සන්ධ්‍යාවක්! 💕' : 'Good Evening, $displayName! 💕';
+      subGreeting2 = isSinhala ? 'සැනසිලිදායක සන්ධ්‍යා කාලයක් ගත කරමු! ♡' : "Wishing you a serene, heartwarming evening! ♡";
 
       card1TitleSi = 'සවස තේ පැන් පානය කළාද?';
       card1TitleEn = 'Had evening tea?';
-      card1SubSi = 'Have you had your evening tea?';
+      card1SubSi = 'සන්ධ්‍යා කාලයේ උණුසුම් තේ පැන් සංග්‍රහය';
       card1SubEn = 'Evening tea and friendly chat';
       card1YesSi = 'ඔව්, බිව්වා';
       card1YesEn = 'Yes, I have';
@@ -15606,7 +15606,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
 
       card2TitleSi = 'නැවුම් සුළං සුවය වින්දාද?';
       card2TitleEn = 'Enjoyed fresh air?';
-      card2SubSi = 'Enjoyed the refreshing evening breeze?';
+      card2SubSi = 'සවස නැවුම් සුළඟ සහ සොබාදහමේ සුවය';
       card2SubEn = 'Breathe in peace and nature';
       card2YesSi = 'ඔව්';
       card2YesEn = 'Yes';
@@ -15615,12 +15615,12 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
       card2Asset = 'assets/images/elder_face_wash.png';
     } else {
       titleGreeting = isSinhala ? 'සුබ රාත්‍රියක්, $displayName මහත්මයා!' : 'Good Night, Mr. $displayName!';
-      subGreeting1 = 'Good Night, $displayName! 💕';
-      subGreeting2 = isSinhala ? 'සුවබර, සැනසිලිදායක නින්දකට සූදානම් වෙමු! ♡' : "Wishing you deep, comforting sleep! ♡";
+      subGreeting1 = isSinhala ? 'සුවබර, සැනසිලිදායක රාත්‍රියක්! 💕' : 'Good Night, $displayName! 💕';
+      subGreeting2 = isSinhala ? 'සුවදායක නින්දකට සූදානම් වෙමු! ♡' : "Wishing you deep, comforting sleep! ♡";
 
       card1TitleSi = 'රාත්‍රී ආහාර හා ඖෂධ ගත්තාද?';
       card1TitleEn = 'Had dinner & meds?';
-      card1SubSi = 'Have you had your dinner and medicine?';
+      card1SubSi = 'සුව නින්දකට පෙර ආහාර හා නියමිත ඖෂධ';
       card1SubEn = 'Nutritious dinner and medication';
       card1YesSi = 'ඔව්, ගත්තා';
       card1YesEn = 'Yes, I have';
@@ -15630,7 +15630,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
 
       card2TitleSi = 'සුව නින්දකට සූදානම්ද?';
       card2TitleEn = 'Ready for sleep?';
-      card2SubSi = 'Are you relaxed and ready for bed?';
+      card2SubSi = 'සැනසිලිදායක, සුවබර නින්දකට සූදානම් වීම';
       card2SubEn = 'Rest peacefully throughout the night';
       card2YesSi = 'ඔව්';
       card2YesEn = 'Yes';
@@ -16079,7 +16079,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                               children: [
                                 _buildBilingualRoutineButton(
                                   topText: '✓ ${isSinhala ? card1YesSi : card1YesEn}',
-                                  subText: isSinhala ? card1YesEn : 'Completed',
+                                  subText: null,
                                   isSelected: _hadMorningTea == true,
                                   isPositive: true,
                                   onTap: () => _handleRoutineSelection(questionIndex: 1, answeredYes: true),
@@ -16087,7 +16087,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                                 const SizedBox(width: 8),
                                 _buildBilingualRoutineButton(
                                   topText: '⏰ ${isSinhala ? card1NoSi : card1NoEn}',
-                                  subText: isSinhala ? card1NoEn : 'Pending',
+                                  subText: null,
                                   isSelected: _hadMorningTea == false,
                                   isPositive: false,
                                   onTap: () => _handleRoutineSelection(questionIndex: 1, answeredYes: false),
@@ -16152,7 +16152,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                               children: [
                                 _buildBilingualRoutineButton(
                                   topText: '✓ ${isSinhala ? card2YesSi : card2YesEn}',
-                                  subText: isSinhala ? card2YesEn : 'Done',
+                                  subText: null,
                                   isSelected: _washedFace == true,
                                   isPositive: true,
                                   onTap: () => _handleRoutineSelection(questionIndex: 2, answeredYes: true),
@@ -16160,7 +16160,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                                 const SizedBox(width: 8),
                                 _buildBilingualRoutineButton(
                                   topText: '⏰ ${isSinhala ? card2NoSi : card2NoEn}',
-                                  subText: isSinhala ? card2NoEn : 'Pending',
+                                  subText: null,
                                   isSelected: _washedFace == false,
                                   isPositive: false,
                                   onTap: () => _handleRoutineSelection(questionIndex: 2, answeredYes: false),
@@ -16219,7 +16219,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                                   ? 'රැකබලා ගන්නා දැනුවත් කරන ලදී: ඔබට අවශ්‍ය සහාය ලබා දීමට සහායක කණ්ඩායම පැමිණෙනු ඇත.'
                                   : 'Care team gently notified: A caregiver is on the way to assist you.')
                               : (isSinhala
-                                  ? 'තවම කරගෙන නැත්නම්, අපේ සත්කාර කණ්ඩායම (Care Team) ඔබට මිතුරු වෙමින් දැනුම් දෙනවා.'
+                                  ? 'තවම කරගෙන නැත්නම්, අපේ සත්කාර කණ්ඩායම ඔබට මිතුරු වෙමින් දැනුම් දෙනවා.'
                                   : 'If not done yet, our Care Team will be warmly notified to support you.'),
                           style: TextStyle(
                             fontSize: 11,
@@ -16293,7 +16293,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
 
   Widget _buildBilingualRoutineButton({
     required String topText,
-    required String subText,
+    String? subText,
     required bool isSelected,
     required bool isPositive,
     required VoidCallback onTap,
@@ -16323,7 +16323,10 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
         borderRadius: BorderRadius.circular(16),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+          padding: EdgeInsets.symmetric(
+            horizontal: 14,
+            vertical: (subText != null && subText.isNotEmpty) ? 5 : 7.5,
+          ),
           decoration: BoxDecoration(
             color: bgColor,
             borderRadius: BorderRadius.circular(16),
@@ -16343,19 +16346,22 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
               Text(
                 topText,
                 style: TextStyle(
-                  fontSize: 11.5,
+                  fontSize: 12,
                   fontWeight: FontWeight.w800,
                   color: textColor,
                 ),
               ),
-              Text(
-                subText,
-                style: TextStyle(
-                  fontSize: 9.5,
-                  fontWeight: FontWeight.w600,
-                  color: subTextColor,
+              if (subText != null && subText.isNotEmpty) ...[
+                const SizedBox(height: 1),
+                Text(
+                  subText,
+                  style: TextStyle(
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w600,
+                    color: subTextColor,
+                  ),
                 ),
-              ),
+              ],
             ],
           ),
         ),
