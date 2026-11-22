@@ -182,6 +182,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
   bool? _washedFace;
   bool _routineCaregiverNotified = false;
   bool _hasSpokenAutoGreeting = false;
+  String? _activeSpeakerKey;
 
   final List<Map<String, dynamic>> _elderCommunityPosts = [
     {
@@ -608,6 +609,13 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
   @override
   void initState() {
     super.initState();
+    TtsService.instance.onComplete = () {
+      if (mounted) {
+        setState(() {
+          _activeSpeakerKey = null;
+        });
+      }
+    };
     _reasonTextController = TextEditingController();
     _aiChatInputController = TextEditingController();
     _initResidents();
@@ -622,6 +630,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
       _fetchRealRalpaDataForCurrentResident();
       Future.delayed(const Duration(milliseconds: 1400), () {
         if (mounted && !_hasSpokenAutoGreeting) {
+          _activeSpeakerKey = 'greeting';
           _speakElderGreetingAndRoutine();
         }
       });
@@ -1971,6 +1980,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
     _conversationTimer?.cancel();
     AudioPlayerService.instance.stop();
     LiveVoiceCaptureService.instance.stop();
+    TtsService.instance.onComplete = null;
     TtsService.instance.stop();
     _flutterTts.stop();
     _speech.stop();
@@ -15376,6 +15386,52 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
   }
 
   // --- SUB-VIEW: ELDER GREETING & ROUTINE VOICE SPEECH CONTROLLER ---
+  void _stopElderSpeaking() {
+    try {
+      _flutterTts.stop();
+      TtsService.instance.stop();
+    } catch (_) {}
+    if (mounted) {
+      setState(() {
+        _activeSpeakerKey = null;
+      });
+    }
+  }
+
+  Future<void> _toggleElderSpeak({
+    required String key,
+    required Future<void> Function() speakFunction,
+  }) async {
+    // If currently speaking this exact item, stop it immediately (toggle off)
+    if (_activeSpeakerKey == key) {
+      _stopElderSpeaking();
+      return;
+    }
+
+    // Stop previous and start new audio guidance
+    try {
+      _flutterTts.stop();
+      TtsService.instance.stop();
+    } catch (_) {}
+
+    if (mounted) {
+      setState(() {
+        _activeSpeakerKey = key;
+      });
+    }
+
+    try {
+      await speakFunction();
+    } catch (e) {
+      debugPrint('[ElderSpeakToggle] Error: $e');
+      if (mounted) {
+        setState(() {
+          _activeSpeakerKey = null;
+        });
+      }
+    }
+  }
+
   Future<void> _speakElderGreetingAndRoutine({bool force = false}) async {
     if (!mounted) return;
     if (!force && _hasSpokenAutoGreeting) return;
@@ -15532,6 +15588,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
 
     try {
       _flutterTts.stop();
+      _activeSpeakerKey = 'routine_feedback';
       TtsService.instance.speak(speech, isSinhala: isSinhala);
     } catch (e) {
       debugPrint('[ElderRoutine] TTS error: $e');
@@ -16066,14 +16123,20 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                           const SizedBox(height: 5),
                           // Audio Pill with Waveform Button
                           InkWell(
-                            onTap: () => _speakElderGreetingAndRoutine(force: true),
+                            onTap: () => _toggleElderSpeak(
+                              key: 'greeting',
+                              speakFunction: () => _speakElderGreetingAndRoutine(force: true),
+                            ),
                             borderRadius: BorderRadius.circular(16),
                             child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 4),
                               decoration: BoxDecoration(
                                 color: Colors.white.withValues(alpha: 0.92),
                                 borderRadius: BorderRadius.circular(18),
-                                border: Border.all(color: Colors.white),
+                                border: Border.all(
+                                  color: _activeSpeakerKey == 'greeting' ? const Color(0xFF7C3AED) : Colors.white,
+                                  width: _activeSpeakerKey == 'greeting' ? 1.5 : 1.0,
+                                ),
                                 boxShadow: [
                                   BoxShadow(
                                     color: Colors.black.withValues(alpha: 0.08),
@@ -16085,7 +16148,11 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Icon(LucideIcons.volume2, size: 13, color: Color(0xFF581C87)),
+                                  Icon(
+                                    _activeSpeakerKey == 'greeting' ? Icons.stop_rounded : LucideIcons.volume2,
+                                    size: 13,
+                                    color: _activeSpeakerKey == 'greeting' ? const Color(0xFF9333EA) : const Color(0xFF581C87),
+                                  ),
                                   const SizedBox(width: 5),
                                   Text(
                                     isSinhala ? 'ඔබ ගැන අදත් හොඳින් සලකමු!' : 'Caring for you warmly today!',
@@ -16096,12 +16163,12 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                                     ),
                                   ),
                                   const SizedBox(width: 5),
-                                  const Text(
-                                    '·|||··||·',
+                                  Text(
+                                    _activeSpeakerKey == 'greeting' ? '■ Stop' : '·|||··||·',
                                     style: TextStyle(
                                       fontSize: 11.5,
                                       fontWeight: FontWeight.w900,
-                                      color: Color(0xFF7C3AED),
+                                      color: _activeSpeakerKey == 'greeting' ? const Color(0xFF9333EA) : const Color(0xFF7C3AED),
                                     ),
                                   ),
                                 ],
@@ -16157,7 +16224,10 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                               ),
                               const SizedBox(width: 6),
                               InkWell(
-                                onTap: _speakRobotBubble,
+                                onTap: () => _toggleElderSpeak(
+                                  key: 'robot',
+                                  speakFunction: _speakRobotBubble,
+                                ),
                                 borderRadius: BorderRadius.circular(16),
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
@@ -16188,14 +16258,14 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                                       const SizedBox(width: 5),
                                       Container(
                                         padding: const EdgeInsets.all(3),
-                                        decoration: const BoxDecoration(
-                                          color: Color(0xFFEDE9FE),
+                                        decoration: BoxDecoration(
+                                          color: _activeSpeakerKey == 'robot' ? const Color(0xFFDDD6FE) : const Color(0xFFEDE9FE),
                                           shape: BoxShape.circle,
                                         ),
-                                        child: const Icon(
-                                          LucideIcons.volume2,
+                                        child: Icon(
+                                          _activeSpeakerKey == 'robot' ? Icons.stop_rounded : LucideIcons.volume2,
                                           size: 11,
-                                          color: Color(0xFF7C3AED),
+                                          color: const Color(0xFF7C3AED),
                                         ),
                                       ),
                                     ],
@@ -16252,19 +16322,25 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                                 ),
                                 const SizedBox(width: 6),
                                 InkWell(
-                                  onTap: () => _speakCardQuestion(1),
+                                  onTap: () => _toggleElderSpeak(
+                                    key: 'card1',
+                                    speakFunction: () => _speakCardQuestion(1),
+                                  ),
                                   borderRadius: BorderRadius.circular(12),
                                   child: Container(
                                     padding: const EdgeInsets.all(3.5),
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFFEDE9FE),
+                                      color: _activeSpeakerKey == 'card1' ? const Color(0xFFDDD6FE) : const Color(0xFFEDE9FE),
                                       shape: BoxShape.circle,
-                                      border: Border.all(color: const Color(0xFFC084FC), width: 0.8),
+                                      border: Border.all(
+                                        color: _activeSpeakerKey == 'card1' ? const Color(0xFF7C3AED) : const Color(0xFFC084FC),
+                                        width: 0.8,
+                                      ),
                                     ),
-                                    child: const Icon(
-                                      LucideIcons.volume2,
+                                    child: Icon(
+                                      _activeSpeakerKey == 'card1' ? Icons.stop_rounded : LucideIcons.volume2,
                                       size: 13,
-                                      color: Color(0xFF7C3AED),
+                                      color: const Color(0xFF7C3AED),
                                     ),
                                   ),
                                 ),
@@ -16348,19 +16424,25 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                                 ),
                                 const SizedBox(width: 6),
                                 InkWell(
-                                  onTap: () => _speakCardQuestion(2),
+                                  onTap: () => _toggleElderSpeak(
+                                    key: 'card2',
+                                    speakFunction: () => _speakCardQuestion(2),
+                                  ),
                                   borderRadius: BorderRadius.circular(12),
                                   child: Container(
                                     padding: const EdgeInsets.all(3.5),
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFFEDE9FE),
+                                      color: _activeSpeakerKey == 'card2' ? const Color(0xFFDDD6FE) : const Color(0xFFEDE9FE),
                                       shape: BoxShape.circle,
-                                      border: Border.all(color: const Color(0xFFC084FC), width: 0.8),
+                                      border: Border.all(
+                                        color: _activeSpeakerKey == 'card2' ? const Color(0xFF7C3AED) : const Color(0xFFC084FC),
+                                        width: 0.8,
+                                      ),
                                     ),
-                                    child: const Icon(
-                                      LucideIcons.volume2,
+                                    child: Icon(
+                                      _activeSpeakerKey == 'card2' ? Icons.stop_rounded : LucideIcons.volume2,
                                       size: 13,
-                                      color: Color(0xFF7C3AED),
+                                      color: const Color(0xFF7C3AED),
                                     ),
                                   ),
                                 ),
@@ -16403,19 +16485,26 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
 
                   // Bottom Notification Pill with Golden Bell & Heart
                   final careNoticePill = InkWell(
-                    onTap: _speakCareNotice,
+                    onTap: () => _toggleElderSpeak(
+                      key: 'notice',
+                      speakFunction: _speakCareNotice,
+                    ),
                     borderRadius: BorderRadius.circular(22),
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5.5),
                       decoration: BoxDecoration(
                         color: _routineCaregiverNotified
                             ? const Color(0xFFFEF3C7)
-                            : Colors.white.withValues(alpha: 0.95),
+                            : (_activeSpeakerKey == 'notice'
+                                ? const Color(0xFFF3E8FF)
+                                : Colors.white.withValues(alpha: 0.95)),
                         borderRadius: BorderRadius.circular(22),
                         border: Border.all(
-                          color: _routineCaregiverNotified
-                              ? const Color(0xFFF59E0B)
-                              : const Color(0xFFE2E8F0),
+                          color: _activeSpeakerKey == 'notice'
+                              ? const Color(0xFF7C3AED)
+                              : (_routineCaregiverNotified
+                                  ? const Color(0xFFF59E0B)
+                                  : const Color(0xFFE2E8F0)),
                           width: 1.2,
                         ),
                         boxShadow: [
@@ -16463,14 +16552,14 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                           const SizedBox(width: 6),
                           Container(
                             padding: const EdgeInsets.all(2.5),
-                            decoration: const BoxDecoration(
-                              color: Color(0xFFEDE9FE),
+                            decoration: BoxDecoration(
+                              color: _activeSpeakerKey == 'notice' ? const Color(0xFFDDD6FE) : const Color(0xFFEDE9FE),
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(
-                              LucideIcons.volume2,
+                            child: Icon(
+                              _activeSpeakerKey == 'notice' ? Icons.stop_rounded : LucideIcons.volume2,
                               size: 11,
-                              color: Color(0xFF7C3AED),
+                              color: const Color(0xFF7C3AED),
                             ),
                           ),
                           const SizedBox(width: 4),

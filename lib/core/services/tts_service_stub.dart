@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'tts_service.dart';
 
@@ -7,15 +8,20 @@ class StubTtsService implements TtsService {
   final FlutterTts _flutterTts = FlutterTts();
   bool _isSpeaking = false;
 
+  @override
+  VoidCallback? onComplete;
+
   StubTtsService() {
     _flutterTts.setStartHandler(() {
       _isSpeaking = true;
     });
     _flutterTts.setCompletionHandler(() {
       _isSpeaking = false;
+      onComplete?.call();
     });
     _flutterTts.setErrorHandler((_) {
       _isSpeaking = false;
+      onComplete?.call();
     });
   }
 
@@ -26,6 +32,7 @@ class StubTtsService implements TtsService {
   void stop() {
     _flutterTts.stop();
     _isSpeaking = false;
+    onComplete?.call();
   }
 
   @override

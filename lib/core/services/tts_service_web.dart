@@ -11,6 +11,9 @@ class WebTtsService implements TtsService {
   html.AudioElement? _audio;
   bool _isSpeaking = false;
 
+  @override
+  VoidCallback? onComplete;
+
   /// Dedicated mapping of native Sinhala text phrases to high-fidelity,
   /// studio-quality neural Sinhala audio recordings.
   static final Map<String, String> _sinhalaAudioFiles = {
@@ -210,6 +213,140 @@ class WebTtsService implements TtsService {
         'Welaawa balaa ganna oba bhaavithaa karanne monawaada?',
     'ඇපල් සහ දොඩම් යන දෙකම පලතුරුද?': 'Epal saha dodam yana dekama palathuruda?',
     'ඊළඟ ප්‍රශ්නය': 'Eelanga prashnaya',
+
+    // Elder Banner Greetings & Respective Resident Names
+    'කුමාර මහත්මයා': 'Kumara Mahathmaya',
+    'කුමාර': 'Kumara',
+    'මාලිනී බණ්ඩාර': 'Maalinee Bandara',
+    'ආතර් පෙන්ඩ්ල්ටන්': 'Aarthar Pendalton',
+    'නේවාසික සාමාජිකයා': 'Newaasika Saamaajikaya',
+    'සුබ උදෑසනක්': 'Suba udaasanak',
+    'සුබ දහවල් කාලයක්': 'Suba dahawal kaalayak',
+    'සුබ සන්ධ්‍යාවක්': 'Suba sandhyaawak',
+    'සුබ රාත්‍රියක්': 'Suba raathriyak',
+    'ඔබ ගැන අදත් හොඳින් සලකමු!': 'Oba gena adath hondhin salakamu!',
+    'ඔබ ගැන අදත් හොඳින් සලකමු': 'Oba gena adath hondhin salakamu',
+    'අදත් සුවපහසු, සතුටුදායක දිනයක් එක්ව ආරම්භ කරමු!':
+        'Adath suwapahasu, sathutudaayaka dinayak ekwa aarambha karamu!',
+    'අදත් සුවපහසු, සතුටුදායක දිනයක් එක්ව ආරම්භ කරමු':
+        'Adath suwapahasu, sathutudaayaka dinayak ekwa aarambha karamu',
+    'ප්‍රීතිමත්, සුවබර උදෑසනක්!': 'Preethimath, suwabara udaasanak!',
+    'ප්‍රීතිමත්, සුවබර උදෑසනක්': 'Preethimath, suwabara udaasanak',
+
+    // Center Robot Mascot Speech Bubble
+    'අද උදයේ මූලික පුරුදු කටයුතු කරගත්තාද?':
+        'Ada udaye moolika purudhu katayuthu karagaththaadha?',
+    'අද උදයේ\nමූලික පුරුදු\nකරගත්තාද? 💜':
+        'Ada udaye moolika purudhu karagaththaadha?',
+    'අද දහවල් සුවපහසු විවේකය ලබාගත්තාද?':
+        'Ada dahawal suwapahasu vivekaya labaagaththaadha?',
+    'අද දහවල්\nසුවපහසු විවේකය\nලබාගත්තාද? 💜':
+        'Ada dahawal suwapahasu vivekaya labaagaththaadha?',
+    'අද සවස නැවුම් සුවය වින්දාද?':
+        'Ada sawasa newum suwaya windhaadha?',
+    'අද සවස\nනැවුම් සුවය\nවින්දාද? 💜':
+        'Ada sawasa newum suwaya windhaadha?',
+    'අද රාත්‍රී සුව නින්දකට සූදානම්ද?':
+        'Ada raathree suwa nindhakata soodhaanandha?',
+    'අද රාත්‍රී\nසුව නින්දකට\nසූදානම්ද? 💜':
+        'Ada raathree suwa nindhakata soodhaanandha?',
+
+    // Routine Card Sub-phrases & Buttons
+    'උදේ තේ බිව්වද?': 'Uday thee biwwadha?',
+    'උදේ තේ බිව්වද': 'Uday thee biwwadha',
+    'සුවබර උදෑසනකට උණුසුම් තේ පැන්': 'Suwabara udaasanakata unuhum thee pen',
+    'ඔව්, බිව්වා': 'Ow, biwwaa',
+    'තවම නැහැ': 'Thawama nehe',
+
+    'මුහුණ හෝදාගත්තාද?': 'Muhuna hodaa gaththaadha?',
+    'මුහුණ හෝදාගත්තාද': 'Muhuna hodaa gaththaadha',
+    'ප්‍රබෝධමත් දවසකට මුහුණ සේදීම': 'Prabodhamath dawasakata muhuna sedeema',
+    'ඔව්': 'Ow',
+
+    'දිවා ආහාරය ගත්තාද?': 'Diwaa aahaaraya gaththaadha?',
+    'දිවා ආහාරය ගත්තාද': 'Diwaa aahaaraya gaththaadha',
+    'පෝෂ්‍යදායී දිවා ආහාරය': 'Poshya daayee diwaa aahaaraya',
+    'ඔව්, ගත්තා': 'Ow, gaththaa',
+
+    'කෙටි විවේකයක් ගත්තාද?': 'Keti vivekayak gaththaadha?',
+    'කෙටි විවේකයක් ගත්තාද': 'Keti vivekayak gaththaadha',
+    'සුවදායක කෙටි විවේකයක්': 'Suwadaayaka keti vivekayak',
+
+    'සවස තේ පැන් පානය කළාද?': 'Sawasa thee pen paanaya kalaadha?',
+    'සවස තේ පැන් පානය කළාද': 'Sawasa thee pen paanaya kalaadha',
+    'නැවුම් සන්ධ්‍යාවකට තේ පැන්': 'Newum sandhyaawakata thee pen',
+
+    'නැවුම් සුළං සුවය වින්දාද?': 'Newum sulan suwaya windhaadha?',
+    'නැවුම් සුළං සුවය වින්දාද': 'Newum sulan suwaya windhaadha',
+    'සවස නැවුම් සුළඟ විඳීම': 'Sawasa newum sulanga windheema',
+
+    'රාත්‍රී ආහාර හා ඖෂධ ගත්තාද?': 'Raathree aahaara haa aushadha gaththaadha?',
+    'රාත්‍රී ආහාර හා ඖෂධ ගත්තාද': 'Raathree aahaara haa aushadha gaththaadha',
+    'සුව නින්දකට පෙර ආහාර හා නියමිත ඖෂධ': 'Suwa nindhakata pera aahaara haa niyamitha aushadha',
+
+    'සුව නින්දකට සූදානම්ද?': 'Suwa nindhakata soodhaanandha?',
+    'සුව නින්දකට සූදානම්ද': 'Suwa nindhakata soodhaanandha',
+    'සැනසිලිදායක, සුවබර නින්දකට සූදානම් වීම': 'Senasillidaayaka, suwabara nindhakata soodhaanam veema',
+
+    // Full Banner Question Prompts (Card 1 & Card 2)
+    'උදේ තේ බිව්වද? සුවබර උදෑසනකට උණුසුම් තේ පැන් පානය කළා නම් කොළ පාට බොත්තම ඔබන්න. තවම නැත්නම් තවම නැහැ බොත්තම ඔබන්න.':
+        'Uday thee biwwadha? Suwabara udaasanakata unuhum thee pen paanaya kalaanam kola paata boththama obanna. Thawama nethnam thawama nehe boththama obanna.',
+    'මුහුණ හෝදාගත්තාද? ප්‍රබෝධමත් දවසකට මුහුණ සෝදා පිරිසිදු වුණා නම් කොළ පාට බොත්තම ඔබන්න. තවම නැත්නම් තවම නැහැ බොත්තම ඔබන්න.':
+        'Muhuna hodaa gaththaadha? Prabodhamath dawasakata muhuna sodaa pirisidhu unaanam kola paata boththama obanna. Thawama nethnam thawama nehe boththama obanna.',
+    'දිවා ආහාරය ගත්තාද? පෝෂ්‍යදායී දිවා ආහාරය ගත්තා නම් කොළ පාට බොත්තම ඔබන්න. තවම නැත්නම් තවම නැහැ බොත්තම ඔබන්න.':
+        'Diwaa aahaaraya gaththaadha? Poshya daayee diwaa aahaaraya gaththaanam kola paata boththama obanna. Thawama nethnam thawama nehe boththama obanna.',
+    'කෙටි විවේකයක් ගත්තාද? සුවදායක කෙටි විවේකයක් ලබා ගත්තා නම් කොළ පාට බොත්තම ඔබන්න. තවම නැත්නම් තවම නැහැ බොත්තම ඔබන්න.':
+        'Keti vivekayak gaththaadha? Suwadaayaka keti vivekayak labaa gaththaanam kola paata boththama obanna. Thawama nethnam thawama nehe boththama obanna.',
+    'සවස තේ පැන් පානය කළාද? උණුසුම් තේ පැන් බිව්වා නම් කොළ පාට බොත්තම ඔබන්න. තවම නැත්නම් තවම නැහැ බොත්තම ඔබන්න.':
+        'Sawasa thee pen paanaya kalaadha? Unuhum thee pen biwwaanam kola paata boththama obanna. Thawama nethnam thawama nehe boththama obanna.',
+    'නැවුම් සුළං සුවය වින්දාද? සවස නැවුම් සුළඟ වින්දා නම් කොළ පාට බොත්තම ඔබන්න. තවම නැත්නම් තවම නැහැ බොත්තම ඔබන්න.':
+        'Newum sulan suwaya windhaadha? Sawasa newum sulanga windhaanam kola paata boththama obanna. Thawama nethnam thawama nehe boththama obanna.',
+    'රාත්‍රී ආහාර හා ඖෂධ ගත්තාද? නියමිත ආහාර හා ඖෂධ ලබා ගත්තා නම් කොළ පාට බොත්තම ඔබන්න. තවම නැත්නම් තවම නැහැ බොත්තම ඔබන්න.':
+        'Raathree aahaara haa aushadha gaththaadha? Niyamitha aahaara haa aushadha labaa gaththaanam kola paata boththama obanna. Thawama nethnam thawama nehe boththama obanna.',
+    'සුව නින්දකට සූදානම්ද? සැනසිලිදායක නින්දකට සූදානම් නම් කොළ පාට බොත්තම ඔබන්න. තවම නැත්නම් තවම නැහැ බොත්තම ඔබන්න.':
+        'Suwa nindhakata soodhaanandha? Senasillidaayaka nindhakata soodhaanamnam kola paata boththama obanna. Thawama nethnam thawama nehe boththama obanna.',
+
+    // Notification Pill Prompts
+    'රැකබලා ගන්නා දැනුවත් කරන ලදී: ඔබට අවශ්‍ය සහාය ලබා දීමට සහායක කණ්ඩායම පැමිණෙනු ඇත.':
+        'Rekabalaa gannaa denuwath karana ladhee: obata awashya sahaaya labaa deemata sahaayaka kandaayama peminenu etha.',
+    'තවම කරගෙන නැත්නම්, අපේ සත්කාර කණ්ඩායම ඔබට මිතුරු වෙමින් උදව් කිරීමට දැනුම් දෙනවා.':
+        'Thawama karagena nethnam, ape sathkaara kandaayama obata mithuru wemin udhaw kireemata denum dhenawaa.',
+    'තවම කරගෙන නැත්නම්, අපේ සත්කාර කණ්ඩායම ඔබට මිතුරු වෙමින් දැනුම් දෙනවා.':
+        'Thawama karagena nethnam, ape sathkaara kandaayama obata mithuru wemin denum dhenawaa.',
+
+    // Routine Response Feedback
+    'ඔබ තවම තේ බීලා නැත්නම්, මම රැකබලා ගන්නාට දැන්වුවා ඔබට උණුසුම් තේ එකක් ගෙන එන්න.':
+        'Oba thawama thee beelaa nethnam, mama rekabalaa gannaata denwuwaa obata unuhum thee ekak gena enna.',
+    'ඔබ තේ පානය කර තිබීම සතුටක්! දැන් ඔබ මුහුණ සෝදා පිරිසිදු වුණාද?':
+        'Oba thee paanaya kara thibeema sathutak! Dhen oba muhuna sodaa pirisidhu unaadha?',
+    'අපි මුහුණ සෝදා ප්‍රබෝධමත් වෙමු. ඔබට උදව් අවශ්‍ය නම් රැකබලා ගන්නා දැනුවත් කර ඇත.':
+        'Api muhuna sodaa prabodhamath wemu. Obata udhaw awashya nam rekabalaa gannaa denuwath kara etha.',
+    'ඉතා විශිෂ්ටයි! ඔබ ප්‍රබෝධමත්ව අද දවස සතුටින් ගත කිරීමට සූදානම්.':
+        'Ithaa vishishtayi! Oba prabodhamathwa ada dawasa sathutin gatha kireemata soodhanam.',
+    'ඔබ තවම දිවා ආහාරය ගෙන නැත්නම්, ඔබට උදව් කිරීමට රැකබලා ගන්නා දැනුවත් කර ඇත.':
+        'Oba thawama diwaa aahaaraya gena nethnam, obata udhaw kireemata rekabalaa gannaa denuwath kara etha.',
+    'ඔබ දිවා ආහාරය ගෙන තිබීම සතුටක්! ඔබේ නීරෝගී සුවය අපගේ ප්‍රමුඛතාවයි.':
+        'Oba diwaa aahaaraya gena thibeema sathutak! Obe neeroogee suwaya apage pramukhathaawayi.',
+    'සුවදායක කෙටි විවේකයක් ලබා ගැනීමට සහායක කණ්ඩායම දැනුවත් කර ඇත.':
+        'Suwadaayaka keti vivekayak labaa geneemata sahaayaka kandaayama denuwath kara etha.',
+    'ඉතා විශිෂ්ටයි! කෙටි විවේකයක් ගැනීමෙන් ඔබේ මනසට සහ සිරුරට නව ප්‍රබෝධයක් ලැබේ.':
+        'Ithaa vishishtayi! Keti vivekayak geneemen obe manasata saha sirurata nawa prabodhayak lebe.',
+    'ඔබ තවම සවස තේ බීලා නැත්නම්, රැකබලා ගන්නා ඔබ වෙත පැමිණෙනු ඇත.':
+        'Oba thawama sawasa thee beelaa nethnam, rekabalaa gannaa oba wetha peminenu etha.',
+    'සවස උණුසුම් තේ පැන් පානය කර තිබීම සතුටක්!':
+        'Sawasa unuhum thee pen paanaya kara thibeema sathutak!',
+    'සවස නැවුම් සුළං සුවය විඳීමට ඔබට උපකාර කිරීමට රැකබලා ගන්නා පැමිණෙනු ඇත.':
+        'Sawasa newum sulan suwaya windheemata obata upakaara kireemata rekabalaa gannaa peminenu etha.',
+    'නැවුම් සවස සුළං සුවය විඳීම ඔබේ මනස සන්සුන් කරයි!':
+        'Newum sawasa sulan suwaya windheema obe manasa sansun karayi!',
+    'ඔබ තවම රාත්‍රී ආහාර හෝ ඖෂධ ගෙන නැත්නම්, ඔබට උදව් කිරීමට රැකබලා ගන්නා දැනුවත් කළා.':
+        'Oba thawama raathree aahaara ho aushadha gena nethnam, obata udhaw kireemata rekabalaa gannaa denuwath kalaa.',
+    'ඉතා විශිෂ්ටයි! රාත්‍රී ආහාර සහ ඖෂධ නියමිත වේලාවට ලබා ගැනීම නීරෝගී බවට ඉතා වැදගත්.':
+        'Ithaa vishishtayi! Raathree aahaara saha aushadha niyamitha welaawata labaa geneema neeroogee bawata ithaa wedagath.',
+    'සුව නින්දකට සූදානම් වීමට ඔබට උපකාර කිරීමට රැකබලා ගන්නා දැනුවත් කර ඇත.':
+        'Suwa nindhakata soodhanam veemata obata upakaara kireemata rekabalaa gannaa denuwath kara etha.',
+    'සුවබර, සැනසිලිදායක නින්දක් සහ මිහිරි සිහින ඔබට ප්‍රාර්ථනා කරනවා!':
+        'Suwabara, senasillidaayaka nindhak saha mihiri sihina obata praarthanaa karanawaa!',
   };
 
   static String _toSinglish(String text) {
@@ -218,13 +355,24 @@ class WebTtsService implements TtsService {
       return _knownSinhalaMap[clean]!;
     }
 
-    for (final entry in _knownSinhalaMap.entries) {
-      if (clean.contains(entry.key)) {
-        return clean.replaceAll(entry.key, entry.value);
+    String result = clean;
+
+    // Sort entries by key length descending so longer sentences/phrases replace before shorter parts
+    final sortedEntries = _knownSinhalaMap.entries.toList()
+      ..sort((a, b) => b.key.length.compareTo(a.key.length));
+
+    for (final entry in sortedEntries) {
+      if (result.contains(entry.key)) {
+        result = result.replaceAll(entry.key, entry.value);
       }
     }
 
-    // Algorithmic phonetic transliteration fallback
+    // Check if any Sinhala Unicode characters remain (\u0D80-\u0DFF)
+    if (!RegExp(r'[\u0D80-\u0DFF]').hasMatch(result)) {
+      return result;
+    }
+
+    // Algorithmic phonetic transliteration fallback for any remaining Sinhala letters
     const vowels = {
       'අ': 'a', 'ආ': 'aa', 'ඇ': 'ae', 'ඈ': 'aae', 'ඉ': 'i', 'ඊ': 'ee',
       'උ': 'u', 'ඌ': 'oo', 'ඍ': 'ru', 'ඎ': 'roo', 'එ': 'e', 'ඒ': 'ee',
@@ -288,6 +436,7 @@ class WebTtsService implements TtsService {
         html.window.speechSynthesis!.cancel();
       }
       _isSpeaking = false;
+      onComplete?.call();
     } catch (e) {
       debugPrint('TTS stop error: $e');
     }
@@ -326,8 +475,14 @@ class WebTtsService implements TtsService {
           utterance.voice = siVoices.first;
           utterance.lang = 'si-LK';
           utterance.rate = 0.82;
-          utterance.onEnd.listen((_) => _isSpeaking = false);
-          utterance.onError.listen((_) => _isSpeaking = false);
+          utterance.onEnd.listen((_) {
+            _isSpeaking = false;
+            onComplete?.call();
+          });
+          utterance.onError.listen((_) {
+            _isSpeaking = false;
+            onComplete?.call();
+          });
           html.window.speechSynthesis!.speak(utterance);
           return;
         } catch (_) {}
@@ -370,6 +525,7 @@ class WebTtsService implements TtsService {
         audio.onEnded.listen((_) {
           _isSpeaking = false;
           if (_audio == audio) _audio = null;
+          onComplete?.call();
         });
 
         audio.onError.listen((e) {
@@ -400,24 +556,27 @@ class WebTtsService implements TtsService {
     try {
       if (html.window.speechSynthesis == null) {
         _isSpeaking = false;
+        onComplete?.call();
         return;
       }
 
       final singlish = _toSinglish(text);
       final utterance = html.SpeechSynthesisUtterance(singlish);
-      utterance.rate = 0.84; // Gentle, clear pacing for elder comprehension
+      utterance.rate = 0.85; // Gentle, clear pacing for elder comprehension
       utterance.pitch = 1.0;
-      utterance.lang = 'en-US';
 
       final voices = html.window.speechSynthesis!.getVoices();
-      final inVoices = voices.where((v) =>
-        (v.lang?.toLowerCase().contains('in') ?? false) ||
-        (v.lang?.toLowerCase().contains('hi') ?? false)
-      ).toList();
+      final inVoices = voices.where((v) {
+        final lang = v.lang?.toLowerCase() ?? '';
+        final name = v.name?.toLowerCase() ?? '';
+        return lang.contains('en-in') || lang.contains('hi') || name.contains('india') || name.contains('heera') || name.contains('ravi') || name.contains('kalpana') || name.contains('veena');
+      }).toList();
 
       if (inVoices.isNotEmpty) {
         utterance.voice = inVoices.first;
+        utterance.lang = inVoices.first.lang ?? 'en-IN';
       } else {
+        utterance.lang = 'en-IN';
         final enVoices = voices.where((v) => (v.lang?.toLowerCase().startsWith('en') ?? false)).toList();
         if (enVoices.isNotEmpty) {
           final googleVoice = enVoices.where((v) => (v.name?.toLowerCase().contains('google') ?? false)).toList();
@@ -427,15 +586,18 @@ class WebTtsService implements TtsService {
 
       utterance.onEnd.listen((_) {
         _isSpeaking = false;
+        onComplete?.call();
       });
       utterance.onError.listen((e) {
         _isSpeaking = false;
+        onComplete?.call();
         debugPrint('Web Speech synthesis error: $e');
       });
 
       html.window.speechSynthesis!.speak(utterance);
     } catch (e) {
       _isSpeaking = false;
+      onComplete?.call();
       debugPrint('Speech synthesis exception: $e');
     }
   }
@@ -444,6 +606,7 @@ class WebTtsService implements TtsService {
     try {
       if (html.window.speechSynthesis == null) {
         _isSpeaking = false;
+        onComplete?.call();
         return;
       }
       final utterance = html.SpeechSynthesisUtterance(text);
@@ -459,13 +622,16 @@ class WebTtsService implements TtsService {
 
       utterance.onEnd.listen((_) {
         _isSpeaking = false;
+        onComplete?.call();
       });
       utterance.onError.listen((_) {
         _isSpeaking = false;
+        onComplete?.call();
       });
       html.window.speechSynthesis!.speak(utterance);
     } catch (e) {
       _isSpeaking = false;
+      onComplete?.call();
     }
   }
 }
