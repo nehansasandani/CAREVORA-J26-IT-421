@@ -15953,27 +15953,74 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                     ],
                   );
 
+                  final String robotBubbleText = isSinhala
+                      ? (dayPeriod == DayPeriod.morning
+                          ? 'අද උදයේ\nමූලික පුරුදු\nකරගත්තාද? 💜'
+                          : (dayPeriod == DayPeriod.afternoon
+                              ? 'අද දහවල්\nසුවපහසු විවේකය\nලබාගත්තාද? 💜'
+                              : (dayPeriod == DayPeriod.evening
+                                  ? 'අද සවස\nනැවුම් සුවය\nවින්දාද? 💜'
+                                  : 'අද රාත්‍රී\nසුව නින්දකට\nසූදානම්ද? 💜')))
+                      : (dayPeriod == DayPeriod.morning
+                          ? 'Morning\nwellness done\ntoday? 💜'
+                          : (dayPeriod == DayPeriod.afternoon
+                              ? 'Enjoyed your\nafternoon rest\ntoday? 💜'
+                              : (dayPeriod == DayPeriod.evening
+                                  ? 'Enjoyed your\nevening tea &\nbreeze? 💜'
+                                  : 'Ready for\npeaceful sleep\ntonight? 💜')));
+
                   // Center Robot Mascot & Speech Bubble
                   final robotMascot = Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
                     child: AnimatedBuilder(
                       animation: _effectiveBannerPulseController,
                       builder: (context, child) {
                         final bob = (math.sin(_effectiveBannerPulseController.value * 2 * math.pi) * 3.0);
                         return Transform.translate(
                           offset: Offset(0, bob),
-                          child: Image.asset(
-                            'assets/images/elder_robot_mascot.png',
-                            height: 105,
-                            fit: BoxFit.contain,
-                            errorBuilder: (_, __, ___) => Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(16),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Image.asset(
+                                'assets/images/clean_robot_transparent.png',
+                                height: 95,
+                                fit: BoxFit.contain,
+                                errorBuilder: (_, __, ___) => Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.2),
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: const Text('🤖', style: TextStyle(fontSize: 32)),
+                                ),
                               ),
-                              child: const Text('🤖', style: TextStyle(fontSize: 32)),
-                            ),
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(16),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.12),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: Text(
+                                  robotBubbleText,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w800,
+                                    color: Color(0xFF4C1D95),
+                                    height: 1.25,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         );
                       },
