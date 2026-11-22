@@ -102,6 +102,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
   late AnimationController _waveController;
   late AnimationController _scannerController;
   late AnimationController _clapController;
+  late AnimationController _bannerPulseController;
   bool _showClapAnimation = false;
 
   // Elder All-Day Sanctuary & Wellness State
@@ -1578,6 +1579,11 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
       vsync: this,
       duration: const Duration(milliseconds: 2500),
     );
+
+    _bannerPulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 3200),
+    )..repeat(reverse: true);
     _clapController.addStatusListener((status) {
       if (status == AnimationStatus.completed) {
         if (mounted) {
@@ -1943,6 +1949,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
     _waveController.dispose();
     _scannerController.dispose();
     _clapController.dispose();
+    _bannerPulseController.dispose();
     _reasonTextController.dispose();
     _aiChatInputController.dispose();
     _elderThoughtController.dispose();
@@ -15461,7 +15468,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
     }
   }
 
-  // --- SUB-VIEW: CREATIVE ELDER WELCOME & MORNING ROUTINE BANNER (RESEARCH MOCKUP STYLED) ---
+  // --- SUB-VIEW: CREATIVE ELDER WELCOME & MORNING ROUTINE BANNER (RESEARCH MOCKUP STYLED WITH SMOOTH ANIMATIONS) ---
   Widget _buildElderCreativeWelcomeBanner() {
     final authState = ref.watch(authProvider).state;
     final isSinhala = ref.watch(languageProvider).isSinhala;
@@ -15496,7 +15503,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
     final dayPeriod = _getCurrentDayPeriod();
 
     // Time-based greetings and questions
-    String topGreeting;
+    String greetingBaseText;
     String subGreeting;
     String companionText;
 
@@ -15515,7 +15522,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
     String careNoticeText;
 
     if (dayPeriod == DayPeriod.morning) {
-      topGreeting = isSinhala ? 'සුබ උදෑසනක්, $displayName! 👋' : 'Good morning, $displayName! 👋';
+      greetingBaseText = isSinhala ? 'සුබ උදෑසනක්, $displayName!' : 'Good morning, $displayName!';
       subGreeting = isSinhala ? 'Good morning, $displayName!' : 'Wishing you a bright and joyful morning!';
       companionText = isSinhala ? 'ඔබේ උදෑසන සහකරු' : 'Your morning companion';
 
@@ -15535,7 +15542,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
           ? 'එකක් හෝ "තවම නැහැ" නම්, ඔබට සහාය වීමට අපගේ රැකවරණ කණ්ඩායම (Care Team) දැනුවත් කෙරේ.'
           : 'If either is "Not yet", our care team will be gently notified to support you.';
     } else if (dayPeriod == DayPeriod.afternoon) {
-      topGreeting = isSinhala ? 'සුබ දහවල් කාලයක්, $displayName! 👋' : 'Good afternoon, $displayName! 👋';
+      greetingBaseText = isSinhala ? 'සුබ දහවල් කාලයක්, $displayName!' : 'Good afternoon, $displayName!';
       subGreeting = isSinhala ? 'Good afternoon, $displayName!' : 'Wishing you a peaceful, restful afternoon!';
       companionText = isSinhala ? 'ඔබේ දිවා සහකරු' : 'Your afternoon companion';
 
@@ -15555,7 +15562,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
           ? 'එකක් හෝ "තවම නැහැ" නම්, ඔබට සහාය වීමට අපගේ රැකවරණ කණ්ඩායම (Care Team) දැනුවත් කෙරේ.'
           : 'If either is "Not yet", our care team will be gently notified to support you.';
     } else if (dayPeriod == DayPeriod.evening) {
-      topGreeting = isSinhala ? 'සුබ සන්ධ්‍යාවක්, $displayName! 👋' : 'Good evening, $displayName! 👋';
+      greetingBaseText = isSinhala ? 'සුබ සන්ධ්‍යාවක්, $displayName!' : 'Good evening, $displayName!';
       subGreeting = isSinhala ? 'Good evening, $displayName!' : 'Wishing you a serene and joyful evening!';
       companionText = isSinhala ? 'ඔබේ සවස සහකරු' : 'Your evening companion';
 
@@ -15575,7 +15582,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
           ? 'එකක් හෝ "තවම නැහැ" නම්, ඔබට සහාය වීමට අපගේ රැකවරණ කණ්ඩායම (Care Team) දැනුවත් කෙරේ.'
           : 'If either is "Not yet", our care team will be gently notified to support you.';
     } else {
-      topGreeting = isSinhala ? 'සුබ රාත්‍රියක්, $displayName! 👋' : 'Good night, $displayName! 👋';
+      greetingBaseText = isSinhala ? 'සුබ රාත්‍රියක්, $displayName!' : 'Good night, $displayName!';
       subGreeting = isSinhala ? 'Good night, $displayName!' : 'Wishing you a deep and peaceful sleep!';
       companionText = isSinhala ? 'ඔබේ රාත්‍රී සහකරු' : 'Your night companion';
 
@@ -15622,27 +15629,68 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
         borderRadius: BorderRadius.circular(24),
         child: Stack(
           children: [
-            // Golden sunrise glowing aura in background
-            Positioned(
-              bottom: -32,
-              left: 230,
-              child: Container(
-                width: 140,
-                height: 80,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [
-                      const Color(0xFFFEF08A).withValues(alpha: 0.75),
-                      const Color(0xFFFBBF24).withValues(alpha: 0.35),
-                      Colors.transparent,
-                    ],
+            // 1. Animated Breathing Golden Sun / Sunset Celestial Aura
+            AnimatedBuilder(
+              animation: _bannerPulseController,
+              builder: (context, child) {
+                final t = _bannerPulseController.value;
+                final scale = 0.90 + (0.35 * t);
+                final alpha1 = 0.60 + (0.35 * t);
+                final alpha2 = 0.22 + (0.28 * t);
+                final vOffset = (sin(t * 3.14159) * 4.0);
+                return Positioned(
+                  bottom: -34 + vOffset,
+                  left: 220,
+                  child: Transform.scale(
+                    scale: scale,
+                    child: Container(
+                      width: 150,
+                      height: 85,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: RadialGradient(
+                          colors: [
+                            const Color(0xFFFEF08A).withValues(alpha: alpha1),
+                            const Color(0xFFF59E0B).withValues(alpha: alpha2),
+                            Colors.transparent,
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-              ),
+                );
+              },
             ),
 
-            // Blooming Lotus Flowers Graphic on Right
+            // 2. Animated Ambient Floating Sparkles
+            AnimatedBuilder(
+              animation: _bannerPulseController,
+              builder: (context, child) {
+                final t = _bannerPulseController.value;
+                return Stack(
+                  children: [
+                    Positioned(
+                      top: 12 + (5 * (sin(t * 3.14159))),
+                      left: 360 + (10 * (cos(t * 3.14159))),
+                      child: Opacity(
+                        opacity: 0.30 + (0.55 * (sin(t * 3.14159))),
+                        child: const Text('✨', style: TextStyle(fontSize: 13)),
+                      ),
+                    ),
+                    Positioned(
+                      bottom: 14 + (4 * (cos(t * 3.14159))),
+                      right: 180 + (8 * (sin(t * 3.14159))),
+                      child: Opacity(
+                        opacity: 0.25 + (0.50 * (cos(t * 3.14159))),
+                        child: const Text('✨', style: TextStyle(fontSize: 11)),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+
+            // 3. Blooming Lotus Flowers Graphic on Right
             Positioned(
               right: 0,
               top: 0,
@@ -15661,19 +15709,19 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
               ),
             ),
 
-            // Content
+            // 4. Content
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
               child: LayoutBuilder(
                 builder: (context, constraints) {
                   final isWide = constraints.maxWidth >= 950;
 
-                  // The left column with Avatar, Greetings, and Companion Pill
+                  // The left column with Avatar, Waving Greeting, and Companion Pill
                   final leftDetails = Row(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      // Avatar squircle with Green Active Indicator Dot
+                      // Avatar squircle with Animated Expanding Live Indicator Ring
                       Stack(
                         clipBehavior: Clip.none,
                         children: [
@@ -15704,20 +15752,46 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                           Positioned(
                             right: -2,
                             bottom: -2,
-                            child: Container(
-                              width: 17,
-                              height: 17,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF22C55E),
-                                shape: BoxShape.circle,
-                                border: Border.all(color: Colors.white, width: 2.2),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: const Color(0xFF22C55E).withValues(alpha: 0.7),
-                                    blurRadius: 5,
-                                  ),
-                                ],
-                              ),
+                            child: AnimatedBuilder(
+                              animation: _bannerPulseController,
+                              builder: (context, child) {
+                                final ringScale = 1.0 + (0.55 * _bannerPulseController.value);
+                                final ringOpacity = (1.0 - _bannerPulseController.value) * 0.7;
+                                return Stack(
+                                  alignment: Alignment.center,
+                                  children: [
+                                    Transform.scale(
+                                      scale: ringScale,
+                                      child: Container(
+                                        width: 17,
+                                        height: 17,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                            color: const Color(0xFF22C55E).withValues(alpha: ringOpacity),
+                                            width: 1.8,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    Container(
+                                      width: 17,
+                                      height: 17,
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF22C55E),
+                                        shape: BoxShape.circle,
+                                        border: Border.all(color: Colors.white, width: 2.2),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: const Color(0xFF22C55E).withValues(alpha: 0.7),
+                                            blurRadius: 5,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              },
                             ),
                           ),
                         ],
@@ -15733,13 +15807,26 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
-                                topGreeting,
+                                greetingBaseText,
                                 style: const TextStyle(
                                   fontSize: 19,
                                   fontWeight: FontWeight.w800,
                                   color: Colors.white,
                                   letterSpacing: 0.2,
                                 ),
+                              ),
+                              const SizedBox(width: 4),
+                              // Friendly Animated Waving Hand
+                              AnimatedBuilder(
+                                animation: _bannerPulseController,
+                                builder: (context, child) {
+                                  final waveAngle = (sin(_bannerPulseController.value * 4 * 3.14159)) * 0.18;
+                                  return Transform.rotate(
+                                    angle: waveAngle,
+                                    alignment: Alignment.bottomRight,
+                                    child: const Text('👋', style: TextStyle(fontSize: 20)),
+                                  );
+                                },
                               ),
                               const SizedBox(width: 8),
                               InkWell(
@@ -15809,7 +15896,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                     ],
                   );
 
-                  // Interactive Routine Question Cards
+                  // Interactive Routine Question Cards with Floating Bobbing Icons
                   final card1 = _buildRoutineMicroCard(
                     emoji: card1Emoji,
                     iconBg: card1IconBg,
@@ -15832,8 +15919,9 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                     onNo: () => _handleRoutineSelection(questionIndex: 2, answeredYes: false),
                   );
 
-                  // Notification note pill
-                  final careNoticePill = Container(
+                  // Notification note pill with animated pulse when alert is active
+                  final careNoticePill = AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                     decoration: BoxDecoration(
                       color: _routineCaregiverNotified
@@ -15844,12 +15932,14 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                         color: _routineCaregiverNotified
                             ? const Color(0xFFF59E0B)
                             : const Color(0xFFE2E8F0),
-                        width: 1.1,
+                        width: 1.2,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.05),
-                          blurRadius: 6,
+                          color: _routineCaregiverNotified
+                              ? const Color(0xFFF59E0B).withValues(alpha: 0.25)
+                              : Colors.black.withValues(alpha: 0.05),
+                          blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
                       ],
@@ -15857,12 +15947,23 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(
-                          _routineCaregiverNotified ? LucideIcons.bellRing : LucideIcons.users,
-                          size: 13,
-                          color: _routineCaregiverNotified
-                              ? const Color(0xFFB45309)
-                              : const Color(0xFF6B21A8),
+                        AnimatedBuilder(
+                          animation: _bannerPulseController,
+                          builder: (context, child) {
+                            final bellAngle = _routineCaregiverNotified
+                                ? (sin(_bannerPulseController.value * 6 * 3.14159)) * 0.18
+                                : 0.0;
+                            return Transform.rotate(
+                              angle: bellAngle,
+                              child: Icon(
+                                _routineCaregiverNotified ? LucideIcons.bellRing : LucideIcons.users,
+                                size: 13,
+                                color: _routineCaregiverNotified
+                                    ? const Color(0xFFB45309)
+                                    : const Color(0xFF6B21A8),
+                              ),
+                            );
+                          },
                         ),
                         const SizedBox(width: 6),
                         Flexible(
@@ -15966,23 +16067,33 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: iconBg,
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
+          // Floating Gentle Bobbing Icon
+          AnimatedBuilder(
+            animation: _bannerPulseController,
+            builder: (context, child) {
+              final bob = (sin((_bannerPulseController.value + 0.25) * 2 * 3.14159)) * 2.2;
+              return Transform.translate(
+                offset: Offset(0, bob),
+                child: Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: iconBg,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: iconBg.withValues(alpha: 0.5),
+                        blurRadius: 6 + (3 * _bannerPulseController.value),
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: Text(emoji, style: const TextStyle(fontSize: 24)),
+                  ),
                 ),
-              ],
-            ),
-            child: Center(
-              child: Text(emoji, style: const TextStyle(fontSize: 24)),
-            ),
+              );
+            },
           ),
           const SizedBox(width: 10),
           Column(
@@ -16041,32 +16152,37 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
         ? (isPositive ? const Color(0xFF15803D) : const Color(0xFF6B21A8))
         : (isPositive ? const Color(0xFF86EFAC) : const Color(0xFFDDD6FE));
 
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-        decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: borderColor, width: 1.2),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: bgColor.withValues(alpha: 0.35),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : null,
-        ),
-        child: Text(
-          title,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.bold,
-            color: textColor,
+    return AnimatedScale(
+      scale: isSelected ? 1.05 : 1.0,
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutBack,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: borderColor, width: 1.2),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: bgColor.withValues(alpha: 0.35),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Text(
+            title,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: textColor,
+            ),
           ),
         ),
       ),
