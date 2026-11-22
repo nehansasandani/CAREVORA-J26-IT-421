@@ -15644,18 +15644,17 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
         child: Stack(
           children: [
             // 1. Animated Breathing Golden Sun / Sunset Celestial Aura
-            AnimatedBuilder(
-              animation: _effectiveBannerPulseController,
-              builder: (context, child) {
-                final t = _effectiveBannerPulseController.value;
-                final scale = 0.90 + (0.35 * t);
-                final alpha1 = 0.60 + (0.35 * t);
-                final alpha2 = 0.22 + (0.28 * t);
-                final vOffset = (math.sin(t * 3.14159) * 4.0);
-                return Positioned(
-                  bottom: (-34.0 + vOffset).toDouble(),
-                  left: 220,
-                  child: Transform.scale(
+            Positioned(
+              bottom: -32,
+              left: 220,
+              child: AnimatedBuilder(
+                animation: _effectiveBannerPulseController,
+                builder: (context, child) {
+                  final t = _effectiveBannerPulseController.value;
+                  final scale = 0.90 + (0.35 * t);
+                  final alpha1 = (0.60 + (0.35 * t)).clamp(0.0, 1.0);
+                  final alpha2 = (0.22 + (0.28 * t)).clamp(0.0, 1.0);
+                  return Transform.scale(
                     scale: scale,
                     child: Container(
                       width: 150,
@@ -15671,37 +15670,51 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                         ),
                       ),
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
 
-            // 2. Animated Ambient Floating Sparkles
-            AnimatedBuilder(
-              animation: _effectiveBannerPulseController,
-              builder: (context, child) {
-                final t = _effectiveBannerPulseController.value;
-                return Stack(
-                  children: [
-                    Positioned(
-                      top: (12.0 + (5.0 * math.sin(t * 3.14159))).toDouble(),
-                      left: (360.0 + (10.0 * math.cos(t * 3.14159))).toDouble(),
-                      child: Opacity(
-                        opacity: (0.30 + (0.55 * math.sin(t * 3.14159))).clamp(0.0, 1.0),
-                        child: const Text('✨', style: TextStyle(fontSize: 13)),
-                      ),
+            // 2. Animated Ambient Floating Sparkle 1
+            Positioned(
+              top: 12,
+              left: 360,
+              child: AnimatedBuilder(
+                animation: _effectiveBannerPulseController,
+                builder: (context, child) {
+                  final t = _effectiveBannerPulseController.value;
+                  final dy = (math.sin(t * 3.14159) * 6.0).toDouble();
+                  final opacity = (0.30 + (0.55 * math.sin(t * 3.14159))).clamp(0.0, 1.0);
+                  return Transform.translate(
+                    offset: Offset(0, dy),
+                    child: Opacity(
+                      opacity: opacity,
+                      child: const Text('✨', style: TextStyle(fontSize: 13)),
                     ),
-                    Positioned(
-                      bottom: (14.0 + (4.0 * math.cos(t * 3.14159))).toDouble(),
-                      right: (180.0 + (8.0 * math.sin(t * 3.14159))).toDouble(),
-                      child: Opacity(
-                        opacity: (0.25 + (0.50 * math.cos(t * 3.14159))).clamp(0.0, 1.0),
-                        child: const Text('✨', style: TextStyle(fontSize: 11)),
-                      ),
+                  );
+                },
+              ),
+            ),
+
+            // 3. Animated Ambient Floating Sparkle 2
+            Positioned(
+              bottom: 14,
+              right: 180,
+              child: AnimatedBuilder(
+                animation: _effectiveBannerPulseController,
+                builder: (context, child) {
+                  final t = _effectiveBannerPulseController.value;
+                  final dy = (math.cos(t * 3.14159) * 5.0).toDouble();
+                  final opacity = (0.25 + (0.50 * math.cos(t * 3.14159))).clamp(0.0, 1.0);
+                  return Transform.translate(
+                    offset: Offset(0, dy),
+                    child: Opacity(
+                      opacity: opacity,
+                      child: const Text('✨', style: TextStyle(fontSize: 11)),
                     ),
-                  ],
-                );
-              },
+                  );
+                },
+              ),
             ),
 
             // 3. Blooming Lotus Flowers Graphic on Right
@@ -15980,20 +15993,18 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                           },
                         ),
                         const SizedBox(width: 6),
-                        Flexible(
-                          child: Text(
-                            _routineCaregiverNotified
-                                ? (isSinhala
-                                    ? 'රැකබලා ගන්නා දැනුවත් කරන ලදී: ඔබට අවශ්‍ය සහාය ලබා දීමට කණ්ඩායම පැමිණෙනු ඇත.'
-                                    : 'Care team gently notified: A caregiver is on the way to assist you.')
-                                : careNoticeText,
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: _routineCaregiverNotified
-                                  ? const Color(0xFF92400E)
-                                  : const Color(0xFF475569),
-                            ),
+                        Text(
+                          _routineCaregiverNotified
+                              ? (isSinhala
+                                  ? 'රැකබලා ගන්නා දැනුවත් කරන ලදී: ඔබට අවශ්‍ය සහාය ලබා දීමට කණ්ඩායම පැමිණෙනු ඇත.'
+                                  : 'Care team gently notified: A caregiver is on the way to assist you.')
+                              : careNoticeText,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: _routineCaregiverNotified
+                                ? const Color(0xFF92400E)
+                                : const Color(0xFF475569),
                           ),
                         ),
                         const SizedBox(width: 4),
