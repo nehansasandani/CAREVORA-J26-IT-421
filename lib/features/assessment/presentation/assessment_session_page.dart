@@ -13,12 +13,14 @@ import 'package:speech_to_text/speech_to_text.dart' as stt;
 
 import '../../../core/localization/app_language.dart';
 import '../../../core/localization/sinhala_name_transliterator.dart';
+import '../../../core/localization/sinhala_typing_helper.dart';
 import '../../../core/responsive/responsive_builder.dart';
 import '../../../core/services/tts_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/mock/mock_carevora_data.dart';
 import '../../../data/models/carevora_models.dart';
 import '../../../shared/widgets/carevora_avatar.dart';
+import '../../../shared/widgets/sinhala_virtual_keyboard.dart';
 import '../../auth/application/auth_controller.dart';
 import '../application/cognitive_assessment_service.dart';
 import '../domain/cognitive_scoring.dart';
@@ -33,8 +35,21 @@ class AssessmentSessionPage extends ConsumerStatefulWidget {
 
 class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
     with TickerProviderStateMixin {
-  // Navigation & session index (10 questions battery)
-  int _currentIndex = 0;
+  // Navigation & session index (10 questions battery, separate per language)
+  int _currentIndexEn = 0;
+  int _currentIndexSi = 0;
+
+  int get _currentIndex =>
+      ref.read(languageProvider).isSinhala ? _currentIndexSi : _currentIndexEn;
+
+  set _currentIndex(int value) {
+    if (ref.read(languageProvider).isSinhala) {
+      _currentIndexSi = value;
+    } else {
+      _currentIndexEn = value;
+    }
+  }
+
   final List<CognitiveQuestionItem> _questions = CognitiveScoring.questions;
 
   // Separate English & Sinhala response and grade maps so answers in one language
@@ -87,6 +102,30 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
   String? _sessionId;
   String _sessionStatus = 'IN_PROGRESS'; // 'IN_PROGRESS', 'PENDING_CAREGIVER_REVIEW', 'COMPLETED'
 
+  // Elder welcome start screen state (elder view only, separate per language)
+  bool _hasStartedElderAssessmentEn = false;
+  bool _hasStartedElderAssessmentSi = false;
+  bool _isSpeakingWelcome = false;
+
+  // Hybrid Sinhala typing state (Singlish auto-convert + virtual keyboard)
+  bool? _sinhalaSinglishAuto;
+  bool? _showSinhalaKeyboard;
+
+  bool get _isSinglishAutoEnabled => _sinhalaSinglishAuto ?? true;
+  bool get _isSinhalaKeyboardOpen => _showSinhalaKeyboard ?? false;
+
+  bool get _hasStartedElderAssessment => ref.read(languageProvider).isSinhala
+      ? _hasStartedElderAssessmentSi
+      : _hasStartedElderAssessmentEn;
+
+  set _hasStartedElderAssessment(bool value) {
+    if (ref.read(languageProvider).isSinhala) {
+      _hasStartedElderAssessmentSi = value;
+    } else {
+      _hasStartedElderAssessmentEn = value;
+    }
+  }
+
   // Navigation transition direction (1: next/forward, -1: prev/backward)
   int _transitionDirection = 1;
 
@@ -124,6 +163,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
     _initSaveAnimation();
     _startSessionTimer();
     _loadResidentContext();
+    _scheduleElderWelcomeVoice();
   }
 
   @override
@@ -413,8 +453,339 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
   void _startSessionTimer() {
     _sessionTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (mounted) {
-        setState(() => _sessionElapsedSeconds++);
+        final isElder = ref.read(authProvider).state.isElder;
+        if (!isElder || _hasStartedElderAssessment) {
+          setState(() => _sessionElapsedSeconds++);
+        }
       }
+    });
+  }
+
+  void _scheduleElderWelcomeVoice() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(milliseconds: 350), () {
+        if (!mounted) return;
+        final isElder = ref.read(authProvider).state.isElder;
+        if (isElder && !_hasStartedElderAssessment) {
+          _speakElderWelcomeIntro();
+        }
+      });
+    });
+  }
+
+  Future<void> _speakElderWelcomeIntro({bool toggleIfSpeaking = false}) async {
+    if (!mounted) return;
+    if (toggleIfSpeaking && _isSpeakingWelcome) {
+      TtsService.instance.stop();
+      await _flutterTts.stop();
+      if (mounted) {
+        setState(() {
+          _isSpeakingWelcome = false;
+          _isSpeaking = false;
+          _isSpeakingPrompt = false;
+        });
+      }
+      return;
+    }
+
+    final isSinhala = ref.read(languageProvider).isSinhala;
+    final phrase = isSinhala
+        ? 'දැන් අපි මතක පරීක්ෂාව ආරම්භ කරමු.'
+        : "Now let's start the assessment";
+
+    try {
+      TtsService.instance.stop();
+      await _flutterTts.stop();
+      if (mounted) {
+        setState(() {
+          _isSpeakingWelcome = true;
+          _isSpeakingPrompt = false;
+        });
+      }
+
+      if (kIsWeb) {
+        await TtsService.instance.speak(phrase, isSinhala: isSinhala);
+        Future.delayed(const Duration(milliseconds: 3200), () {
+          if (mounted && !TtsService.instance.isSpeaking) {
+            setState(() => _isSpeakingWelcome = false);
+          }
+        });
+      } else {
+        await _flutterTts.setLanguage(isSinhala ? 'si-LK' : 'en-US');
+        await _flutterTts.setSpeechRate(isSinhala ? 0.42 : 0.48);
+        await _flutterTts.speak(phrase);
+        Future.delayed(const Duration(milliseconds: 3200), () {
+          if (mounted && !_isSpeaking) {
+            setState(() => _isSpeakingWelcome = false);
+          }
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _isSpeakingWelcome = false);
+      }
+    }
+  }
+
+  void _handleResponseTextChanged(int qId, String rawVal, bool isSinhala) {
+    String effectiveVal = rawVal;
+    if (isSinhala && _isSinglishAutoEnabled) {
+      final converted = SinhalaTypingHelper.convertCompletedWords(rawVal);
+      if (converted != rawVal) {
+        effectiveVal = converted;
+        final oldOffset = _responseController.selection.baseOffset;
+        final delta = converted.length - rawVal.length;
+        final newOffset = (oldOffset >= 0 ? oldOffset + delta : converted.length)
+            .clamp(0, converted.length);
+        _responseController.value = TextEditingValue(
+          text: converted,
+          selection: TextSelection.collapsed(offset: newOffset),
+        );
+      }
+    }
+
+    setState(() {
+      _responses[qId] = effectiveVal;
+      _grades[qId] = CognitiveScoring.scoreQuestion(qId, effectiveVal);
+    });
+    _saveDebounceTimer?.cancel();
+    _saveDebounceTimer = Timer(const Duration(milliseconds: 500), () {
+      _persistResponses();
+    });
+  }
+
+  void _commitActiveSinglishWord(int qId) {
+    final current = _responseController.text;
+    final converted = SinhalaTypingHelper.convertAllLatinWords(current);
+    if (converted == current) return;
+    _responseController.value = TextEditingValue(
+      text: converted,
+      selection: TextSelection.collapsed(offset: converted.length),
+    );
+    setState(() {
+      _responses[qId] = converted;
+      _grades[qId] = CognitiveScoring.scoreQuestion(qId, converted);
+    });
+    _saveDebounceTimer?.cancel();
+    _persistResponses();
+  }
+
+  Widget _buildSinhalaTypingControls(int qId) {
+    final preview = _isSinglishAutoEnabled
+        ? SinhalaTypingHelper.previewActiveWord(_responseController.text)
+        : null;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 6,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            // Singlish Auto-Convert Toggle
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => setState(
+                  () => _sinhalaSinglishAuto = !_isSinglishAutoEnabled,
+                ),
+                borderRadius: BorderRadius.circular(14),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 11,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _isSinglishAutoEnabled
+                        ? const Color(0xFFEDE9FE)
+                        : Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: _isSinglishAutoEnabled
+                          ? const Color(0xFF8B5CF6)
+                          : const Color(0xFFE2D9F9),
+                      width: 1.2,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        LucideIcons.sparkles,
+                        size: 13.5,
+                        color: _isSinglishAutoEnabled
+                            ? const Color(0xFF6C3FC5)
+                            : AppColors.muted,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        _isSinglishAutoEnabled
+                            ? 'සිංහල ටයිප් (Singlish): ON'
+                            : 'සිංහල ටයිප් (Singlish): OFF',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: _isSinglishAutoEnabled
+                              ? const Color(0xFF5B21B6)
+                              : AppColors.muted,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // On-Screen Sinhala Virtual Keyboard Toggle
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => setState(
+                  () => _showSinhalaKeyboard = !_isSinhalaKeyboardOpen,
+                ),
+                borderRadius: BorderRadius.circular(14),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 11,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _isSinhalaKeyboardOpen
+                        ? const Color(0xFF6C3FC5)
+                        : Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: _isSinhalaKeyboardOpen
+                          ? const Color(0xFF6C3FC5)
+                          : const Color(0xFFD8B4FE),
+                      width: 1.2,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        LucideIcons.keyboard,
+                        size: 14,
+                        color: _isSinhalaKeyboardOpen
+                            ? Colors.white
+                            : const Color(0xFF6C3FC5),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        _isSinhalaKeyboardOpen
+                            ? 'යතුරුපුවරුව වසන්න'
+                            : 'සිංහල යතුරුපුවරුව',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: _isSinhalaKeyboardOpen
+                              ? Colors.white
+                              : const Color(0xFF5B21B6),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // Live Singlish -> Sinhala Preview Pill (tap or press Space to convert)
+            if (preview != null)
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => _commitActiveSinglishWord(qId),
+                  borderRadius: BorderRadius.circular(14),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFECFDF5), Color(0xFFD1FAE5)],
+                      ),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: const Color(0xFF34D399),
+                        width: 1.3,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '${preview.rawWord} → ${preview.sinhala}',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF065F46),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        const Text(
+                          '(Space / ඔබන්න)',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF047857),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+
+        // Collapsible Elder-Friendly On-Screen Sinhala Keyboard
+        AnimatedSize(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          child: _isSinhalaKeyboardOpen
+              ? SinhalaVirtualKeyboard(
+                  controller: _responseController,
+                  onTextChanged: (val) =>
+                      _handleResponseTextChanged(qId, val, true),
+                  onClose: () => setState(() => _showSinhalaKeyboard = false),
+                )
+              : const SizedBox.shrink(),
+        ),
+      ],
+    );
+  }
+
+  void _beginElderAssessment() {
+    TtsService.instance.stop();
+    _flutterTts.stop();
+    setState(() {
+      _isSpeakingWelcome = false;
+      _isSpeaking = false;
+      _isSpeakingPrompt = false;
+      _hasStartedElderAssessment = true;
+      _questionStartTime = DateTime.now();
+    });
+  }
+
+  void _returnToElderWelcomeScreen() {
+    TtsService.instance.stop();
+    _flutterTts.stop();
+    if (_isListening || _speech.isListening) {
+      _activeListeningSessionId++;
+      try {
+        _speech.stop();
+      } catch (_) {}
+    }
+    setState(() {
+      _isSpeaking = false;
+      _isSpeakingPrompt = false;
+      _isSpeakingWelcome = false;
+      _isListening = false;
+      _hasStartedElderAssessment = false;
     });
   }
 
@@ -812,8 +1183,20 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
 
       TtsService.instance.stop();
       await _flutterTts.stop();
+
+      if (!mounted) return;
+      final isSinhala = ref.read(languageProvider).isSinhala;
+      final phrase = isSinhala ? 'ඊළඟ ප්‍රශ්නය' : 'Next question';
+
+      if (kIsWeb) {
+        await TtsService.instance.speak(phrase, isSinhala: isSinhala);
+      } else {
+        await _flutterTts.setLanguage(isSinhala ? 'si-LK' : 'en-US');
+        await _flutterTts.setSpeechRate(isSinhala ? 0.44 : 0.50);
+        await _flutterTts.speak(phrase);
+      }
     } catch (e) {
-      debugPrint('[CARE-TTS] Failed to stop speech on next question: $e');
+      debugPrint('[CARE-TTS] Failed to speak on next question: $e');
     }
   }
 
@@ -1375,13 +1758,15 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
     if (_lastSpokenLanguage != null &&
         _lastSpokenLanguage != langNotifier.currentLanguage) {
       final prevWasSinhala = _lastSpokenLanguage == AppLanguage.sinhala;
+      final prevIndex = prevWasSinhala ? _currentIndexSi : _currentIndexEn;
+      final prevQ = _questions[prevIndex];
       final prevResponses = prevWasSinhala ? _responsesSi : _responsesEn;
       final prevGrades = prevWasSinhala ? _gradesSi : _gradesEn;
       final prevText = _responseController.text;
-      prevResponses[currentQ.id] = prevText;
+      prevResponses[prevQ.id] = prevText;
       if (prevText.trim().isNotEmpty) {
-        prevGrades[currentQ.id] =
-            CognitiveScoring.scoreQuestion(currentQ.id, prevText);
+        prevGrades[prevQ.id] =
+            CognitiveScoring.scoreQuestion(prevQ.id, prevText);
       }
       _lastSpokenLanguage = langNotifier.currentLanguage;
       final nextResponses = isSinhala ? _responsesSi : _responsesEn;
@@ -1399,9 +1784,17 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
           setState(() {
             _isSpeaking = false;
             _isSpeakingPrompt = false;
+            _isSpeakingWelcome = false;
             _isListening = false;
             _speechStatusMessage = null;
           });
+          if (isElder && !_hasStartedElderAssessment) {
+            Future.delayed(const Duration(milliseconds: 220), () {
+              if (mounted && !_hasStartedElderAssessment) {
+                _speakElderWelcomeIntro();
+              }
+            });
+          }
         }
       });
     } else {
@@ -1439,7 +1832,34 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                 isElder ? 85 : 20,
               ),
               child: isElder
-                  ? _buildElderMinimalistView(currentQ, progressPct, isSinhala)
+                  ? AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 450),
+                      switchInCurve: Curves.easeOutCubic,
+                      switchOutCurve: Curves.easeInCubic,
+                      transitionBuilder: (child, animation) {
+                        return FadeTransition(
+                          opacity: animation,
+                          child: ScaleTransition(
+                            scale: Tween<double>(begin: 0.97, end: 1.0)
+                                .animate(animation),
+                            child: child,
+                          ),
+                        );
+                      },
+                      child: !_hasStartedElderAssessment
+                          ? KeyedSubtree(
+                              key: ValueKey('elder_welcome_start_screen_$isSinhala'),
+                              child: _buildElderWelcomeStartScreen(isSinhala),
+                            )
+                          : KeyedSubtree(
+                              key: ValueKey('elder_active_assessment_$isSinhala'),
+                              child: _buildElderMinimalistView(
+                                currentQ,
+                                progressPct,
+                                isSinhala,
+                              ),
+                            ),
+                    )
                 : Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -1575,6 +1995,733 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildElderWelcomeStartScreen(bool isSinhala) {
+    final authState = ref.watch(authProvider).state;
+    final res = _resident;
+    final rawName =
+        (res != null && res.name.trim().isNotEmpty && res.name.trim() != '-')
+            ? res.name.trim()
+            : (authState.userName?.trim().isNotEmpty == true
+                ? authState.userName!.trim()
+                : 'Malini Bandara');
+    final displayName = isSinhala ? _toSinhalaName(rawName) : rawName;
+    final initials = _getInitials(rawName);
+    final avatarUrl =
+        (res?.avatarUrl != null && res!.avatarUrl!.trim().isNotEmpty)
+            ? res.avatarUrl
+            : authState.avatarUrl;
+    final bool hasSavedProgress = _answeredCount > 0;
+    final String voicePhrase = isSinhala
+        ? 'දැන් අපි මතක පරීක්ෂාව ආරම්භ කරමු'
+        : "Now let's start the assessment";
+
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 620),
+        child: Padding(
+          padding: const EdgeInsets.only(top: 10, bottom: 12),
+          child: Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [
+                  Color(0xFFFFFFFF),
+                  Color(0xFFFCF9FF),
+                  Color(0xFFF5EEFF),
+                  Color(0xFFEDE4FF),
+                ],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(
+                color: const Color(0xFFD8B4FE).withValues(alpha: 0.72),
+                width: 1.5,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF6C3FC5).withValues(alpha: 0.13),
+                  blurRadius: 34,
+                  offset: const Offset(0, 14),
+                ),
+                BoxShadow(
+                  color: const Color(0xFFEC4899).withValues(alpha: 0.05),
+                  blurRadius: 20,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(27),
+              child: Stack(
+                alignment: Alignment.topCenter,
+                children: [
+                  // Symmetrical soft ambient glowing orbs (top-left & top-right)
+                  Positioned(
+                    top: -85,
+                    right: -65,
+                    child: IgnorePointer(
+                      child: AnimatedBuilder(
+                        animation: _ambientPulseAnimation,
+                        builder: (context, _) {
+                          final s = _ambientPulseAnimation.value;
+                          return Container(
+                            width: 220 * s,
+                            height: 220 * s,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: RadialGradient(
+                                colors: [
+                                  const Color(0xFFC4B5FD).withValues(alpha: 0.34),
+                                  const Color(0xFFC4B5FD).withValues(alpha: 0.0),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: -85,
+                    left: -65,
+                    child: IgnorePointer(
+                      child: AnimatedBuilder(
+                        animation: _ambientPulseAnimation,
+                        builder: (context, _) {
+                          final s = _ambientPulseAnimation.value;
+                          return Container(
+                            width: 220 * s,
+                            height: 220 * s,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: RadialGradient(
+                                colors: [
+                                  const Color(0xFFFBCFE8).withValues(alpha: 0.32),
+                                  const Color(0xFFFBCFE8).withValues(alpha: 0.0),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+
+                  // Symmetrical corner floral accents
+                  Positioned(
+                    right: 6,
+                    bottom: -14,
+                    child: IgnorePointer(
+                      child: Opacity(
+                        opacity: 0.26,
+                        child: Image.asset(
+                          'assets/images/banner_flowers_fade.png',
+                          width: 118,
+                          height: 118,
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    left: 6,
+                    bottom: -14,
+                    child: IgnorePointer(
+                      child: Transform.scale(
+                        scaleX: -1,
+                        child: Opacity(
+                          opacity: 0.26,
+                          child: Image.asset(
+                            'assets/images/banner_flowers_fade.png',
+                            width: 118,
+                            height: 118,
+                            fit: BoxFit.contain,
+                            errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // Top multi-color wellness ribbon
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    child: Container(
+                      height: 5,
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Color(0xFF6C3FC5),
+                            Color(0xFF8B5CF6),
+                            Color(0xFFEC4899),
+                            Color(0xFF0D9488),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // Main symmetrically centered content
+                  SizedBox(
+                    width: double.infinity,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(26, 26, 26, 24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          // Soft pill badge
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.92),
+                              borderRadius: BorderRadius.circular(30),
+                              border: Border.all(
+                                color: const Color(0xFFDDD6FE),
+                                width: 1.2,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF6C3FC5)
+                                      .withValues(alpha: 0.08),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  LucideIcons.sparkles,
+                                  size: 14,
+                                  color: Color(0xFF7C3AED),
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  isSinhala
+                                      ? 'සුවපහසු මතක පරීක්ෂාව'
+                                      : 'Friendly Memory Check',
+                                  style: const TextStyle(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF5B21B6),
+                                    letterSpacing: 0.2,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Floating Glowing Elder Avatar Centerpiece
+                          AnimatedBuilder(
+                            animation: Listenable.merge([
+                              _floatingAnimation,
+                              _ambientPulseAnimation,
+                            ]),
+                            builder: (context, child) {
+                              final pulse = _ambientPulseAnimation.value;
+                              return Transform.translate(
+                                offset: Offset(0, _floatingAnimation.value * 0.6),
+                                child: Stack(
+                                  alignment: Alignment.center,
+                                  clipBehavior: Clip.none,
+                                  children: [
+                                    Container(
+                                      width: 98 * pulse,
+                                      height: 98 * pulse,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        gradient: RadialGradient(
+                                          colors: [
+                                            const Color(0xFF8B5CF6)
+                                                .withValues(alpha: 0.22),
+                                            const Color(0xFFEC4899)
+                                                .withValues(alpha: 0.06),
+                                            Colors.transparent,
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.all(3.5),
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        gradient: const LinearGradient(
+                                          colors: [
+                                            Color(0xFF6C3FC5),
+                                            Color(0xFFEC4899),
+                                            Color(0xFF8B5CF6),
+                                          ],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                        ),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: const Color(0xFF6C3FC5)
+                                                .withValues(alpha: 0.26),
+                                            blurRadius: 18,
+                                            offset: const Offset(0, 6),
+                                          ),
+                                        ],
+                                      ),
+                                      child: Container(
+                                        padding: const EdgeInsets.all(2.5),
+                                        decoration: const BoxDecoration(
+                                          color: Colors.white,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: CarevoraAvatar(
+                                          key: const ValueKey(
+                                            'elder_start_screen_avatar',
+                                          ),
+                                          avatarUrl: avatarUrl,
+                                          radius: 33,
+                                          initials: initials,
+                                          backgroundColor: const Color(0xFFEDE9FE),
+                                          foregroundColor: const Color(0xFF6C3FC5),
+                                        ),
+                                      ),
+                                    ),
+                                    Positioned(
+                                      right: 2,
+                                      bottom: 4,
+                                      child: Container(
+                                        padding: const EdgeInsets.all(5),
+                                        decoration: BoxDecoration(
+                                          gradient: const LinearGradient(
+                                            colors: [
+                                              Color(0xFF10B981),
+                                              Color(0xFF0D9488),
+                                            ],
+                                          ),
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                            color: Colors.white,
+                                            width: 2,
+                                          ),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: const Color(0xFF0D9488)
+                                                  .withValues(alpha: 0.35),
+                                              blurRadius: 6,
+                                            ),
+                                          ],
+                                        ),
+                                        child: const Icon(
+                                          LucideIcons.brain,
+                                          size: 12,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                          const SizedBox(height: 12),
+
+                          // Warm Personal Greeting
+                          Text(
+                            isSinhala
+                                ? 'ආයුබෝවන්, $displayName! 👋'
+                                : 'Welcome, $rawName! 👋',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 23,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.navy,
+                              letterSpacing: -0.3,
+                              height: 1.25,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+
+                          // Interactive Voice Announcement Bubble ("Now let's start the assessment")
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 15,
+                              vertical: 11,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.95),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: _isSpeakingWelcome
+                                    ? const Color(0xFF8B5CF6)
+                                    : const Color(0xFFE2D9F9),
+                                width: _isSpeakingWelcome ? 1.7 : 1.2,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF6C3FC5).withValues(
+                                    alpha: _isSpeakingWelcome ? 0.14 : 0.05,
+                                  ),
+                                  blurRadius: 14,
+                                  offset: const Offset(0, 5),
+                                ),
+                              ],
+                            ),
+                            child: Wrap(
+                              spacing: 12,
+                              runSpacing: 8,
+                              alignment: WrapAlignment.center,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      width: 34,
+                                      height: 34,
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: _isSpeakingWelcome
+                                              ? const [
+                                                  Color(0xFF6C3FC5),
+                                                  Color(0xFFEC4899),
+                                                ]
+                                              : const [
+                                                  Color(0xFFEDE9FE),
+                                                  Color(0xFFF5F3FF),
+                                                ],
+                                        ),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(
+                                        LucideIcons.volume2,
+                                        size: 17,
+                                        color: _isSpeakingWelcome
+                                            ? Colors.white
+                                            : const Color(0xFF6C3FC5),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    ConstrainedBox(
+                                      constraints:
+                                          const BoxConstraints(maxWidth: 340),
+                                      child: Text(
+                                        '“$voicePhrase”',
+                                        textAlign: TextAlign.center,
+                                        style: const TextStyle(
+                                          fontSize: 15.5,
+                                          fontWeight: FontWeight.w700,
+                                          color: Color(0xFF3B1F7A),
+                                          height: 1.3,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    onTap: () => _speakElderWelcomeIntro(
+                                      toggleIfSpeaking: true,
+                                    ),
+                                    borderRadius: BorderRadius.circular(18),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 7,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: _isSpeakingWelcome
+                                            ? const Color(0xFF6C3FC5)
+                                            : const Color(0xFFF3ECFF),
+                                        borderRadius: BorderRadius.circular(18),
+                                        border: Border.all(
+                                          color: const Color(0xFFC4B5FD),
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          if (_isSpeakingWelcome)
+                                            AnimatedBuilder(
+                                              animation: _waveformController,
+                                              builder: (context, _) {
+                                                final t =
+                                                    _waveformController.value *
+                                                        2 *
+                                                        math.pi;
+                                                return Row(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children:
+                                                      List.generate(3, (idx) {
+                                                    final h = 5.0 +
+                                                        6.0 *
+                                                            (0.5 +
+                                                                0.5 *
+                                                                    math.sin(
+                                                                      t +
+                                                                          idx *
+                                                                              1.4,
+                                                                    ));
+                                                    return Container(
+                                                      width: 2.8,
+                                                      height: h,
+                                                      margin: const EdgeInsets
+                                                          .symmetric(
+                                                        horizontal: 1.1,
+                                                      ),
+                                                      decoration: BoxDecoration(
+                                                        color: Colors.white,
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                          4,
+                                                        ),
+                                                      ),
+                                                    );
+                                                  }),
+                                                );
+                                              },
+                                            )
+                                          else
+                                            const Icon(
+                                              LucideIcons.volume2,
+                                              size: 13.5,
+                                              color: Color(0xFF6C3FC5),
+                                            ),
+                                          const SizedBox(width: 5),
+                                          Text(
+                                            _isSpeakingWelcome
+                                                ? (isSinhala
+                                                    ? 'කියවමින්...'
+                                                    : 'Speaking...')
+                                                : (isSinhala
+                                                    ? 'නැවත අසන්න'
+                                                    : 'Listen Again'),
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w700,
+                                              color: _isSpeakingWelcome
+                                                  ? Colors.white
+                                                  : const Color(0xFF6C3FC5),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+
+                          // Reassuring Subtitle
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 480),
+                            child: Text(
+                              isSinhala
+                                  ? 'කිසිම කලබලයක් නැතුව සන්සුන්ව පිළිතුරු දෙන්න. ඔබට කටහඬින් හෝ ටයිප් කර පහසුවෙන් පිළිතුරු දිය හැකිය.'
+                                  : 'Take your time and relax. You can answer these 10 simple questions easily using your voice or by typing.',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 13.8,
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xFF4B4266),
+                                height: 1.45,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+
+                          // 3 Friendly Reassurance Pills
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            alignment: WrapAlignment.center,
+                            children: [
+                              _buildWelcomeHighlightChip(
+                                icon: LucideIcons.listChecks,
+                                label: isSinhala
+                                    ? 'සරල ප්‍රශ්න 10ක්'
+                                    : '10 Simple Questions',
+                                bgColor: const Color(0xFFF3ECFF),
+                                borderColor: const Color(0xFFDDD6FE),
+                                iconColor: const Color(0xFF6C3FC5),
+                              ),
+                              _buildWelcomeHighlightChip(
+                                icon: LucideIcons.mic,
+                                label: isSinhala
+                                    ? 'කටහඬ සහාය ඇත'
+                                    : 'Voice Support Ready',
+                                bgColor: const Color(0xFFECFEFF),
+                                borderColor: const Color(0xFFA5F3FC),
+                                iconColor: const Color(0xFF0D9488),
+                              ),
+                              _buildWelcomeHighlightChip(
+                                icon: LucideIcons.heart,
+                                label: isSinhala
+                                    ? 'නිදහසේ • කලබල නැත'
+                                    : 'Relaxed • No Rush',
+                                bgColor: const Color(0xFFFDF2F8),
+                                borderColor: const Color(0xFFFBCFE8),
+                                iconColor: const Color(0xFFDB2777),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 20),
+
+                          // Attractive Hero Start Assessment Button
+                          AnimatedBuilder(
+                            animation: _ambientPulseAnimation,
+                            builder: (context, child) {
+                              final glow = _ambientPulseAnimation.value;
+                              return Container(
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(24),
+                                  gradient: const LinearGradient(
+                                    colors: [
+                                      Color(0xFF6C3FC5),
+                                      Color(0xFF8B5CF6),
+                                      Color(0xFFEC4899),
+                                    ],
+                                    begin: Alignment.centerLeft,
+                                    end: Alignment.centerRight,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(0xFF6C3FC5)
+                                          .withValues(alpha: 0.28 * glow),
+                                      blurRadius: 22 * glow,
+                                      offset: const Offset(0, 8),
+                                    ),
+                                    BoxShadow(
+                                      color: const Color(0xFFEC4899)
+                                          .withValues(alpha: 0.16 * glow),
+                                      blurRadius: 14 * glow,
+                                      offset: const Offset(0, 5),
+                                    ),
+                                  ],
+                                ),
+                                child: child,
+                              );
+                            },
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: _beginElderAssessment,
+                                borderRadius: BorderRadius.circular(24),
+                                splashColor:
+                                    Colors.white.withValues(alpha: 0.22),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 28,
+                                    vertical: 14,
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        hasSavedProgress
+                                            ? (isSinhala
+                                                ? 'පරීක්ෂාව දිගටම කරන්න'
+                                                : 'Continue Assessment')
+                                            : (isSinhala
+                                                ? 'පරීක්ෂාව ආරම්භ කරන්න'
+                                                : 'Start Assessment'),
+                                        style: const TextStyle(
+                                          fontSize: 17,
+                                          fontWeight: FontWeight.w800,
+                                          color: Colors.white,
+                                          letterSpacing: 0.2,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Container(
+                                        width: 30,
+                                        height: 30,
+                                        decoration: BoxDecoration(
+                                          color: Colors.white
+                                              .withValues(alpha: 0.22),
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                            color: Colors.white
+                                                .withValues(alpha: 0.45),
+                                          ),
+                                        ),
+                                        child: const Icon(
+                                          LucideIcons.arrowRight,
+                                          size: 17,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+
+                          Text(
+                            isSinhala
+                                ? 'සූදානම් වූ විට ඉහත බොත්තම ඔබා ආරම්භ කරන්න'
+                                : 'Tap the button above whenever you are ready',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF7C7199),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWelcomeHighlightChip({
+    required IconData icon,
+    required String label,
+    required Color bgColor,
+    required Color borderColor,
+    required Color iconColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: borderColor, width: 1.2),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14.5, color: iconColor),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w700,
+              color: AppColors.navy,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1935,32 +3082,126 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                           ],
                         ),
                       ),
-                      Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          onTap: _startNewAssessmentSession,
-                          borderRadius: BorderRadius.circular(16),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.92),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: const Color(0xFFDDD6FE)),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.96),
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(
+                            color: const Color(0xFFD4C5FC),
+                            width: 1.5,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF6C3FC5).withValues(alpha: 0.10),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
                             ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(LucideIcons.rotateCcw, size: 15, color: AppColors.primary),
-                                const SizedBox(width: 6),
-                                Text(
-                                  isSinhala ? 'මුල සිට' : 'Reset',
-                                  style: const TextStyle(
-                                    fontSize: 12.5,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.primary,
+                          ],
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          borderRadius: BorderRadius.circular(17),
+                          clipBehavior: Clip.antiAlias,
+                          child: InkWell(
+                            onTap: _returnToElderWelcomeScreen,
+                            hoverColor: const Color(0xFF6C3FC5).withValues(alpha: 0.06),
+                            splashColor: const Color(0xFF6C3FC5).withValues(alpha: 0.12),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 34,
+                                    height: 34,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF3EEFF),
+                                      borderRadius: BorderRadius.circular(11),
+                                    ),
+                                    child: const Icon(
+                                      LucideIcons.arrowLeft,
+                                      size: 18,
+                                      color: AppColors.primary,
+                                    ),
                                   ),
-                                ),
-                              ],
+                                  const SizedBox(width: 10),
+                                  Text(
+                                    isSinhala ? 'ආපසු' : 'Back',
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppColors.primary,
+                                      letterSpacing: 0.1,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      Container(
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFFFFFFFF), Color(0xFFF5F0FF)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(
+                            color: const Color(0xFFC4B5FD),
+                            width: 1.5,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF6C3FC5).withValues(alpha: 0.13),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          borderRadius: BorderRadius.circular(17),
+                          clipBehavior: Clip.antiAlias,
+                          child: InkWell(
+                            onTap: _startNewAssessmentSession,
+                            hoverColor: const Color(0xFF6C3FC5).withValues(alpha: 0.08),
+                            splashColor: const Color(0xFF6C3FC5).withValues(alpha: 0.15),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 34,
+                                    height: 34,
+                                    decoration: BoxDecoration(
+                                      gradient: const LinearGradient(
+                                        colors: [Color(0xFF6C3FC5), Color(0xFF8B5CF6)],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      ),
+                                      borderRadius: BorderRadius.circular(11),
+                                    ),
+                                    child: const Icon(
+                                      LucideIcons.rotateCcw,
+                                      size: 18,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Text(
+                                    isSinhala ? 'මුල සිට' : 'Reset',
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w800,
+                                      color: Color(0xFF5B21B6),
+                                      letterSpacing: 0.1,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
@@ -2188,22 +3429,23 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                             Expanded(
                               child: TextField(
                                 controller: _responseController,
-                                onChanged: (val) {
-                                  final qId = currentQ.id;
-                                  setState(() {
-                                    _responses[qId] = val;
-                                    _grades[qId] = CognitiveScoring.scoreQuestion(qId, val);
-                                  });
-                                  _saveDebounceTimer?.cancel();
-                                  _saveDebounceTimer = Timer(const Duration(milliseconds: 500), () {
-                                    _persistResponses();
-                                  });
+                                onChanged: (val) => _handleResponseTextChanged(
+                                  currentQ.id,
+                                  val,
+                                  isSinhala,
+                                ),
+                                onSubmitted: (_) {
+                                  if (isSinhala && _isSinglishAutoEnabled) {
+                                    _commitActiveSinglishWord(currentQ.id);
+                                  }
                                 },
                                 minLines: 1,
                                 maxLines: 2,
                                 decoration: InputDecoration(
                                   hintText: isSinhala
-                                      ? 'නැතහොත් පිළිතුර මෙහි ටයිප් කරන්න...'
+                                      ? (_isSinglishAutoEnabled
+                                          ? 'සිංහලෙන් හෝ Singlish (උදා: irida) මෙහි ටයිප් කරන්න...'
+                                          : 'නැතහොත් පිළිතුර මෙහි ටයිප් කරන්න...')
                                       : 'Or type your answer here...',
                                   hintStyle: const TextStyle(
                                     fontSize: 15,
@@ -2262,11 +3504,17 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                                   ? (isSinhala ? 'අවසන් කර යොමු කරන්න' : 'Finish & Submit')
                                   : (isSinhala ? 'ඊළඟ ප්‍රශ්නය' : 'Next Question'),
                               icon: isLastQuestion ? LucideIcons.send : LucideIcons.arrowRight,
-                              onTap: () => _nextQuestion(true),
+                              onTap: () {
+                                if (isSinhala && _isSinglishAutoEnabled) {
+                                  _commitActiveSinglishWord(currentQ.id);
+                                }
+                                _nextQuestion(true);
+                              },
                               padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 15),
                             ),
                           ],
                         ),
+                        if (isSinhala) _buildSinhalaTypingControls(currentQ.id),
                         if (hasStatus) ...[
                           const SizedBox(height: 8),
                           Text(
@@ -4277,16 +5525,15 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
           // Editable Response Text Field
           TextField(
             controller: _responseController,
-            onChanged: (val) {
-              final qId = currentQ.id;
-              setState(() {
-                _responses[qId] = val;
-                _grades[qId] = CognitiveScoring.scoreQuestion(qId, val);
-              });
-              _saveDebounceTimer?.cancel();
-              _saveDebounceTimer = Timer(const Duration(milliseconds: 500), () {
-                _persistResponses();
-              });
+            onChanged: (val) => _handleResponseTextChanged(
+              currentQ.id,
+              val,
+              isSinhala,
+            ),
+            onSubmitted: (_) {
+              if (isSinhala && _isSinglishAutoEnabled) {
+                _commitActiveSinglishWord(currentQ.id);
+              }
             },
             minLines: 3,
             maxLines: 4,
@@ -4329,6 +5576,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
               height: 1.45,
             ),
           ),
+          if (isSinhala) _buildSinhalaTypingControls(currentQ.id),
           const SizedBox(height: 8),
           Wrap(
             alignment: WrapAlignment.spaceBetween,
@@ -5631,9 +6879,51 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
     );
   }
 
+  Future<void> _speakDialogVoiceOver(String text, bool isSinhala) async {
+    try {
+      TtsService.instance.stop();
+      await _flutterTts.stop();
+      if (kIsWeb) {
+        await TtsService.instance.speak(text, isSinhala: isSinhala);
+      } else {
+        await _flutterTts.setLanguage(isSinhala ? 'si-LK' : 'en-US');
+        await _flutterTts.setSpeechRate(isSinhala ? 0.42 : 0.48);
+        await _flutterTts.speak(text);
+      }
+    } catch (_) {}
+  }
+
+  void _stopDialogVoiceOver() {
+    try {
+      TtsService.instance.stop();
+      _flutterTts.stop();
+    } catch (_) {}
+  }
+
   void _showFinishConfirmationDialog(bool isElder) {
     _saveCurrentQuestionState();
     final isSinhala = ref.read(languageProvider).isSinhala;
+    final initialUnanswered = _questions
+        .where((q) => !_isAnswered(q.id))
+        .map((q) => q.id)
+        .toList();
+    final bool initialAllAnswered = initialUnanswered.isEmpty;
+    final String elderSubmitVoice = initialAllAnswered
+        ? (isSinhala
+            ? 'හරිම හොඳයි! ඔබ ප්‍රශ්න දහයටම පිළිතුරු දී අවසන්. ප්‍රතිඵල බැලීමට පහත බොත්තම ඔබන්න.'
+            : 'Well done! You answered all 10 questions. Tap Finish and See Result whenever you are ready.')
+        : (isSinhala
+            ? 'තව ප්‍රශ්න කිහිපයක් ඉතිරියි. අවසන් කිරීමට පෙර ඒවාටත් පිළිතුරු දෙන්න.'
+            : 'Almost there! Please answer the remaining questions before finishing.');
+
+    if (isElder) {
+      Future.delayed(const Duration(milliseconds: 180), () {
+        if (mounted) {
+          _speakDialogVoiceOver(elderSubmitVoice, isSinhala);
+        }
+      });
+    }
+
     showDialog(
       context: context,
       barrierDismissible: !_isSubmitting,
@@ -5647,248 +6937,607 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
 
             if (isElder) {
               final bool isAllAnswered = unansweredIds.isEmpty;
-              return AlertDialog(
-                backgroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
+              final String voiceLine = isAllAnswered
+                  ? (isSinhala
+                      ? 'හරිම හොඳයි! ඔබ ප්‍රශ්න දහයටම පිළිතුරු දී අවසන්. ප්‍රතිඵල බැලීමට පහත බොත්තම ඔබන්න.'
+                      : 'Well done! You answered all 10 questions. Tap Finish and See Result whenever you are ready.')
+                  : (isSinhala
+                      ? 'තව ප්‍රශ්න කිහිපයක් ඉතිරියි. අවසන් කිරීමට පෙර ඒවාටත් පිළිතුරු දෙන්න.'
+                      : 'Almost there! Please answer the remaining questions before finishing.');
+
+              return Dialog(
+                backgroundColor: Colors.transparent,
+                insetPadding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 20,
                 ),
-                title: Row(
-                  children: [
-                    Icon(
-                      isAllAnswered
-                          ? LucideIcons.checkCircle2
-                          : LucideIcons.alertTriangle,
-                      color: isAllAnswered
-                          ? AppColors.riskLow
-                          : const Color(0xFFB45309),
-                      size: 22,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        isAllAnswered
-                            ? (isSinhala
-                                ? 'ඔබේ පිළිතුරු යොමු කරන්න'
-                                : 'Submit Your Answers')
-                            : (isSinhala
-                                ? 'පිළිතුරු ලබා දිය යුතු ප්‍රශ්න ඇත'
-                                : 'Questions Pending Answer'),
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
+                child: _AnimatedElderModalEntrance(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 500),
+                    child: _SmartAiGradientBorderFrame(
+                      borderRadius: 28,
+                      isWarmAmber: !isAllAnswered,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(25),
                         ),
-                      ),
-                    ),
-                  ],
-                ),
-                content: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        isSinhala
-                            ? 'ඔබ ප්‍රශ්න $_totalCount න් $_answeredCount කට පිළිතුරු ලබා දී ඇත.'
-                            : 'You have answered $_answeredCount of $_totalCount questions.',
-                        style: const TextStyle(fontSize: 13.5, color: AppColors.body),
-                      ),
-                      if (!isAllAnswered) ...[
-                        const SizedBox(height: 12),
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: AppColors.riskModerateBg,
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: AppColors.riskModerate),
-                          ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(25),
+                        child: SingleChildScrollView(
                           child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              Row(
+                              // Smart AI Luminous Animated Header Band
+                              Stack(
                                 children: [
-                                  const Icon(
-                                    LucideIcons.alertCircle,
-                                    size: 16,
-                                    color: Color(0xFFB45309),
+                                  Container(
+                                    padding: const EdgeInsets.fromLTRB(22, 20, 22, 18),
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: isAllAnswered
+                                            ? const [
+                                                Color(0xFF1E1B4B),
+                                                Color(0xFF4C1D95),
+                                                Color(0xFF0F766E),
+                                              ]
+                                            : const [
+                                                Color(0xFF451A03),
+                                                Color(0xFFB45309),
+                                                Color(0xFFD97706),
+                                              ],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      ),
+                                    ),
+                                    child: Stack(
+                                      children: [
+                                        Positioned.fill(
+                                          child: IgnorePointer(
+                                            child: AnimatedBuilder(
+                                              animation: _floatingController,
+                                              builder: (context, _) => CustomPaint(
+                                                painter: _DialogCelebrationSparklesPainter(
+                                                  progress: _floatingController.value,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        Column(
+                                          children: [
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 11,
+                                          vertical: 4,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white
+                                              .withValues(alpha: 0.14),
+                                          borderRadius:
+                                              BorderRadius.circular(18),
+                                          border: Border.all(
+                                            color: const Color(0xFF5EEAD4)
+                                                .withValues(alpha: 0.50),
+                                          ),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Icon(
+                                              LucideIcons.sparkles,
+                                              size: 12.5,
+                                              color: Color(0xFF5EEAD4),
+                                            ),
+                                            const SizedBox(width: 5),
+                                            Text(
+                                              isSinhala
+                                                  ? 'ප්‍රශ්න $_answeredCount / $_totalCount'
+                                                  : '$_answeredCount / $_totalCount Completed',
+                                              style: const TextStyle(
+                                                fontSize: 11.5,
+                                                fontWeight: FontWeight.w800,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      Material(
+                                        color: Colors.transparent,
+                                        child: InkWell(
+                                          onTap: () => _speakDialogVoiceOver(
+                                            voiceLine,
+                                            isSinhala,
+                                          ),
+                                          borderRadius:
+                                              BorderRadius.circular(18),
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 11,
+                                              vertical: 5,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white
+                                                  .withValues(alpha: 0.16),
+                                              borderRadius:
+                                                  BorderRadius.circular(18),
+                                              border: Border.all(
+                                                color: Colors.white
+                                                    .withValues(alpha: 0.35),
+                                              ),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                const Icon(
+                                                  LucideIcons.volume2,
+                                                  size: 13.5,
+                                                  color: Color(0xFFFDE68A),
+                                                ),
+                                                const SizedBox(width: 5),
+                                                Text(
+                                                  isSinhala
+                                                      ? 'නැවත අසන්න'
+                                                      : 'Listen',
+                                                  style: const TextStyle(
+                                                    fontSize: 11.5,
+                                                    fontWeight: FontWeight.w800,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    isSinhala
-                                        ? 'ප්‍රශ්න ${unansweredIds.length} කට ඔබේ පිළිතුර අවශ්‍යයි'
-                                        : '${unansweredIds.length} Question(s) Require Your Response',
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xFFB45309),
+                                  const SizedBox(height: 14),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      AnimatedBuilder(
+                                        animation: _ambientPulseAnimation,
+                                        builder: (context, child) {
+                                          final s = _ambientPulseAnimation.value;
+                                          return Transform.scale(
+                                            scale: 0.94 + 0.08 * s,
+                                            child: child,
+                                          );
+                                        },
+                                        child: Container(
+                                          width: 54,
+                                          height: 54,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            gradient: LinearGradient(
+                                              colors: isAllAnswered
+                                                  ? const [
+                                                      Color(0xFF34D399),
+                                                      Color(0xFF0D9488),
+                                                    ]
+                                                  : const [
+                                                      Color(0xFFFDE68A),
+                                                      Color(0xFFF59E0B),
+                                                    ],
+                                            ),
+                                            border: Border.all(
+                                              color: Colors.white,
+                                              width: 2.5,
+                                            ),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: (isAllAnswered
+                                                        ? const Color(0xFF34D399)
+                                                        : const Color(0xFFF59E0B))
+                                                    .withValues(alpha: 0.50),
+                                                blurRadius: 18,
+                                              ),
+                                            ],
+                                          ),
+                                          child: Icon(
+                                            isAllAnswered
+                                                ? LucideIcons.checkCircle2
+                                                : LucideIcons.alertCircle,
+                                            color: Colors.white,
+                                            size: 28,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 14),
+                                      Flexible(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              isAllAnswered
+                                                  ? (isSinhala
+                                                      ? 'හරිම හොඳයි! සියල්ල අවසන් 🎉'
+                                                      : 'Well Done! All Done 🎉')
+                                                  : (isSinhala
+                                                      ? 'තව ප්‍රශ්න කිහිපයක් ඉතිරියි!'
+                                                      : 'Almost Finished!'),
+                                              style: const TextStyle(
+                                                fontSize: 20,
+                                                fontWeight: FontWeight.w900,
+                                                color: Colors.white,
+                                                height: 1.2,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 3),
+                                            Text(
+                                              isAllAnswered
+                                                  ? (isSinhala
+                                                      ? 'පිළිතුරු 10ම සුරැකී ඇත'
+                                                      : 'All 10 answers safely saved')
+                                                  : (isSinhala
+                                                      ? 'ප්‍රශ්න ${unansweredIds.length} කට පිළිතුරු දෙන්න'
+                                                      : '${unansweredIds.length} question(s) left'),
+                                              style: TextStyle(
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w600,
+                                                color: Colors.white
+                                                    .withValues(alpha: 0.88),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                                      ],
                                     ),
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 6),
-                              Text(
-                                isSinhala
-                                    ? '• පිළිතුරු නොදුන් ප්‍රශ්න: ${unansweredIds.join(', ')}.'
-                                    : '• Unanswered: Question(s) ${unansweredIds.join(', ')}.',
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  color: Color(0xFF92400E),
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                isSinhala
-                                    ? 'කරුණාකර ඉදිරිපත් කිරීමට පෙර ප්‍රශ්න 10 ටම පිළිතුරු දෙන්න.'
-                                    : 'Please answer all 10 questions before submitting. Missing answers remain incomplete.',
-                                style: const TextStyle(
-                                  fontSize: 10,
-                                  color: Color(0xFF92400E),
-                                  fontStyle: FontStyle.italic,
-                                ),
-                              ),
-                              const SizedBox(height: 10),
-                              Wrap(
-                                spacing: 6,
-                                runSpacing: 4,
-                                children: unansweredIds.map((id) {
-                                  return ActionChip(
-                                    label: Text(
-                                      isSinhala ? 'ප්‍රශ්න $id වෙත යන්න' : 'Go to Q$id',
-                                      style: const TextStyle(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                        color: AppColors.primary,
-                                      ),
+
+                              // Clean Compact Body
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(22, 18, 22, 20),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    // Cascading Animated 10-Dot Completion Strip
+                                    Wrap(
+                                      spacing: 6,
+                                      runSpacing: 6,
+                                      alignment: WrapAlignment.center,
+                                      children: _questions.map((q) {
+                                        final done = _isAnswered(q.id);
+                                        return TweenAnimationBuilder<double>(
+                                          tween: Tween(begin: 0.0, end: 1.0),
+                                          duration: Duration(
+                                            milliseconds: 260 + (q.id * 55),
+                                          ),
+                                          curve: Curves.easeOutBack,
+                                          builder: (context, val, child) =>
+                                              Transform.scale(
+                                            scale: val.clamp(0.0, 1.15),
+                                            child: Opacity(
+                                              opacity: val.clamp(0.0, 1.0),
+                                              child: child,
+                                            ),
+                                          ),
+                                          child: Container(
+                                            width: 30,
+                                            height: 30,
+                                            decoration: BoxDecoration(
+                                              gradient: done
+                                                  ? const LinearGradient(
+                                                      colors: [
+                                                        Color(0xFF10B981),
+                                                        Color(0xFF0D9488),
+                                                      ],
+                                                    )
+                                                  : null,
+                                              color: done
+                                                  ? null
+                                                  : const Color(0xFFFEF3C7),
+                                              shape: BoxShape.circle,
+                                              border: Border.all(
+                                                color: done
+                                                    ? const Color(0xFF059669)
+                                                    : const Color(0xFFF59E0B),
+                                                width: 1.4,
+                                              ),
+                                            ),
+                                            child: Center(
+                                              child: done
+                                                  ? const Icon(
+                                                      LucideIcons.check,
+                                                      size: 15,
+                                                      color: Colors.white,
+                                                    )
+                                                  : Text(
+                                                      '${q.id}',
+                                                      style: const TextStyle(
+                                                        fontSize: 12,
+                                                        fontWeight: FontWeight.w800,
+                                                        color: Color(0xFFB45309),
+                                                      ),
+                                                    ),
+                                            ),
+                                          ),
+                                        );
+                                      }).toList(),
                                     ),
-                                    backgroundColor: Colors.white,
+                                  const SizedBox(height: 14),
+
+                                  // Short Clear Prompt Box
+                                  Container(
+                                    width: double.infinity,
                                     padding: const EdgeInsets.symmetric(
-                                      horizontal: 6,
+                                      horizontal: 14,
+                                      vertical: 12,
                                     ),
-                                    onPressed: () {
-                                      Navigator.of(context).pop();
-                                      _goToQuestion(id - 1);
-                                    },
-                                  );
-                                }).toList(),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ] else ...[
-                        const SizedBox(height: 12),
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: AppColors.riskLowBg,
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: AppColors.riskLow),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  const Icon(
-                                    LucideIcons.checkCircle2,
-                                    size: 16,
-                                    color: AppColors.riskLow,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF8F6FF),
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(
+                                        color: const Color(0xFFE5DEFA),
+                                      ),
+                                    ),
+                                    child: Column(
+                                      children: [
+                                        Text(
+                                          isAllAnswered
+                                              ? (isSinhala
+                                                  ? 'ප්‍රතිඵල බැලීමට පහත බොත්තම ඔබන්න.'
+                                                  : 'Tap Finish below to see your result.')
+                                              : (isSinhala
+                                                  ? 'අවසන් කිරීමට පෙර පහත ප්‍රශ්නවලට පිළිතුරු දෙන්න:'
+                                                  : 'Tap a question below to finish answering:'),
+                                          textAlign: TextAlign.center,
+                                          style: const TextStyle(
+                                            fontSize: 14.5,
+                                            fontWeight: FontWeight.w700,
+                                            color: AppColors.navy,
+                                          ),
+                                        ),
+                                        if (!isAllAnswered) ...[
+                                          const SizedBox(height: 10),
+                                          Wrap(
+                                            spacing: 8,
+                                            runSpacing: 8,
+                                            alignment: WrapAlignment.center,
+                                            children: unansweredIds.map((id) {
+                                              return Material(
+                                                color: Colors.transparent,
+                                                child: InkWell(
+                                                  onTap: () {
+                                                    _stopDialogVoiceOver();
+                                                    Navigator.of(context).pop();
+                                                    _goToQuestion(id - 1);
+                                                  },
+                                                  borderRadius:
+                                                      BorderRadius.circular(14),
+                                                  child: Container(
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                      horizontal: 12,
+                                                      vertical: 6,
+                                                    ),
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.white,
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                        14,
+                                                      ),
+                                                      border: Border.all(
+                                                        color: const Color(
+                                                          0xFFC4B5FD,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    child: Text(
+                                                      isSinhala
+                                                          ? 'ප්‍රශ්නය $id'
+                                                          : 'Go to Q$id',
+                                                      style: const TextStyle(
+                                                        fontSize: 13,
+                                                        fontWeight:
+                                                            FontWeight.w800,
+                                                        color: Color(0xFF6C3FC5),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              );
+                                            }).toList(),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
                                   ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      isSinhala
-                                          ? 'ප්‍රශ්න 10 සඳහාම පිළිතුරු සුරකින ලදී.'
-                                          : 'All 10 questions have saved responses.',
-                                      style: const TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.bold,
-                                        color: AppColors.riskLow,
+
+                                  if (_submitError != null) ...[
+                                    const SizedBox(height: 10),
+                                    Container(
+                                      width: double.infinity,
+                                      padding: const EdgeInsets.all(10),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.riskHighBg,
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                          color: AppColors.riskHigh,
+                                        ),
+                                      ),
+                                      child: Text(
+                                        _submitError!,
+                                        textAlign: TextAlign.center,
+                                        style: const TextStyle(
+                                          fontSize: 12.5,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppColors.riskHigh,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+
+                                  const SizedBox(height: 18),
+
+                                  // Crisp Action Buttons
+                                  if (isAllAnswered) ...[
+                                    Container(
+                                      width: double.infinity,
+                                      decoration: BoxDecoration(
+                                        gradient: const LinearGradient(
+                                          colors: [
+                                            Color(0xFF6C3FC5),
+                                            Color(0xFF8B5CF6),
+                                            Color(0xFFEC4899),
+                                          ],
+                                        ),
+                                        borderRadius: BorderRadius.circular(16),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: const Color(0xFF6C3FC5)
+                                                .withValues(alpha: 0.30),
+                                            blurRadius: 16,
+                                            offset: const Offset(0, 6),
+                                          ),
+                                        ],
+                                      ),
+                                      child: Material(
+                                        color: Colors.transparent,
+                                        child: InkWell(
+                                          onTap: _isSubmitting
+                                              ? null
+                                              : () async {
+                                                  _stopDialogVoiceOver();
+                                                  setDialogState(
+                                                    () => _isSubmitting = true,
+                                                  );
+                                                  await _submitElderResponses();
+                                                  if (mounted) {
+                                                    setDialogState(() {});
+                                                  }
+                                                },
+                                          borderRadius:
+                                              BorderRadius.circular(16),
+                                          child: Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 15,
+                                              horizontal: 18,
+                                            ),
+                                            child: Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: _isSubmitting
+                                                  ? [
+                                                      const SizedBox(
+                                                        width: 19,
+                                                        height: 19,
+                                                        child:
+                                                            CircularProgressIndicator(
+                                                          strokeWidth: 2.4,
+                                                          color: Colors.white,
+                                                        ),
+                                                      ),
+                                                      const SizedBox(width: 10),
+                                                      Text(
+                                                        isSinhala
+                                                            ? 'යොමු කරමින්...'
+                                                            : 'Submitting...',
+                                                        style: const TextStyle(
+                                                          fontSize: 16.5,
+                                                          fontWeight:
+                                                              FontWeight.w800,
+                                                          color: Colors.white,
+                                                        ),
+                                                      ),
+                                                    ]
+                                                  : [
+                                                      const Icon(
+                                                        LucideIcons.send,
+                                                        size: 17,
+                                                        color: Colors.white,
+                                                      ),
+                                                      const SizedBox(width: 10),
+                                                      Text(
+                                                        isSinhala
+                                                            ? 'අවසන් කර ප්‍රතිඵල බලන්න'
+                                                            : 'Finish & See Result',
+                                                        style: const TextStyle(
+                                                          fontSize: 16.5,
+                                                          fontWeight:
+                                                              FontWeight.w800,
+                                                          color: Colors.white,
+                                                        ),
+                                                      ),
+                                                    ],
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 9),
+                                  ],
+
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: OutlinedButton.icon(
+                                      onPressed: _isSubmitting
+                                          ? null
+                                          : () {
+                                              _stopDialogVoiceOver();
+                                              Navigator.of(context).pop();
+                                            },
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: const Color(0xFF5B21B6),
+                                        backgroundColor: Colors.white,
+                                        side: const BorderSide(
+                                          color: Color(0xFFDDD6FE),
+                                          width: 1.4,
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 13,
+                                          horizontal: 16,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(15),
+                                        ),
+                                      ),
+                                      icon: const Icon(
+                                        LucideIcons.arrowLeft,
+                                        size: 15,
+                                      ),
+                                      label: Text(
+                                        isAllAnswered
+                                            ? (isSinhala
+                                                ? 'පිළිතුරු නැවත බලන්න'
+                                                : 'Review My Answers')
+                                            : (isSinhala
+                                                ? 'ප්‍රශ්න වෙත ආපසු යන්න'
+                                                : 'Back to Questions'),
+                                        style: const TextStyle(
+                                          fontSize: 14.5,
+                                          fontWeight: FontWeight.w700,
+                                        ),
                                       ),
                                     ),
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 6),
-                              Text(
-                                isSinhala
-                                    ? 'දැන් ඔබේ පිළිතුරු යොමු කර ඔබේ ප්‍රතිඵල බලාගත හැකිය.'
-                                    : 'You are ready to submit your answers and view your wellness summary.',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: AppColors.navy,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                      if (_submitError != null) ...[
-                        const SizedBox(height: 12),
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: AppColors.riskHighBg,
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: AppColors.riskHigh),
-                          ),
-                          child: Text(
-                            _submitError!,
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: AppColors.riskHigh,
                             ),
-                          ),
+                          ],
                         ),
-                      ],
-                    ],
-                  ),
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: _isSubmitting
-                        ? null
-                        : () => Navigator.of(context).pop(),
-                    child: Text(
-                      isAllAnswered
-                          ? (isSinhala ? 'පිළිතුරු පරීක්ෂා කරන්න' : 'Review Answers')
-                          : (isSinhala ? 'ඇගයීම වෙත ආපසු යන්න' : 'Return to Assessment'),
-                      style: const TextStyle(color: AppColors.muted),
-                    ),
-                  ),
-                  ElevatedButton(
-                    onPressed: (isAllAnswered && !_isSubmitting)
-                        ? () async {
-                            setDialogState(() => _isSubmitting = true);
-                            await _submitElderResponses();
-                            if (mounted) setDialogState(() {});
-                          }
-                        : null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      disabledBackgroundColor: Colors.grey.shade300,
-                      disabledForegroundColor: Colors.grey.shade600,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
                       ),
                     ),
-                    child: _isSubmitting
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : Text(
-                            isAllAnswered
-                                ? (isSinhala ? 'ඉදිරිපත් කර ලකුණු බලන්න' : 'Submit & Calculate Score')
-                                : (isSinhala ? 'ඉදිරිපත් කිරීමට ප්‍රශ්න 10 ටම පිළිතුරු දෙන්න' : 'Answer All 10 Questions to Submit'),
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
                   ),
-                ],
+                  ),
+                ),
+                ),
               );
             }
 
@@ -6124,10 +7773,35 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
         (result.alertTriggered == true) ||
         (result.acrfScore != null && result.acrfScore! < 50.0);
 
+    final String elderResultVoice = isHighRisk
+        ? (isSinhala
+            ? 'හොඳ උත්සාහයක්! අපි දැන් සතුටින් සැහැල්ලු මතක ක්‍රීඩාවක් කරමු.'
+            : 'Great try! Let\'s play a fun and relaxing memory game together now.')
+        : (isSinhala
+            ? 'හරිම විශිෂ්ටයි! ඔබේ පිළිතුරු සුරැකුණා. කැමති නම් මතක ක්‍රීඩා කරන්න, නැතහොත් මුල් පිටුවට යන්න.'
+            : 'Wonderful job! Your answers are saved. You can play fun memory games or go back home.');
+
+    if (isElder) {
+      Future.delayed(const Duration(milliseconds: 220), () {
+        if (mounted) {
+          _speakDialogVoiceOver(elderResultVoice, isSinhala);
+        }
+      });
+    }
+
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) {
+        if (isElder) {
+          return _buildElderResultDialog(
+            context: context,
+            result: result,
+            isSinhala: isSinhala,
+            isHighRisk: isHighRisk,
+            voiceText: elderResultVoice,
+          );
+        }
         return Dialog(
           backgroundColor: Colors.transparent,
           insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
@@ -6622,6 +8296,830 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
     );
   }
 
+  Widget _buildElderResultDialog({
+    required BuildContext context,
+    required CognitiveSubmissionResult result,
+    required bool isSinhala,
+    required bool isHighRisk,
+    required String voiceText,
+  }) {
+    final authState = ref.read(authProvider).state;
+    final rawName =
+        (result.residentName.trim().isNotEmpty && result.residentName.trim() != '-')
+            ? result.residentName.trim()
+            : (authState.userName?.trim().isNotEmpty == true
+                ? authState.userName!.trim()
+                : 'Friend');
+    final displayName = isSinhala ? _toSinhalaName(rawName) : rawName;
+    final double score = (result.acrfScore ?? 0.0).clamp(0.0, 100.0);
+    final bool isGreat = !isHighRisk && score >= 80.0;
+    final int starCount = isGreat
+        ? 5
+        : (!isHighRisk && score >= 65.0)
+            ? 4
+            : 3;
+
+    final Color ringColor = isHighRisk
+        ? const Color(0xFF8B5CF6)
+        : (isGreat ? const Color(0xFF10B981) : const Color(0xFF6C3FC5));
+
+    final String headline = isHighRisk
+        ? (isSinhala
+            ? 'හොඳ උත්සාහයක්, $displayName! 🎮'
+            : 'Great Try, $rawName! 🎮')
+        : isGreat
+            ? (isSinhala
+                ? 'හරිම විශිෂ්ටයි, $displayName! 🎉'
+                : 'Wonderful Job, $rawName! 🎉')
+            : (isSinhala
+                ? 'ඉතා හොඳයි, $displayName! 🌟'
+                : 'Well Done, $rawName! 🌟');
+
+    final String statusPill = isHighRisk
+        ? (isSinhala ? '💜 විනෝදජනක පුහුණුවට සූදානම්' : '💜 Fun Brain Practice Ready')
+        : isGreat
+            ? (isSinhala ? '✨ ඉතා හොඳ මතක ශක්තියක්' : '✨ Strong & Active Memory')
+            : (isSinhala ? '💛 හොඳ මට්ටමක සිටී' : '💛 Doing Great Today');
+
+    final String friendlyMessage = isHighRisk
+        ? (isSinhala
+            ? 'සැහැල්ලු මතක ක්‍රීඩා මගින් ඔබේ මතකය තවත් ප්‍රබෝධමත් වේ!'
+            : 'Relaxing memory games keep your mind bright and happy!')
+        : (isSinhala
+            ? 'ඔබේ පිළිතුරු සුරැකුණා! කැමති නම් මතක ක්‍රීඩා කරන්න.'
+            : 'Answers safely saved! Enjoy a fun memory game anytime.');
+
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+      child: _AnimatedElderModalEntrance(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 550),
+          child: _SmartAiGradientBorderFrame(
+            borderRadius: 28,
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(25),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(25),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Smart AI Cosmic-Violet-to-Teal Animated Celebration Header
+                    Container(
+                      padding: const EdgeInsets.fromLTRB(22, 18, 22, 18),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: isHighRisk
+                              ? const [
+                                  Color(0xFF1E1B4B),
+                                  Color(0xFF5B21B6),
+                                  Color(0xFFBE185D),
+                                ]
+                              : const [
+                                  Color(0xFF1E1B4B),
+                                  Color(0xFF4C1D95),
+                                  Color(0xFF0F766E),
+                                ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                      ),
+                      child: Stack(
+                        children: [
+                          Positioned.fill(
+                            child: IgnorePointer(
+                              child: AnimatedBuilder(
+                                animation: _floatingController,
+                                builder: (context, _) => CustomPaint(
+                                  painter: _DialogCelebrationSparklesPainter(
+                                    progress: _floatingController.value,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          Column(
+                            children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 11,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.14),
+                                borderRadius: BorderRadius.circular(18),
+                                border: Border.all(
+                                  color: const Color(0xFF5EEAD4)
+                                      .withValues(alpha: 0.52),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    LucideIcons.sparkles,
+                                    size: 12.5,
+                                    color: Color(0xFF5EEAD4),
+                                  ),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    isSinhala
+                                        ? 'මතක පරීක්ෂාව අවසන්'
+                                        : 'MEMORY CHECK COMPLETE',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.white,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: () =>
+                                    _speakDialogVoiceOver(voiceText, isSinhala),
+                                borderRadius: BorderRadius.circular(18),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 11,
+                                    vertical: 5,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.16),
+                                    borderRadius: BorderRadius.circular(18),
+                                    border: Border.all(
+                                      color:
+                                          Colors.white.withValues(alpha: 0.35),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(
+                                        LucideIcons.volume2,
+                                        size: 13.5,
+                                        color: Color(0xFFFDE68A),
+                                      ),
+                                      const SizedBox(width: 5),
+                                      Text(
+                                        isSinhala ? 'නැවත අසන්න' : 'Listen',
+                                        style: const TextStyle(
+                                          fontSize: 11.5,
+                                          fontWeight: FontWeight.w800,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            AnimatedBuilder(
+                              animation: _ambientPulseAnimation,
+                              builder: (context, child) {
+                                final s = _ambientPulseAnimation.value;
+                                return Transform.scale(
+                                  scale: 0.94 + 0.08 * s,
+                                  child: child,
+                                );
+                              },
+                              child: Container(
+                                width: 54,
+                                height: 54,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: LinearGradient(
+                                    colors: isHighRisk
+                                        ? const [
+                                            Color(0xFFFDE68A),
+                                            Color(0xFFF59E0B),
+                                          ]
+                                        : const [
+                                            Color(0xFF34D399),
+                                            Color(0xFF0D9488),
+                                          ],
+                                  ),
+                                  border: Border.all(
+                                    color: Colors.white,
+                                    width: 2.5,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: (isHighRisk
+                                              ? const Color(0xFFF59E0B)
+                                              : const Color(0xFF34D399))
+                                          .withValues(alpha: 0.50),
+                                      blurRadius: 18,
+                                    ),
+                                  ],
+                                ),
+                                child: Icon(
+                                  isHighRisk
+                                      ? LucideIcons.gamepad2
+                                      : LucideIcons.checkCheck,
+                                  color: isHighRisk
+                                      ? const Color(0xFF4C1D95)
+                                      : Colors.white,
+                                  size: 28,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            Flexible(
+                              child: Text(
+                                headline,
+                                style: const TextStyle(
+                                  fontSize: 21,
+                                  fontWeight: FontWeight.w900,
+                                  color: Colors.white,
+                                  height: 1.2,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                        ],
+                      ),
+                  ),
+
+                  // Sleek Compact Body
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(22, 18, 22, 20),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (isHighRisk) ...[
+                          // Vibrant Playful Games Invitation Card
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [
+                                  Color(0xFF5B21B6),
+                                  Color(0xFF7C3AED),
+                                  Color(0xFFDB2777),
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: BorderRadius.circular(22),
+                              border: Border.all(
+                                color: const Color(0xFF5EEAD4)
+                                    .withValues(alpha: 0.50),
+                                width: 1.6,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF7C3AED)
+                                      .withValues(alpha: 0.28),
+                                  blurRadius: 20,
+                                  offset: const Offset(0, 7),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              children: [
+                                // Animated Floating Game Icon Trio
+                                AnimatedBuilder(
+                                  animation: _floatingController,
+                                  builder: (context, _) {
+                                    final dy =
+                                        math.sin(_floatingController.value * math.pi) *
+                                            5.0;
+                                    return Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Transform.translate(
+                                          offset: Offset(0, dy),
+                                          child: _buildResultMiniGameOrb(
+                                            '🧩',
+                                            const Color(0xFFCCFBF1),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Transform.translate(
+                                          offset: Offset(0, -4 - dy),
+                                          child: _buildResultMiniGameOrb(
+                                            '🌸',
+                                            const Color(0xFFFEF3C7),
+                                            large: true,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Transform.translate(
+                                          offset: Offset(0, dy),
+                                          child: _buildResultMiniGameOrb(
+                                            '🧺',
+                                            const Color(0xFFDBEAFE),
+                                          ),
+                                        ),
+                                      ],
+                                    );
+                                  },
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  isSinhala
+                                      ? 'අපි සතුටින් මතක ක්‍රීඩාවක් කරමු!'
+                                      : 'Let\'s Enjoy a Fun Memory Game!',
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w900,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  friendlyMessage,
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.white.withValues(alpha: 0.92),
+                                  ),
+                                ),
+                                const SizedBox(height: 14),
+                                Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    onTap: () {
+                                      _stopDialogVoiceOver();
+                                      Navigator.of(context, rootNavigator: true)
+                                          .pop();
+                                      context.go('/dashboard/memory-games');
+                                    },
+                                    borderRadius: BorderRadius.circular(16),
+                                    child: Container(
+                                      width: double.infinity,
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 14,
+                                        horizontal: 16,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          const Icon(
+                                            LucideIcons.gamepad2,
+                                            size: 19,
+                                            color: Color(0xFF6C3FC5),
+                                          ),
+                                          const SizedBox(width: 9),
+                                          Text(
+                                            isSinhala
+                                                ? 'දැන්ම මතක ක්‍රීඩා කරමු! 🎮'
+                                                : 'Play Memory Games Now! 🎮',
+                                            style: const TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w900,
+                                              color: Color(0xFF4C1D95),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+
+                          // Compact Reassuring Score Strip
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF8F6FF),
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(
+                                color: const Color(0xFFE5DEFA),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                TweenAnimationBuilder<double>(
+                                  tween: Tween(
+                                    begin: 0.0,
+                                    end: result.acrfScore != null ? score : 0.0,
+                                  ),
+                                  duration: const Duration(milliseconds: 1100),
+                                  curve: Curves.easeOutCubic,
+                                  builder: (context, animScore, _) {
+                                    return SizedBox(
+                                      width: 56,
+                                      height: 56,
+                                      child: Stack(
+                                        alignment: Alignment.center,
+                                        children: [
+                                          SizedBox(
+                                            width: 56,
+                                            height: 56,
+                                            child: CircularProgressIndicator(
+                                              value: result.acrfScore != null
+                                                  ? (animScore / 100.0)
+                                                  : 0.0,
+                                              strokeWidth: 6.5,
+                                              strokeCap: StrokeCap.round,
+                                              backgroundColor:
+                                                  const Color(0xFFEDE9FE),
+                                              valueColor:
+                                                  const AlwaysStoppedAnimation<
+                                                      Color>(
+                                                Color(0xFF8B5CF6),
+                                              ),
+                                            ),
+                                          ),
+                                          Text(
+                                            result.acrfScore != null
+                                                ? animScore.toStringAsFixed(0)
+                                                : '—',
+                                            style: const TextStyle(
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.w900,
+                                              color: AppColors.navy,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        isSinhala
+                                            ? 'ඔබේ අද ලකුණු: ${score.toStringAsFixed(0)} / 100'
+                                            : 'Today\'s Score: ${score.toStringAsFixed(0)} / 100',
+                                        style: const TextStyle(
+                                          fontSize: 14.5,
+                                          fontWeight: FontWeight.w800,
+                                          color: AppColors.navy,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        isSinhala
+                                            ? 'දිනපතා පුහුණුවෙන් මතකය තවත් ශක්තිමත් වේ 💛'
+                                            : 'Daily practice keeps your memory bright 💛',
+                                        style: const TextStyle(
+                                          fontSize: 12.5,
+                                          fontWeight: FontWeight.w600,
+                                          color: Color(0xFF5B4E7A),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ] else ...[
+                          // Horizontal Smart Score Showcase (Compact & Balanced!)
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(18),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFFFCFAFF), Color(0xFFF5F0FF)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: BorderRadius.circular(22),
+                              border: Border.all(
+                                color: const Color(0xFFE2D9F9),
+                                width: 1.3,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                // Animated Counting Circular Score Ring (0 -> score)
+                                TweenAnimationBuilder<double>(
+                                  tween: Tween(
+                                    begin: 0.0,
+                                    end: result.acrfScore != null ? score : 0.0,
+                                  ),
+                                  duration: const Duration(milliseconds: 1150),
+                                  curve: Curves.easeOutCubic,
+                                  builder: (context, animScore, _) {
+                                    return SizedBox(
+                                      width: 104,
+                                      height: 104,
+                                      child: Stack(
+                                        alignment: Alignment.center,
+                                        children: [
+                                          SizedBox(
+                                            width: 104,
+                                            height: 104,
+                                            child: CircularProgressIndicator(
+                                              value: result.acrfScore != null
+                                                  ? (animScore / 100.0)
+                                                  : 0.0,
+                                              strokeWidth: 9,
+                                              strokeCap: StrokeCap.round,
+                                              backgroundColor:
+                                                  const Color(0xFFE9E2FA),
+                                              valueColor:
+                                                  AlwaysStoppedAnimation<Color>(
+                                                ringColor,
+                                              ),
+                                            ),
+                                          ),
+                                          Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Text(
+                                                result.acrfScore != null
+                                                    ? animScore
+                                                        .toStringAsFixed(0)
+                                                    : '—',
+                                                style: const TextStyle(
+                                                  fontSize: 32,
+                                                  fontWeight: FontWeight.w900,
+                                                  color: AppColors.navy,
+                                                  height: 1.0,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                isSinhala ? '100 න්' : '/ 100',
+                                                style: const TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: AppColors.muted,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                ),
+                                const SizedBox(width: 18),
+
+                                // Staggered Pop-In Stars + Status + Short Message
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: List.generate(5, (i) {
+                                          final filled = i < starCount;
+                                          return TweenAnimationBuilder<double>(
+                                            tween: Tween(begin: 0.0, end: 1.0),
+                                            duration: Duration(
+                                              milliseconds: 460 + (i * 130),
+                                            ),
+                                            curve: Curves.easeOutBack,
+                                            builder: (context, val, child) =>
+                                                Transform.scale(
+                                              scale: val.clamp(0.0, 1.2),
+                                              child: Opacity(
+                                                opacity: val.clamp(0.0, 1.0),
+                                                child: child,
+                                              ),
+                                            ),
+                                            child: Padding(
+                                              padding: const EdgeInsets.only(
+                                                right: 2,
+                                              ),
+                                              child: Text(
+                                                filled ? '⭐' : '☆',
+                                                style: TextStyle(
+                                                  fontSize: filled ? 20 : 18,
+                                                  color:
+                                                      const Color(0xFFD1D5DB),
+                                                ),
+                                              ),
+                                            ),
+                                          );
+                                        }),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 11,
+                                          vertical: 5,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFECFDF5),
+                                          borderRadius:
+                                              BorderRadius.circular(16),
+                                          border: Border.all(
+                                            color: const Color(0xFF6EE7B7),
+                                          ),
+                                        ),
+                                        child: Text(
+                                          statusPill,
+                                          style: const TextStyle(
+                                            fontSize: 12.5,
+                                            fontWeight: FontWeight.w800,
+                                            color: Color(0xFF047857),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        friendlyMessage,
+                                        style: const TextStyle(
+                                          fontSize: 13.5,
+                                          fontWeight: FontWeight.w600,
+                                          color: Color(0xFF4B4266),
+                                          height: 1.35,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Side-by-side Crisp Action Buttons
+                          Row(
+                            children: [
+                              Expanded(
+                                flex: 4,
+                                child: OutlinedButton.icon(
+                                  onPressed: () {
+                                    _stopDialogVoiceOver();
+                                    Navigator.of(context, rootNavigator: true)
+                                        .pop();
+                                    context.go('/dashboard');
+                                  },
+                                  icon: const Icon(LucideIcons.home, size: 16),
+                                  label: Text(
+                                    isSinhala ? 'මුල් පිටුව' : 'Home',
+                                    style: const TextStyle(
+                                      fontSize: 14.5,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: const Color(0xFF5B21B6),
+                                    backgroundColor: Colors.white,
+                                    side: const BorderSide(
+                                      color: Color(0xFFDDD6FE),
+                                      width: 1.4,
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 15,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                flex: 6,
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    gradient: const LinearGradient(
+                                      colors: [
+                                        Color(0xFF6C3FC5),
+                                        Color(0xFF8B5CF6),
+                                        Color(0xFFEC4899),
+                                      ],
+                                    ),
+                                    borderRadius: BorderRadius.circular(16),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: const Color(0xFF6C3FC5)
+                                            .withValues(alpha: 0.30),
+                                        blurRadius: 16,
+                                        offset: const Offset(0, 6),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Material(
+                                    color: Colors.transparent,
+                                    child: InkWell(
+                                      onTap: () {
+                                        _stopDialogVoiceOver();
+                                        Navigator.of(
+                                          context,
+                                          rootNavigator: true,
+                                        ).pop();
+                                        context.go('/dashboard/memory-games');
+                                      },
+                                      borderRadius: BorderRadius.circular(16),
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 15,
+                                          horizontal: 14,
+                                        ),
+                                        child: Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            const Icon(
+                                              LucideIcons.gamepad2,
+                                              size: 18,
+                                              color: Colors.white,
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Flexible(
+                                              child: Text(
+                                                isSinhala
+                                                    ? 'මතක ක්‍රීඩා කරන්න'
+                                                    : 'Play Memory Games',
+                                                overflow: TextOverflow.ellipsis,
+                                                style: const TextStyle(
+                                                  fontSize: 15.5,
+                                                  fontWeight: FontWeight.w800,
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        ),
+      ),
+      ),
+    );
+  }
+
+  Widget _buildResultMiniGameOrb(
+    String emoji,
+    Color bg, {
+    bool large = false,
+  }) {
+    final size = large ? 54.0 : 44.0;
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: bg,
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white, width: 2.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.16),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Center(
+        child: Text(emoji, style: TextStyle(fontSize: large ? 25 : 20)),
+      ),
+    );
+  }
+
   Widget _buildCategoryCard(String title, double score, String weight, IconData icon) {
     final bool isHigh = score >= 75.0;
     final bool isModerate = score >= 50.0 && score < 75.0;
@@ -6932,5 +9430,193 @@ class _SwayingFloralMeadowPainter extends CustomPainter {
   bool shouldRepaint(covariant _SwayingFloralMeadowPainter oldDelegate) {
     return oldDelegate.swayValue != swayValue ||
         oldDelegate.breezeValue != breezeValue;
+  }
+}
+
+class _AnimatedElderModalEntrance extends StatelessWidget {
+  final Widget child;
+
+  const _AnimatedElderModalEntrance({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 440),
+      curve: Curves.easeOutBack,
+      builder: (context, t, modal) {
+        final opacity = t.clamp(0.0, 1.0);
+        final scale = 0.88 + (0.12 * t);
+        final offsetY = (1.0 - opacity) * 18.0;
+        return Transform.translate(
+          offset: Offset(0, offsetY),
+          child: Transform.scale(
+            scale: scale,
+            child: Opacity(opacity: opacity, child: modal),
+          ),
+        );
+      },
+      child: child,
+    );
+  }
+}
+
+class _DialogCelebrationSparklesPainter extends CustomPainter {
+  final double progress;
+
+  _DialogCelebrationSparklesPainter({required this.progress});
+
+  static const List<List<double>> _dots = [
+    [0.08, 0.25, 4.5, 0.0, 0.0],
+    [0.20, 0.78, 3.8, 1.2, 1.0],
+    [0.34, 0.18, 5.0, 2.1, 2.0],
+    [0.52, 0.85, 3.6, 0.8, 0.0],
+    [0.68, 0.22, 4.8, 2.8, 1.0],
+    [0.82, 0.72, 4.2, 1.6, 2.0],
+    [0.92, 0.30, 5.2, 0.4, 0.0],
+    [0.14, 0.52, 3.2, 3.1, 2.0],
+    [0.76, 0.48, 3.5, 2.4, 1.0],
+  ];
+
+  static const List<Color> _colors = [
+    Color(0xFF5EEAD4), // Aurora Teal
+    Color(0xFFFDE68A), // Celebration Gold
+    Color(0xFFF9A8D4), // Soft Rose
+  ];
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final angle = progress * math.pi * 2;
+    for (final d in _dots) {
+      final cx = d[0] * size.width + math.sin(angle + d[3]) * 8.0;
+      final cy = d[1] * size.height + math.cos(angle + d[3]) * 7.0;
+      final pulse = 0.55 + 0.45 * math.sin(angle * 1.5 + d[3]);
+      final r = d[2] * (0.75 + 0.3 * pulse);
+      final color = _colors[d[4].toInt()].withValues(alpha: 0.36 * pulse);
+
+      final path = Path()
+        ..moveTo(cx, cy - r)
+        ..quadraticBezierTo(cx, cy, cx + r, cy)
+        ..quadraticBezierTo(cx, cy, cx, cy + r)
+        ..quadraticBezierTo(cx, cy, cx - r, cy)
+        ..quadraticBezierTo(cx, cy, cx, cy - r)
+        ..close();
+      canvas.drawPath(path, Paint()..color = color);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DialogCelebrationSparklesPainter oldDelegate) =>
+      oldDelegate.progress != progress;
+}
+
+class _SmartAiGradientBorderFrame extends StatefulWidget {
+  final Widget child;
+  final double borderRadius;
+  final bool isWarmAmber;
+
+  const _SmartAiGradientBorderFrame({
+    required this.child,
+    this.borderRadius = 28,
+    this.isWarmAmber = false,
+  });
+
+  @override
+  State<_SmartAiGradientBorderFrame> createState() =>
+      _SmartAiGradientBorderFrameState();
+}
+
+class _SmartAiGradientBorderFrameState
+    extends State<_SmartAiGradientBorderFrame>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 6),
+    );
+    final isTestEnv =
+        WidgetsBinding.instance.runtimeType.toString().contains('Test');
+    if (!isTestEnv) {
+      _controller.repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final List<Color> gradientColors = widget.isWarmAmber
+        ? const [
+            Color(0xFFF59E0B),
+            Color(0xFFFDE68A),
+            Color(0xFFEC4899),
+            Color(0xFF8B5CF6),
+            Color(0xFFF97316),
+            Color(0xFFF59E0B),
+          ]
+        : const [
+            Color(0xFF7C3AED),
+            Color(0xFF38BDF8),
+            Color(0xFF2DD4BF),
+            Color(0xFFA78BFA),
+            Color(0xFFEC4899),
+            Color(0xFFFDE68A),
+            Color(0xFF7C3AED),
+          ];
+
+    final Color glowPrimary = widget.isWarmAmber
+        ? const Color(0xFFF59E0B)
+        : const Color(0xFF7C3AED);
+    final Color glowSecondary = widget.isWarmAmber
+        ? const Color(0xFFEC4899)
+        : const Color(0xFF2DD4BF);
+
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        final angle = _controller.value * math.pi * 2;
+        final pulse = 0.85 + 0.15 * math.sin(angle * 2);
+
+        return Container(
+          padding: const EdgeInsets.all(3.5),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(widget.borderRadius),
+            gradient: SweepGradient(
+              colors: gradientColors,
+              transform: GradientRotation(angle),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: glowPrimary.withValues(alpha: 0.34 * pulse),
+                blurRadius: 34,
+                spreadRadius: 2,
+                offset: const Offset(0, 12),
+              ),
+              BoxShadow(
+                color: glowSecondary.withValues(alpha: 0.26 * pulse),
+                blurRadius: 26,
+                spreadRadius: 1,
+                offset: const Offset(0, -4),
+              ),
+              BoxShadow(
+                color: const Color(0xFFEC4899).withValues(alpha: 0.16 * pulse),
+                blurRadius: 20,
+                offset: const Offset(8, 6),
+              ),
+            ],
+          ),
+          child: child,
+        );
+      },
+      child: widget.child,
+    );
   }
 }

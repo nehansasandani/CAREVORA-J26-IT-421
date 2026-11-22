@@ -7,10 +7,12 @@ import 'package:http/http.dart' as http;
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/config/app_config.dart';
+import '../../../core/localization/app_language.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../assessment/application/memory_game_service.dart';
 import '../../auth/application/auth_controller.dart';
+import 'widgets/elder_memory_game_world_hub.dart';
 
 /// Available games in the Memory Games suite.
 enum MemoryGameType {
@@ -44,12 +46,18 @@ class _MemoryGamesPageState extends ConsumerState<MemoryGamesPage> {
   late MemoryGameType _activeGame;
   List<Map<String, dynamic>> _hubIncomingInvitesForMe = [];
   Timer? _hubInviteTimer;
+  bool? _isDeactivated;
+  String? _cachedUserName;
 
   @override
   void initState() {
     super.initState();
     _activeGame = widget.initialGame;
-    _checkHubIncomingInvites();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _isDeactivated != true) {
+        _checkHubIncomingInvites();
+      }
+    });
     final isTestEnv =
         WidgetsBinding.instance.runtimeType.toString().contains('Test');
     if (!isTestEnv) {
@@ -61,15 +69,38 @@ class _MemoryGamesPageState extends ConsumerState<MemoryGamesPage> {
   }
 
   @override
+  void deactivate() {
+    _isDeactivated = true;
+    _hubInviteTimer?.cancel();
+    super.deactivate();
+  }
+
+  @override
+  void activate() {
+    super.activate();
+    _isDeactivated = false;
+  }
+
+  @override
   void dispose() {
+    _isDeactivated = true;
     _hubInviteTimer?.cancel();
     super.dispose();
   }
 
   Future<void> _checkHubIncomingInvites() async {
-    if (!mounted || _activeGame != MemoryGameType.none) return;
-    final auth = ref.read(authProvider).state;
-    final myName = (auth.userName ?? '').trim().toLowerCase();
+    if (!mounted || _isDeactivated == true || _activeGame != MemoryGameType.none) {
+      return;
+    }
+    String myName = _cachedUserName ?? '';
+    if (myName.isEmpty) {
+      try {
+        myName = (ref.read(authProvider).state.userName ?? '').trim().toLowerCase();
+        _cachedUserName = myName;
+      } catch (_) {
+        return;
+      }
+    }
     if (myName.isEmpty) return;
 
     final List<Map<String, dynamic>> found = [];
@@ -91,7 +122,7 @@ class _MemoryGamesPageState extends ConsumerState<MemoryGamesPage> {
       }
     } catch (_) {}
 
-    if (mounted) {
+    if (mounted && _isDeactivated != true) {
       setState(() {
         _hubIncomingInvitesForMe = found;
       });
@@ -136,6 +167,7 @@ class _MemoryGamesPageState extends ConsumerState<MemoryGamesPage> {
 
   Widget _buildCurrentView() {
     final auth = ref.watch(authProvider).state;
+    _cachedUserName = (auth.userName ?? '').trim().toLowerCase();
     final effectiveResidentId = widget.residentId ?? auth.residentId ?? 1;
     final effectiveToken = widget.token ?? auth.token;
 
@@ -173,6 +205,18 @@ class _MemoryGamesPageState extends ConsumerState<MemoryGamesPage> {
           token: effectiveToken,
         );
       case MemoryGameType.none:
+        if (auth.isElder) {
+          final isSinhala = ref.watch(languageProvider).isSinhala;
+          return ElderMemoryGameWorldHub(
+            isSinhala: isSinhala,
+            userName: auth.userName ?? 'Friend',
+            incomingInvites: _hubIncomingInvitesForMe,
+            onPlaySequence: () => _selectGame(MemoryGameType.sequence),
+            onPlayPairs: () => _selectGame(MemoryGameType.pairs),
+            onPlayItems: () => _selectGame(MemoryGameType.items),
+            onPlayCollaborative: () => _selectGame(MemoryGameType.collaborative),
+          );
+        }
         return _buildHubView();
     }
   }
@@ -1171,6 +1215,15 @@ class _GentleAmbientBackgroundState extends State<_GentleAmbientBackground>
               ),
             ),
 
+            // Floating AI Neural Constellation, Sparkles & Holographic Rings
+            Positioned.fill(
+              child: IgnorePointer(
+                child: CustomPaint(
+                  painter: _FloatingAiConstellationPainter(progress: t),
+                ),
+              ),
+            ),
+
             // Foreground Content
             widget.child,
           ],
@@ -1178,6 +1231,223 @@ class _GentleAmbientBackgroundState extends State<_GentleAmbientBackground>
       },
     );
   }
+}
+
+class _FloatingAiConstellationPainter extends CustomPainter {
+  final double progress;
+
+  _FloatingAiConstellationPainter({required this.progress});
+
+  static const List<List<double>> _nodeSpecs = [
+    // [xFrac, yFrac, ampX, ampY, phase, radius, colorIdx]
+    [0.05, 0.10, 14, 18, 0.0, 4.2, 0],
+    [0.12, 0.24, 12, 16, 1.1, 3.4, 1],
+    [0.04, 0.40, 16, 14, 2.2, 4.8, 2],
+    [0.10, 0.56, 13, 18, 0.7, 3.6, 3],
+    [0.05, 0.74, 15, 16, 3.1, 4.4, 0],
+    [0.14, 0.88, 12, 14, 1.8, 3.5, 1],
+    [0.24, 0.07, 14, 12, 2.6, 3.2, 2],
+    [0.38, 0.12, 12, 14, 0.9, 2.8, 0],
+    [0.54, 0.06, 15, 12, 3.8, 3.4, 1],
+    [0.72, 0.09, 13, 15, 1.5, 3.2, 3],
+    [0.88, 0.14, 14, 18, 2.4, 4.2, 0],
+    [0.95, 0.28, 15, 16, 0.4, 4.6, 1],
+    [0.89, 0.45, 12, 18, 3.3, 3.8, 2],
+    [0.96, 0.62, 14, 15, 1.9, 4.5, 3],
+    [0.90, 0.78, 16, 16, 0.8, 4.0, 0],
+    [0.95, 0.92, 12, 14, 2.9, 3.6, 1],
+    [0.28, 0.92, 14, 14, 1.3, 3.4, 2],
+    [0.48, 0.95, 16, 12, 3.6, 3.2, 0],
+    [0.68, 0.91, 14, 14, 0.5, 3.6, 3],
+    [0.80, 0.86, 12, 16, 2.1, 3.0, 1],
+  ];
+
+  static const List<Color> _palette = [
+    Color(0xFF7C3AED), // AI Violet
+    Color(0xFF0D9488), // Aurora Teal
+    Color(0xFF0284C7), // Smart Sky Blue
+    Color(0xFFDB2777), // Warm Rose
+  ];
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final angle = progress * pi * 2;
+    final List<Offset> positions = [];
+    final List<Color> colors = [];
+
+    // 1. Compute gently drifting node positions
+    for (final spec in _nodeSpecs) {
+      final baseX = spec[0] * size.width;
+      final baseY = spec[1] * size.height;
+      final dx = sin(angle + spec[4]) * spec[2];
+      final dy = cos(angle * 0.85 + spec[4] * 1.3) * spec[3];
+      positions.add(Offset(baseX + dx, baseY + dy));
+      colors.add(_palette[spec[6].toInt()]);
+    }
+
+    // 2. Draw delicate glowing neural links between nearby nodes
+    final double maxDist = min(size.width, size.height) * 0.24 + 80;
+    for (int i = 0; i < positions.length; i++) {
+      for (int j = i + 1; j < positions.length; j++) {
+        final dist = (positions[i] - positions[j]).distance;
+        if (dist < maxDist) {
+          final strength = (1.0 - dist / maxDist);
+          final linePaint = Paint()
+            ..color = colors[i].withValues(alpha: 0.14 * strength)
+            ..strokeWidth = 1.15
+            ..style = PaintingStyle.stroke;
+          canvas.drawLine(positions[i], positions[j], linePaint);
+
+          // Tiny travelling synaptic light dot on close pairs
+          if (strength > 0.45 && (i + j) % 3 == 0) {
+            final pulseT = (progress + (i * 0.17)) % 1.0;
+            final dotPos = Offset.lerp(positions[i], positions[j], pulseT)!;
+            canvas.drawCircle(
+              dotPos,
+              2.2,
+              Paint()..color = colors[j].withValues(alpha: 0.35 * strength),
+            );
+          }
+        }
+      }
+    }
+
+    // 3. Draw glowing AI synaptic nodes
+    for (int i = 0; i < positions.length; i++) {
+      final pos = positions[i];
+      final color = colors[i];
+      final r = _nodeSpecs[i][5];
+      final pulse = 0.72 + 0.28 * sin(angle * 1.5 + _nodeSpecs[i][4]);
+
+      // Outer halo
+      canvas.drawCircle(
+        pos,
+        r * 3.1,
+        Paint()..color = color.withValues(alpha: 0.10 * pulse),
+      );
+      // Core node
+      canvas.drawCircle(
+        pos,
+        r,
+        Paint()..color = color.withValues(alpha: 0.38 * pulse),
+      );
+      // Inner white glint
+      canvas.drawCircle(
+        pos,
+        r * 0.42,
+        Paint()..color = Colors.white.withValues(alpha: 0.75 * pulse),
+      );
+    }
+
+    // 4. Draw gently floating 4-point AI sparkles (✦)
+    const List<List<double>> sparkleSpecs = [
+      [0.07, 0.17, 10.0, 0.5, 0.0],
+      [0.93, 0.20, 11.0, 1.8, 1.0],
+      [0.03, 0.65, 9.5, 2.7, 3.0],
+      [0.96, 0.52, 10.5, 0.9, 2.0],
+      [0.08, 0.85, 8.5, 3.4, 1.0],
+      [0.92, 0.84, 10.0, 2.1, 0.0],
+      [0.46, 0.04, 8.0, 1.2, 2.0],
+      [0.60, 0.96, 9.0, 2.9, 3.0],
+    ];
+    for (final s in sparkleSpecs) {
+      final cx = s[0] * size.width + sin(angle + s[3]) * 10;
+      final cy = s[1] * size.height + cos(angle + s[3]) * 12;
+      final radius = s[2] * (0.8 + 0.25 * sin(angle * 2 + s[3]));
+      final color = _palette[s[4].toInt()];
+      final alpha = 0.22 + 0.18 * (0.5 + 0.5 * sin(angle * 2 + s[3]));
+      _drawFourPointSparkle(canvas, Offset(cx, cy), radius, color.withValues(alpha: alpha));
+    }
+
+    // 5. Draw delicate floating holographic rings & AI hexagons in the margins
+    _drawFloatingRing(
+      canvas,
+      Offset(size.width * 0.04 + sin(angle) * 10, size.height * 0.30 + cos(angle) * 14),
+      26,
+      const Color(0xFF8B5CF6).withValues(alpha: 0.18),
+    );
+    _drawFloatingRing(
+      canvas,
+      Offset(size.width * 0.96 - sin(angle) * 10, size.height * 0.70 - cos(angle) * 14),
+      30,
+      const Color(0xFF0D9488).withValues(alpha: 0.18),
+    );
+    _drawFloatingHexagon(
+      canvas,
+      Offset(size.width * 0.94 + cos(angle) * 8, size.height * 0.37 + sin(angle) * 12),
+      18,
+      angle * 0.25,
+      const Color(0xFF0284C7).withValues(alpha: 0.20),
+    );
+    _drawFloatingHexagon(
+      canvas,
+      Offset(size.width * 0.06 - cos(angle) * 8, size.height * 0.78 - sin(angle) * 12),
+      16,
+      -angle * 0.25,
+      const Color(0xFFDB2777).withValues(alpha: 0.18),
+    );
+  }
+
+  void _drawFourPointSparkle(Canvas canvas, Offset c, double r, Color color) {
+    final path = Path()
+      ..moveTo(c.dx, c.dy - r)
+      ..quadraticBezierTo(c.dx, c.dy, c.dx + r, c.dy)
+      ..quadraticBezierTo(c.dx, c.dy, c.dx, c.dy + r)
+      ..quadraticBezierTo(c.dx, c.dy, c.dx - r, c.dy)
+      ..quadraticBezierTo(c.dx, c.dy, c.dx, c.dy - r)
+      ..close();
+    canvas.drawPath(path, Paint()..color = color);
+  }
+
+  void _drawFloatingRing(Canvas canvas, Offset c, double r, Color color) {
+    canvas.drawCircle(
+      c,
+      r,
+      Paint()
+        ..color = color
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.6,
+    );
+    canvas.drawCircle(
+      c,
+      r * 0.55,
+      Paint()
+        ..color = color.withValues(alpha: 0.11)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.0,
+    );
+  }
+
+  void _drawFloatingHexagon(
+    Canvas canvas,
+    Offset c,
+    double r,
+    double rotation,
+    Color color,
+  ) {
+    final path = Path();
+    for (int i = 0; i < 6; i++) {
+      final a = rotation + i * (pi / 3);
+      final pt = Offset(c.dx + cos(a) * r, c.dy + sin(a) * r);
+      if (i == 0) {
+        path.moveTo(pt.dx, pt.dy);
+      } else {
+        path.lineTo(pt.dx, pt.dy);
+      }
+    }
+    path.close();
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = color
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.5,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _FloatingAiConstellationPainter oldDelegate) =>
+      oldDelegate.progress != progress;
 }
 
 // ==============================================================================
