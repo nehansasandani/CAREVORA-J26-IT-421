@@ -162,6 +162,12 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
   bool _isRecordingThought = false;
   final Set<String> _elderReactedPostIds = <String>{};
 
+  // --- ELDER INTERACTIVE MORNING / WELLNESS ROUTINE CHECK STATE ---
+  bool? _hadMorningTea;
+  bool? _washedFace;
+  bool _routineCaregiverNotified = false;
+  bool _hasSpokenAutoGreeting = false;
+
   final List<Map<String, dynamic>> _elderCommunityPosts = [
     {
       'id': 'post_family',
@@ -599,6 +605,11 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
       _loadLiveResidentProfile();
       _fetchLatestSocialAuditForCurrentResident();
       _fetchRealRalpaDataForCurrentResident();
+      Future.delayed(const Duration(milliseconds: 1400), () {
+        if (mounted && !_hasSpokenAutoGreeting) {
+          _speakElderGreetingAndRoutine();
+        }
+      });
     });
   }
 
@@ -8240,6 +8251,9 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
   // --- RESIDENT HEADER CARD ---
   Widget _buildResidentHeaderCard() {
     final authState = ref.watch(authProvider).state;
+    if (authState.isElder) {
+      return _buildElderCreativeWelcomeBanner();
+    }
     final isSinhala = ref.watch(languageProvider).isSinhala;
 
     final rawName = (authState.isElder && authState.userName != null && authState.userName!.trim().isNotEmpty
@@ -15340,6 +15354,725 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
     );
   }
 
+  // --- SUB-VIEW: ELDER GREETING & ROUTINE VOICE SPEECH CONTROLLER ---
+  Future<void> _speakElderGreetingAndRoutine({bool force = false}) async {
+    if (!mounted) return;
+    if (!force && _hasSpokenAutoGreeting) return;
+    _hasSpokenAutoGreeting = true;
+
+    final isSinhala = ref.read(languageProvider).isSinhala;
+    final authState = ref.read(authProvider).state;
+    final rawName = (authState.isElder && authState.userName != null && authState.userName!.trim().isNotEmpty
+            ? authState.userName!
+            : _currentResident.name)
+        .trim();
+    final displayName = isSinhala ? _toSinhalaResidentName(rawName) : (rawName.isNotEmpty ? rawName : 'Kumara');
+    final dayPeriod = _getCurrentDayPeriod();
+
+    String speech = '';
+    if (isSinhala) {
+      if (dayPeriod == DayPeriod.morning) {
+        speech = 'සුබ උදෑසනක්, $displayName! ඔබ උදෑසන තේ පානය කළාද?';
+      } else if (dayPeriod == DayPeriod.afternoon) {
+        speech = 'සුබ දහවල් කාලයක්, $displayName! ඔබ දිවා ආහාරය ගත්තාද?';
+      } else if (dayPeriod == DayPeriod.evening) {
+        speech = 'සුබ සන්ධ්‍යාවක්, $displayName! ඔබ සවස තේ පැන් පානය කළාද?';
+      } else {
+        speech = 'සුබ රාත්‍රියක්, $displayName! ඔබ රාත්‍රී ආහාරය හා ඖෂධ ලබා ගත්තාද?';
+      }
+    } else {
+      if (dayPeriod == DayPeriod.morning) {
+        speech = 'Good morning, $displayName! Have you had your morning tea?';
+      } else if (dayPeriod == DayPeriod.afternoon) {
+        speech = 'Good afternoon, $displayName!';
+      } else if (dayPeriod == DayPeriod.evening) {
+        speech = 'Good evening, $displayName!';
+      } else {
+        speech = 'Good night, $displayName!';
+      }
+    }
+
+    try {
+      _flutterTts.stop();
+      await TtsService.instance.speak(speech, isSinhala: isSinhala);
+    } catch (e) {
+      debugPrint('[ElderGreeting] TTS speak error: $e');
+    }
+  }
+
+  void _handleRoutineSelection({
+    required int questionIndex,
+    required bool answeredYes,
+  }) {
+    final isSinhala = ref.read(languageProvider).isSinhala;
+    final dayPeriod = _getCurrentDayPeriod();
+
+    setState(() {
+      if (questionIndex == 1) {
+        _hadMorningTea = answeredYes;
+      } else {
+        _washedFace = answeredYes;
+      }
+      if (!answeredYes) {
+        _routineCaregiverNotified = true;
+      }
+    });
+
+    String speech = '';
+    if (dayPeriod == DayPeriod.morning) {
+      if (questionIndex == 1) {
+        if (!answeredYes) {
+          speech = isSinhala
+              ? 'ඔබ තවම තේ බීලා නැත්නම්, මම රැකබලා ගන්නාට දැන්වුවා ඔබට උණුසුම් තේ එකක් ගෙන එන්න.'
+              : 'Since you haven\'t had your morning tea, our care team has been gently notified to bring you a warm cup.';
+        } else {
+          speech = isSinhala
+              ? 'ඔබ තේ පානය කර තිබීම සතුටක්! දැන් ඔබ මුහුණ සෝදා පිරිසිදු වුණාද?'
+              : 'Wonderful! Glad you had your morning tea. Have you washed your face to freshen up?';
+        }
+      } else {
+        if (!answeredYes) {
+          speech = isSinhala
+              ? 'අපි මුහුණ සෝදා ප්‍රබෝධමත් වෙමු. ඔබට උදව් අවශ්‍ය නම් රැකබලා ගන්නා දැනුවත් කර ඇත.'
+              : 'Let\'s wash your face to freshen up! Your caregiver has been notified to assist you if needed.';
+        } else {
+          speech = isSinhala
+              ? 'ඉතා විශිෂ්ටයි! ඔබ ප්‍රබෝධමත්ව අද දවස සතුටින් ගත කිරීමට සූදානම්.'
+              : 'Splendid! You are feeling fresh and ready for a wonderful day ahead.';
+        }
+      }
+    } else {
+      if (!answeredYes) {
+        speech = isSinhala
+            ? 'ඔබට සහාය වීමට රැකබලා ගන්නා දැනුවත් කරන ලදී.'
+            : 'Our care team has been gently notified to support you.';
+      } else {
+        speech = isSinhala
+            ? 'ඉතා විශිෂ්ටයි! ඔබගේ නීරෝගී සුවය අපගේ සතුටයි.'
+            : 'Wonderful! Your health and comfort are our top priority.';
+      }
+    }
+
+    try {
+      _flutterTts.stop();
+      TtsService.instance.speak(speech, isSinhala: isSinhala);
+    } catch (e) {
+      debugPrint('[ElderRoutine] TTS error: $e');
+    }
+  }
+
+  // --- SUB-VIEW: CREATIVE ELDER WELCOME & MORNING ROUTINE BANNER (RESEARCH MOCKUP STYLED) ---
+  Widget _buildElderCreativeWelcomeBanner() {
+    final authState = ref.watch(authProvider).state;
+    final isSinhala = ref.watch(languageProvider).isSinhala;
+
+    final rawName = (authState.isElder && authState.userName != null && authState.userName!.trim().isNotEmpty
+            ? authState.userName!
+            : _currentResident.name)
+        .trim();
+
+    final displayName = isSinhala
+        ? _toSinhalaResidentName(rawName)
+        : (rawName.isNotEmpty
+            ? rawName.split(' ').map((part) {
+                if (part.isEmpty) return '';
+                return part[0].toUpperCase() + part.substring(1);
+              }).join(' ')
+            : 'Kumara');
+
+    final initials = rawName.isNotEmpty
+        ? rawName
+            .split(' ')
+            .where((w) => !w.startsWith('Mr.') && !w.startsWith('Mrs.') && !w.startsWith('Dr.'))
+            .take(2)
+            .map((w) => w.isNotEmpty ? w[0].toUpperCase() : '')
+            .join()
+        : 'K';
+
+    final effectiveAvatar = (authState.isElder ? authState.avatarUrl : null) ??
+        _currentResident.avatarUrl ??
+        authState.avatarUrl;
+
+    final dayPeriod = _getCurrentDayPeriod();
+
+    // Time-based greetings and questions
+    String topGreeting;
+    String subGreeting;
+    String companionText;
+
+    String card1Emoji;
+    Color card1IconBg;
+    String card1Question;
+    String card1YesText;
+    String card1NoText;
+
+    String card2Emoji;
+    Color card2IconBg;
+    String card2Question;
+    String card2YesText;
+    String card2NoText;
+
+    String careNoticeText;
+
+    if (dayPeriod == DayPeriod.morning) {
+      topGreeting = isSinhala ? 'සුබ උදෑසනක්, $displayName! 👋' : 'Good morning, $displayName! 👋';
+      subGreeting = isSinhala ? 'Good morning, $displayName!' : 'Wishing you a bright and joyful morning!';
+      companionText = isSinhala ? 'ඔබේ උදෑසන සහකරු' : 'Your morning companion';
+
+      card1Emoji = '☕';
+      card1IconBg = const Color(0xFFFEF3C7);
+      card1Question = isSinhala ? 'ඔබ උදෑසන තේ පානය කළාද?' : 'Have you had your morning tea?';
+      card1YesText = isSinhala ? '✓ ඔව්, බිව්වා' : '✓ Yes, I have';
+      card1NoText = isSinhala ? '⏰ තවම නැහැ' : '⏰ Not yet';
+
+      card2Emoji = '🧖‍♂️';
+      card2IconBg = const Color(0xFFE0F2FE);
+      card2Question = isSinhala ? 'ඔබ මුහුණ සෝදා පිරිසිදු වුණාද?' : 'Have you washed your face?';
+      card2YesText = isSinhala ? '✓ ඔව්' : '✓ Yes';
+      card2NoText = isSinhala ? '⏰ තවම නැහැ' : '⏰ Not yet';
+
+      careNoticeText = isSinhala
+          ? 'එකක් හෝ "තවම නැහැ" නම්, ඔබට සහාය වීමට අපගේ රැකවරණ කණ්ඩායම (Care Team) දැනුවත් කෙරේ.'
+          : 'If either is "Not yet", our care team will be gently notified to support you.';
+    } else if (dayPeriod == DayPeriod.afternoon) {
+      topGreeting = isSinhala ? 'සුබ දහවල් කාලයක්, $displayName! 👋' : 'Good afternoon, $displayName! 👋';
+      subGreeting = isSinhala ? 'Good afternoon, $displayName!' : 'Wishing you a peaceful, restful afternoon!';
+      companionText = isSinhala ? 'ඔබේ දිවා සහකරු' : 'Your afternoon companion';
+
+      card1Emoji = '🍲';
+      card1IconBg = const Color(0xFFFEF3C7);
+      card1Question = isSinhala ? 'ඔබ දිවා ආහාරය ගත්තාද?' : 'Have you had your lunch?';
+      card1YesText = isSinhala ? '✓ ඔව්, ගත්තා' : '✓ Yes, I have';
+      card1NoText = isSinhala ? '⏰ තවම නැහැ' : '⏰ Not yet';
+
+      card2Emoji = '🌿';
+      card2IconBg = const Color(0xFFDCFCE7);
+      card2Question = isSinhala ? 'කෙටි දිවා විවේකයක් ගත්තාද?' : 'Did you take a short rest?';
+      card2YesText = isSinhala ? '✓ ඔව්' : '✓ Yes';
+      card2NoText = isSinhala ? '⏰ තවම නැහැ' : '⏰ Not yet';
+
+      careNoticeText = isSinhala
+          ? 'එකක් හෝ "තවම නැහැ" නම්, ඔබට සහාය වීමට අපගේ රැකවරණ කණ්ඩායම (Care Team) දැනුවත් කෙරේ.'
+          : 'If either is "Not yet", our care team will be gently notified to support you.';
+    } else if (dayPeriod == DayPeriod.evening) {
+      topGreeting = isSinhala ? 'සුබ සන්ධ්‍යාවක්, $displayName! 👋' : 'Good evening, $displayName! 👋';
+      subGreeting = isSinhala ? 'Good evening, $displayName!' : 'Wishing you a serene and joyful evening!';
+      companionText = isSinhala ? 'ඔබේ සවස සහකරු' : 'Your evening companion';
+
+      card1Emoji = '☕';
+      card1IconBg = const Color(0xFFFEF3C7);
+      card1Question = isSinhala ? 'ඔබ සවස තේ පැන් පානය කළාද?' : 'Have you had your evening tea?';
+      card1YesText = isSinhala ? '✓ ඔව්, බිව්වා' : '✓ Yes, I have';
+      card1NoText = isSinhala ? '⏰ තවම නැහැ' : '⏰ Not yet';
+
+      card2Emoji = '🌅';
+      card2IconBg = const Color(0xFFFFEDD5);
+      card2Question = isSinhala ? 'සවස නැවුම් සුළං සුවය වින්දාද?' : 'Enjoyed the evening breeze?';
+      card2YesText = isSinhala ? '✓ ඔව්' : '✓ Yes';
+      card2NoText = isSinhala ? '⏰ තවම නැහැ' : '⏰ Not yet';
+
+      careNoticeText = isSinhala
+          ? 'එකක් හෝ "තවම නැහැ" නම්, ඔබට සහාය වීමට අපගේ රැකවරණ කණ්ඩායම (Care Team) දැනුවත් කෙරේ.'
+          : 'If either is "Not yet", our care team will be gently notified to support you.';
+    } else {
+      topGreeting = isSinhala ? 'සුබ රාත්‍රියක්, $displayName! 👋' : 'Good night, $displayName! 👋';
+      subGreeting = isSinhala ? 'Good night, $displayName!' : 'Wishing you a deep and peaceful sleep!';
+      companionText = isSinhala ? 'ඔබේ රාත්‍රී සහකරු' : 'Your night companion';
+
+      card1Emoji = '🌙';
+      card1IconBg = const Color(0xFFE0E7FF);
+      card1Question = isSinhala ? 'රාත්‍රී ආහාර හා ඖෂධ ගත්තාද?' : 'Had dinner & medication?';
+      card1YesText = isSinhala ? '✓ ඔව්, ගත්තා' : '✓ Yes, I have';
+      card1NoText = isSinhala ? '⏰ තවම නැහැ' : '⏰ Not yet';
+
+      card2Emoji = '✨';
+      card2IconBg = const Color(0xFFF3E8FF);
+      card2Question = isSinhala ? 'සුව නින්දකට සූදානම්ද?' : 'Ready for peaceful sleep?';
+      card2YesText = isSinhala ? '✓ ඔව්' : '✓ Yes';
+      card2NoText = isSinhala ? '⏰ තවම නැහැ' : '⏰ Not yet';
+
+      careNoticeText = isSinhala
+          ? 'එකක් හෝ "තවම නැහැ" නම්, ඔබට සහාය වීමට අපගේ රැකවරණ කණ්ඩායම (Care Team) දැනුවත් කෙරේ.'
+          : 'If either is "Not yet", our care team will be gently notified to support you.';
+    }
+
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        gradient: const LinearGradient(
+          colors: [
+            Color(0xFF4C1D95),
+            Color(0xFF6B21A8),
+            Color(0xFF7C3AED),
+            Color(0xFF8B5CF6),
+          ],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF4C1D95).withValues(alpha: 0.32),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: Stack(
+          children: [
+            // Golden sunrise glowing aura in background
+            Positioned(
+              bottom: -32,
+              left: 230,
+              child: Container(
+                width: 140,
+                height: 80,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      const Color(0xFFFEF08A).withValues(alpha: 0.75),
+                      const Color(0xFFFBBF24).withValues(alpha: 0.35),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // Blooming Lotus Flowers Graphic on Right
+            Positioned(
+              right: 0,
+              top: 0,
+              bottom: 0,
+              child: Opacity(
+                opacity: 0.95,
+                child: Image.asset(
+                  'assets/images/banner_flowers_fade.png',
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Image.network(
+                    'banner_flowers_fade.png',
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                  ),
+                ),
+              ),
+            ),
+
+            // Content
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final isWide = constraints.maxWidth >= 950;
+
+                  // The left column with Avatar, Greetings, and Companion Pill
+                  final leftDetails = Row(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      // Avatar squircle with Green Active Indicator Dot
+                      Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Container(
+                            width: 60,
+                            height: 60,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: Colors.white, width: 2.8),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.22),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(13),
+                              child: _buildBannerAvatarContent(
+                                effectiveAvatar,
+                                displayName,
+                                initials,
+                                isSinhala: isSinhala,
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            right: -2,
+                            bottom: -2,
+                            child: Container(
+                              width: 17,
+                              height: 17,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF22C55E),
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.white, width: 2.2),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xFF22C55E).withValues(alpha: 0.7),
+                                    blurRadius: 5,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(width: 14),
+
+                      // Greetings & Companion Capsule
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                topGreeting,
+                                style: const TextStyle(
+                                  fontSize: 19,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white,
+                                  letterSpacing: 0.2,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              InkWell(
+                                onTap: () => _speakElderGreetingAndRoutine(force: true),
+                                borderRadius: BorderRadius.circular(14),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.22),
+                                    borderRadius: BorderRadius.circular(14),
+                                    border: Border.all(color: Colors.white.withValues(alpha: 0.45)),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(LucideIcons.volume2, size: 13, color: Colors.white),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        isSinhala ? 'අසන්න' : 'Listen',
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            subGreeting,
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.white.withValues(alpha: 0.92),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3.5),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.22),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(color: Colors.white.withValues(alpha: 0.45)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Text('💜', style: TextStyle(fontSize: 11)),
+                                const SizedBox(width: 5),
+                                Text(
+                                  companionText,
+                                  style: const TextStyle(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  );
+
+                  // Interactive Routine Question Cards
+                  final card1 = _buildRoutineMicroCard(
+                    emoji: card1Emoji,
+                    iconBg: card1IconBg,
+                    question: card1Question,
+                    yesText: card1YesText,
+                    noText: card1NoText,
+                    currentAnswer: _hadMorningTea,
+                    onYes: () => _handleRoutineSelection(questionIndex: 1, answeredYes: true),
+                    onNo: () => _handleRoutineSelection(questionIndex: 1, answeredYes: false),
+                  );
+
+                  final card2 = _buildRoutineMicroCard(
+                    emoji: card2Emoji,
+                    iconBg: card2IconBg,
+                    question: card2Question,
+                    yesText: card2YesText,
+                    noText: card2NoText,
+                    currentAnswer: _washedFace,
+                    onYes: () => _handleRoutineSelection(questionIndex: 2, answeredYes: true),
+                    onNo: () => _handleRoutineSelection(questionIndex: 2, answeredYes: false),
+                  );
+
+                  // Notification note pill
+                  final careNoticePill = Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: _routineCaregiverNotified
+                          ? const Color(0xFFFEF3C7)
+                          : Colors.white.withValues(alpha: 0.92),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: _routineCaregiverNotified
+                            ? const Color(0xFFF59E0B)
+                            : const Color(0xFFE2E8F0),
+                        width: 1.1,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.05),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          _routineCaregiverNotified ? LucideIcons.bellRing : LucideIcons.users,
+                          size: 13,
+                          color: _routineCaregiverNotified
+                              ? const Color(0xFFB45309)
+                              : const Color(0xFF6B21A8),
+                        ),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            _routineCaregiverNotified
+                                ? (isSinhala
+                                    ? 'රැකබලා ගන්නා දැනුවත් කරන ලදී: ඔබට අවශ්‍ය සහාය ලබා දීමට කණ්ඩායම පැමිණෙනු ඇත.'
+                                    : 'Care team gently notified: A caregiver is on the way to assist you.')
+                                : careNoticeText,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: _routineCaregiverNotified
+                                  ? const Color(0xFF92400E)
+                                  : const Color(0xFF475569),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        const Text('❤️', style: TextStyle(fontSize: 10.5)),
+                      ],
+                    ),
+                  );
+
+                  if (isWide) {
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        leftDetails,
+                        const Spacer(),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                card1,
+                                const SizedBox(width: 10),
+                                card2,
+                              ],
+                            ),
+                            const SizedBox(height: 7),
+                            careNoticePill,
+                          ],
+                        ),
+                      ],
+                    );
+                  } else {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        leftDetails,
+                        const SizedBox(height: 12),
+                        Wrap(
+                          spacing: 10,
+                          runSpacing: 10,
+                          children: [
+                            card1,
+                            card2,
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        careNoticePill,
+                      ],
+                    );
+                  }
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRoutineMicroCard({
+    required String emoji,
+    required Color iconBg,
+    required String question,
+    required String yesText,
+    required String noText,
+    required bool? currentAnswer,
+    required VoidCallback onYes,
+    required VoidCallback onNo,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: iconBg,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Center(
+              child: Text(emoji, style: const TextStyle(fontSize: 24)),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                question,
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF1E293B),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildRoutineOptionButton(
+                    title: yesText,
+                    isSelected: currentAnswer == true,
+                    isPositive: true,
+                    onTap: onYes,
+                  ),
+                  const SizedBox(width: 8),
+                  _buildRoutineOptionButton(
+                    title: noText,
+                    isSelected: currentAnswer == false,
+                    isPositive: false,
+                    onTap: onNo,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRoutineOptionButton({
+    required String title,
+    required bool isSelected,
+    required bool isPositive,
+    required VoidCallback onTap,
+  }) {
+    final Color bgColor = isSelected
+        ? (isPositive ? const Color(0xFF16A34A) : const Color(0xFF7C3AED))
+        : (isPositive ? const Color(0xFFDCFCE7) : const Color(0xFFF3E8FF));
+
+    final Color textColor = isSelected
+        ? Colors.white
+        : (isPositive ? const Color(0xFF15803D) : const Color(0xFF6B21A8));
+
+    final Color borderColor = isSelected
+        ? (isPositive ? const Color(0xFF15803D) : const Color(0xFF6B21A8))
+        : (isPositive ? const Color(0xFF86EFAC) : const Color(0xFFDDD6FE));
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: borderColor, width: 1.2),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: bgColor.withValues(alpha: 0.35),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
+        ),
+        child: Text(
+          title,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+            color: textColor,
+          ),
+        ),
+      ),
+    );
+  }
+
   // --- ELDER RESIDENT VIEW (ZERO-SCROLL MULTIMODAL CAPTURE) ---
   Widget _buildElderAssessmentLayout(AssessmentQuestion currentQ) {
     return SingleChildScrollView(
@@ -15347,8 +16080,8 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 1. Sleek Compact Elder Welcome Banner with Photo & Name (Time-of-day Dynamic)
-          _buildResidentHeaderCard(),
+          // 1. Creative Elder Welcome & Routine Interaction Banner (Research Mockup Styled)
+          _buildElderCreativeWelcomeBanner(),
           const SizedBox(height: 10),
 
 
