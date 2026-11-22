@@ -12,6 +12,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 
 import '../../../core/localization/app_language.dart';
+import '../../../core/localization/sinhala_name_transliterator.dart';
 import '../../../core/responsive/responsive_builder.dart';
 import '../../../core/services/tts_service.dart';
 import '../../../core/theme/app_colors.dart';
@@ -1976,87 +1977,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
   }
 
   String _toSinhalaName(String name) {
-    final trimmed = name.trim();
-    if (trimmed.isEmpty) return 'කුමාර';
-
-    const Map<String, String> knownWords = {
-      'malini': 'මාලිනී',
-      'bandara': 'බණ්ඩාර',
-      'indika': 'ඉන්දික',
-      'perera': 'පෙරේරා',
-      'kumara': 'කුමාර',
-      'kamal': 'කමල්',
-      'nimal': 'නිමල්',
-      'sunil': 'සුනිල්',
-      'siripala': 'සිරිපාල',
-      'sirisena': 'සිරිසේන',
-      'seetha': 'සීතා',
-      'nanda': 'නන්දා',
-      'kusuma': 'කුසුමා',
-      'soma': 'සෝමා',
-      'senarath': 'සෙනරත්',
-      'silva': 'සිල්වා',
-      'fernando': 'ප්‍රනාන්දු',
-      'de': 'ද',
-      'jayasinghe': 'ජයසිංහ',
-      'jayawardena': 'ජයවර්ධන',
-      'dissanayake': 'දිසානායක',
-      'gunasekara': 'ගුණසේකර',
-      'rathnayake': 'රත්නායක',
-      'wickramasinghe': 'වික්‍රමසිංහ',
-      'herath': 'හේරත්',
-      'eka': 'ඒක',
-      'ekanayake': 'ඒකනායක',
-      'rajapaksa': 'රාජපක්ෂ',
-      'gamage': 'ගමගේ',
-      'liyana': 'ලියන',
-      'liyanage': 'ලියනගේ',
-      'peiris': 'පීරිස්',
-      'fonseka': 'ෆොන්සේකා',
-      'wijesinghe': 'විජේසිංහ',
-      'karunaratne': 'කරුණාරත්න',
-      'samaraweera': 'සමරවීර',
-      'samarasinghe': 'සමරසිංහ',
-      'gunawardena': 'ගුණවර්ධන',
-      'weerasekara': 'වීරසේකර',
-      'weerasinghe': 'වීරසිංහ',
-      'pathirana': 'පතිරණ',
-      'ranasinghe': 'රණසිංහ',
-      'amarasinghe': 'අමරසිංහ',
-      'sarah': 'සාරා',
-      'jenkins': 'ජෙන්කින්ස්',
-      'arthur': 'ආතර්',
-      'pendelton': 'පෙන්ඩල්ටන්',
-      'margaret': 'මාගරට්',
-      'chen': 'චෙන්',
-      'robert': 'රොබට්',
-      'hastings': 'හේස්ටින්ග්ස්',
-      'david': 'ඩේවිඩ්',
-      'eleanor': 'එලිනෝර්',
-      'vance': 'වෑන්ස්',
-      'samantha': 'සමන්තා',
-      'reed': 'රීඩ්',
-      'pasidi': 'පසිඳි',
-      'sarangi': 'සාරංගි',
-      'james': 'ජේම්ස්',
-      'mr.': '',
-      'mrs.': '',
-      'ms.': '',
-      'dr.': 'වෛද්‍ය',
-    };
-
-    final parts = trimmed.split(RegExp(r'\s+'));
-    final converted = <String>[];
-    for (final part in parts) {
-      final lower = part.toLowerCase();
-      if (knownWords.containsKey(lower)) {
-        final mapped = knownWords[lower]!;
-        if (mapped.isNotEmpty) converted.add(mapped);
-      } else {
-        converted.add(part);
-      }
-    }
-    return converted.isEmpty ? trimmed : converted.join(' ');
+    return SinhalaNameTransliterator.toSinhala(name);
   }
 
   Widget _buildElderSmartQuestionStudio({

@@ -11,6 +11,7 @@ import '../../../shared/widgets/mobile_bottom_nav.dart';
 import '../../../shared/widgets/language_selector_button.dart';
 import '../../../core/localization/app_language.dart';
 import '../../../core/localization/app_strings.dart';
+import '../../../core/localization/sinhala_name_transliterator.dart';
 import '../../../data/mock/mock_carevora_data.dart';
 import '../../auth/application/auth_controller.dart';
 
@@ -175,7 +176,7 @@ class DashboardShell extends ConsumerWidget {
               LanguageSelectorButton(compact: isMobile),
               const SizedBox(width: 8),
               // Live Date and Time Chip
-              if (!isMobile) const _LiveDateTimeChip(),
+              if (!isMobile) _LiveDateTimeChip(isSinhala: strings.isSinhala),
               if (!isMobile) const SizedBox(width: 8),
               // Bell Notification Icon with Badge
               Stack(
@@ -219,92 +220,14 @@ class DashboardShell extends ConsumerWidget {
   }
 
   String _toSinhalaName(String name) {
-    final trimmed = name.trim();
-    if (trimmed.isEmpty) return 'කුමාර';
-
-    const Map<String, String> knownWords = {
-      'malini': 'මාලිනී',
-      'bandara': 'බණ්ඩාර',
-      'indika': 'ඉන්දික',
-      'perera': 'පෙරේරා',
-      'kumara': 'කුමාර',
-      'kamal': 'කමල්',
-      'nimal': 'නිමල්',
-      'sunil': 'සුනිල්',
-      'siripala': 'සිරිපාල',
-      'sirisena': 'සිරිසේන',
-      'seetha': 'සීතා',
-      'nanda': 'නන්දා',
-      'kusuma': 'කුසුමා',
-      'soma': 'සෝමා',
-      'senarath': 'සෙනරත්',
-      'silva': 'සිල්වා',
-      'fernando': 'ප්‍රනාන්දු',
-      'de': 'ද',
-      'jayasinghe': 'ජයසිංහ',
-      'jayawardena': 'ජයවර්ධන',
-      'dissanayake': 'දිසානායක',
-      'gunasekara': 'ගුණසේකර',
-      'rathnayake': 'රත්නායක',
-      'wickramasinghe': 'වික්‍රමසිංහ',
-      'herath': 'හේරත්',
-      'eka': 'ඒක',
-      'ekanayake': 'ඒකනායක',
-      'rajapaksa': 'රාජපක්ෂ',
-      'gamage': 'ගමගේ',
-      'liyana': 'ලියන',
-      'liyanage': 'ලියනගේ',
-      'peiris': 'පීරිස්',
-      'fonseka': 'ෆොන්සේකා',
-      'wijesinghe': 'විජේසිංහ',
-      'karunaratne': 'කරුණාරත්න',
-      'samaraweera': 'සමරවීර',
-      'samarasinghe': 'සමරසිංහ',
-      'gunawardena': 'ගුණවර්ධන',
-      'weerasekara': 'වීරසේකර',
-      'weerasinghe': 'වීරසිංහ',
-      'pathirana': 'පතිරණ',
-      'ranasinghe': 'රණසිංහ',
-      'amarasinghe': 'අමරසිංහ',
-      'sarah': 'සාරා',
-      'jenkins': 'ජෙන්කින්ස්',
-      'arthur': 'ආතර්',
-      'pendelton': 'පෙන්ඩල්ටන්',
-      'margaret': 'මාගරට්',
-      'chen': 'චෙන්',
-      'robert': 'රොබට්',
-      'hastings': 'හේස්ටින්ග්ස්',
-      'david': 'ඩේවිඩ්',
-      'eleanor': 'එලිනෝර්',
-      'vance': 'වෑන්ස්',
-      'samantha': 'සමන්තා',
-      'reed': 'රීඩ්',
-      'pasidi': 'පසිඳි',
-      'sarangi': 'සාරංගි',
-      'james': 'ජේම්ස්',
-      'mr.': '',
-      'mrs.': '',
-      'ms.': '',
-      'dr.': 'වෛද්‍ය',
-    };
-
-    final parts = trimmed.split(RegExp(r'\s+'));
-    final converted = <String>[];
-    for (final part in parts) {
-      final lower = part.toLowerCase();
-      if (knownWords.containsKey(lower)) {
-        final mapped = knownWords[lower]!;
-        if (mapped.isNotEmpty) converted.add(mapped);
-      } else {
-        converted.add(part);
-      }
-    }
-    return converted.isEmpty ? trimmed : converted.join(' ');
+    return SinhalaNameTransliterator.toSinhala(name);
   }
 }
 
 class _LiveDateTimeChip extends StatefulWidget {
-  const _LiveDateTimeChip();
+  final bool isSinhala;
+
+  const _LiveDateTimeChip({required this.isSinhala});
 
   @override
   State<_LiveDateTimeChip> createState() => _LiveDateTimeChipState();
@@ -333,18 +256,30 @@ class _LiveDateTimeChipState extends State<_LiveDateTimeChip> {
     super.dispose();
   }
 
-  static const _months = [
+  static const _monthsEn = [
     'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
     'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
   ];
 
+  static const _monthsSi = [
+    'ජනවාරි', 'පෙබරවාරි', 'මාර්තු', 'අප්‍රේල්', 'මැයි', 'ජූනි',
+    'ජූලි', 'අගෝස්තු', 'සැප්තැම්බර්', 'ඔක්තෝබර්', 'නොවැම්බර්', 'දෙසැම්බර්'
+  ];
+
   String _formatDate(DateTime dt) {
-    return 'Today, ${dt.day} ${_months[dt.month - 1]} ${dt.year}';
+    if (widget.isSinhala) {
+      return 'අද, ${dt.year} ${_monthsSi[dt.month - 1]} ${dt.day}';
+    }
+    return 'Today, ${dt.day} ${_monthsEn[dt.month - 1]} ${dt.year}';
   }
 
   String _formatTime(DateTime dt) {
     final hour = dt.hour % 12 == 0 ? 12 : dt.hour % 12;
     final minute = dt.minute.toString().padLeft(2, '0');
+    if (widget.isSinhala) {
+      final period = dt.hour >= 12 ? 'ප.ව.' : 'පෙ.ව.';
+      return '$period ${hour.toString().padLeft(2, '0')}:$minute';
+    }
     final period = dt.hour >= 12 ? 'PM' : 'AM';
     return '${hour.toString().padLeft(2, '0')}:$minute $period';
   }
