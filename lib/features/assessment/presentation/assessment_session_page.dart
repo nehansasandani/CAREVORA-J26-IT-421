@@ -65,10 +65,26 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
       ref.read(languageProvider).isSinhala ? _responsesSi : _responsesEn;
   late TextEditingController _responseController;
 
-  // Timing: active question viewing duration
-  final Map<int, double> _questionTimes = {};
+  // Timing: active question viewing duration (separate per language)
+  final Map<int, double> _questionTimesEn = {};
+  final Map<int, double> _questionTimesSi = {};
+  Map<int, double> get _questionTimes =>
+      ref.read(languageProvider).isSinhala ? _questionTimesSi : _questionTimesEn;
+
   late DateTime _questionStartTime;
-  int _sessionElapsedSeconds = 0;
+  int _sessionElapsedSecondsEn = 0;
+  int _sessionElapsedSecondsSi = 0;
+  int get _sessionElapsedSeconds => ref.read(languageProvider).isSinhala
+      ? _sessionElapsedSecondsSi
+      : _sessionElapsedSecondsEn;
+  set _sessionElapsedSeconds(int value) {
+    if (ref.read(languageProvider).isSinhala) {
+      _sessionElapsedSecondsSi = value;
+    } else {
+      _sessionElapsedSecondsEn = value;
+    }
+  }
+
   Timer? _sessionTimer;
 
   // Speech & TTS
@@ -83,6 +99,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
   int _activeListeningSessionId = 0;
   bool _isTogglingMic = false;
   int _listeningQId = -1;
+  bool _listeningWasSinhala = false;
 
   // Resident Context
   CognitiveResidentProfile? _resident;
@@ -98,9 +115,30 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
   bool _isSubmitting = false;
   String? _submitError;
 
-  // Session lifecycle & persistence
-  String? _sessionId;
-  String _sessionStatus = 'IN_PROGRESS'; // 'IN_PROGRESS', 'PENDING_CAREGIVER_REVIEW', 'COMPLETED'
+  // Session lifecycle & persistence (separate per language)
+  String? _sessionIdEn;
+  String? _sessionIdSi;
+  String? get _sessionId =>
+      ref.read(languageProvider).isSinhala ? _sessionIdSi : _sessionIdEn;
+  set _sessionId(String? value) {
+    if (ref.read(languageProvider).isSinhala) {
+      _sessionIdSi = value;
+    } else {
+      _sessionIdEn = value;
+    }
+  }
+
+  String _sessionStatusEn = 'IN_PROGRESS'; // 'IN_PROGRESS', 'PENDING_CAREGIVER_REVIEW', 'COMPLETED'
+  String _sessionStatusSi = 'IN_PROGRESS';
+  String get _sessionStatus =>
+      ref.read(languageProvider).isSinhala ? _sessionStatusSi : _sessionStatusEn;
+  set _sessionStatus(String value) {
+    if (ref.read(languageProvider).isSinhala) {
+      _sessionStatusSi = value;
+    } else {
+      _sessionStatusEn = value;
+    }
+  }
 
   // Elder welcome start screen state (elder view only, separate per language)
   bool _hasStartedElderAssessmentEn = false;
@@ -315,9 +353,11 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
           final currentQId =
               _currentIndex < _questions.length ? _questions[_currentIndex].id : -1;
 
-          // If this end-status belongs to a previous question session, do NOT cancel
-          // the listening state or overwrite the status of the new question!
-          if (_listeningQId != -1 && currentQId != -1 && _listeningQId != currentQId) {
+          // If this end-status belongs to a previous question or another language session,
+          // do NOT cancel the listening state or overwrite the status/responses!
+          if (_listeningQId != -1 &&
+              ((currentQId != -1 && _listeningQId != currentQId) ||
+                  ref.read(languageProvider).isSinhala != _listeningWasSinhala)) {
             debugPrint(
               '[CARE-STT] Ignoring late end status "$status" from Q$_listeningQId while active on Q$currentQId',
             );
@@ -368,6 +408,10 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
         'errorMsg="$errorMsg", permanent=$permanent',
       );
       if (mounted) {
+        if (_listeningQId != -1 &&
+            ref.read(languageProvider).isSinhala != _listeningWasSinhala) {
+          return;
+        }
         setState(() {
           _isListening = false;
           final isSinhala = ref.read(languageProvider).isSinhala;
@@ -545,12 +589,14 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
     }
 
     setState(() {
-      _responses[qId] = effectiveVal;
-      _grades[qId] = CognitiveScoring.scoreQuestion(qId, effectiveVal);
+      final targetResponses = isSinhala ? _responsesSi : _responsesEn;
+      final targetGrades = isSinhala ? _gradesSi : _gradesEn;
+      targetResponses[qId] = effectiveVal;
+      targetGrades[qId] = CognitiveScoring.scoreQuestion(qId, effectiveVal);
     });
     _saveDebounceTimer?.cancel();
     _saveDebounceTimer = Timer(const Duration(milliseconds: 500), () {
-      _persistResponses();
+      _persistResponses(forSinhala: isSinhala);
     });
   }
 
@@ -563,11 +609,11 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
       selection: TextSelection.collapsed(offset: converted.length),
     );
     setState(() {
-      _responses[qId] = converted;
-      _grades[qId] = CognitiveScoring.scoreQuestion(qId, converted);
+      _responsesSi[qId] = converted;
+      _gradesSi[qId] = CognitiveScoring.scoreQuestion(qId, converted);
     });
     _saveDebounceTimer?.cancel();
-    _persistResponses();
+    _persistResponses(forSinhala: true);
   }
 
   Widget _buildSinhalaTypingControls(int qId) {
@@ -762,13 +808,59 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
   void _beginElderAssessment() {
     TtsService.instance.stop();
     _flutterTts.stop();
+    final isSinhala = ref.read(languageProvider).isSinhala;
+    final targetIndex = isSinhala ? _currentIndexSi : _currentIndexEn;
+    final targetResponses = isSinhala ? _responsesSi : _responsesEn;
     setState(() {
       _isSpeakingWelcome = false;
       _isSpeaking = false;
       _isSpeakingPrompt = false;
-      _hasStartedElderAssessment = true;
+      if (isSinhala) {
+        _hasStartedElderAssessmentSi = true;
+      } else {
+        _hasStartedElderAssessmentEn = true;
+      }
       _questionStartTime = DateTime.now();
+      if (targetIndex < _questions.length) {
+        _responseController.text =
+            targetResponses[_questions[targetIndex].id] ?? '';
+      }
     });
+    _ensureBackendSessionForLanguage(isSinhala);
+  }
+
+  Future<void> _ensureBackendSessionForLanguage(bool forSinhala) async {
+    final existingSessionId = forSinhala ? _sessionIdSi : _sessionIdEn;
+    if (existingSessionId != null) return;
+    final residentId = _resident?.id ?? ref.read(authProvider).state.residentId;
+    if (residentId == null) return;
+    final token = ref.read(authProvider).state.token;
+    try {
+      final newSession = await CognitiveAssessmentService.startSession(
+        residentId: residentId,
+        token: token,
+      );
+      if (mounted) {
+        setState(() {
+          if (forSinhala) {
+            _sessionIdSi = newSession.sessionId;
+            _sessionStatusSi = 'IN_PROGRESS';
+          } else {
+            _sessionIdEn = newSession.sessionId;
+            _sessionStatusEn = 'IN_PROGRESS';
+          }
+        });
+      }
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(
+          forSinhala
+              ? 'cognitive_session_id_si_$residentId'
+              : 'cognitive_session_id_en_$residentId',
+          newSession.sessionId,
+        );
+      } catch (_) {}
+    } catch (_) {}
   }
 
   void _returnToElderWelcomeScreen() {
@@ -780,12 +872,17 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
         _speech.stop();
       } catch (_) {}
     }
+    final isSinhala = ref.read(languageProvider).isSinhala;
     setState(() {
       _isSpeaking = false;
       _isSpeakingPrompt = false;
       _isSpeakingWelcome = false;
       _isListening = false;
-      _hasStartedElderAssessment = false;
+      if (isSinhala) {
+        _hasStartedElderAssessmentSi = false;
+      } else {
+        _hasStartedElderAssessmentEn = false;
+      }
     });
   }
 
@@ -888,14 +985,22 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
       _responsesSi.clear();
       _gradesEn.clear();
       _gradesSi.clear();
-      _questionTimes.clear();
-      _currentIndex = 0;
+      _questionTimesEn.clear();
+      _questionTimesSi.clear();
+      _currentIndexEn = 0;
+      _currentIndexSi = 0;
+      _sessionElapsedSecondsEn = 0;
+      _sessionElapsedSecondsSi = 0;
+      _hasStartedElderAssessmentEn = false;
+      _hasStartedElderAssessmentSi = false;
       _responseController.clear();
       _isListening = false;
       _isSpeaking = false;
       _speechStatusMessage = null;
-      _sessionId = null;
-      _sessionStatus = 'IN_PROGRESS';
+      _sessionIdEn = null;
+      _sessionIdSi = null;
+      _sessionStatusEn = 'IN_PROGRESS';
+      _sessionStatusSi = 'IN_PROGRESS';
     });
     _loadSavedResidentResponses(residentId);
   }
@@ -904,24 +1009,38 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
     final residentId = _resident?.id ?? ref.read(authProvider).state.residentId;
     if (residentId == null) return;
     final token = ref.read(authProvider).state.token;
+    final isSinhala = ref.read(languageProvider).isSinhala;
 
-    _saveCurrentQuestionState();
+    _saveDebounceTimer?.cancel();
     setState(() {
-      _grades.clear();
-      _responses.clear();
-      _questionTimes.clear();
-      _currentIndex = 0;
+      if (isSinhala) {
+        _gradesSi.clear();
+        _responsesSi.clear();
+        _questionTimesSi.clear();
+        _currentIndexSi = 0;
+        _sessionElapsedSecondsSi = 0;
+        _sessionIdSi = null;
+        _sessionStatusSi = 'IN_PROGRESS';
+      } else {
+        _gradesEn.clear();
+        _responsesEn.clear();
+        _questionTimesEn.clear();
+        _currentIndexEn = 0;
+        _sessionElapsedSecondsEn = 0;
+        _sessionIdEn = null;
+        _sessionStatusEn = 'IN_PROGRESS';
+      }
+      _questionStartTime = DateTime.now();
       _responseController.clear();
-      _sessionElapsedSeconds = 0;
-      _sessionId = null;
-      _sessionStatus = 'IN_PROGRESS';
     });
 
     try {
       final prefs = await SharedPreferences.getInstance();
-      final isSinhala = ref.read(languageProvider).isSinhala;
       await prefs.remove(
         isSinhala ? 'cognitive_responses_si_$residentId' : 'cognitive_responses_en_$residentId',
+      );
+      await prefs.remove(
+        isSinhala ? 'cognitive_session_id_si_$residentId' : 'cognitive_session_id_en_$residentId',
       );
       await prefs.remove('cognitive_responses_$residentId');
     } catch (_) {}
@@ -933,10 +1052,24 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
       );
       if (mounted) {
         setState(() {
-          _sessionId = session.sessionId;
-          _sessionStatus = 'IN_PROGRESS';
+          if (isSinhala) {
+            _sessionIdSi = session.sessionId;
+            _sessionStatusSi = 'IN_PROGRESS';
+          } else {
+            _sessionIdEn = session.sessionId;
+            _sessionStatusEn = 'IN_PROGRESS';
+          }
         });
       }
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(
+          isSinhala
+              ? 'cognitive_session_id_si_$residentId'
+              : 'cognitive_session_id_en_$residentId',
+          session.sessionId,
+        );
+      } catch (_) {}
     } catch (_) {}
   }
 
@@ -944,16 +1077,22 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
 
   Future<void> _loadSavedResidentResponses(int residentId) async {
     final token = ref.read(authProvider).state.token;
+    final isElder = ref.read(authProvider).state.isElder;
 
-    // 1. Load language-separated responses from SharedPreferences first
-    bool hasLocalLangPrefs = false;
+    // 1. Load language-separated responses & session IDs from SharedPreferences first
+    bool hasLocalEnPrefs = false;
+    bool hasLocalSiPrefs = false;
+    String? savedEnSessionId;
+    String? savedSiSessionId;
     try {
       final prefs = await SharedPreferences.getInstance();
       final savedEnJson = prefs.getString('cognitive_responses_en_$residentId');
       final savedSiJson = prefs.getString('cognitive_responses_si_$residentId');
+      savedEnSessionId = prefs.getString('cognitive_session_id_en_$residentId');
+      savedSiSessionId = prefs.getString('cognitive_session_id_si_$residentId');
 
       if (savedEnJson != null && savedEnJson.isNotEmpty) {
-        hasLocalLangPrefs = true;
+        hasLocalEnPrefs = true;
         final decoded = json.decode(savedEnJson) as Map<String, dynamic>;
         decoded.forEach((key, val) {
           final qId = int.tryParse(key);
@@ -967,7 +1106,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
       }
 
       if (savedSiJson != null && savedSiJson.isNotEmpty) {
-        hasLocalLangPrefs = true;
+        hasLocalSiPrefs = true;
         final decoded = json.decode(savedSiJson) as Map<String, dynamic>;
         decoded.forEach((key, val) {
           final qId = int.tryParse(key);
@@ -981,32 +1120,67 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
       }
     } catch (_) {}
 
-    // 2. Retrieve active/pending session from the backend
+    // 2. Retrieve active/pending session from the backend and bind it strictly
+    //    to its own language so Sinhala answers/sessions never leak into English (or vice versa).
     try {
       final pendingSession = await CognitiveAssessmentService.getPendingSession(
         residentId: residentId,
         token: token,
       );
       if (pendingSession != null && mounted) {
+        final bool matchedSiSession = savedSiSessionId != null &&
+            savedSiSessionId == pendingSession.sessionId;
+        final bool matchedEnSession = savedEnSessionId != null &&
+            savedEnSessionId == pendingSession.sessionId;
+        final bool sessionHasSinhala = pendingSession.responses.values
+            .any((v) => _sinhalaCharRegex.hasMatch(v));
+        final bool sessionHasEnglishLetters = pendingSession.responses.values
+            .any((v) => RegExp(r'[a-zA-Z]').hasMatch(v));
+
+        bool? targetSinhala;
+        if (matchedSiSession) {
+          targetSinhala = true;
+        } else if (matchedEnSession) {
+          targetSinhala = false;
+        } else if (sessionHasSinhala) {
+          targetSinhala = true;
+        } else if (sessionHasEnglishLetters) {
+          targetSinhala = false;
+        } else if (pendingSession.responses.isNotEmpty) {
+          targetSinhala = ref.read(languageProvider).isSinhala;
+        }
+
         setState(() {
-          _sessionId = pendingSession.sessionId;
-          _sessionStatus = pendingSession.status;
-          if (!hasLocalLangPrefs && pendingSession.responses.isNotEmpty) {
-            for (final entry in pendingSession.responses.entries) {
-              final qId = entry.key;
-              final val = entry.value;
-              if (val.trim().isEmpty) continue;
-              if (_sinhalaCharRegex.hasMatch(val)) {
+          if (targetSinhala == true) {
+            _sessionIdSi = pendingSession.sessionId;
+            _sessionStatusSi = pendingSession.status;
+            if (!hasLocalSiPrefs && pendingSession.responses.isNotEmpty) {
+              for (final entry in pendingSession.responses.entries) {
+                final qId = entry.key;
+                final val = entry.value;
+                if (val.trim().isEmpty) continue;
                 _responsesSi[qId] = val;
                 _gradesSi[qId] = CognitiveScoring.scoreQuestion(qId, val);
-              } else {
+              }
+            }
+            if (pendingSession.questionTimes.isNotEmpty) {
+              _questionTimesSi.addAll(pendingSession.questionTimes);
+            }
+          } else if (targetSinhala == false) {
+            _sessionIdEn = pendingSession.sessionId;
+            _sessionStatusEn = pendingSession.status;
+            if (!hasLocalEnPrefs && pendingSession.responses.isNotEmpty) {
+              for (final entry in pendingSession.responses.entries) {
+                final qId = entry.key;
+                final val = entry.value;
+                if (val.trim().isEmpty) continue;
                 _responsesEn[qId] = val;
                 _gradesEn[qId] = CognitiveScoring.scoreQuestion(qId, val);
               }
             }
-          }
-          if (pendingSession.questionTimes.isNotEmpty) {
-            _questionTimes.addAll(pendingSession.questionTimes);
+            if (pendingSession.questionTimes.isNotEmpty) {
+              _questionTimesEn.addAll(pendingSession.questionTimes);
+            }
           }
           _responseController.text =
               _responses[_questions[_currentIndex].id] ?? '';
@@ -1015,20 +1189,10 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
       }
     } catch (_) {}
 
-    // 3. If no pending session, start a new session on backend
-    if (_sessionId == null) {
-      try {
-        final newSession = await CognitiveAssessmentService.startSession(
-          residentId: residentId,
-          token: token,
-        );
-        if (mounted) {
-          setState(() {
-            _sessionId = newSession.sessionId;
-            _sessionStatus = 'IN_PROGRESS';
-          });
-        }
-      } catch (_) {}
+    // 3. For caregivers only, start a backend session for the active language if none exists.
+    //    For elders, wait until they explicitly tap "Start Assessment" for that language.
+    if (!isElder && _sessionId == null) {
+      await _ensureBackendSessionForLanguage(ref.read(languageProvider).isSinhala);
     }
 
     if (mounted) {
@@ -1039,35 +1203,50 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
     }
   }
 
-  Future<void> _persistResponses() async {
+  Future<void> _persistResponses({bool? forSinhala}) async {
     final rId = _resident?.id ?? ref.read(authProvider).state.residentId;
     if (rId == null) return;
 
     final token = ref.read(authProvider).state.token;
+    final bool targetSinhala = forSinhala ?? ref.read(languageProvider).isSinhala;
+    final String? targetSessionId = targetSinhala ? _sessionIdSi : _sessionIdEn;
+    final Map<int, String> targetResponses =
+        targetSinhala ? _responsesSi : _responsesEn;
+    final Map<int, double> targetQuestionTimes =
+        targetSinhala ? _questionTimesSi : _questionTimesEn;
 
-    // Save current active language responses to backend
-    if (_sessionId != null) {
+    // Save strictly the target language's responses to its own backend session
+    if (targetSessionId != null) {
       try {
         await CognitiveAssessmentService.saveResponses(
-          sessionId: _sessionId!,
-          responses: _responses,
-          questionTimes: _questionTimes,
+          sessionId: targetSessionId,
+          responses: targetResponses,
+          questionTimes: targetQuestionTimes,
           token: token,
         );
       } catch (_) {}
     }
 
-    // Save English and Sinhala responses strictly in separate keys
+    // Save strictly the target language's responses in its own SharedPreferences key
     try {
       final prefs = await SharedPreferences.getInstance();
-      final mapEn = {
-        for (final e in _responsesEn.entries) e.key.toString(): e.value,
+      final mapTarget = {
+        for (final e in targetResponses.entries) e.key.toString(): e.value,
       };
-      final mapSi = {
-        for (final e in _responsesSi.entries) e.key.toString(): e.value,
-      };
-      await prefs.setString('cognitive_responses_en_$rId', json.encode(mapEn));
-      await prefs.setString('cognitive_responses_si_$rId', json.encode(mapSi));
+      await prefs.setString(
+        targetSinhala
+            ? 'cognitive_responses_si_$rId'
+            : 'cognitive_responses_en_$rId',
+        json.encode(mapTarget),
+      );
+      if (targetSessionId != null) {
+        await prefs.setString(
+          targetSinhala
+              ? 'cognitive_session_id_si_$rId'
+              : 'cognitive_session_id_en_$rId',
+          targetSessionId,
+        );
+      }
       await prefs.remove('cognitive_responses_$rId');
     } catch (_) {}
   }
@@ -1276,6 +1455,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
       }
 
       _listeningQId = qId;
+      _listeningWasSinhala = isSinhala;
       setState(() {
         _isListening = true;
         _speechStatusMessage = isSinhala
@@ -1285,6 +1465,8 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
 
       final currentSessionId = ++_activeListeningSessionId;
       final targetQId = qId;
+      final targetResponses = isSinhala ? _responsesSi : _responsesEn;
+      final targetGrades = isSinhala ? _gradesSi : _gradesEn;
 
       try {
         debugPrint(
@@ -1309,16 +1491,17 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
             }
 
             if (currentSessionId != _activeListeningSessionId ||
+                ref.read(languageProvider).isSinhala != isSinhala ||
                 _currentIndex >= _questions.length ||
                 _questions[_currentIndex].id != targetQId) {
               debugPrint(
                 '[CARE-STT] Late callback saved for targetQ=$targetQId while current=${_currentIndex < _questions.length ? _questions[_currentIndex].id : -1}',
               );
               if (incomingTrimmed.isNotEmpty) {
-                _responses[targetQId] = incoming;
-                _grades[targetQId] =
+                targetResponses[targetQId] = incoming;
+                targetGrades[targetQId] =
                     CognitiveScoring.scoreQuestion(targetQId, incoming);
-                _persistResponses();
+                _persistResponses(forSinhala: isSinhala);
               }
               return;
             }
@@ -1330,8 +1513,8 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                   _responseController.selection = TextSelection.collapsed(
                     offset: incoming.length,
                   );
-                  _responses[targetQId] = incoming;
-                  _grades[targetQId] =
+                  targetResponses[targetQId] = incoming;
+                  targetGrades[targetQId] =
                       CognitiveScoring.scoreQuestion(targetQId, incoming);
                 }
               });
@@ -1362,9 +1545,11 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
           try {
             await _initSpeech();
             if (mounted &&
+                ref.read(languageProvider).isSinhala == isSinhala &&
                 _currentIndex < _questions.length &&
                 _questions[_currentIndex].id == targetQId) {
               _listeningQId = targetQId;
+              _listeningWasSinhala = isSinhala;
               final retrySessionId = ++_activeListeningSessionId;
               await _speech.listen(
                 onResult: (result) {
@@ -1377,13 +1562,14 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                   }
 
                   if (retrySessionId != _activeListeningSessionId ||
+                      ref.read(languageProvider).isSinhala != isSinhala ||
                       _currentIndex >= _questions.length ||
                       _questions[_currentIndex].id != targetQId) {
                     if (incomingTrimmed.isNotEmpty) {
-                      _responses[targetQId] = incoming;
-                      _grades[targetQId] =
+                      targetResponses[targetQId] = incoming;
+                      targetGrades[targetQId] =
                           CognitiveScoring.scoreQuestion(targetQId, incoming);
-                      _persistResponses();
+                      _persistResponses(forSinhala: isSinhala);
                     }
                     return;
                   }
@@ -1395,8 +1581,8 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                         _responseController.selection = TextSelection.collapsed(
                           offset: incoming.length,
                         );
-                        _responses[targetQId] = incoming;
-                        _grades[targetQId] =
+                        targetResponses[targetQId] = incoming;
+                        targetGrades[targetQId] =
                             CognitiveScoring.scoreQuestion(targetQId, incoming);
                       }
                     });
@@ -1529,19 +1715,26 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
     _saveCurrentQuestionState();
     final authState = ref.read(authProvider).state;
     final isElder = authState.isElder;
+    final bool submitIsSinhala = ref.read(languageProvider).isSinhala;
+    final Map<int, String> submitResponses =
+        submitIsSinhala ? _responsesSi : _responsesEn;
+    final Map<int, double?> submitGrades =
+        submitIsSinhala ? _gradesSi : _gradesEn;
+    final Map<int, double> submitQuestionTimes =
+        submitIsSinhala ? _questionTimesSi : _questionTimesEn;
 
     // Auto-grade all answered questions using question-specific deterministic rubric
-    final autoGrades = CognitiveScoring.autoScoreBattery(_responses);
+    final autoGrades = CognitiveScoring.autoScoreBattery(submitResponses);
     for (final e in autoGrades.entries) {
       if (e.value != null &&
           (isElder ||
-              _grades[e.key] == null ||
-              (_grades[e.key] == 0.0 && e.value! > 0.0))) {
-        _grades[e.key] = e.value;
+              submitGrades[e.key] == null ||
+              (submitGrades[e.key] == 0.0 && e.value! > 0.0))) {
+        submitGrades[e.key] = e.value;
       }
     }
 
-    final unanswered = CognitiveScoring.getUnansweredQuestionIds(_responses);
+    final unanswered = CognitiveScoring.getUnansweredQuestionIds(submitResponses);
     if (unanswered.isNotEmpty) {
       setState(() {
         _isSubmitting = false;
@@ -1559,10 +1752,10 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
     });
 
     try {
-      final accuracies = CognitiveScoring.calculateDomainAccuracies(_grades);
+      final accuracies = CognitiveScoring.calculateDomainAccuracies(submitGrades);
       final taskScores = CognitiveScoring.calculateDomainScores(accuracies);
       final responseTimes = CognitiveScoring.aggregateDomainResponseTimes(
-        _questionTimes,
+        submitQuestionTimes,
       );
 
       final residentId = _resident?.id ??
@@ -1576,20 +1769,26 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
         return;
       }
 
-      if (_sessionId == null) {
+      String? activeSessionId = submitIsSinhala ? _sessionIdSi : _sessionIdEn;
+      if (activeSessionId == null) {
         final session = await CognitiveAssessmentService.startSession(
           residentId: residentId,
           token: token,
         );
-        _sessionId = session.sessionId;
+        activeSessionId = session.sessionId;
+        if (submitIsSinhala) {
+          _sessionIdSi = activeSessionId;
+        } else {
+          _sessionIdEn = activeSessionId;
+        }
       }
 
-      if (_sessionId != null) {
+      if (activeSessionId != null) {
         try {
           await CognitiveAssessmentService.saveResponses(
-            sessionId: _sessionId!,
-            responses: _responses,
-            questionTimes: _questionTimes,
+            sessionId: activeSessionId,
+            responses: submitResponses,
+            questionTimes: submitQuestionTimes,
             status: 'IN_PROGRESS',
             token: token,
           );
@@ -1611,10 +1810,10 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
         educationYears: effectiveEducationYears,
         accuracies: accuracies,
         responseTimes: responseTimes,
-        sessionId: _sessionId,
-        responses: _responses,
+        sessionId: activeSessionId,
+        responses: submitResponses,
         grades: {
-          for (final e in _grades.entries)
+          for (final e in submitGrades.entries)
             if (e.value != null) e.key: e.value!,
         },
       );
@@ -1704,17 +1903,27 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
         final prefs = await SharedPreferences.getInstance();
         await prefs.remove('cognitive_responses_$residentId');
         await prefs.remove(
-          ref.read(languageProvider).isSinhala
+          submitIsSinhala
               ? 'cognitive_responses_si_$residentId'
               : 'cognitive_responses_en_$residentId',
+        );
+        await prefs.remove(
+          submitIsSinhala
+              ? 'cognitive_session_id_si_$residentId'
+              : 'cognitive_session_id_en_$residentId',
         );
       } catch (_) {}
 
       if (mounted) {
         setState(() {
           _isSubmitting = false;
-          _sessionStatus = result.status;
-          _sessionId = null;
+          if (submitIsSinhala) {
+            _sessionStatusSi = result.status;
+            _sessionIdSi = null;
+          } else {
+            _sessionStatusEn = result.status;
+            _sessionIdEn = null;
+          }
           if (_resident != null &&
               (effectiveEducationYears != _resident!.educationYears ||
                   effectiveAge != _resident!.age)) {
@@ -1753,22 +1962,35 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
     final bool isElder = authState.isElder;
     final langNotifier = ref.watch(languageProvider);
     final bool isSinhala = langNotifier.isSinhala;
+    final bool hasStartedForLang = isSinhala
+        ? _hasStartedElderAssessmentSi
+        : _hasStartedElderAssessmentEn;
+    final int currentIndexForLang = isSinhala ? _currentIndexSi : _currentIndexEn;
+    final currentQ = _questions[currentIndexForLang];
 
-    final currentQ = _questions[_currentIndex];
     if (_lastSpokenLanguage != null &&
         _lastSpokenLanguage != langNotifier.currentLanguage) {
+      _saveDebounceTimer?.cancel();
       final prevWasSinhala = _lastSpokenLanguage == AppLanguage.sinhala;
+      final prevHasStarted = prevWasSinhala
+          ? _hasStartedElderAssessmentSi
+          : _hasStartedElderAssessmentEn;
       final prevIndex = prevWasSinhala ? _currentIndexSi : _currentIndexEn;
       final prevQ = _questions[prevIndex];
       final prevResponses = prevWasSinhala ? _responsesSi : _responsesEn;
       final prevGrades = prevWasSinhala ? _gradesSi : _gradesEn;
       final prevText = _responseController.text;
-      prevResponses[prevQ.id] = prevText;
-      if (prevText.trim().isNotEmpty) {
-        prevGrades[prevQ.id] =
-            CognitiveScoring.scoreQuestion(prevQ.id, prevText);
+      if (!isElder || prevHasStarted) {
+        if (prevText.trim().isNotEmpty || prevResponses.containsKey(prevQ.id)) {
+          prevResponses[prevQ.id] = prevText;
+          if (prevText.trim().isNotEmpty) {
+            prevGrades[prevQ.id] =
+                CognitiveScoring.scoreQuestion(prevQ.id, prevText);
+          }
+        }
       }
       _lastSpokenLanguage = langNotifier.currentLanguage;
+      _questionStartTime = DateTime.now();
       final nextResponses = isSinhala ? _responsesSi : _responsesEn;
       _responseController.text = nextResponses[currentQ.id] ?? '';
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -1777,6 +1999,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
           _flutterTts.stop();
           if (_isListening || _speech.isListening) {
             _activeListeningSessionId++;
+            _listeningQId = -1;
             try {
               _speech.stop();
             } catch (_) {}
@@ -1788,9 +2011,11 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
             _isListening = false;
             _speechStatusMessage = null;
           });
-          if (isElder && !_hasStartedElderAssessment) {
+          if (isElder && !hasStartedForLang) {
             Future.delayed(const Duration(milliseconds: 220), () {
-              if (mounted && !_hasStartedElderAssessment) {
+              if (mounted &&
+                  ref.read(languageProvider).isSinhala == isSinhala &&
+                  !_hasStartedElderAssessment) {
                 _speakElderWelcomeIntro();
               }
             });
@@ -1801,7 +2026,8 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
       _lastSpokenLanguage ??= langNotifier.currentLanguage;
     }
 
-    final currentGrade = _grades[currentQ.id];
+    final currentGrade =
+        (isSinhala ? _gradesSi : _gradesEn)[currentQ.id];
     final progressPct = _getProgressPct(isElder);
 
     return Scaffold(
@@ -1846,7 +2072,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                           ),
                         );
                       },
-                      child: !_hasStartedElderAssessment
+                      child: !hasStartedForLang
                           ? KeyedSubtree(
                               key: ValueKey('elder_welcome_start_screen_$isSinhala'),
                               child: _buildElderWelcomeStartScreen(isSinhala),
@@ -2014,7 +2240,10 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
         (res?.avatarUrl != null && res!.avatarUrl!.trim().isNotEmpty)
             ? res.avatarUrl
             : authState.avatarUrl;
-    final bool hasSavedProgress = _answeredCount > 0;
+    final Map<int, String> langResponses =
+        isSinhala ? _responsesSi : _responsesEn;
+    final bool hasSavedProgress = _questions
+        .any((q) => langResponses[q.id]?.trim().isNotEmpty == true);
     final String voicePhrase = isSinhala
         ? 'දැන් අපි මතක පරීක්ෂාව ආරම්භ කරමු'
         : "Now let's start the assessment";
