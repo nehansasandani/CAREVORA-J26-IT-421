@@ -64,6 +64,11 @@ class AppTheme {
   static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,
+      splashFactory: InkRipple.splashFactory,
+      listTileTheme: const ListTileThemeData(
+        tileColor: Colors.transparent,
+        selectedTileColor: Colors.transparent,
+      ),
       colorScheme: ColorScheme.fromSeed(
         seedColor: AppColors.primary,
         primary: AppColors.primary,

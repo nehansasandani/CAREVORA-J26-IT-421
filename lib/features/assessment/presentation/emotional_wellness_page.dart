@@ -15361,11 +15361,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
           _buildElderDailyAmbientSoundscapeBar(),
           const SizedBox(height: 10),
 
-          // 4. Daily Happiness Milestones & Badges Bar (සතුටු ජයග්‍රහණ ලාංඡන)
-          _buildElderDailyJoyBadgesBar(),
-          const SizedBox(height: 10),
-
-          // 5. Interactive Multimodal Workspace (Question & Voice on Left, Real-time Camera on Right)
+          // 4. Interactive Multimodal Workspace (Question & Voice on Left, Real-time Camera on Right)
           LayoutBuilder(
             builder: (context, constraints) {
               if (constraints.maxWidth < 850) {
@@ -15620,120 +15616,6 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
               ),
             ],
           ),
-        ],
-      ),
-    );
-  }
-
-  // --- SUB-VIEW: DAILY HAPPINESS MILESTONES & BADGES ---
-  Widget _buildElderDailyJoyBadgesBar() {
-    final isSinhala = ref.watch(languageProvider).isSinhala;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(6),
-            decoration: const BoxDecoration(
-              color: Color(0xFFFEF3C7),
-              shape: BoxShape.circle,
-            ),
-            child: const Text('🏆', style: TextStyle(fontSize: 14)),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            isSinhala ? 'අද දවසේ සතුටු ජයග්‍රහණ:' : 'Today\'s Joy Milestones:',
-            style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  _buildSingleJoyBadge(
-                    emoji: '🌟',
-                    title: isSinhala ? 'උදෑසන පිබිදුණු සුවය' : 'Morning Sunshine',
-                    isUnlocked: true,
-                  ),
-                  const SizedBox(width: 8),
-                  _buildSingleJoyBadge(
-                    emoji: '🎵',
-                    title: isSinhala ? 'සංගීත සැනසුම' : 'Musical Peace',
-                    isUnlocked: _isPlayingMusic || _isAmbientPlaying,
-                  ),
-                  const SizedBox(width: 8),
-                  _buildSingleJoyBadge(
-                    emoji: '😊',
-                    title: isSinhala ? 'මිත්‍රශීලී සිනහව' : 'Radiant Smile',
-                    isUnlocked: _selectedEmotion == 'Happy',
-                  ),
-                  const SizedBox(width: 8),
-                  _buildSingleJoyBadge(
-                    emoji: '💖',
-                    title: isSinhala ? 'සුහද මිත්‍රත්වය' : 'Loving Companion',
-                    isUnlocked: true,
-                  ),
-                  const SizedBox(width: 8),
-                  _buildSingleJoyBadge(
-                    emoji: '🌿',
-                    title: isSinhala ? 'සන්සුන් විවේකය' : 'Mindful Rest',
-                    isUnlocked: true,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSingleJoyBadge({
-    required String emoji,
-    required String title,
-    required bool isUnlocked,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-      decoration: BoxDecoration(
-        color: isUnlocked ? const Color(0xFFF0FDF4) : const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isUnlocked ? const Color(0xFF86EFAC) : const Color(0xFFE2E8F0),
-          width: 1.1,
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(emoji, style: const TextStyle(fontSize: 12)),
-          const SizedBox(width: 4),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-              color: isUnlocked ? const Color(0xFF15803D) : const Color(0xFF94A3B8),
-            ),
-          ),
-          if (isUnlocked) ...[
-            const SizedBox(width: 3),
-            const Icon(LucideIcons.check, size: 10, color: Color(0xFF15803D)),
-          ],
         ],
       ),
     );
