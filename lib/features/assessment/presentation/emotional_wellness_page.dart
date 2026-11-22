@@ -15637,9 +15637,9 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                 final scale = 0.90 + (0.35 * t);
                 final alpha1 = 0.60 + (0.35 * t);
                 final alpha2 = 0.22 + (0.28 * t);
-                final vOffset = (sin(t * 3.14159) * 4.0);
+                final vOffset = (math.sin(t * 3.14159) * 4.0);
                 return Positioned(
-                  bottom: -34 + vOffset,
+                  bottom: (-34.0 + vOffset).toDouble(),
                   left: 220,
                   child: Transform.scale(
                     scale: scale,
@@ -15670,18 +15670,18 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                 return Stack(
                   children: [
                     Positioned(
-                      top: 12 + (5 * (sin(t * 3.14159))),
-                      left: 360 + (10 * (cos(t * 3.14159))),
+                      top: (12.0 + (5.0 * math.sin(t * 3.14159))).toDouble(),
+                      left: (360.0 + (10.0 * math.cos(t * 3.14159))).toDouble(),
                       child: Opacity(
-                        opacity: 0.30 + (0.55 * (sin(t * 3.14159))),
+                        opacity: (0.30 + (0.55 * math.sin(t * 3.14159))).clamp(0.0, 1.0),
                         child: const Text('✨', style: TextStyle(fontSize: 13)),
                       ),
                     ),
                     Positioned(
-                      bottom: 14 + (4 * (cos(t * 3.14159))),
-                      right: 180 + (8 * (sin(t * 3.14159))),
+                      bottom: (14.0 + (4.0 * math.cos(t * 3.14159))).toDouble(),
+                      right: (180.0 + (8.0 * math.sin(t * 3.14159))).toDouble(),
                       child: Opacity(
-                        opacity: 0.25 + (0.50 * (cos(t * 3.14159))),
+                        opacity: (0.25 + (0.50 * math.cos(t * 3.14159))).clamp(0.0, 1.0),
                         child: const Text('✨', style: TextStyle(fontSize: 11)),
                       ),
                     ),
@@ -15820,7 +15820,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                               AnimatedBuilder(
                                 animation: _bannerPulseController,
                                 builder: (context, child) {
-                                  final waveAngle = (sin(_bannerPulseController.value * 4 * 3.14159)) * 0.18;
+                                  final waveAngle = (math.sin(_bannerPulseController.value * 4 * 3.14159)) * 0.18;
                                   return Transform.rotate(
                                     angle: waveAngle,
                                     alignment: Alignment.bottomRight,
@@ -15951,7 +15951,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                           animation: _bannerPulseController,
                           builder: (context, child) {
                             final bellAngle = _routineCaregiverNotified
-                                ? (sin(_bannerPulseController.value * 6 * 3.14159)) * 0.18
+                                ? (math.sin(_bannerPulseController.value * 6 * 3.14159)) * 0.18
                                 : 0.0;
                             return Transform.rotate(
                               angle: bellAngle,
@@ -16071,7 +16071,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
           AnimatedBuilder(
             animation: _bannerPulseController,
             builder: (context, child) {
-              final bob = (sin((_bannerPulseController.value + 0.25) * 2 * 3.14159)) * 2.2;
+              final bob = (math.sin((_bannerPulseController.value + 0.25) * 2 * 3.14159)) * 2.2;
               return Transform.translate(
                 offset: Offset(0, bob),
                 child: Container(
