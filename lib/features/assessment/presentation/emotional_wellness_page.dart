@@ -102,7 +102,21 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
   late AnimationController _waveController;
   late AnimationController _scannerController;
   late AnimationController _clapController;
-  late AnimationController _bannerPulseController;
+  AnimationController? _bannerPulseController;
+
+  AnimationController get _effectiveBannerPulseController {
+    if (_bannerPulseController == null) {
+      try {
+        _bannerPulseController = AnimationController(
+          vsync: this,
+          duration: const Duration(milliseconds: 3200),
+        )..repeat(reverse: true);
+      } catch (e) {
+        return _waveController;
+      }
+    }
+    return _bannerPulseController!;
+  }
   bool _showClapAnimation = false;
 
   // Elder All-Day Sanctuary & Wellness State
@@ -1580,7 +1594,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
       duration: const Duration(milliseconds: 2500),
     );
 
-    _bannerPulseController = AnimationController(
+    _bannerPulseController ??= AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 3200),
     )..repeat(reverse: true);
@@ -1949,7 +1963,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
     _waveController.dispose();
     _scannerController.dispose();
     _clapController.dispose();
-    _bannerPulseController.dispose();
+    _bannerPulseController?.dispose();
     _reasonTextController.dispose();
     _aiChatInputController.dispose();
     _elderThoughtController.dispose();
@@ -15631,9 +15645,9 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
           children: [
             // 1. Animated Breathing Golden Sun / Sunset Celestial Aura
             AnimatedBuilder(
-              animation: _bannerPulseController,
+              animation: _effectiveBannerPulseController,
               builder: (context, child) {
-                final t = _bannerPulseController.value;
+                final t = _effectiveBannerPulseController.value;
                 final scale = 0.90 + (0.35 * t);
                 final alpha1 = 0.60 + (0.35 * t);
                 final alpha2 = 0.22 + (0.28 * t);
@@ -15664,9 +15678,9 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
 
             // 2. Animated Ambient Floating Sparkles
             AnimatedBuilder(
-              animation: _bannerPulseController,
+              animation: _effectiveBannerPulseController,
               builder: (context, child) {
-                final t = _bannerPulseController.value;
+                final t = _effectiveBannerPulseController.value;
                 return Stack(
                   children: [
                     Positioned(
@@ -15753,10 +15767,10 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                             right: -2,
                             bottom: -2,
                             child: AnimatedBuilder(
-                              animation: _bannerPulseController,
+                              animation: _effectiveBannerPulseController,
                               builder: (context, child) {
-                                final ringScale = 1.0 + (0.55 * _bannerPulseController.value);
-                                final ringOpacity = (1.0 - _bannerPulseController.value) * 0.7;
+                                final ringScale = 1.0 + (0.55 * _effectiveBannerPulseController.value);
+                                final ringOpacity = (1.0 - _effectiveBannerPulseController.value) * 0.7;
                                 return Stack(
                                   alignment: Alignment.center,
                                   children: [
@@ -15818,9 +15832,9 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                               const SizedBox(width: 4),
                               // Friendly Animated Waving Hand
                               AnimatedBuilder(
-                                animation: _bannerPulseController,
+                                animation: _effectiveBannerPulseController,
                                 builder: (context, child) {
-                                  final waveAngle = (math.sin(_bannerPulseController.value * 4 * 3.14159)) * 0.18;
+                                  final waveAngle = (math.sin(_effectiveBannerPulseController.value * 4 * 3.14159)) * 0.18;
                                   return Transform.rotate(
                                     angle: waveAngle,
                                     alignment: Alignment.bottomRight,
@@ -15948,10 +15962,10 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         AnimatedBuilder(
-                          animation: _bannerPulseController,
+                          animation: _effectiveBannerPulseController,
                           builder: (context, child) {
                             final bellAngle = _routineCaregiverNotified
-                                ? (math.sin(_bannerPulseController.value * 6 * 3.14159)) * 0.18
+                                ? (math.sin(_effectiveBannerPulseController.value * 6 * 3.14159)) * 0.18
                                 : 0.0;
                             return Transform.rotate(
                               angle: bellAngle,
@@ -16069,9 +16083,9 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
         children: [
           // Floating Gentle Bobbing Icon
           AnimatedBuilder(
-            animation: _bannerPulseController,
+            animation: _effectiveBannerPulseController,
             builder: (context, child) {
-              final bob = (math.sin((_bannerPulseController.value + 0.25) * 2 * 3.14159)) * 2.2;
+              final bob = (math.sin((_effectiveBannerPulseController.value + 0.25) * 2 * 3.14159)) * 2.2;
               return Transform.translate(
                 offset: Offset(0, bob),
                 child: Container(
@@ -16083,7 +16097,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                     boxShadow: [
                       BoxShadow(
                         color: iconBg.withValues(alpha: 0.5),
-                        blurRadius: 6 + (3 * _bannerPulseController.value),
+                        blurRadius: 6 + (3 * _effectiveBannerPulseController.value),
                         offset: const Offset(0, 2),
                       ),
                     ],
