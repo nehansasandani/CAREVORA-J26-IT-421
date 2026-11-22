@@ -15516,126 +15516,158 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
 
     final dayPeriod = _getCurrentDayPeriod();
 
-    // Time-based greetings and questions
-    String greetingBaseText;
-    String subGreeting;
-    String companionText;
+    // Time-based greetings and questions matching the mockup
+    String titleGreeting;
+    String subGreeting1;
+    String subGreeting2;
 
-    String card1Emoji;
-    Color card1IconBg;
-    String card1Question;
-    String card1YesText;
-    String card1NoText;
+    String card1TitleSi;
+    String card1TitleEn;
+    String card1SubSi;
+    String card1SubEn;
+    String card1YesSi;
+    String card1YesEn;
+    String card1NoSi;
+    String card1NoEn;
+    String card1Asset;
 
-    String card2Emoji;
-    Color card2IconBg;
-    String card2Question;
-    String card2YesText;
-    String card2NoText;
-
-    String careNoticeText;
+    String card2TitleSi;
+    String card2TitleEn;
+    String card2SubSi;
+    String card2SubEn;
+    String card2YesSi;
+    String card2YesEn;
+    String card2NoSi;
+    String card2NoEn;
+    String card2Asset;
 
     if (dayPeriod == DayPeriod.morning) {
-      greetingBaseText = isSinhala ? 'සුබ උදෑසනක්, $displayName!' : 'Good morning, $displayName!';
-      subGreeting = isSinhala ? 'Good morning, $displayName!' : 'Wishing you a bright and joyful morning!';
-      companionText = isSinhala ? 'ඔබේ උදෑසන සහකරු' : 'Your morning companion';
+      titleGreeting = isSinhala ? 'සුබ උදෑසනක්, $displayName මහත්මයා!' : 'Good Morning, Mr. $displayName!';
+      subGreeting1 = 'Good Morning, $displayName! 💕';
+      subGreeting2 = isSinhala ? 'අදත් සුවපහසු, සතුටුදායක දිනයක් එක්ව ආරම්භ කරමු! ♡' : "Let's start another peaceful, joyful day together! ♡";
 
-      card1Emoji = '☕';
-      card1IconBg = const Color(0xFFFEF3C7);
-      card1Question = isSinhala ? 'ඔබ උදෑසන තේ පානය කළාද?' : 'Have you had your morning tea?';
-      card1YesText = isSinhala ? '✓ ඔව්, බිව්වා' : '✓ Yes, I have';
-      card1NoText = isSinhala ? '⏰ තවම නැහැ' : '⏰ Not yet';
+      card1TitleSi = 'උදේ තේ බිව්වද?';
+      card1TitleEn = 'Had your morning tea?';
+      card1SubSi = 'Have you had your morning tea?';
+      card1SubEn = 'A warm comforting cup for wellness';
+      card1YesSi = 'ඔව්, බිව්වා';
+      card1YesEn = 'Yes, I have';
+      card1NoSi = 'තවම නැහැ';
+      card1NoEn = 'Not yet';
+      card1Asset = 'assets/images/elder_tea_cup.png';
 
-      card2Emoji = '🧖‍♂️';
-      card2IconBg = const Color(0xFFE0F2FE);
-      card2Question = isSinhala ? 'ඔබ මුහුණ සෝදා පිරිසිදු වුණාද?' : 'Have you washed your face?';
-      card2YesText = isSinhala ? '✓ ඔව්' : '✓ Yes';
-      card2NoText = isSinhala ? '⏰ තවම නැහැ' : '⏰ Not yet';
-
-      careNoticeText = isSinhala
-          ? 'එකක් හෝ "තවම නැහැ" නම්, ඔබට සහාය වීමට අපගේ රැකවරණ කණ්ඩායම (Care Team) දැනුවත් කෙරේ.'
-          : 'If either is "Not yet", our care team will be gently notified to support you.';
+      card2TitleSi = 'මුහුණ හෝදාගත්තාද?';
+      card2TitleEn = 'Washed your face?';
+      card2SubSi = 'Have you washed your face?';
+      card2SubEn = 'Freshen up for a radiant day';
+      card2YesSi = 'ඔව්';
+      card2YesEn = 'Yes';
+      card2NoSi = 'තවම නැහැ';
+      card2NoEn = 'Not yet';
+      card2Asset = 'assets/images/elder_face_wash.png';
     } else if (dayPeriod == DayPeriod.afternoon) {
-      greetingBaseText = isSinhala ? 'සුබ දහවල් කාලයක්, $displayName!' : 'Good afternoon, $displayName!';
-      subGreeting = isSinhala ? 'Good afternoon, $displayName!' : 'Wishing you a peaceful, restful afternoon!';
-      companionText = isSinhala ? 'ඔබේ දිවා සහකරු' : 'Your afternoon companion';
+      titleGreeting = isSinhala ? 'සුබ දහවල් කාලයක්, $displayName මහත්මයා!' : 'Good Afternoon, Mr. $displayName!';
+      subGreeting1 = 'Good Afternoon, $displayName! 💕';
+      subGreeting2 = isSinhala ? 'ප්‍රබෝධමත් සුවදායක දිවා විවේකයක් ගත කරමු! ♡' : "Enjoy a refreshing, restful afternoon pause! ♡";
 
-      card1Emoji = '🍲';
-      card1IconBg = const Color(0xFFFEF3C7);
-      card1Question = isSinhala ? 'ඔබ දිවා ආහාරය ගත්තාද?' : 'Have you had your lunch?';
-      card1YesText = isSinhala ? '✓ ඔව්, ගත්තා' : '✓ Yes, I have';
-      card1NoText = isSinhala ? '⏰ තවම නැහැ' : '⏰ Not yet';
+      card1TitleSi = 'දිවා ආහාරය ගත්තාද?';
+      card1TitleEn = 'Had your lunch?';
+      card1SubSi = 'Have you had your healthy lunch?';
+      card1SubEn = 'Healthy meal for vitality';
+      card1YesSi = 'ඔව්, ගත්තා';
+      card1YesEn = 'Yes, I have';
+      card1NoSi = 'තවම නැහැ';
+      card1NoEn = 'Not yet';
+      card1Asset = 'assets/images/elder_tea_cup.png';
 
-      card2Emoji = '🌿';
-      card2IconBg = const Color(0xFFDCFCE7);
-      card2Question = isSinhala ? 'කෙටි දිවා විවේකයක් ගත්තාද?' : 'Did you take a short rest?';
-      card2YesText = isSinhala ? '✓ ඔව්' : '✓ Yes';
-      card2NoText = isSinhala ? '⏰ තවම නැහැ' : '⏰ Not yet';
-
-      careNoticeText = isSinhala
-          ? 'එකක් හෝ "තවම නැහැ" නම්, ඔබට සහාය වීමට අපගේ රැකවරණ කණ්ඩායම (Care Team) දැනුවත් කෙරේ.'
-          : 'If either is "Not yet", our care team will be gently notified to support you.';
+      card2TitleSi = 'කෙටි විවේකයක් ගත්තාද?';
+      card2TitleEn = 'Taken a short rest?';
+      card2SubSi = 'Did you enjoy a short peaceful rest?';
+      card2SubEn = 'Comfortable pause to recharge';
+      card2YesSi = 'ඔව්';
+      card2YesEn = 'Yes';
+      card2NoSi = 'තවම නැහැ';
+      card2NoEn = 'Not yet';
+      card2Asset = 'assets/images/elder_face_wash.png';
     } else if (dayPeriod == DayPeriod.evening) {
-      greetingBaseText = isSinhala ? 'සුබ සන්ධ්‍යාවක්, $displayName!' : 'Good evening, $displayName!';
-      subGreeting = isSinhala ? 'Good evening, $displayName!' : 'Wishing you a serene and joyful evening!';
-      companionText = isSinhala ? 'ඔබේ සවස සහකරු' : 'Your evening companion';
+      titleGreeting = isSinhala ? 'සුබ සන්ධ්‍යාවක්, $displayName මහත්මයා!' : 'Good Evening, Mr. $displayName!';
+      subGreeting1 = 'Good Evening, $displayName! 💕';
+      subGreeting2 = isSinhala ? 'සන්සුන්, ප්‍රීතිමත් සන්ධ්‍යා කාලයක් ගත කරමු! ♡' : "Wishing you a serene, heartwarming evening! ♡";
 
-      card1Emoji = '☕';
-      card1IconBg = const Color(0xFFFEF3C7);
-      card1Question = isSinhala ? 'ඔබ සවස තේ පැන් පානය කළාද?' : 'Have you had your evening tea?';
-      card1YesText = isSinhala ? '✓ ඔව්, බිව්වා' : '✓ Yes, I have';
-      card1NoText = isSinhala ? '⏰ තවම නැහැ' : '⏰ Not yet';
+      card1TitleSi = 'සවස තේ පැන් පානය කළාද?';
+      card1TitleEn = 'Had evening tea?';
+      card1SubSi = 'Have you had your evening tea?';
+      card1SubEn = 'Evening tea and friendly chat';
+      card1YesSi = 'ඔව්, බිව්වා';
+      card1YesEn = 'Yes, I have';
+      card1NoSi = 'තවම නැහැ';
+      card1NoEn = 'Not yet';
+      card1Asset = 'assets/images/elder_tea_cup.png';
 
-      card2Emoji = '🌅';
-      card2IconBg = const Color(0xFFFFEDD5);
-      card2Question = isSinhala ? 'සවස නැවුම් සුළං සුවය වින්දාද?' : 'Enjoyed the evening breeze?';
-      card2YesText = isSinhala ? '✓ ඔව්' : '✓ Yes';
-      card2NoText = isSinhala ? '⏰ තවම නැහැ' : '⏰ Not yet';
-
-      careNoticeText = isSinhala
-          ? 'එකක් හෝ "තවම නැහැ" නම්, ඔබට සහාය වීමට අපගේ රැකවරණ කණ්ඩායම (Care Team) දැනුවත් කෙරේ.'
-          : 'If either is "Not yet", our care team will be gently notified to support you.';
+      card2TitleSi = 'නැවුම් සුළං සුවය වින්දාද?';
+      card2TitleEn = 'Enjoyed fresh air?';
+      card2SubSi = 'Enjoyed the refreshing evening breeze?';
+      card2SubEn = 'Breathe in peace and nature';
+      card2YesSi = 'ඔව්';
+      card2YesEn = 'Yes';
+      card2NoSi = 'තවම නැහැ';
+      card2NoEn = 'Not yet';
+      card2Asset = 'assets/images/elder_face_wash.png';
     } else {
-      greetingBaseText = isSinhala ? 'සුබ රාත්‍රියක්, $displayName!' : 'Good night, $displayName!';
-      subGreeting = isSinhala ? 'Good night, $displayName!' : 'Wishing you a deep and peaceful sleep!';
-      companionText = isSinhala ? 'ඔබේ රාත්‍රී සහකරු' : 'Your night companion';
+      titleGreeting = isSinhala ? 'සුබ රාත්‍රියක්, $displayName මහත්මයා!' : 'Good Night, Mr. $displayName!';
+      subGreeting1 = 'Good Night, $displayName! 💕';
+      subGreeting2 = isSinhala ? 'සුවබර, සැනසිලිදායක නින්දකට සූදානම් වෙමු! ♡' : "Wishing you deep, comforting sleep! ♡";
 
-      card1Emoji = '🌙';
-      card1IconBg = const Color(0xFFE0E7FF);
-      card1Question = isSinhala ? 'රාත්‍රී ආහාර හා ඖෂධ ගත්තාද?' : 'Had dinner & medication?';
-      card1YesText = isSinhala ? '✓ ඔව්, ගත්තා' : '✓ Yes, I have';
-      card1NoText = isSinhala ? '⏰ තවම නැහැ' : '⏰ Not yet';
+      card1TitleSi = 'රාත්‍රී ආහාර හා ඖෂධ ගත්තාද?';
+      card1TitleEn = 'Had dinner & meds?';
+      card1SubSi = 'Have you had your dinner and medicine?';
+      card1SubEn = 'Nutritious dinner and medication';
+      card1YesSi = 'ඔව්, ගත්තා';
+      card1YesEn = 'Yes, I have';
+      card1NoSi = 'තවම නැහැ';
+      card1NoEn = 'Not yet';
+      card1Asset = 'assets/images/elder_tea_cup.png';
 
-      card2Emoji = '✨';
-      card2IconBg = const Color(0xFFF3E8FF);
-      card2Question = isSinhala ? 'සුව නින්දකට සූදානම්ද?' : 'Ready for peaceful sleep?';
-      card2YesText = isSinhala ? '✓ ඔව්' : '✓ Yes';
-      card2NoText = isSinhala ? '⏰ තවම නැහැ' : '⏰ Not yet';
-
-      careNoticeText = isSinhala
-          ? 'එකක් හෝ "තවම නැහැ" නම්, ඔබට සහාය වීමට අපගේ රැකවරණ කණ්ඩායම (Care Team) දැනුවත් කෙරේ.'
-          : 'If either is "Not yet", our care team will be gently notified to support you.';
+      card2TitleSi = 'සුව නින්දකට සූදානම්ද?';
+      card2TitleEn = 'Ready for sleep?';
+      card2SubSi = 'Are you relaxed and ready for bed?';
+      card2SubEn = 'Rest peacefully throughout the night';
+      card2YesSi = 'ඔව්';
+      card2YesEn = 'Yes';
+      card2NoSi = 'තවම නැහැ';
+      card2NoEn = 'Not yet';
+      card2Asset = 'assets/images/elder_face_wash.png';
     }
 
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(26),
         gradient: const LinearGradient(
           colors: [
-            Color(0xFF4C1D95),
-            Color(0xFF6B21A8),
-            Color(0xFF7C3AED),
-            Color(0xFF8B5CF6),
+            Color(0xFF3B0764), // deep violet
+            Color(0xFF581C87), // vivid purple
+            Color(0xFF7E22CE), // rich purple
+            Color(0xFF9333EA), // electric purple
+            Color(0xFFA855F7), // lavender glow
           ],
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
         ),
+        border: Border.all(
+          color: const Color(0xFFC084FC).withValues(alpha: 0.85),
+          width: 2.0,
+        ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF4C1D95).withValues(alpha: 0.32),
+            color: const Color(0xFF9333EA).withValues(alpha: 0.35),
             blurRadius: 24,
             offset: const Offset(0, 8),
+          ),
+          BoxShadow(
+            color: const Color(0xFFC084FC).withValues(alpha: 0.20),
+            blurRadius: 10,
+            spreadRadius: 1,
           ),
         ],
       ),
@@ -15643,28 +15675,26 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
         borderRadius: BorderRadius.circular(24),
         child: Stack(
           children: [
-            // 1. Animated Breathing Golden Sun / Sunset Celestial Aura
+            // 1. Animated Breathing Golden Sunrise on Horizon
             Positioned(
-              bottom: -32,
-              left: 220,
+              bottom: -28,
+              left: 230,
               child: AnimatedBuilder(
                 animation: _effectiveBannerPulseController,
                 builder: (context, child) {
                   final t = _effectiveBannerPulseController.value;
-                  final scale = 0.90 + (0.35 * t);
-                  final alpha1 = (0.60 + (0.35 * t)).clamp(0.0, 1.0);
-                  final alpha2 = (0.22 + (0.28 * t)).clamp(0.0, 1.0);
+                  final scale = 0.92 + (0.32 * t);
                   return Transform.scale(
                     scale: scale,
                     child: Container(
-                      width: 150,
-                      height: 85,
+                      width: 140,
+                      height: 75,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         gradient: RadialGradient(
                           colors: [
-                            const Color(0xFFFEF08A).withValues(alpha: alpha1),
-                            const Color(0xFFF59E0B).withValues(alpha: alpha2),
+                            const Color(0xFFFEF08A).withValues(alpha: 0.85),
+                            const Color(0xFFF59E0B).withValues(alpha: 0.40),
                             Colors.transparent,
                           ],
                         ),
@@ -15683,8 +15713,8 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                 animation: _effectiveBannerPulseController,
                 builder: (context, child) {
                   final t = _effectiveBannerPulseController.value;
-                  final dy = (math.sin(t * 3.14159) * 6.0).toDouble();
-                  final opacity = (0.30 + (0.55 * math.sin(t * 3.14159))).clamp(0.0, 1.0);
+                  final dy = (math.sin(t * math.pi) * 6.0).toDouble();
+                  final opacity = (0.30 + (0.55 * math.sin(t * math.pi))).clamp(0.0, 1.0);
                   return Transform.translate(
                     offset: Offset(0, dy),
                     child: Opacity(
@@ -15704,8 +15734,8 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                 animation: _effectiveBannerPulseController,
                 builder: (context, child) {
                   final t = _effectiveBannerPulseController.value;
-                  final dy = (math.cos(t * 3.14159) * 5.0).toDouble();
-                  final opacity = (0.25 + (0.50 * math.cos(t * 3.14159))).clamp(0.0, 1.0);
+                  final dy = (math.cos(t * math.pi) * 5.0).toDouble();
+                  final opacity = (0.25 + (0.50 * math.cos(t * math.pi))).clamp(0.0, 1.0);
                   return Transform.translate(
                     offset: Offset(0, dy),
                     child: Opacity(
@@ -15717,7 +15747,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
               ),
             ),
 
-            // 3. Blooming Lotus Flowers Graphic on Right
+            // 4. Blooming Lotus & Floral Accents on Right
             Positioned(
               right: 0,
               top: 0,
@@ -15727,40 +15757,36 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                 child: Image.asset(
                   'assets/images/banner_flowers_fade.png',
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Image.network(
-                    'banner_flowers_fade.png',
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-                  ),
+                  errorBuilder: (_, __, ___) => const SizedBox.shrink(),
                 ),
               ),
             ),
 
-            // 4. Content
+            // 5. Main Interactive Banner Content
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
               child: LayoutBuilder(
                 builder: (context, constraints) {
-                  final isWide = constraints.maxWidth >= 950;
+                  final isWide = constraints.maxWidth >= 1050;
 
-                  // The left column with Avatar, Waving Greeting, and Companion Pill
+                  // Left Section: Squircle Avatar, Greetings, Subtitles & Audio Listen Pill
                   final leftDetails = Row(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      // Avatar squircle with Animated Expanding Live Indicator Ring
+                      // Avatar squircle with Green Active Dot & Breathing Live Ring
                       Stack(
                         clipBehavior: Clip.none,
                         children: [
                           Container(
-                            width: 60,
-                            height: 60,
+                            width: 64,
+                            height: 64,
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(16),
                               border: Border.all(color: Colors.white, width: 2.8),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.22),
+                                  color: Colors.black.withValues(alpha: 0.25),
                                   blurRadius: 8,
                                   offset: const Offset(0, 3),
                                 ),
@@ -15783,7 +15809,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                               animation: _effectiveBannerPulseController,
                               builder: (context, child) {
                                 final ringScale = 1.0 + (0.55 * _effectiveBannerPulseController.value);
-                                final ringOpacity = (1.0 - _effectiveBannerPulseController.value) * 0.7;
+                                final ringOpacity = ((1.0 - _effectiveBannerPulseController.value) * 0.7).clamp(0.0, 1.0);
                                 return Stack(
                                   alignment: Alignment.center,
                                   children: [
@@ -15825,7 +15851,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                       ),
                       const SizedBox(width: 14),
 
-                      // Greetings & Companion Capsule
+                      // Greetings and Audio Pill
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
@@ -15834,20 +15860,22 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
-                                greetingBaseText,
+                                titleGreeting,
                                 style: const TextStyle(
-                                  fontSize: 19,
-                                  fontWeight: FontWeight.w800,
+                                  fontSize: 18.5,
+                                  fontWeight: FontWeight.w900,
                                   color: Colors.white,
                                   letterSpacing: 0.2,
+                                  shadows: [
+                                    Shadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 1)),
+                                  ],
                                 ),
                               ),
-                              const SizedBox(width: 4),
-                              // Friendly Animated Waving Hand
+                              const SizedBox(width: 5),
                               AnimatedBuilder(
                                 animation: _effectiveBannerPulseController,
                                 builder: (context, child) {
-                                  final waveAngle = (math.sin(_effectiveBannerPulseController.value * 4 * 3.14159)) * 0.18;
+                                  final waveAngle = (math.sin(_effectiveBannerPulseController.value * 4 * math.pi)) * 0.18;
                                   return Transform.rotate(
                                     angle: waveAngle,
                                     alignment: Alignment.bottomRight,
@@ -15855,67 +15883,69 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                                   );
                                 },
                               ),
-                              const SizedBox(width: 8),
-                              InkWell(
-                                onTap: () => _speakElderGreetingAndRoutine(force: true),
-                                borderRadius: BorderRadius.circular(14),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.22),
-                                    borderRadius: BorderRadius.circular(14),
-                                    border: Border.all(color: Colors.white.withValues(alpha: 0.45)),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Icon(LucideIcons.volume2, size: 13, color: Colors.white),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        isSinhala ? 'අසන්න' : 'Listen',
-                                        style: const TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
                             ],
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            subGreeting,
+                            subGreeting1,
                             style: TextStyle(
                               fontSize: 12.5,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.white.withValues(alpha: 0.92),
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white.withValues(alpha: 0.95),
                             ),
                           ),
-                          const SizedBox(height: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3.5),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.22),
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(color: Colors.white.withValues(alpha: 0.45)),
+                          const SizedBox(height: 1),
+                          Text(
+                            subGreeting2,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w400,
+                              color: Colors.white.withValues(alpha: 0.88),
                             ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Text('💜', style: TextStyle(fontSize: 11)),
-                                const SizedBox(width: 5),
-                                Text(
-                                  companionText,
-                                  style: const TextStyle(
-                                    fontSize: 11.5,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.white,
+                          ),
+                          const SizedBox(height: 5),
+                          // Audio Pill with Waveform Button
+                          InkWell(
+                            onTap: () => _speakElderGreetingAndRoutine(force: true),
+                            borderRadius: BorderRadius.circular(16),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.92),
+                                borderRadius: BorderRadius.circular(18),
+                                border: Border.all(color: Colors.white),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.08),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 1),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(LucideIcons.volume2, size: 13, color: Color(0xFF581C87)),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    isSinhala ? 'ඔබ ගැන අදත් හොඳින් සලකමු!' : 'Caring for you warmly today!',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF581C87),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 5),
+                                  const Text(
+                                    '·|||··||·',
+                                    style: TextStyle(
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w900,
+                                      color: Color(0xFF7C3AED),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ],
@@ -15923,38 +15953,187 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                     ],
                   );
 
-                  // Interactive Routine Question Cards with Floating Bobbing Icons
-                  final card1 = _buildRoutineMicroCard(
-                    emoji: card1Emoji,
-                    iconBg: card1IconBg,
-                    question: card1Question,
-                    yesText: card1YesText,
-                    noText: card1NoText,
-                    currentAnswer: _hadMorningTea,
-                    onYes: () => _handleRoutineSelection(questionIndex: 1, answeredYes: true),
-                    onNo: () => _handleRoutineSelection(questionIndex: 1, answeredYes: false),
+                  // Center Robot Mascot & Speech Bubble
+                  final robotMascot = Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    child: AnimatedBuilder(
+                      animation: _effectiveBannerPulseController,
+                      builder: (context, child) {
+                        final bob = (math.sin(_effectiveBannerPulseController.value * 2 * math.pi) * 3.0);
+                        return Transform.translate(
+                          offset: Offset(0, bob),
+                          child: Image.asset(
+                            'assets/images/elder_robot_mascot.png',
+                            height: 105,
+                            fit: BoxFit.contain,
+                            errorBuilder: (_, __, ___) => Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: const Text('🤖', style: TextStyle(fontSize: 32)),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
                   );
 
-                  final card2 = _buildRoutineMicroCard(
-                    emoji: card2Emoji,
-                    iconBg: card2IconBg,
-                    question: card2Question,
-                    yesText: card2YesText,
-                    noText: card2NoText,
-                    currentAnswer: _washedFace,
-                    onYes: () => _handleRoutineSelection(questionIndex: 2, answeredYes: true),
-                    onNo: () => _handleRoutineSelection(questionIndex: 2, answeredYes: false),
+                  // Card 1: Morning Tea (or Meal / Hydration)
+                  final card1 = Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.08),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Image.asset(
+                          card1Asset,
+                          width: 48,
+                          height: 48,
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, __, ___) => const Text('☕', style: TextStyle(fontSize: 26)),
+                        ),
+                        const SizedBox(width: 10),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              isSinhala ? card1TitleSi : card1TitleEn,
+                              style: const TextStyle(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF312E81),
+                              ),
+                            ),
+                            Text(
+                              isSinhala ? card1SubSi : card1SubEn,
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xFF64748B),
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                _buildBilingualRoutineButton(
+                                  topText: '✓ ${isSinhala ? card1YesSi : card1YesEn}',
+                                  subText: isSinhala ? card1YesEn : 'Completed',
+                                  isSelected: _hadMorningTea == true,
+                                  isPositive: true,
+                                  onTap: () => _handleRoutineSelection(questionIndex: 1, answeredYes: true),
+                                ),
+                                const SizedBox(width: 8),
+                                _buildBilingualRoutineButton(
+                                  topText: '⏰ ${isSinhala ? card1NoSi : card1NoEn}',
+                                  subText: isSinhala ? card1NoEn : 'Pending',
+                                  isSelected: _hadMorningTea == false,
+                                  isPositive: false,
+                                  onTap: () => _handleRoutineSelection(questionIndex: 1, answeredYes: false),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   );
 
-                  // Notification note pill with animated pulse when alert is active
-                  final careNoticePill = AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                  // Card 2: Face Wash (or Rest / Readiness)
+                  final card2 = Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.08),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Image.asset(
+                          card2Asset,
+                          width: 48,
+                          height: 48,
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, __, ___) => const Text('🧖‍♂️', style: TextStyle(fontSize: 26)),
+                        ),
+                        const SizedBox(width: 10),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              isSinhala ? card2TitleSi : card2TitleEn,
+                              style: const TextStyle(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF312E81),
+                              ),
+                            ),
+                            Text(
+                              isSinhala ? card2SubSi : card2SubEn,
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xFF64748B),
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                _buildBilingualRoutineButton(
+                                  topText: '✓ ${isSinhala ? card2YesSi : card2YesEn}',
+                                  subText: isSinhala ? card2YesEn : 'Done',
+                                  isSelected: _washedFace == true,
+                                  isPositive: true,
+                                  onTap: () => _handleRoutineSelection(questionIndex: 2, answeredYes: true),
+                                ),
+                                const SizedBox(width: 8),
+                                _buildBilingualRoutineButton(
+                                  topText: '⏰ ${isSinhala ? card2NoSi : card2NoEn}',
+                                  subText: isSinhala ? card2NoEn : 'Pending',
+                                  isSelected: _washedFace == false,
+                                  isPositive: false,
+                                  onTap: () => _handleRoutineSelection(questionIndex: 2, answeredYes: false),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  );
+
+                  // Bottom Notification Pill with Golden Bell & Heart
+                  final careNoticePill = Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5.5),
                     decoration: BoxDecoration(
                       color: _routineCaregiverNotified
                           ? const Color(0xFFFEF3C7)
-                          : Colors.white.withValues(alpha: 0.92),
-                      borderRadius: BorderRadius.circular(20),
+                          : Colors.white.withValues(alpha: 0.95),
+                      borderRadius: BorderRadius.circular(22),
                       border: Border.all(
                         color: _routineCaregiverNotified
                             ? const Color(0xFFF59E0B)
@@ -15978,37 +16157,33 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                           animation: _effectiveBannerPulseController,
                           builder: (context, child) {
                             final bellAngle = _routineCaregiverNotified
-                                ? (math.sin(_effectiveBannerPulseController.value * 6 * 3.14159)) * 0.18
+                                ? (math.sin(_effectiveBannerPulseController.value * 6 * math.pi)) * 0.18
                                 : 0.0;
                             return Transform.rotate(
                               angle: bellAngle,
-                              child: Icon(
-                                _routineCaregiverNotified ? LucideIcons.bellRing : LucideIcons.users,
-                                size: 13,
-                                color: _routineCaregiverNotified
-                                    ? const Color(0xFFB45309)
-                                    : const Color(0xFF6B21A8),
-                              ),
+                              child: const Text('🔔', style: TextStyle(fontSize: 13)),
                             );
                           },
                         ),
-                        const SizedBox(width: 6),
+                        const SizedBox(width: 8),
                         Text(
                           _routineCaregiverNotified
                               ? (isSinhala
-                                  ? 'රැකබලා ගන්නා දැනුවත් කරන ලදී: ඔබට අවශ්‍ය සහාය ලබා දීමට කණ්ඩායම පැමිණෙනු ඇත.'
+                                  ? 'රැකබලා ගන්නා දැනුවත් කරන ලදී: ඔබට අවශ්‍ය සහාය ලබා දීමට සහායක කණ්ඩායම පැමිණෙනු ඇත.'
                                   : 'Care team gently notified: A caregiver is on the way to assist you.')
-                              : careNoticeText,
+                              : (isSinhala
+                                  ? 'තවම කරගෙන නැත්නම්, අපේ සත්කාර කණ්ඩායම (Care Team) ඔබට මිතුරු වෙමින් දැනුම් දෙනවා.'
+                                  : 'If not done yet, our Care Team will be warmly notified to support you.'),
                           style: TextStyle(
                             fontSize: 11,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w700,
                             color: _routineCaregiverNotified
                                 ? const Color(0xFF92400E)
-                                : const Color(0xFF475569),
+                                : const Color(0xFF334155),
                           ),
                         ),
-                        const SizedBox(width: 4),
-                        const Text('❤️', style: TextStyle(fontSize: 10.5)),
+                        const SizedBox(width: 6),
+                        const Text('💕', style: TextStyle(fontSize: 11)),
                       ],
                     ),
                   );
@@ -16018,6 +16193,8 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         leftDetails,
+                        const Spacer(),
+                        robotMascot,
                         const Spacer(),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
@@ -16042,11 +16219,13 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         leftDetails,
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 10),
                         Wrap(
                           spacing: 10,
                           runSpacing: 10,
+                          crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
+                            robotMascot,
                             card1,
                             card2,
                           ],
@@ -16065,149 +16244,72 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
     );
   }
 
-  Widget _buildRoutineMicroCard({
-    required String emoji,
-    required Color iconBg,
-    required String question,
-    required String yesText,
-    required String noText,
-    required bool? currentAnswer,
-    required VoidCallback onYes,
-    required VoidCallback onNo,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Floating Gentle Bobbing Icon
-          AnimatedBuilder(
-            animation: _effectiveBannerPulseController,
-            builder: (context, child) {
-              final bob = (math.sin((_effectiveBannerPulseController.value + 0.25) * 2 * 3.14159)) * 2.2;
-              return Transform.translate(
-                offset: Offset(0, bob),
-                child: Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: iconBg,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: iconBg.withValues(alpha: 0.5),
-                        blurRadius: 6 + (3 * _effectiveBannerPulseController.value),
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Center(
-                    child: Text(emoji, style: const TextStyle(fontSize: 24)),
-                  ),
-                ),
-              );
-            },
-          ),
-          const SizedBox(width: 10),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                question,
-                style: const TextStyle(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF1E293B),
-                ),
-              ),
-              const SizedBox(height: 6),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _buildRoutineOptionButton(
-                    title: yesText,
-                    isSelected: currentAnswer == true,
-                    isPositive: true,
-                    onTap: onYes,
-                  ),
-                  const SizedBox(width: 8),
-                  _buildRoutineOptionButton(
-                    title: noText,
-                    isSelected: currentAnswer == false,
-                    isPositive: false,
-                    onTap: onNo,
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRoutineOptionButton({
-    required String title,
+  Widget _buildBilingualRoutineButton({
+    required String topText,
+    required String subText,
     required bool isSelected,
     required bool isPositive,
     required VoidCallback onTap,
   }) {
     final Color bgColor = isSelected
-        ? (isPositive ? const Color(0xFF16A34A) : const Color(0xFF7C3AED))
-        : (isPositive ? const Color(0xFFDCFCE7) : const Color(0xFFF3E8FF));
+        ? (isPositive ? const Color(0xFF0DAF4C) : const Color(0xFF7C3AED))
+        : (isPositive ? const Color(0xFF0DAF4C) : const Color(0xFFF5F3FF));
 
-    final Color textColor = isSelected
+    final Color textColor = isPositive || isSelected
         ? Colors.white
-        : (isPositive ? const Color(0xFF15803D) : const Color(0xFF6B21A8));
+        : const Color(0xFF6B21A8);
+
+    final Color subTextColor = isPositive || isSelected
+        ? Colors.white.withValues(alpha: 0.9)
+        : const Color(0xFF7C3AED);
 
     final Color borderColor = isSelected
-        ? (isPositive ? const Color(0xFF15803D) : const Color(0xFF6B21A8))
-        : (isPositive ? const Color(0xFF86EFAC) : const Color(0xFFDDD6FE));
+        ? (isPositive ? const Color(0xFF047857) : const Color(0xFF6B21A8))
+        : (isPositive ? const Color(0xFF0DAF4C) : const Color(0xFFDDD6FE));
 
     return AnimatedScale(
       scale: isSelected ? 1.05 : 1.0,
-      duration: const Duration(milliseconds: 220),
+      duration: const Duration(milliseconds: 200),
       curve: Curves.easeOutBack,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(16),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
           decoration: BoxDecoration(
             color: bgColor,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: borderColor, width: 1.2),
-            boxShadow: isSelected
-                ? [
-                    BoxShadow(
-                      color: bgColor.withValues(alpha: 0.35),
-                      blurRadius: 6,
-                      offset: const Offset(0, 2),
-                    ),
-                  ]
-                : null,
+            boxShadow: [
+              BoxShadow(
+                color: bgColor.withValues(alpha: isSelected ? 0.40 : 0.18),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
-          child: Text(
-            title,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-              color: textColor,
-            ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Text(
+                topText,
+                style: TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w800,
+                  color: textColor,
+                ),
+              ),
+              Text(
+                subText,
+                style: TextStyle(
+                  fontSize: 9.5,
+                  fontWeight: FontWeight.w600,
+                  color: subTextColor,
+                ),
+              ),
+            ],
           ),
         ),
       ),
