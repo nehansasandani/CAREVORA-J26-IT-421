@@ -15462,15 +15462,71 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
               : 'Splendid! You are feeling fresh and ready for a wonderful day ahead.';
         }
       }
-    } else {
-      if (!answeredYes) {
-        speech = isSinhala
-            ? 'ඔබට සහාය වීමට රැකබලා ගන්නා දැනුවත් කරන ලදී.'
-            : 'Our care team has been gently notified to support you.';
+    } else if (dayPeriod == DayPeriod.afternoon) {
+      if (questionIndex == 1) {
+        if (!answeredYes) {
+          speech = isSinhala
+              ? 'ඔබ තවම දිවා ආහාරය ගෙන නැත්නම්, ඔබට උදව් කිරීමට රැකබලා ගන්නා දැනුවත් කර ඇත.'
+              : 'Since you haven\'t had lunch, our care team has been notified to assist you.';
+        } else {
+          speech = isSinhala
+              ? 'ඔබ දිවා ආහාරය ගෙන තිබීම සතුටක්! ඔබේ නීරෝගී සුවය අපගේ ප්‍රමුඛතාවයි.'
+              : 'Wonderful! Glad you had your healthy lunch.';
+        }
       } else {
-        speech = isSinhala
-            ? 'ඉතා විශිෂ්ටයි! ඔබගේ නීරෝගී සුවය අපගේ සතුටයි.'
-            : 'Wonderful! Your health and comfort are our top priority.';
+        if (!answeredYes) {
+          speech = isSinhala
+              ? 'සුවදායක කෙටි විවේකයක් ලබා ගැනීමට සහායක කණ්ඩායම දැනුවත් කර ඇත.'
+              : 'Our care team has been notified to support your afternoon rest.';
+        } else {
+          speech = isSinhala
+              ? 'ඉතා විශිෂ්ටයි! කෙටි විවේකයක් ගැනීමෙන් ඔබේ මනසට සහ සිරුරට නව ප්‍රබෝධයක් ලැබේ.'
+              : 'Great! A short rest keeps your mind and body revitalized.';
+        }
+      }
+    } else if (dayPeriod == DayPeriod.evening) {
+      if (questionIndex == 1) {
+        if (!answeredYes) {
+          speech = isSinhala
+              ? 'ඔබ තවම සවස තේ බීලා නැත්නම්, රැකබලා ගන්නා ඔබ වෙත පැමිණෙනු ඇත.'
+              : 'Our care team has been gently notified to bring you evening tea.';
+        } else {
+          speech = isSinhala
+              ? 'සවස උණුසුම් තේ පැන් පානය කර තිබීම සතුටක්!'
+              : 'Splendid! Enjoy your relaxing evening.';
+        }
+      } else {
+        if (!answeredYes) {
+          speech = isSinhala
+              ? 'සවස නැවුම් සුළං සුවය විඳීමට ඔබට උපකාර කිරීමට රැකබලා ගන්නා පැමිණෙනු ඇත.'
+              : 'Our care team will gladly accompany you for fresh air.';
+        } else {
+          speech = isSinhala
+              ? 'නැවුම් සවස සුළං සුවය විඳීම ඔබේ මනස සන්සුන් කරයි!'
+              : 'Wonderful! The fresh evening air brings peace and serenity.';
+        }
+      }
+    } else {
+      if (questionIndex == 1) {
+        if (!answeredYes) {
+          speech = isSinhala
+              ? 'ඔබ තවම රාත්‍රී ආහාර හෝ ඖෂධ ගෙන නැත්නම්, ඔබට උදව් කිරීමට රැකබලා ගන්නා දැනුවත් කළා.'
+              : 'Our care team has been gently notified to assist with your dinner and medication.';
+        } else {
+          speech = isSinhala
+              ? 'ඉතා විශිෂ්ටයි! රාත්‍රී ආහාර සහ ඖෂධ නියමිත වේලාවට ලබා ගැනීම නීරෝගී බවට ඉතා වැදගත්.'
+              : 'Excellent! Taking your dinner and medication on time is vital for your health.';
+        }
+      } else {
+        if (!answeredYes) {
+          speech = isSinhala
+              ? 'සුව නින්දකට සූදානම් වීමට ඔබට උපකාර කිරීමට රැකබලා ගන්නා දැනුවත් කර ඇත.'
+              : 'Our care team is on the way to help you prepare for a comfortable sleep.';
+        } else {
+          speech = isSinhala
+              ? 'සුවබර, සැනසිලිදායක නින්දක් සහ මිහිරි සිහින ඔබට ප්‍රාර්ථනා කරනවා!'
+              : 'Wishing you a deep, restorative and peaceful sleep!';
+        }
       }
     }
 
@@ -15479,6 +15535,110 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
       TtsService.instance.speak(speech, isSinhala: isSinhala);
     } catch (e) {
       debugPrint('[ElderRoutine] TTS error: $e');
+    }
+  }
+
+  Future<void> _speakCardQuestion(int questionIndex) async {
+    final isSinhala = ref.read(languageProvider).isSinhala;
+    final dayPeriod = _getCurrentDayPeriod();
+
+    String speech = '';
+    if (questionIndex == 1) {
+      if (isSinhala) {
+        if (dayPeriod == DayPeriod.morning) {
+          speech = 'උදේ තේ බිව්වද? සුවබර උදෑසනකට උණුසුම් තේ පැන් පානය කළා නම් කොළ පාට බොත්තම ඔබන්න. තවම නැත්නම් තවම නැහැ බොත්තම ඔබන්න.';
+        } else if (dayPeriod == DayPeriod.afternoon) {
+          speech = 'දිවා ආහාරය ගත්තාද? පෝෂ්‍යදායී දිවා ආහාරය ගත්තා නම් කොළ පාට බොත්තම ඔබන්න. තවම නැත්නම් තවම නැහැ බොත්තම ඔබන්න.';
+        } else if (dayPeriod == DayPeriod.evening) {
+          speech = 'සවස තේ පැන් පානය කළාද? උණුසුම් තේ පැන් බිව්වා නම් කොළ පාට බොත්තම ඔබන්න. තවම නැත්නම් තවම නැහැ බොත්තම ඔබන්න.';
+        } else {
+          speech = 'රාත්‍රී ආහාර හා ඖෂධ ගත්තාද? නියමිත ආහාර හා ඖෂධ ලබා ගත්තා නම් කොළ පාට බොත්තම ඔබන්න. තවම නැත්නම් තවම නැහැ බොත්තම ඔබන්න.';
+        }
+      } else {
+        if (dayPeriod == DayPeriod.morning) {
+          speech = 'Have you had your morning tea? Tap the green button if Yes, or tap Not yet.';
+        } else if (dayPeriod == DayPeriod.afternoon) {
+          speech = 'Have you had your lunch? Tap the green button if Yes, or tap Not yet.';
+        } else if (dayPeriod == DayPeriod.evening) {
+          speech = 'Have you had your evening tea? Tap the green button if Yes, or tap Not yet.';
+        } else {
+          speech = 'Have you had your dinner and medicine? Tap the green button if Yes, or tap Not yet.';
+        }
+      }
+    } else {
+      if (isSinhala) {
+        if (dayPeriod == DayPeriod.morning) {
+          speech = 'මුහුණ හෝදාගත්තාද? ප්‍රබෝධමත් දවසකට මුහුණ සෝදා පිරිසිදු වුණා නම් කොළ පාට බොත්තම ඔබන්න. තවම නැත්නම් තවම නැහැ බොත්තම ඔබන්න.';
+        } else if (dayPeriod == DayPeriod.afternoon) {
+          speech = 'කෙටි විවේකයක් ගත්තාද? සුවදායක කෙටි විවේකයක් ලබා ගත්තා නම් කොළ පාට බොත්තම ඔබන්න. තවම නැත්නම් තවම නැහැ බොත්තම ඔබන්න.';
+        } else if (dayPeriod == DayPeriod.evening) {
+          speech = 'නැවුම් සුළං සුවය වින්දාද? සවස නැවුම් සුළඟ වින්දා නම් කොළ පාට බොත්තම ඔබන්න. තවම නැත්නම් තවම නැහැ බොත්තම ඔබන්න.';
+        } else {
+          speech = 'සුව නින්දකට සූදානම්ද? සැනසිලිදායක නින්දකට සූදානම් නම් කොළ පාට බොත්තම ඔබන්න. තවම නැත්නම් තවම නැහැ බොත්තම ඔබන්න.';
+        }
+      } else {
+        if (dayPeriod == DayPeriod.morning) {
+          speech = 'Have you washed your face? Tap the green button if Yes, or tap Not yet.';
+        } else if (dayPeriod == DayPeriod.afternoon) {
+          speech = 'Have you taken a short rest? Tap the green button if Yes, or tap Not yet.';
+        } else if (dayPeriod == DayPeriod.evening) {
+          speech = 'Have you enjoyed the fresh evening air? Tap the green button if Yes, or tap Not yet.';
+        } else {
+          speech = 'Are you ready for a peaceful sleep? Tap the green button if Yes, or tap Not yet.';
+        }
+      }
+    }
+
+    try {
+      _flutterTts.stop();
+      await TtsService.instance.speak(speech, isSinhala: isSinhala);
+    } catch (e) {
+      debugPrint('[ElderCardTTS] speak error: $e');
+    }
+  }
+
+  Future<void> _speakCareNotice() async {
+    final isSinhala = ref.read(languageProvider).isSinhala;
+    final speech = _routineCaregiverNotified
+        ? (isSinhala
+            ? 'රැකබලා ගන්නා දැනුවත් කරන ලදී: ඔබට අවශ්‍ය සහාය ලබා දීමට සහායක කණ්ඩායම පැමිණෙනු ඇත.'
+            : 'Care team gently notified: A caregiver is on the way to assist you.')
+        : (isSinhala
+            ? 'තවම කරගෙන නැත්නම්, අපේ සත්කාර කණ්ඩායම ඔබට මිතුරු වෙමින් උදව් කිරීමට දැනුම් දෙනවා.'
+            : 'If not done yet, our Care Team will be warmly notified to support you.');
+
+    try {
+      _flutterTts.stop();
+      await TtsService.instance.speak(speech, isSinhala: isSinhala);
+    } catch (e) {
+      debugPrint('[ElderNoticeTTS] speak error: $e');
+    }
+  }
+
+  Future<void> _speakRobotBubble() async {
+    final isSinhala = ref.read(languageProvider).isSinhala;
+    final dayPeriod = _getCurrentDayPeriod();
+    final speech = isSinhala
+        ? (dayPeriod == DayPeriod.morning
+            ? 'අද උදයේ මූලික පුරුදු කටයුතු කරගත්තාද?'
+            : (dayPeriod == DayPeriod.afternoon
+                ? 'අද දහවල් සුවපහසු විවේකය ලබාගත්තාද?'
+                : (dayPeriod == DayPeriod.evening
+                    ? 'අද සවස නැවුම් සුවය වින්දාද?'
+                    : 'අද රාත්‍රී සුව නින්දකට සූදානම්ද?')))
+        : (dayPeriod == DayPeriod.morning
+            ? 'Have you completed your morning wellness routines today?'
+            : (dayPeriod == DayPeriod.afternoon
+                ? 'Did you enjoy your afternoon rest today?'
+                : (dayPeriod == DayPeriod.evening
+                    ? 'Did you enjoy your evening tea and breeze?'
+                    : 'Are you ready for peaceful sleep tonight?')));
+
+    try {
+      _flutterTts.stop();
+      await TtsService.instance.speak(speech, isSinhala: isSinhala);
+    } catch (e) {
+      debugPrint('[ElderRobotTTS] speak error: $e');
     }
   }
 
@@ -15996,27 +16156,49 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                                 ),
                               ),
                               const SizedBox(width: 6),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(16),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.12),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ],
-                                ),
-                                child: Text(
-                                  robotBubbleText,
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    fontSize: 10.5,
-                                    fontWeight: FontWeight.w800,
-                                    color: Color(0xFF4C1D95),
-                                    height: 1.25,
+                              InkWell(
+                                onTap: _speakRobotBubble,
+                                borderRadius: BorderRadius.circular(16),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(16),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: 0.12),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        robotBubbleText,
+                                        textAlign: TextAlign.center,
+                                        style: const TextStyle(
+                                          fontSize: 10.5,
+                                          fontWeight: FontWeight.w800,
+                                          color: Color(0xFF4C1D95),
+                                          height: 1.25,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 5),
+                                      Container(
+                                        padding: const EdgeInsets.all(3),
+                                        decoration: const BoxDecoration(
+                                          color: Color(0xFFEDE9FE),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(
+                                          LucideIcons.volume2,
+                                          size: 11,
+                                          color: Color(0xFF7C3AED),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ),
@@ -16057,13 +16239,36 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(
-                              isSinhala ? card1TitleSi : card1TitleEn,
-                              style: const TextStyle(
-                                fontSize: 13.5,
-                                fontWeight: FontWeight.w800,
-                                color: Color(0xFF312E81),
-                              ),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  isSinhala ? card1TitleSi : card1TitleEn,
+                                  style: const TextStyle(
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.w800,
+                                    color: Color(0xFF312E81),
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                InkWell(
+                                  onTap: () => _speakCardQuestion(1),
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(3.5),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFEDE9FE),
+                                      shape: BoxShape.circle,
+                                      border: Border.all(color: const Color(0xFFC084FC), width: 0.8),
+                                    ),
+                                    child: const Icon(
+                                      LucideIcons.volume2,
+                                      size: 13,
+                                      color: Color(0xFF7C3AED),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                             Text(
                               isSinhala ? card1SubSi : card1SubEn,
@@ -16130,13 +16335,36 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(
-                              isSinhala ? card2TitleSi : card2TitleEn,
-                              style: const TextStyle(
-                                fontSize: 13.5,
-                                fontWeight: FontWeight.w800,
-                                color: Color(0xFF312E81),
-                              ),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  isSinhala ? card2TitleSi : card2TitleEn,
+                                  style: const TextStyle(
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.w800,
+                                    color: Color(0xFF312E81),
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                InkWell(
+                                  onTap: () => _speakCardQuestion(2),
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(3.5),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFEDE9FE),
+                                      shape: BoxShape.circle,
+                                      border: Border.all(color: const Color(0xFFC084FC), width: 0.8),
+                                    ),
+                                    child: const Icon(
+                                      LucideIcons.volume2,
+                                      size: 13,
+                                      color: Color(0xFF7C3AED),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                             Text(
                               isSinhala ? card2SubSi : card2SubEn,
@@ -16174,64 +16402,81 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
                   );
 
                   // Bottom Notification Pill with Golden Bell & Heart
-                  final careNoticePill = Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5.5),
-                    decoration: BoxDecoration(
-                      color: _routineCaregiverNotified
-                          ? const Color(0xFFFEF3C7)
-                          : Colors.white.withValues(alpha: 0.95),
-                      borderRadius: BorderRadius.circular(22),
-                      border: Border.all(
+                  final careNoticePill = InkWell(
+                    onTap: _speakCareNotice,
+                    borderRadius: BorderRadius.circular(22),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5.5),
+                      decoration: BoxDecoration(
                         color: _routineCaregiverNotified
-                            ? const Color(0xFFF59E0B)
-                            : const Color(0xFFE2E8F0),
-                        width: 1.2,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
+                            ? const Color(0xFFFEF3C7)
+                            : Colors.white.withValues(alpha: 0.95),
+                        borderRadius: BorderRadius.circular(22),
+                        border: Border.all(
                           color: _routineCaregiverNotified
-                              ? const Color(0xFFF59E0B).withValues(alpha: 0.25)
-                              : Colors.black.withValues(alpha: 0.05),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
+                              ? const Color(0xFFF59E0B)
+                              : const Color(0xFFE2E8F0),
+                          width: 1.2,
                         ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        AnimatedBuilder(
-                          animation: _effectiveBannerPulseController,
-                          builder: (context, child) {
-                            final bellAngle = _routineCaregiverNotified
-                                ? (math.sin(_effectiveBannerPulseController.value * 6 * math.pi)) * 0.18
-                                : 0.0;
-                            return Transform.rotate(
-                              angle: bellAngle,
-                              child: const Text('🔔', style: TextStyle(fontSize: 13)),
-                            );
-                          },
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          _routineCaregiverNotified
-                              ? (isSinhala
-                                  ? 'රැකබලා ගන්නා දැනුවත් කරන ලදී: ඔබට අවශ්‍ය සහාය ලබා දීමට සහායක කණ්ඩායම පැමිණෙනු ඇත.'
-                                  : 'Care team gently notified: A caregiver is on the way to assist you.')
-                              : (isSinhala
-                                  ? 'තවම කරගෙන නැත්නම්, අපේ සත්කාර කණ්ඩායම ඔබට මිතුරු වෙමින් දැනුම් දෙනවා.'
-                                  : 'If not done yet, our Care Team will be warmly notified to support you.'),
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
+                        boxShadow: [
+                          BoxShadow(
                             color: _routineCaregiverNotified
-                                ? const Color(0xFF92400E)
-                                : const Color(0xFF334155),
+                                ? const Color(0xFFF59E0B).withValues(alpha: 0.25)
+                                : Colors.black.withValues(alpha: 0.05),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
                           ),
-                        ),
-                        const SizedBox(width: 6),
-                        const Text('💕', style: TextStyle(fontSize: 11)),
-                      ],
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          AnimatedBuilder(
+                            animation: _effectiveBannerPulseController,
+                            builder: (context, child) {
+                              final bellAngle = _routineCaregiverNotified
+                                  ? (math.sin(_effectiveBannerPulseController.value * 6 * math.pi)) * 0.18
+                                  : 0.0;
+                              return Transform.rotate(
+                                angle: bellAngle,
+                                child: const Text('🔔', style: TextStyle(fontSize: 13)),
+                              );
+                            },
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            _routineCaregiverNotified
+                                ? (isSinhala
+                                    ? 'රැකබලා ගන්නා දැනුවත් කරන ලදී: ඔබට අවශ්‍ය සහාය ලබා දීමට සහායක කණ්ඩායම පැමිණෙනු ඇත.'
+                                    : 'Care team gently notified: A caregiver is on the way to assist you.')
+                                : (isSinhala
+                                    ? 'තවම කරගෙන නැත්නම්, අපේ සත්කාර කණ්ඩායම ඔබට මිතුරු වෙමින් දැනුම් දෙනවා.'
+                                    : 'If not done yet, our Care Team will be warmly notified to support you.'),
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: _routineCaregiverNotified
+                                  ? const Color(0xFF92400E)
+                                  : const Color(0xFF334155),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.all(2.5),
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFEDE9FE),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              LucideIcons.volume2,
+                              size: 11,
+                              color: Color(0xFF7C3AED),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          const Text('💕', style: TextStyle(fontSize: 11)),
+                        ],
+                      ),
                     ),
                   );
 
