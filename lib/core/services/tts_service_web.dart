@@ -88,55 +88,44 @@ class WebTtsService implements TtsService {
     if (text == 'ඊළඟ ප්‍රශ්නය') return 'cog_next.mp3';
 
     for (final entry in _sinhalaAudioFiles.entries) {
-      if (text.contains(entry.key) || entry.key.contains(text)) {
+      if (text.contains(entry.key)) {
         return entry.value;
       }
     }
 
-    // Keyword heuristics for robust matching even with emojis, minor punctuation differences
-    if (text.contains('අද දවසේ') && text.contains('සතුටක්')) return 'q1.mp3';
-    if (text.contains('ඉදිරි දින') && text.contains('බලාපොරොත්තු')) {
+    // Keyword heuristics ONLY for the 10 Clinical Social Assessment Questions (q1.mp3 - q10.mp3) and their specific praise/comfort responses
+    if (text.contains('අද දවසේ') && text.contains('සතුටක් සහ සැනසීමක්')) return 'q1.mp3';
+    if (text.contains('ඉදිරි දින') && text.contains('බලාපොරොත්තු සහගත')) {
       if (text.contains('සුබවාදී') || text.contains('ප්‍රීතිමත්')) return 'praise_q2.mp3';
       return 'q2.mp3';
     }
-    if (text.contains('සමීපව කතාබහ කිරීමට කෙනෙකු') || text.contains('අදහස් බෙදා ගැනීමට කෙනෙකු')) {
+    if (text.contains('මෙහි ඔබ සමඟ සමීපව කතාබහ කිරීමට') || text.contains('අදහස් බෙදා ගැනීමට කෙනෙකු සිටිනවාද')) {
       if (text.contains('භාග්‍යයක්')) return 'praise_q3.mp3';
       return 'q3.mp3';
     }
-    if (text.contains('අන් අය එකතු වී සිටින විට')) {
-      if (text.contains('ආදරයෙන්')) return 'praise_q4.mp3';
-      return 'q4.mp3';
-    }
-    if (text.contains('කාමරය තුළ තනිවම')) {
-      if (text.contains('වෙහෙසකර')) return 'comfort_q5.mp3';
-      return 'q5.mp3';
-    }
-    if (text.contains('කාමරයට පමණක් සීමා නොවී')) return 'praise_q5.mp3';
-    if (text.contains('බැලීමට පැමිණෙන') || text.contains('දුරකථනයෙන් කතා කරන')) return 'q6.mp3';
-    if (text.contains('තවත් කෙනෙකු සිටී නම්')) return 'q8.mp3';
-    if (text.contains('කරදර හෝ ගැටලු') && text.contains('රැකවරණ')) return 'q9.mp3';
+    if (text.contains('අන් අය එකතු වී සිටින විට, ඔබට තනි වී ඇති බවක්')) return 'q4.mp3';
+    if (text.contains('අන් අය එකතු වී සිටින විට ඔබ සතුටින්')) return 'praise_q4.mp3';
+    if (text.contains('ඔබේ දවසෙන් වැඩි කාලයක් කාමරය තුළ තනිවම ගත කරනවාද')) return 'q5.mp3';
+    if (text.contains('ඔබේ දවසෙන් වැඩි කාලයක් කාමරය තුළ තනිවම ගත කිරීම වෙහෙසකර')) return 'comfort_q5.mp3';
+    if (text.contains('කාමරයට පමණක් සීමා නොවී, නිරතුරුවම ක්‍රියාශීලීව')) return 'praise_q5.mp3';
+    if (text.contains('බැලීමට පැමිණෙන හෝ නිතර දුරකථනයෙන් කතා කරන')) return 'q6.mp3';
+    if (text.contains('මෙහි පැවැත්වෙන උදෑසන තේ පැන්, ව්‍යායාම හෝ උත්සව')) return 'q7.mp3';
+    if (text.contains('තවත් කෙනෙකු සිටී නම්, තවත් ක්‍රියාකාරකම්වලට එක්වීමට')) return 'q8.mp3';
+    if (text.contains('කරදර හෝ ගැටලු ඔබේ රැකවරණ නිලධාරීන් සමඟ')) return 'q9.mp3';
     if (text.contains('සුහද සන්නිවේදනය ඉතා අගනේය')) return 'praise_q9.mp3';
-    if (text.contains('සන්සුන් සංගීතයකට') || text.contains('පිරිත්') || text.contains('ගාථා')) return 'q10.mp3';
+    if (text.contains('නොසන්සුන්තාවයක් දැනෙන විට, සන්සුන් සංගීතයකට හෝ ආගමික වතාවත්වලට')) return 'q10.mp3';
 
-    // Creative Elder Routine & Banner Matching (Uses native studio-recorded Sinhala audio)
-    if (text.contains('ඖෂධ') || text.contains('බෙහෙත්')) return 'unwell.mp3';
-    if (text.contains('තේ බිව්වද') || text.contains('තේ පැන්') || text.contains('තේ පානය') || text.contains('තේ එකක්') || text.contains('දිවා ආහාරය')) return 'q7.mp3';
-    if (text.contains('නැවුම් සුළං') || text.contains('මුහුණ') || text.contains('විවේකයක්') || text.contains('නින්දකට') || text.contains('සන්සුන්')) return 'quiet.mp3';
-    if (text.contains('රැකබලා ගන්නා') || text.contains('සත්කාර කණ්ඩායම') || text.contains('සත්කාරක නිලධාරියාට') || text.contains('හදිසි දැනුම්දීමක්')) return 'caregiver_alert.mp3';
-    if (text.contains('ඔබ ගැන අදත් හොඳින් සලකමු') || text.contains('සුබ උදෑසනක්') || text.contains('සුබ දහවල්') || text.contains('සුබ සන්ධ්‍යාවක්') || text.contains('සුබ රාත්‍රියක්')) return 'praise_q1.mp3';
-    if (text.contains('නෆියා') || text.contains('මූලික පුරුදු')) return 'comfort_q3.mp3';
-
-    if (text.contains('ගොඩක් ඒ ගැන ස්තූතියි') || text.contains('සහනයෙන් පසුවීම')) return 'praise_q1.mp3';
-    if (text.contains('එසේ සිතන්න එපා')) return 'comfort_q4.mp3';
-    if (text.contains('සිත දුකට පත් කරගන්න එපා')) return 'comfort_q2.mp3';
-    if (text.contains('අමරදේවයන්ගේ') || text.contains('නන්දා මාලිනියන්ගේ')) return 'comfort_q6.mp3';
-    if (text.contains('තනි වී නැහැ') || text.contains('ළඟින්ම සිටිනවා')) return 'comfort_q3.mp3';
-    if (text.contains('ඇසීම කනගාටුදායකයි') || text.contains('මේ ආකාරයට දැනෙන්නට හේතුව')) return 'comfort_general.mp3';
-    if (text.contains('ඖෂධ ලබා ගත්තාද')) return 'unwell.mp3';
-    if (text.contains('නිදහසේ ඉන්න') || text.contains('සිත සන්සුන් කරගැනීමට මිහිරි')) return 'quiet.mp3';
-    if (text.contains('රැකබලා ගන්නා දැනුවත් කරන ලදී') || text.contains('සත්කාරක නිලධාරියාට') || text.contains('හදිසි දැනුම්දීමක්')) return 'caregiver_alert.mp3';
-    if (text.contains('පොත් කියවීමේ')) return 'book_intro.mp3';
-    if (text.contains('සංගීත චිකිත්සාව වෙත')) return 'music_intro.mp3';
+    if (text.contains('ගොඩක් ඒ ගැන ස්තූතියි! අද දවසේ ඔබ සිතින් සතුටින්')) return 'praise_q1.mp3';
+    if (text.contains('කරුණාකර එසේ සිතන්න එපා. ඔබ අප සැමට ඉතාමත් වටිනා')) return 'comfort_q4.mp3';
+    if (text.contains('සිත දුකට පත් කරගන්න එපා. සෑම අලුත් දවසක්ම ජයග්‍රාහී')) return 'comfort_q2.mp3';
+    if (text.contains('අමරදේවයන්ගේ සහ නන්දා මාලිනියන්ගේ සන්සුන් ගීතයකට')) return 'comfort_q6.mp3';
+    if (text.contains('කරුණාකර තනිකමක් දැනෙන්න දෙන්න එපා. ඔබ කිසිවිටෙකත් තනි වී නැහැ')) return 'comfort_q3.mp3';
+    if (text.contains('ඒ ගැන ඇසීම කනගාටුදායකයි. ඔබට මේ ආකාරයට දැනෙන්නට හේතුව')) return 'comfort_general.mp3';
+    if (text.contains('දැඩි අපහසුතාවයක් තිබේද? ඔබට වෛද්‍යවරයකු හමුවීමට අවශ්‍යද')) return 'unwell.mp3';
+    if (text.contains('ඔබේ සිත සන්සුන් කරගැනීමට මිහිරි ගීතයකට සවන් දීමට හෝ පොතක් කියවීමට ඔබ කැමතිද')) return 'quiet.mp3';
+    if (text.contains('ඔබේ සත්කාරක නිලධාරියාට සහ වෛද්‍යවරයාට හදිසි දැනුම්දීමක් යවන ලදී')) return 'caregiver_alert.mp3';
+    if (text.contains('පොත් කියවීමේ සැසිය වෙත සාදරයෙන් පිළිගනිමු')) return 'book_intro.mp3';
+    if (text.contains('සන්සුන් සංගීත චිකිත්සාව වෙත සාදරයෙන් පිළිගනිමු')) return 'music_intro.mp3';
 
     return null;
   }
@@ -223,6 +212,22 @@ class WebTtsService implements TtsService {
 
     // --- High-Fidelity Conversational Sinhala Phonetics for Natural Human Speech ---
     // Greetings with elder resident names
+    'සුබ උදෑසනක්, කුමාර මහත්මයා! ඔබ ගැන අදත් හොඳින් සලකමු!':
+        'Sooba oodaasanak, Koomara mahathmaya! Oba gena adath hondin salakamu!',
+    'සුබ දහවල් කාලයක්, කුමාර මහත්මයා! ඔබ ගැන අදත් හොඳින් සලකමු!':
+        'Sooba dahawal kaalayak, Koomara mahathmaya! Oba gena adath hondin salakamu!',
+    'සුබ සන්ධ්‍යාවක්, කුමාර මහත්මයා! ඔබ ගැන අදත් හොඳින් සලකමු!':
+        'Sooba sandhyaawak, Koomara mahathmaya! Oba gena adath hondin salakamu!',
+    'සුබ රාත්‍රියක්, කුමාර මහත්මයා! ඔබ ගැන අදත් හොඳින් සලකමු!':
+        'Sooba raathriyak, Koomara mahathmaya! Oba gena adath hondin salakamu!',
+    'සුබ උදෑසනක්, කුමාර! ඔබ ගැන අදත් හොඳින් සලකමු!':
+        'Sooba oodaasanak, Koomara! Oba gena adath hondin salakamu!',
+    'සුබ දහවල් කාලයක්, කුමාර! ඔබ ගැන අදත් හොඳින් සලකමු!':
+        'Sooba dahawal kaalayak, Koomara! Oba gena adath hondin salakamu!',
+    'සුබ සන්ධ්‍යාවක්, කුමාර! ඔබ ගැන අදත් හොඳින් සලකමු!':
+        'Sooba sandhyaawak, Koomara! Oba gena adath hondin salakamu!',
+    'සුබ රාත්‍රියක්, කුමාර! ඔබ ගැන අදත් හොඳින් සලකමු!':
+        'Sooba raathriyak, Koomara! Oba gena adath hondin salakamu!',
     'සුබ උදෑසනක්, කුමාර! ඔබ උදෑසන තේ පානය කළාද?':
         'Sooba oodaasanak, Koomara! Oba oodaasana they paanaya kalaadha?',
     'සුබ උදෑසනක්, කුමාර මහත්මයා! ඔබ උදෑසන තේ පානය කළාද?':
@@ -241,26 +246,50 @@ class WebTtsService implements TtsService {
         'Sooba raathriyak, Koomara mahathmaya! Oba raathree aahaaraya haa owshadha labaa gaththaadha?',
 
     // Routine Cards - Card 1 Prompts
+    'උදේ තේ බිව්වද? සුවබර උදෑසනකට උණුසුම් තේ පැන් බිව්වා නම් කොළ පාට ඔව් ඔබන්න. තවම නැත්නම් තවම නැහැ ඔබන්න.':
+        'Ooday they beewwada? Soowabara oodaasanakata oonusum they pean beewwa nam kola paata ow obanna. Thawama nethnam thawama nehe obanna.',
     'උදේ තේ බිව්වද? සුවබර උදෑසනකට උණුසුම් තේ පැන් පානය කළා නම් කොළ පාට බොත්තම ඔබන්න. තවම නැත්නම් තවම නැහැ බොත්තම ඔබන්න.':
         'Ooday they beewwada? Soowabara oodaasanakata oonusum they pean paanaya kalaa nam kola paata boththama obanna. Thawama nethnam thawama nehe boththama obanna.',
+    'දිවා ආහාරය ගත්තාද? පෝෂ්‍යදායී දිවා ආහාරය ගත්තා නම් කොළ පාට ඔව් ඔබන්න. තවම නැත්නම් තවම නැහැ ඔබන්න.':
+        'Diwa aahaaraya gaththaada? Poashyadhaayee diwa aahaaraya gaththaa nam kola paata ow obanna. Thawama nethnam thawama nehe obanna.',
     'දිවා ආහාරය ගත්තාද? පෝෂ්‍යදායී දිවා ආහාරය ගත්තා නම් කොළ පාට බොත්තම ඔබන්න. තවම නැත්නම් තවම නැහැ බොත්තම ඔබන්න.':
         'Diwa aahaaraya gaththaadha? Poashyadhaayee diwa aahaaraya gaththaa nam kola paata boththama obanna. Thawama nethnam thawama nehe boththama obanna.',
+    'සවස තේ පැන් පානය කළාද? උණුසුම් තේ පැන් බිව්වා නම් කොළ පාට ඔව් ඔබන්න. තවම නැත්නම් තවම නැහැ ඔබන්න.':
+        'Sawasa they pean paanaya kalaada? Oonusum they pean beewwa nam kola paata ow obanna. Thawama nethnam thawama nehe obanna.',
     'සවස තේ පැන් පානය කළාද? උණුසුම් තේ පැන් බිව්වා නම් කොළ පාට බොත්තම ඔබන්න. තවම නැත්නම් තවම නැහැ බොත්තම ඔබන්න.':
         'Sawasa they pean paanaya kalaadha? Oonusum they pean beewwa nam kola paata boththama obanna. Thawama nethnam thawama nehe boththama obanna.',
+    'රාත්‍රී ආහාර හා ඖෂධ ගත්තාද? සුව නින්දකට පෙර ආහාර හා නියමිත ඖෂධ ලබා ගත්තා නම් කොළ පාට ඔව් ඔබන්න. තවම නැත්නම් තවම නැහැ ඔබන්න.':
+        'Raathree aahaara haa owshadha gaththaada? Suwa nindakata pera aahaara haa niyamitha owshadha labaa gaththaa nam kola paata ow obanna. Thawama nethnam thawama nehe obanna.',
     'රාත්‍රී ආහාර හා ඖෂධ ගත්තාද? නියමිත ආහාර හා ඖෂධ ලබා ගත්තා නම් කොළ පාට බොත්තම ඔබන්න. තවම නැත්නම් තවම නැහැ බොත්තම ඔබන්න.':
         'Raathree aahaara haa owshadha gaththaadha? Niyamitha aahaara haa owshadha labaa gaththaa nam kola paata boththama obanna. Thawama nethnam thawama nehe boththama obanna.',
 
     // Routine Cards - Card 2 Prompts
+    'මුහුණ හෝදාගත්තාද? ප්‍රබෝධමත්ව මුහුණ සෝදා පිරිසිදු වුණා නම් කොළ පාට ඔව් ඔබන්න. තවම නැත්නම් තවම නැහැ ඔබන්න.':
+        'Moohuna hoodaagaththaada? Praboadhamathwa moohuna soadaa pirisidu woonaa nam kola paata ow obanna. Thawama nethnam thawama nehe obanna.',
     'මුහුණ හෝදාගත්තාද? ප්‍රබෝධමත් දවසකට මුහුණ සෝදා පිරිසිදු වුණා නම් කොළ පාට බොත්තම ඔබන්න. තවම නැත්නම් තවම නැහැ බොත්තම ඔබන්න.':
         'Moohuna hoodaagaththaadha? Praboadhamath dawasakata moohuna soadaa pirisidhu woonaa nam kola paata boththama obanna. Thawama nethnam thawama nehe boththama obanna.',
+    'කෙටි විවේකයක් ගත්තාද? සුවදායක කෙටි විවේකයක් ලබා ගත්තා නම් කොළ පාට ඔව් ඔබන්න. තවම නැත්නම් තවම නැහැ ඔබන්න.':
+        'Keti wivekayak gaththaada? Suwadhaayaka keti wivekayak labaa gaththaa nam kola paata ow obanna. Thawama nethnam thawama nehe obanna.',
     'කෙටි විවේකයක් ගත්තාද? සුවදායක කෙටි විවේකයක් ලබා ගත්තා නම් කොළ පාට බොත්තම ඔබන්න. තවම නැත්නම් තවම නැහැ බොත්තම ඔබන්න.':
         'Keti wivekayak gaththaadha? Soowadhaayaka keti wivekayak labaa gaththaa nam kola paata boththama obanna. Thawama nethnam thawama nehe boththama obanna.',
+    'නැවුම් සුළං සුවය වින්දාද? සවස නැවුම් සුළඟ වින්දා නම් කොළ පාට ඔව් ඔබන්න. තවම නැත්නම් තවම නැහැ ඔබන්න.':
+        'Newum sulan suwaya vindaada? Sawasa newum sulanga vindaa nam kola paata ow obanna. Thawama nethnam thawama nehe obanna.',
     'නැවුම් සුළං සුවය වින්දාද? සවස නැවුම් සුළඟ වින්දා නම් කොළ පාට බොත්තම ඔබන්න. තවම නැත්නම් තවම නැහැ බොත්තම ඔබන්න.':
         'Newum sulan suwaya vindhaadha? Sawasa newum sulanga vindhaa nam kola paata boththama obanna. Thawama nethnam thawama nehe boththama obanna.',
+    'සුව නින්දකට සූදානම්ද? සැනසිලිදායක, සුවබර නින්දකට සූදානම් නම් කොළ පාට ඔව් ඔබන්න. තවම නැත්නම් තවම නැහැ ඔබන්න.':
+        'Suwa nindakata soodaanamda? Senasilidaayaka, suwabara nindakata soodaanam nam kola paata ow obanna. Thawama nethnam thawama nehe obanna.',
     'සුව නින්දකට සූදානම්ද? සැනසිලිදායක නින්දකට සූදානම් නම් කොළ පාට බොත්තම ඔබන්න. තවම නැත්නම් තවම නැහැ බොත්තම ඔබන්න.':
         'Soowa nindhakata soodhaanandha? Senasilidhaayaka nindhakata soodhaanam nam kola paata boththama obanna. Thawama nethnam thawama nehe boththama obanna.',
 
     // Center Robot Speech Bubble
+    'නෆියා ඔබෙන් අසනවා: අද උදයේ මූලික පුරුදු කරගත්තාද?':
+        'Nafiyaa oben asanawaa: Ada oodaye moolika poorudu karagaththaada?',
+    'නෆියා ඔබෙන් අසනවා: අද දහවල් සුවපහසු විවේකය ලබාගත්තාද?':
+        'Nafiyaa oben asanawaa: Ada dahawal suwapahasu wivekaya labaagaththaada?',
+    'නෆියා ඔබෙන් අසනවා: අද සවස නැවුම් සුවය වින්දාද?':
+        'Nafiyaa oben asanawaa: Ada sawasa newum suwaya vindaada?',
+    'නෆියා ඔබෙන් අසනවා: අද රාත්‍රී සුව නින්දකට සූදානම්ද?':
+        'Nafiyaa oben asanawaa: Ada raathree suwa nindakata soodaanamda?',
     'අද උදයේ මූලික පුරුදු කටයුතු කරගත්තාද?':
         'Ada oodaye moolika purudhu katayuthu karagaththaadha?',
     'අද උදයේ\nමූලික පුරුදු\nකරගත්තාද? 💜':

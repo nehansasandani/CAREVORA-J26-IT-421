@@ -15449,23 +15449,23 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
     String speech = '';
     if (isSinhala) {
       if (dayPeriod == DayPeriod.morning) {
-        speech = 'සුබ උදෑසනක්, $displayName! ඔබ උදෑසන තේ පානය කළාද?';
+        speech = 'සුබ උදෑසනක්, $displayName මහත්මයා! ඔබ ගැන අදත් හොඳින් සලකමු!';
       } else if (dayPeriod == DayPeriod.afternoon) {
-        speech = 'සුබ දහවල් කාලයක්, $displayName! ඔබ දිවා ආහාරය ගත්තාද?';
+        speech = 'සුබ දහවල් කාලයක්, $displayName මහත්මයා! ඔබ ගැන අදත් හොඳින් සලකමු!';
       } else if (dayPeriod == DayPeriod.evening) {
-        speech = 'සුබ සන්ධ්‍යාවක්, $displayName! ඔබ සවස තේ පැන් පානය කළාද?';
+        speech = 'සුබ සන්ධ්‍යාවක්, $displayName මහත්මයා! ඔබ ගැන අදත් හොඳින් සලකමු!';
       } else {
-        speech = 'සුබ රාත්‍රියක්, $displayName! ඔබ රාත්‍රී ආහාරය හා ඖෂධ ලබා ගත්තාද?';
+        speech = 'සුබ රාත්‍රියක්, $displayName මහත්මයා! ඔබ ගැන අදත් හොඳින් සලකමු!';
       }
     } else {
       if (dayPeriod == DayPeriod.morning) {
-        speech = 'Good morning, $displayName! Have you had your morning tea?';
+        speech = 'Good morning, Mr. $displayName! Caring for you warmly today!';
       } else if (dayPeriod == DayPeriod.afternoon) {
-        speech = 'Good afternoon, $displayName!';
+        speech = 'Good afternoon, Mr. $displayName! Caring for you warmly today!';
       } else if (dayPeriod == DayPeriod.evening) {
-        speech = 'Good evening, $displayName!';
+        speech = 'Good evening, Mr. $displayName! Caring for you warmly today!';
       } else {
-        speech = 'Good night, $displayName!';
+        speech = 'Good night, Mr. $displayName! Caring for you warmly today!';
       }
     }
 
@@ -15603,45 +15603,45 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
     if (questionIndex == 1) {
       if (isSinhala) {
         if (dayPeriod == DayPeriod.morning) {
-          speech = 'උදේ තේ බිව්වද? සුවබර උදෑසනකට උණුසුම් තේ පැන් පානය කළා නම් කොළ පාට බොත්තම ඔබන්න. තවම නැත්නම් තවම නැහැ බොත්තම ඔබන්න.';
+          speech = 'උදේ තේ බිව්වද? සුවබර උදෑසනකට උණුසුම් තේ පැන් බිව්වා නම් කොළ පාට ඔව් ඔබන්න. තවම නැත්නම් තවම නැහැ ඔබන්න.';
         } else if (dayPeriod == DayPeriod.afternoon) {
-          speech = 'දිවා ආහාරය ගත්තාද? පෝෂ්‍යදායී දිවා ආහාරය ගත්තා නම් කොළ පාට බොත්තම ඔබන්න. තවම නැත්නම් තවම නැහැ බොත්තම ඔබන්න.';
+          speech = 'දිවා ආහාරය ගත්තාද? පෝෂ්‍යදායී දිවා ආහාරය ගත්තා නම් කොළ පාට ඔව් ඔබන්න. තවම නැත්නම් තවම නැහැ ඔබන්න.';
         } else if (dayPeriod == DayPeriod.evening) {
-          speech = 'සවස තේ පැන් පානය කළාද? උණුසුම් තේ පැන් බිව්වා නම් කොළ පාට බොත්තම ඔබන්න. තවම නැත්නම් තවම නැහැ බොත්තම ඔබන්න.';
+          speech = 'සවස තේ පැන් පානය කළාද? උණුසුම් තේ පැන් බිව්වා නම් කොළ පාට ඔව් ඔබන්න. තවම නැත්නම් තවම නැහැ ඔබන්න.';
         } else {
-          speech = 'රාත්‍රී ආහාර හා ඖෂධ ගත්තාද? නියමිත ආහාර හා ඖෂධ ලබා ගත්තා නම් කොළ පාට බොත්තම ඔබන්න. තවම නැත්නම් තවම නැහැ බොත්තම ඔබන්න.';
+          speech = 'රාත්‍රී ආහාර හා ඖෂධ ගත්තාද? සුව නින්දකට පෙර ආහාර හා නියමිත ඖෂධ ලබා ගත්තා නම් කොළ පාට ඔව් ඔබන්න. තවම නැත්නම් තවම නැහැ ඔබන්න.';
         }
       } else {
         if (dayPeriod == DayPeriod.morning) {
-          speech = 'Have you had your morning tea? Tap the green button if Yes, or tap Not yet.';
+          speech = 'Had your morning tea? Tap the green Yes button, or tap Not yet.';
         } else if (dayPeriod == DayPeriod.afternoon) {
-          speech = 'Have you had your lunch? Tap the green button if Yes, or tap Not yet.';
+          speech = 'Had your lunch? Tap the green Yes button, or tap Not yet.';
         } else if (dayPeriod == DayPeriod.evening) {
-          speech = 'Have you had your evening tea? Tap the green button if Yes, or tap Not yet.';
+          speech = 'Had your evening tea? Tap the green Yes button, or tap Not yet.';
         } else {
-          speech = 'Have you had your dinner and medicine? Tap the green button if Yes, or tap Not yet.';
+          speech = 'Had your dinner and medicine? Tap the green Yes button, or tap Not yet.';
         }
       }
     } else {
       if (isSinhala) {
         if (dayPeriod == DayPeriod.morning) {
-          speech = 'මුහුණ හෝදාගත්තාද? ප්‍රබෝධමත් දවසකට මුහුණ සෝදා පිරිසිදු වුණා නම් කොළ පාට බොත්තම ඔබන්න. තවම නැත්නම් තවම නැහැ බොත්තම ඔබන්න.';
+          speech = 'මුහුණ හෝදාගත්තාද? ප්‍රබෝධමත්ව මුහුණ සෝදා පිරිසිදු වුණා නම් කොළ පාට ඔව් ඔබන්න. තවම නැත්නම් තවම නැහැ ඔබන්න.';
         } else if (dayPeriod == DayPeriod.afternoon) {
-          speech = 'කෙටි විවේකයක් ගත්තාද? සුවදායක කෙටි විවේකයක් ලබා ගත්තා නම් කොළ පාට බොත්තම ඔබන්න. තවම නැත්නම් තවම නැහැ බොත්තම ඔබන්න.';
+          speech = 'කෙටි විවේකයක් ගත්තාද? සුවදායක කෙටි විවේකයක් ලබා ගත්තා නම් කොළ පාට ඔව් ඔබන්න. තවම නැත්නම් තවම නැහැ ඔබන්න.';
         } else if (dayPeriod == DayPeriod.evening) {
-          speech = 'නැවුම් සුළං සුවය වින්දාද? සවස නැවුම් සුළඟ වින්දා නම් කොළ පාට බොත්තම ඔබන්න. තවම නැත්නම් තවම නැහැ බොත්තම ඔබන්න.';
+          speech = 'නැවුම් සුළං සුවය වින්දාද? සවස නැවුම් සුළඟ වින්දා නම් කොළ පාට ඔව් ඔබන්න. තවම නැත්නම් තවම නැහැ ඔබන්න.';
         } else {
-          speech = 'සුව නින්දකට සූදානම්ද? සැනසිලිදායක නින්දකට සූදානම් නම් කොළ පාට බොත්තම ඔබන්න. තවම නැත්නම් තවම නැහැ බොත්තම ඔබන්න.';
+          speech = 'සුව නින්දකට සූදානම්ද? සැනසිලිදායක, සුවබර නින්දකට සූදානම් නම් කොළ පාට ඔව් ඔබන්න. තවම නැත්නම් තවම නැහැ ඔබන්න.';
         }
       } else {
         if (dayPeriod == DayPeriod.morning) {
-          speech = 'Have you washed your face? Tap the green button if Yes, or tap Not yet.';
+          speech = 'Washed your face? Tap the green Yes button, or tap Not yet.';
         } else if (dayPeriod == DayPeriod.afternoon) {
-          speech = 'Have you taken a short rest? Tap the green button if Yes, or tap Not yet.';
+          speech = 'Taken a short rest? Tap the green Yes button, or tap Not yet.';
         } else if (dayPeriod == DayPeriod.evening) {
-          speech = 'Have you enjoyed the fresh evening air? Tap the green button if Yes, or tap Not yet.';
+          speech = 'Enjoyed fresh evening air? Tap the green Yes button, or tap Not yet.';
         } else {
-          speech = 'Are you ready for a peaceful sleep? Tap the green button if Yes, or tap Not yet.';
+          speech = 'Ready for a peaceful sleep? Tap the green Yes button, or tap Not yet.';
         }
       }
     }
@@ -15661,7 +15661,7 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
             ? 'රැකබලා ගන්නා දැනුවත් කරන ලදී: ඔබට අවශ්‍ය සහාය ලබා දීමට සහායක කණ්ඩායම පැමිණෙනු ඇත.'
             : 'Care team gently notified: A caregiver is on the way to assist you.')
         : (isSinhala
-            ? 'තවම කරගෙන නැත්නම්, අපේ සත්කාර කණ්ඩායම ඔබට මිතුරු වෙමින් උදව් කිරීමට දැනුම් දෙනවා.'
+            ? 'තවම කරගෙන නැත්නම්, අපේ සත්කාර කණ්ඩායම ඔබට මිතුරු වෙමින් දැනුම් දෙනවා.'
             : 'If not done yet, our Care Team will be warmly notified to support you.');
 
     try {
@@ -15677,19 +15677,19 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
     final dayPeriod = _getCurrentDayPeriod();
     final speech = isSinhala
         ? (dayPeriod == DayPeriod.morning
-            ? 'අද උදයේ මූලික පුරුදු කටයුතු කරගත්තාද?'
+            ? 'නෆියා ඔබෙන් අසනවා: අද උදයේ මූලික පුරුදු කරගත්තාද?'
             : (dayPeriod == DayPeriod.afternoon
-                ? 'අද දහවල් සුවපහසු විවේකය ලබාගත්තාද?'
+                ? 'නෆියා ඔබෙන් අසනවා: අද දහවල් සුවපහසු විවේකය ලබාගත්තාද?'
                 : (dayPeriod == DayPeriod.evening
-                    ? 'අද සවස නැවුම් සුවය වින්දාද?'
-                    : 'අද රාත්‍රී සුව නින්දකට සූදානම්ද?')))
+                    ? 'නෆියා ඔබෙන් අසනවා: අද සවස නැවුම් සුවය වින්දාද?'
+                    : 'නෆියා ඔබෙන් අසනවා: අද රාත්‍රී සුව නින්දකට සූදානම්ද?')))
         : (dayPeriod == DayPeriod.morning
-            ? 'Have you completed your morning wellness routines today?'
+            ? 'Nafiya asks: Have you completed your morning wellness routines today?'
             : (dayPeriod == DayPeriod.afternoon
-                ? 'Did you enjoy your afternoon rest today?'
+                ? 'Nafiya asks: Did you enjoy your afternoon rest today?'
                 : (dayPeriod == DayPeriod.evening
-                    ? 'Did you enjoy your evening tea and breeze?'
-                    : 'Are you ready for peaceful sleep tonight?')));
+                    ? 'Nafiya asks: Did you enjoy your evening tea and breeze?'
+                    : 'Nafiya asks: Are you ready for peaceful sleep tonight?')));
 
     try {
       _flutterTts.stop();
