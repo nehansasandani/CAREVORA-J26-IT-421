@@ -1540,7 +1540,7 @@ class _ElderInteractiveHomePageState
   }
 
   // =========================================================================
-  // 3. QUICK ACCESS SECTION (4 LARGE ATTRACTIVE CARDS)
+  // 3. QUICK ACCESS SECTION (4 UNIQUE, ATTRACTIVE ELDER-FRIENDLY CARDS)
   // =========================================================================
   Widget _buildQuickAccessSection(BuildContext context, bool isSinhala) {
     final currentSlot = _getCurrentAssessmentSlot(_now);
@@ -1556,8 +1556,8 @@ class _ElderInteractiveHomePageState
         const Text(
           'ඉක්මන් සේවාවන් (Quick Access)',
           style: TextStyle(
-            fontSize: 21,
-            fontWeight: FontWeight.w800,
+            fontSize: 22,
+            fontWeight: FontWeight.w900,
             color: Color(0xFF0F172A),
             letterSpacing: 0.1,
           ),
@@ -1570,13 +1570,14 @@ class _ElderInteractiveHomePageState
             final isTablet = constraints.maxWidth >= 600 && constraints.maxWidth < 980;
 
             final cards = [
-              // Card 1: මානසික සුවතා කතාබහ (3 Slots Per Day with Cooldown)
+              // Card 1: මානසික සුවතා කතාබහ (Rose/Pink Theme with Grandma Avatar & Blossom Trim)
               _buildQuickCard(
-                backgroundColor: const Color(0xFFFFF1F2), // soft rose
-                borderColor: emotionalDone ? const Color(0xFFBBF7D0) : const Color(0xFFFECDD3),
-                badgeIcon: '💖',
+                backgroundColor: const Color(0xFFFFF0F5), // soft lavender blush / rose
+                borderColor: emotionalDone ? const Color(0xFF86EFAC) : const Color(0xFFFECDD3),
+                badgeIcon: '💓',
+                topRightIllustration: _buildGrandmaWithHearts(),
                 title: 'මානසික සුවතා\nකතාබහ',
-                description: 'මගේ හැඟීම් බෙදාගන්න සහ මගේ මානසික සුවතාව තහවුරු කරගන්න.',
+                description: 'මගේ හැඟීම් බෙදාගන්න සහ මගේ මානසික සුවතාව තහවුරු කරන්න.',
                 statusBadgeWidget: _buildSlotStatusBadge(
                   isCurrentDone: emotionalDone,
                   currentSlotName: currentSlotName,
@@ -1587,10 +1588,11 @@ class _ElderInteractiveHomePageState
                   currentSlot: currentSlot,
                   activeThemeColor: const Color(0xFF7E22CE),
                 ),
-                buttonText: emotionalDone ? 'සම්පූර්ණයි ✓ ($nextSlotTime ට)' : 'ආරම්භ කරන්න →',
+                buttonText: emotionalDone ? 'සම්පූර්ණයි ($nextSlotTime ට) ⏰' : 'ආරම්භ කරන්න →',
                 buttonGradient: emotionalDone
                     ? const [Color(0xFF16A34A), Color(0xFF22C55E)]
                     : const [Color(0xFF7E22CE), Color(0xFF9333EA)],
+                bottomDecoration: _buildCard1BlossomTrim(),
                 onTap: () {
                   if (emotionalDone) {
                     _showSessionAlreadyCompletedDialog(
@@ -1610,13 +1612,14 @@ class _ElderInteractiveHomePageState
                 },
               ),
 
-              // Card 2: මතක පරීක්ෂාව සහ විනෝද ක්‍රීඩා (3 Slots Per Day with Cooldown)
+              // Card 2: මතක පරීක්ෂාව සහ විනෝද ක්‍රීඩා (Warm Gold Theme with Calendar Puzzle & Autumn Leaves)
               _buildQuickCard(
-                backgroundColor: const Color(0xFFFFFBEB), // soft amber
-                borderColor: memoryDone ? const Color(0xFFBBF7D0) : const Color(0xFFFDE68A),
+                backgroundColor: const Color(0xFFFFFBEB), // warm cream/amber
+                borderColor: memoryDone ? const Color(0xFF86EFAC) : const Color(0xFFFDE68A),
                 badgeIcon: '🧩',
+                topRightIllustration: _buildCalendarPuzzleIllustration(),
                 title: 'මතක පරීක්ෂාව\nසහ විනෝද ක්‍රීඩා',
-                description: 'මතකය සුවපත් කරන සුවිශේෂී ක්‍රීඩා විඳින්න.',
+                description: 'මතකය සුවපත් කිරීම සහ මනස සැහැල්ලු කිරීම සඳහා ක්‍රියාකාරකම්.',
                 statusBadgeWidget: _buildSlotStatusBadge(
                   isCurrentDone: memoryDone,
                   currentSlotName: currentSlotName,
@@ -1627,10 +1630,11 @@ class _ElderInteractiveHomePageState
                   currentSlot: currentSlot,
                   activeThemeColor: const Color(0xFFD97706),
                 ),
-                buttonText: memoryDone ? 'සම්පූර්ණයි ✓ ($nextSlotTime ට)' : 'ක්‍රීඩා කරන්න 🎮',
+                buttonText: memoryDone ? 'සම්පූර්ණයි ($nextSlotTime ට) ⏰' : 'ක්‍රීඩා කරන්න 🎮',
                 buttonGradient: memoryDone
                     ? const [Color(0xFF16A34A), Color(0xFF22C55E)]
                     : const [Color(0xFFD97706), Color(0xFFF59E0B)],
+                bottomDecoration: _buildCard2LeavesTrim(),
                 onTap: () {
                   if (memoryDone) {
                     _showSessionAlreadyCompletedDialog(
@@ -1650,30 +1654,34 @@ class _ElderInteractiveHomePageState
                 },
               ),
 
-              // Card 3: සන්සුන් සංගීතය සහ ස්වභාවික නාද
+              // Card 3: සන්සුන් සංගීතය සහ විවේක සුවය (Emerald Theme with Headphones & Park Landscape)
               _buildQuickCard(
-                backgroundColor: const Color(0xFFF0FDF4), // soft emerald
+                backgroundColor: const Color(0xFFF0FDF4), // soft mint emerald
                 borderColor: const Color(0xFFBBF7D0),
                 badgeIcon: '🎧',
-                title: 'සන්සුන් සංගීතය\nසහ ස්වභාවික නාද',
-                description: 'සිත සන්සුන් කරන ගීත සහ පරිසර ශබ්ද ශ්‍රවණය කරන්න.',
+                topRightIllustration: _buildHeadphonesMusicIllustration(),
+                title: 'සන්සුන් සංගීතය\nසහ විවේක සුවය',
+                description: 'සිත සන්සුන් කිරීම සහ සුවසේ විවේක ගැනීම.',
                 buttonText: 'සංගීතය අසන්න ▶',
                 buttonGradient: const [Color(0xFF059669), Color(0xFF10B981)],
+                bottomDecoration: _buildParkNatureLandscape(),
                 onTap: () {
                   _speak('සන්සුන් සංගීතය සහ ස්වභාවික ශබ්ද ඔබ වෙනුවෙන් වාදනය කරමු.');
                   _showMusicPlayerModal(context);
                 },
               ),
 
-              // Card 4: උපකාර ඉල්ලීම
+              // Card 4: උපකාර ඉල්ලීම (Sky Blue Theme with Caregiver Avatar & Meadow Landscape)
               _buildQuickCard(
                 backgroundColor: const Color(0xFFF0F9FF), // soft sky
                 borderColor: const Color(0xFFBAE6FD),
                 badgeIcon: '📞',
-                title: 'උපකාර ඉල්ලීම\n(සත්කාරක සමඟ සම්බන්ධ වන්න)',
-                description: 'ඔබට අවශ්‍යතාවයක් ඇති නම් රැකබලා ගන්නාට දැනුම් දෙන්න.',
-                buttonText: 'ඇමතුමක් දෙන්න 📞',
+                topRightIllustration: _buildCaregiverWithHeadsetIllustration(),
+                title: 'උපකාර ඉල්ලීම\n(සත්කාරක සම්බන්ධ වන්න)',
+                description: 'ඔබට අවශ්‍යතාවයක් ඇති නම් රැකබලා ගන්නාට දැන්ම අමතන්න.',
+                buttonText: '📞 අමතන්න දැන්ම',
                 buttonGradient: const [Color(0xFF0284C7), Color(0xFF38BDF8)],
+                bottomDecoration: _buildCottageMeadowLandscape(),
                 onTap: () {
                   _handleEmergencyCall(context);
                 },
@@ -1716,10 +1724,568 @@ class _ElderInteractiveHomePageState
     );
   }
 
+  // =========================================================================
+  // TOP-RIGHT ILLUSTRATIONS & BOTTOM SCENIC DECORATIONS FOR CARDS
+  // =========================================================================
+
+  // Card 1: Elder Grandmother with Floating Hearts
+  Widget _buildGrandmaWithHearts() {
+    return SizedBox(
+      width: 90,
+      height: 82,
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.center,
+        children: [
+          // Soft radial glow
+          Container(
+            width: 76,
+            height: 76,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: [
+                  const Color(0xFFF472B6).withValues(alpha: 0.35),
+                  const Color(0xFFFBCFE8).withValues(alpha: 0.05),
+                ],
+              ),
+            ),
+          ),
+          // Grandma portrait
+          Container(
+            width: 68,
+            height: 68,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 2.5),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFF43F5E).withValues(alpha: 0.20),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+              image: const DecorationImage(
+                image: AssetImage('assets/images/landing/testimonial_1.jpg'),
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
+          // Floating Hearts & Sparkles
+          const Positioned(
+            top: -2,
+            right: 0,
+            child: Text('💕', style: TextStyle(fontSize: 16)),
+          ),
+          const Positioned(
+            top: 10,
+            left: 0,
+            child: Text('💖', style: TextStyle(fontSize: 13)),
+          ),
+          const Positioned(
+            bottom: 2,
+            right: 2,
+            child: Text('✨', style: TextStyle(fontSize: 12)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Card 2: 3D Calendar + Pencil + Floating Puzzle Pieces
+  Widget _buildCalendarPuzzleIllustration() {
+    return SizedBox(
+      width: 90,
+      height: 82,
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.center,
+        children: [
+          // Soft golden glow
+          Container(
+            width: 76,
+            height: 76,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: [
+                  const Color(0xFFF59E0B).withValues(alpha: 0.25),
+                  const Color(0xFFFEF3C7).withValues(alpha: 0.05),
+                ],
+              ),
+            ),
+          ),
+          // Calendar sheet icon/card
+          Transform.rotate(
+            angle: 0.08,
+            child: Container(
+              width: 56,
+              height: 58,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFFCD34D), width: 1.5),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFD97706).withValues(alpha: 0.18),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  // Red calendar header bar
+                  Container(
+                    height: 14,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFEF4444),
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(8),
+                        topRight: Radius.circular(8),
+                      ),
+                    ),
+                    alignment: Alignment.center,
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        CircleAvatar(radius: 1.5, backgroundColor: Colors.white),
+                        CircleAvatar(radius: 1.5, backgroundColor: Colors.white),
+                      ],
+                    ),
+                  ),
+                  const Expanded(
+                    child: Center(
+                      child: Text(
+                        '28',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFF1E293B),
+                          height: 1.1,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // Angled Pencil
+          Positioned(
+            right: 0,
+            bottom: 4,
+            child: Transform.rotate(
+              angle: -0.5,
+              child: const Text('✏️', style: TextStyle(fontSize: 20)),
+            ),
+          ),
+          // Floating puzzle piece
+          const Positioned(
+            top: -4,
+            left: 2,
+            child: Text('🧩', style: TextStyle(fontSize: 18)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Card 3: 3D Headphones with Musical Notes
+  Widget _buildHeadphonesMusicIllustration() {
+    return SizedBox(
+      width: 90,
+      height: 82,
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.center,
+        children: [
+          // Soft cyan glow
+          Container(
+            width: 76,
+            height: 76,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: [
+                  const Color(0xFF06B6D4).withValues(alpha: 0.30),
+                  const Color(0xFFCCFBF1).withValues(alpha: 0.05),
+                ],
+              ),
+            ),
+          ),
+          // Headphones circle
+          Container(
+            width: 58,
+            height: 58,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF0D9488).withValues(alpha: 0.20),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            alignment: Alignment.center,
+            child: const Text('🎧', style: TextStyle(fontSize: 32)),
+          ),
+          // Floating notes
+          const Positioned(
+            top: -2,
+            left: 4,
+            child: Text('🎵', style: TextStyle(fontSize: 17)),
+          ),
+          const Positioned(
+            top: 2,
+            right: 0,
+            child: Text('🎶', style: TextStyle(fontSize: 19)),
+          ),
+          const Positioned(
+            bottom: 6,
+            right: 2,
+            child: Text('✨', style: TextStyle(fontSize: 12)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Card 4: Caregiver with Headset & Speech Bubble
+  Widget _buildCaregiverWithHeadsetIllustration() {
+    return SizedBox(
+      width: 90,
+      height: 82,
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.center,
+        children: [
+          // Soft sky blue glow
+          Container(
+            width: 76,
+            height: 76,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: [
+                  const Color(0xFF38BDF8).withValues(alpha: 0.35),
+                  const Color(0xFFE0F2FE).withValues(alpha: 0.05),
+                ],
+              ),
+            ),
+          ),
+          // Caregiver avatar
+          Container(
+            width: 68,
+            height: 68,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 2.5),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF0284C7).withValues(alpha: 0.20),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+              image: const DecorationImage(
+                image: AssetImage('assets/images/landing/caregivers_team.jpg'),
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
+          // Speech bubble
+          Positioned(
+            top: -4,
+            left: 2,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFBAE6FD)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.06),
+                    blurRadius: 4,
+                  ),
+                ],
+              ),
+              child: const Text('💬', style: TextStyle(fontSize: 13)),
+            ),
+          ),
+          // Headset pill
+          Positioned(
+            bottom: 0,
+            right: 0,
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: const BoxDecoration(
+                color: Color(0xFF0284C7),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(LucideIcons.headphones, color: Colors.white, size: 12),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Card 3 Bottom Park Scenery with Rolling Hills, Tree & Bench
+  Widget _buildParkNatureLandscape() {
+    return Container(
+      height: 125,
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(24),
+          bottomRight: Radius.circular(24),
+        ),
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Color(0xFFE0F2FE), // Soft sunny sky
+            Color(0xFFBBF7D0), // Rolling green horizon
+            Color(0xFF4ADE80), // Lush grass
+            Color(0xFF16A34A), // Deep green meadow
+          ],
+        ),
+      ),
+      child: Stack(
+        children: [
+          // Gentle golden sun in background
+          Positioned(
+            left: 24,
+            top: 10,
+            child: Container(
+              width: 30,
+              height: 30,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFFFDE047).withValues(alpha: 0.85),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFFBBF24).withValues(alpha: 0.6),
+                    blurRadius: 16,
+                    spreadRadius: 4,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // Green Rolling Hill (Back)
+          Positioned(
+            left: -20,
+            right: -20,
+            bottom: -30,
+            child: Container(
+              height: 90,
+              decoration: BoxDecoration(
+                color: const Color(0xFF86EFAC).withValues(alpha: 0.85),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(160),
+                  topRight: Radius.circular(140),
+                ),
+              ),
+            ),
+          ),
+          // Green Hill Foreground
+          Positioned(
+            left: -10,
+            right: -10,
+            bottom: -35,
+            child: Container(
+              height: 80,
+              decoration: const BoxDecoration(
+                color: Color(0xFF15803D),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(130),
+                  topRight: Radius.circular(160),
+                ),
+              ),
+            ),
+          ),
+          // Leafy Tree on right
+          const Positioned(
+            right: 18,
+            bottom: 12,
+            child: Text('🌳', style: TextStyle(fontSize: 42)),
+          ),
+          // Wooden Park Bench in center
+          Positioned(
+            left: 45,
+            bottom: 12,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+              decoration: BoxDecoration(
+                color: const Color(0xFF78350F), // warm rich wood
+                borderRadius: BorderRadius.circular(6),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.25),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(LucideIcons.armchair, size: 15, color: Color(0xFFFEF3C7)),
+                  SizedBox(width: 4),
+                  Text(
+                    'විවේක බංකුව',
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFFFEF3C7),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Card 4 Bottom Countryside Cottage Meadow Landscape
+  Widget _buildCottageMeadowLandscape() {
+    return Container(
+      height: 125,
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(24),
+          bottomRight: Radius.circular(24),
+        ),
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Color(0xFFE0F2FE), // Soft sunny sky
+            Color(0xFFBAE6FD),
+            Color(0xFF86EFAC), // Lush meadow
+            Color(0xFF15803D), // Deep green grass
+          ],
+        ),
+      ),
+      child: Stack(
+        children: [
+          // Soft cloud
+          const Positioned(
+            left: 20,
+            top: 10,
+            child: Text('☁️', style: TextStyle(fontSize: 20)),
+          ),
+          // Soft rolling hills (Back)
+          Positioned(
+            left: -20,
+            right: -20,
+            bottom: -30,
+            child: Container(
+              height: 90,
+              decoration: BoxDecoration(
+                color: const Color(0xFF4ADE80).withValues(alpha: 0.85),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(150),
+                  topRight: Radius.circular(150),
+                ),
+              ),
+            ),
+          ),
+          // Rolling hill (Foreground)
+          Positioned(
+            left: -10,
+            right: -10,
+            bottom: -35,
+            child: Container(
+              height: 80,
+              decoration: const BoxDecoration(
+                color: Color(0xFF16A34A),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(140),
+                  topRight: Radius.circular(160),
+                ),
+              ),
+            ),
+          ),
+          // Cozy Countryside Cottage House
+          const Positioned(
+            left: 36,
+            bottom: 12,
+            child: Text('🏡', style: TextStyle(fontSize: 38)),
+          ),
+          // Pine tree / shade tree
+          const Positioned(
+            right: 32,
+            bottom: 14,
+            child: Text('🌲', style: TextStyle(fontSize: 36)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Card 1 Bottom Blossom Trim
+  Widget _buildCard1BlossomTrim() {
+    return Container(
+      height: 32,
+      padding: const EdgeInsets.only(bottom: 6),
+      alignment: Alignment.bottomCenter,
+      child: const Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text('🌸', style: TextStyle(fontSize: 16)),
+          SizedBox(width: 8),
+          Text('🌺', style: TextStyle(fontSize: 14)),
+          SizedBox(width: 8),
+          Text('🌸', style: TextStyle(fontSize: 16)),
+          SizedBox(width: 8),
+          Text('🌷', style: TextStyle(fontSize: 14)),
+          SizedBox(width: 8),
+          Text('🌸', style: TextStyle(fontSize: 16)),
+        ],
+      ),
+    );
+  }
+
+  // Card 2 Bottom Autumn Leaves Trim
+  Widget _buildCard2LeavesTrim() {
+    return Container(
+      height: 32,
+      padding: const EdgeInsets.only(bottom: 6),
+      alignment: Alignment.bottomCenter,
+      child: const Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text('🍂', style: TextStyle(fontSize: 15)),
+          SizedBox(width: 8),
+          Text('🍁', style: TextStyle(fontSize: 17)),
+          SizedBox(width: 8),
+          Text('🌾', style: TextStyle(fontSize: 14)),
+          SizedBox(width: 8),
+          Text('🍁', style: TextStyle(fontSize: 17)),
+          SizedBox(width: 8),
+          Text('🍂', style: TextStyle(fontSize: 15)),
+        ],
+      ),
+    );
+  }
+
+  // =========================================================================
+  // UNIFIED QUICK ACCESS CARD WIDGET
+  // =========================================================================
   Widget _buildQuickCard({
     required Color backgroundColor,
     required Color borderColor,
     required String badgeIcon,
+    required Widget topRightIllustration,
     required String title,
     required String description,
     required String buttonText,
@@ -1727,115 +2293,182 @@ class _ElderInteractiveHomePageState
     required VoidCallback onTap,
     Widget? statusBadgeWidget,
     Widget? sessionTrackerWidget,
+    Widget? bottomDecoration,
   }) {
     return Container(
-      constraints: const BoxConstraints(minHeight: 285),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+      constraints: const BoxConstraints(minHeight: 450),
       decoration: BoxDecoration(
         color: backgroundColor,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: borderColor, width: 1.8),
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(color: borderColor, width: 2.0),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 14,
-            offset: const Offset(0, 4),
+            blurRadius: 16,
+            offset: const Offset(0, 5),
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          // Top Icon Circle
-          Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.07),
-                  blurRadius: 10,
-                  offset: const Offset(0, 3),
-                ),
-              ],
-            ),
-            alignment: Alignment.center,
-            child: Text(badgeIcon, style: const TextStyle(fontSize: 32)),
-          ),
-          const SizedBox(height: 12),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Top Padding & Main Content
+            Padding(
+              padding: const EdgeInsets.only(left: 18, right: 18, top: 16, bottom: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Top Row: Circular Icon on Left & Rich Illustration on Right
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Circular Icon Badge
+                      Container(
+                        width: 58,
+                        height: 58,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: borderColor.withValues(alpha: 0.6), width: 1.5),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.08),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(badgeIcon, style: const TextStyle(fontSize: 30)),
+                      ),
 
-          // Optional Status Badge (e.g. 🔔 තවම කර නැත / ✅ සම්පූර්ණයි)
-          if (statusBadgeWidget != null) ...[
-            statusBadgeWidget,
-            const SizedBox(height: 10),
-          ],
-
-          // Title
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w900,
-              color: Color(0xFF1E293B),
-              height: 1.25,
-            ),
-          ),
-          const SizedBox(height: 8),
-
-          // Description
-          Text(
-            description,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF334155),
-              height: 1.38,
-            ),
-          ),
-          const SizedBox(height: 14),
-
-          // Optional 3-Daily Sessions Tracker
-          if (sessionTrackerWidget != null) ...[
-            sessionTrackerWidget,
-            const SizedBox(height: 16),
-          ],
-
-          // Action Button
-          InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(99),
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 13.5),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(colors: buttonGradient),
-                borderRadius: BorderRadius.circular(99),
-                boxShadow: [
-                  BoxShadow(
-                    color: buttonGradient.first.withValues(alpha: 0.35),
-                    blurRadius: 8,
-                    offset: const Offset(0, 3),
+                      // Top-Right Illustration
+                      topRightIllustration,
+                    ],
                   ),
+                  const SizedBox(height: 8),
+
+                  // Optional Status Badge (e.g. 🔔 තවම කර නැත / ✅ සම්පූර්ණයි)
+                  if (statusBadgeWidget != null) ...[
+                    statusBadgeWidget,
+                    const SizedBox(height: 10),
+                  ],
+
+                  // Left-Aligned Title (clean, bold Sinhala typography)
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 19,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFF1E293B),
+                      height: 1.22,
+                      letterSpacing: 0.1,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+
+                  // Left-Aligned Description
+                  Text(
+                    description,
+                    style: const TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF475569),
+                      height: 1.35,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Optional 3-Daily Sessions Tracker
+                  if (sessionTrackerWidget != null) ...[
+                    sessionTrackerWidget,
+                    const SizedBox(height: 12),
+                  ],
+
+                  // Action Button (when tracker exists or no bottom scenery)
+                  if (bottomDecoration == null || sessionTrackerWidget != null) ...[
+                    InkWell(
+                      onTap: onTap,
+                      borderRadius: BorderRadius.circular(99),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 13),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(colors: buttonGradient),
+                          borderRadius: BorderRadius.circular(99),
+                          boxShadow: [
+                            BoxShadow(
+                              color: buttonGradient.first.withValues(alpha: 0.40),
+                              blurRadius: 10,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          buttonText,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.2,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
-              alignment: Alignment.center,
-              child: Text(
-                buttonText,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0.2,
+            ),
+
+            // For Card 3 or Card 4: Action button above the scenery
+            if (bottomDecoration != null && sessionTrackerWidget == null) ...[
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 18),
+                child: InkWell(
+                  onTap: onTap,
+                  borderRadius: BorderRadius.circular(99),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(colors: buttonGradient),
+                      borderRadius: BorderRadius.circular(99),
+                      boxShadow: [
+                        BoxShadow(
+                          color: buttonGradient.first.withValues(alpha: 0.40),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      buttonText,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 15.5,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ),
-        ],
+              const SizedBox(height: 10),
+            ],
+
+            const Spacer(),
+
+            // Bottom Scenery or Blossom/Leaves Trim
+            if (bottomDecoration != null) bottomDecoration,
+          ],
+        ),
       ),
     );
   }
