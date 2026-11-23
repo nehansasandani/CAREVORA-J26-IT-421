@@ -1700,18 +1700,18 @@ class _ElderInteractiveHomePageState
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(child: cards[0]),
-                      const SizedBox(width: 16),
+                      const SizedBox(width: 26),
                       Expanded(child: cards[1]),
                     ],
                   ),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 24),
 
                   // Row 2 (Bottom): සන්සුන් සංගීතය සහ විවේක සුවය & උපකාර ඉල්ලීම
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(child: cards[2]),
-                      const SizedBox(width: 16),
+                      const SizedBox(width: 26),
                       Expanded(child: cards[3]),
                     ],
                   ),
@@ -1721,7 +1721,7 @@ class _ElderInteractiveHomePageState
               return Column(
                 children: cards
                     .map((c) => Padding(
-                          padding: const EdgeInsets.only(bottom: 14),
+                          padding: const EdgeInsets.only(bottom: 20),
                           child: c,
                         ))
                     .toList(),
