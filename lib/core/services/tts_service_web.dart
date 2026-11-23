@@ -487,7 +487,7 @@ class WebTtsService implements TtsService {
       final voices = html.window.speechSynthesis!.getVoices();
       final siVoices = voices.where((v) {
         final lang = v.lang?.toLowerCase() ?? '';
-        final name = v.name.toLowerCase();
+        final name = v.name?.toLowerCase() ?? '';
         return lang.startsWith('si') || lang.contains('si-lk') || name.contains('sinhala') || name.contains('sinhalese');
       }).toList();
       if (siVoices.isNotEmpty) {
@@ -592,7 +592,7 @@ class WebTtsService implements TtsService {
       // 1. Check for native Sinhala voice
       final siVoices = voices.where((v) {
         final lang = v.lang?.toLowerCase() ?? '';
-        final name = v.name.toLowerCase();
+        final name = v.name?.toLowerCase() ?? '';
         return lang.startsWith('si') || lang.contains('si-lk') || name.contains('sinhala') || name.contains('sinhalese');
       }).toList();
 
@@ -603,7 +603,7 @@ class WebTtsService implements TtsService {
         // 2. High-quality South Asian / Indian English voices
         final inVoices = voices.where((v) {
           final lang = v.lang?.toLowerCase() ?? '';
-          final name = v.name.toLowerCase();
+          final name = v.name?.toLowerCase() ?? '';
           return lang.contains('en-in') || lang.contains('hi') || name.contains('india') ||
                  name.contains('neerja') || name.contains('prabhat') || name.contains('heera') ||
                  name.contains('ravi') || name.contains('kalpana') || name.contains('veena') ||
@@ -619,7 +619,7 @@ class WebTtsService implements TtsService {
           if (enVoices.isNotEmpty) {
             // Prioritize natural / neural / google / zira (friendly warm voice) over robotic david
             final preferredEn = enVoices.where((v) {
-              final n = v.name.toLowerCase();
+              final n = v.name?.toLowerCase() ?? '';
               return n.contains('natural') || n.contains('neural') || n.contains('google') || n.contains('zira');
             }).toList();
             utterance.voice = preferredEn.isNotEmpty ? preferredEn.first : enVoices.first;
