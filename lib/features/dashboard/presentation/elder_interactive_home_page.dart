@@ -2107,7 +2107,7 @@ class _ElderInteractiveHomePageState
     );
   }
 
-  // Card 1 Bottom Hibiscus Blossom Trim
+  // Card 1 Bottom Hibiscus Blossom Trim (matching Card 1's soft rose color scheme)
   Widget _buildCard1HibiscusBlossomTrim() {
     return Container(
       height: 42,
@@ -2121,15 +2121,15 @@ class _ElderInteractiveHomePageState
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            Color(0xFFFFF0F5),
-            Color(0xFFFCE7F3),
-            Color(0xFFFBCFE8),
+            Color(0xFFFFF0F5), // exact Card 1 background (lavender blush)
+            Color(0xFFFFF1F2), // soft pastel rose
+            Color(0xFFFECDD3), // Card 1 soft border color
           ],
         ),
       ),
       child: Stack(
         children: [
-          // Soft pink wavy hill in background
+          // Soft rose wavy hill in background
           Positioned(
             left: -20,
             right: -20,
@@ -2137,7 +2137,7 @@ class _ElderInteractiveHomePageState
             child: Container(
               height: 46,
               decoration: BoxDecoration(
-                color: const Color(0xFFF472B6).withValues(alpha: 0.20),
+                color: const Color(0xFFFDA4AF).withValues(alpha: 0.18),
                 borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(120),
                   topRight: Radius.circular(140),
