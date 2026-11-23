@@ -9,6 +9,9 @@ TtsService createTtsService() => WebTtsService();
 
 class WebTtsService implements TtsService {
   html.AudioElement? _audio;
+  html.SpeechSynthesisUtterance? _currentUtterance;
+  Timer? _pendingSpeakTimer;
+  int? _speakToken;
   bool _isSpeaking = false;
 
   @override
@@ -73,6 +76,7 @@ class WebTtsService implements TtsService {
     'හරිම විශිෂ්ටයි! ඔබේ පිළිතුරු සුරැකුණා. කැමති නම් මතක ක්‍රීඩා කරන්න, නැතහොත් මුල් පිටුවට යන්න.': 'cog_result_great.mp3',
     'හොඳ උත්සාහයක්! අපි දැන් සතුටින් සැහැල්ලු මතක ක්‍රීඩාවක් කරමු.': 'cog_result_games.mp3',
     'විනෝද චාරිකා මතක ක්‍රීඩාව ක්‍රීඩා කරන ආකාරය. පළමුව, මිතුරෙකු තෝරා එකට හෝ ආරාධනා ඔබා කණ්ඩායම සාදන්න. දෙවනුව, ඔබේ වාරයේදී කූඩයේ කලින් දැමූ භාණ්ඩ පිළිවෙලට තෝරා අලුත් භාණ්ඩයක් එක් කරන්න. අමතක වුණොත් ඉඟියක් ඔබන්න. භාණ්ඩ පහම එකට අසුරා ජය ගන්න!': 'collab_howto.mp3',
+    'අපි මතක ක්‍රීඩා කරමු! ඔබට තනිවම සෙල්ලම් කිරීමට තනි ක්‍රීඩාවක් හෝ මිතුරෙකු සමඟ එක්ව සෙල්ලම් කිරීමට සාමූහික ක්‍රීඩාව තෝරාගන්න.': 'memory_hub_welcome.mp3',
   };
 
   static String? _matchSinhalaAudioFile(String rawText) {
@@ -99,6 +103,7 @@ class WebTtsService implements TtsService {
     if (text.contains('හරිම විශිෂ්ටයි') && text.contains('පිළිතුරු සුරැකුණා')) return 'cog_result_great.mp3';
     if (text.contains('සැහැල්ලු මතක ක්‍රීඩාවක් කරමු')) return 'cog_result_games.mp3';
     if (text.contains('විනෝද චාරිකා මතක ක්‍රීඩාව ක්‍රීඩා කරන ආකාරය')) return 'collab_howto.mp3';
+    if (text.contains('අපි මතක ක්‍රීඩා කරමු')) return 'memory_hub_welcome.mp3';
 
     for (final entry in _sinhalaAudioFiles.entries) {
       if (text.contains(entry.key)) {
@@ -538,6 +543,10 @@ class WebTtsService implements TtsService {
   @override
   void stop() {
     try {
+      _pendingSpeakTimer?.cancel();
+      _pendingSpeakTimer = null;
+      _speakToken = (_speakToken ?? 0) + 1;
+      _currentUtterance = null;
       if (_audio != null) {
         _audio!.pause();
         _audio!.currentTime = 0;
@@ -728,35 +737,88 @@ class WebTtsService implements TtsService {
   }
 
   void _speakEnglish(String text, {double rate = 0.95}) {
-    try {
-      if (html.window.speechSynthesis == null) {
-        _isSpeaking = false;
-        onComplete?.call();
-        return;
-      }
-      final utterance = html.SpeechSynthesisUtterance(text);
-      utterance.lang = 'en-US';
-      utterance.rate = rate;
-
-      final voices = html.window.speechSynthesis!.getVoices();
-      final enVoices = voices.where((v) => (v.lang?.toLowerCase().startsWith('en') ?? false)).toList();
-      if (enVoices.isNotEmpty) {
-        final googleEn = enVoices.where((v) => (v.name?.toLowerCase().contains('google') ?? false)).toList();
-        utterance.voice = googleEn.isNotEmpty ? googleEn.first : enVoices.first;
-      }
-
-      utterance.onEnd.listen((_) {
-        _isSpeaking = false;
-        onComplete?.call();
-      });
-      utterance.onError.listen((_) {
-        _isSpeaking = false;
-        onComplete?.call();
-      });
-      html.window.speechSynthesis!.speak(utterance);
-    } catch (e) {
+    final synth = html.window.speechSynthesis;
+    if (synth == null) {
       _isSpeaking = false;
       onComplete?.call();
+      return;
     }
+
+    // Prime Chrome's async voice list immediately
+    synth.getVoices();
+
+    final myToken = (_speakToken ?? 0) + 1;
+    _speakToken = myToken;
+
+    void startUtterance({int attempt = 0}) {
+      if ((_speakToken ?? 0) != myToken) return;
+      try {
+        final voices = synth.getVoices();
+        // Wait briefly once if Chrome hasn't populated voices yet on cold page load
+        if (voices.isEmpty && attempt < 3) {
+          _pendingSpeakTimer?.cancel();
+          _pendingSpeakTimer = Timer(
+            const Duration(milliseconds: 140),
+            () => startUtterance(attempt: attempt + 1),
+          );
+          return;
+        }
+
+        final utterance = html.SpeechSynthesisUtterance(text);
+        _currentUtterance = utterance;
+        utterance.lang = 'en-US';
+        utterance.rate = rate;
+        utterance.pitch = 1.0;
+
+        final enVoices = voices
+            .where((v) => (v.lang?.toLowerCase().startsWith('en') ?? false))
+            .toList();
+        if (enVoices.isNotEmpty) {
+          // Prefer clear male English voice (e.g. Microsoft David / Google UK English Male)
+          final maleEn = enVoices.where((v) {
+            final n = v.name?.toLowerCase() ?? '';
+            return n.contains('male') ||
+                n.contains('david') ||
+                n.contains('mark') ||
+                n.contains('george') ||
+                n.contains('daniel') ||
+                n.contains('guy');
+          }).toList();
+          final googleEn = enVoices
+              .where((v) => (v.name?.toLowerCase().contains('google') ?? false))
+              .toList();
+          utterance.voice = maleEn.isNotEmpty
+              ? maleEn.first
+              : (googleEn.isNotEmpty ? googleEn.first : enVoices.first);
+        }
+
+        utterance.onEnd.listen((_) {
+          if ((_speakToken ?? 0) != myToken) return;
+          _isSpeaking = false;
+          _currentUtterance = null;
+          onComplete?.call();
+        });
+        utterance.onError.listen((_) {
+          if ((_speakToken ?? 0) != myToken) return;
+          _isSpeaking = false;
+          _currentUtterance = null;
+          onComplete?.call();
+        });
+
+        synth.resume();
+        synth.speak(utterance);
+      } catch (e) {
+        _isSpeaking = false;
+        _currentUtterance = null;
+        onComplete?.call();
+      }
+    }
+
+    // Small delay after cancel() avoids Chrome's same-tick cancel()+speak() silent drop bug
+    _pendingSpeakTimer?.cancel();
+    _pendingSpeakTimer = Timer(
+      const Duration(milliseconds: 120),
+      () => startUtterance(),
+    );
   }
 }
