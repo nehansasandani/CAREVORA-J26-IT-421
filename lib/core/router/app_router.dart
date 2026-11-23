@@ -177,7 +177,16 @@ class AppRouter {
           ),
           GoRoute(
             path: '/dashboard/memory-games',
-            builder: (context, state) => const MemoryGamesPage(),
+            builder: (context, state) {
+              final game = state.uri.queryParameters['game'];
+              final liveRoomId = state.uri.queryParameters['liveRoomId'];
+              return MemoryGamesPage(
+                initialGame: game == 'collaborative'
+                    ? MemoryGameType.collaborative
+                    : MemoryGameType.none,
+                initialLiveRoomId: liveRoomId,
+              );
+            },
           ),
           GoRoute(
             path: '/dashboard/emotional-games',

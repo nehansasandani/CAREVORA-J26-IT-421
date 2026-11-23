@@ -95,10 +95,12 @@ class MemoryGameProgressSummary {
   final double? latestSequenceScore;
   final double? latestPairsScore;
   final double? latestItemsScore;
+  final double? latestCollaborativeScore;
   final double? averageScore;
   final String sequenceProgress;
   final String pairsProgress;
   final String itemsProgress;
+  final String collaborativeProgress;
   final String overallProgress;
   final bool hasRepeatedDecline;
   final String? caregiverNotice;
@@ -112,15 +114,27 @@ class MemoryGameProgressSummary {
     this.latestSequenceScore,
     this.latestPairsScore,
     this.latestItemsScore,
+    this.latestCollaborativeScore,
     this.averageScore,
     this.sequenceProgress = 'NO_DATA',
     this.pairsProgress = 'NO_DATA',
     this.itemsProgress = 'NO_DATA',
+    this.collaborativeProgress = 'NO_DATA',
     this.overallProgress = 'NO_DATA',
     this.hasRepeatedDecline = false,
     this.caregiverNotice,
     this.sessions = const [],
   });
+
+  static String _computeTrendFromScores(List<double> scoresDescending) {
+    if (scoresDescending.isEmpty) return 'NO_DATA';
+    if (scoresDescending.length == 1) return 'STEADY';
+    final latest = scoresDescending[0];
+    final previous = scoresDescending[1];
+    if (latest >= previous + 5.0) return 'IMPROVING';
+    if (latest <= previous - 15.0) return 'NEEDS_PRACTICE';
+    return 'STEADY';
+  }
 
   factory MemoryGameProgressSummary.fromJson(Map<String, dynamic> json) {
     DateTime? dt;
@@ -140,6 +154,17 @@ class MemoryGameProgressSummary {
       }
     }
 
+    final collabScores = parsedSessions
+        .where((s) => s.gameType.contains('COLLABORATIVE'))
+        .map((s) => s.scorePercentage)
+        .toList();
+    final computedCollabLatest = json['latestCollaborativeScore'] != null
+        ? (json['latestCollaborativeScore'] as num).toDouble()
+        : (collabScores.isNotEmpty ? collabScores.first : null);
+    final computedCollabProgress = json['collaborativeProgress'] != null
+        ? json['collaborativeProgress'].toString()
+        : _computeTrendFromScores(collabScores);
+
     return MemoryGameProgressSummary(
       residentId: json['residentId'] is int
           ? json['residentId']
@@ -158,12 +183,14 @@ class MemoryGameProgressSummary {
       latestItemsScore: json['latestItemsScore'] != null
           ? (json['latestItemsScore'] as num).toDouble()
           : null,
+      latestCollaborativeScore: computedCollabLatest,
       averageScore: json['averageScore'] != null
           ? (json['averageScore'] as num).toDouble()
           : null,
       sequenceProgress: json['sequenceProgress']?.toString() ?? 'NO_DATA',
       pairsProgress: json['pairsProgress']?.toString() ?? 'NO_DATA',
       itemsProgress: json['itemsProgress']?.toString() ?? 'NO_DATA',
+      collaborativeProgress: computedCollabProgress,
       overallProgress: json['overallProgress']?.toString() ?? 'NO_DATA',
       hasRepeatedDecline: json['hasRepeatedDecline'] == true,
       caregiverNotice: json['caregiverNotice']?.toString(),
@@ -179,6 +206,7 @@ class MemoryGameProgressSummary {
       sequenceProgress: 'NO_DATA',
       pairsProgress: 'NO_DATA',
       itemsProgress: 'NO_DATA',
+      collaborativeProgress: 'NO_DATA',
       overallProgress: 'NO_DATA',
       hasRepeatedDecline: false,
       sessions: const [],

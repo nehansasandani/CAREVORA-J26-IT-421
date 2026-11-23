@@ -2739,7 +2739,7 @@ class _CarePlansPageState extends ConsumerState<CarePlansPage> {
                   ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 480),
                     child: Text(
-                      'When ${resident.name} plays Remember the Sequence, Matching Pairs, or Remember the Items, their practice accuracy, trends, and session records will be displayed here.',
+                      'When ${resident.name} plays Remember the Sequence, Matching Pairs, Remember the Items, or Shared Picnic Memory Chain, their practice accuracy, trends, and session records will be displayed here.',
                       textAlign: TextAlign.center,
                       style: const TextStyle(fontSize: 13, color: AppColors.body, height: 1.4),
                     ),
@@ -2752,17 +2752,22 @@ class _CarePlansPageState extends ConsumerState<CarePlansPage> {
             _buildCaregiverMemoryConditionCard(resident, progress!),
             const SizedBox(height: 20),
 
-            // 1. Separate Progress Summaries for All 3 Games
+            // 1. Separate Progress Summaries for All 4 Games (3 Individual + Collaborative)
             LayoutBuilder(
               builder: (context, constraints) {
                 final double cardWidth = constraints.maxWidth < 680
                     ? constraints.maxWidth
-                    : (constraints.maxWidth - 32) / 3;
+                    : (constraints.maxWidth < 1040
+                        ? (constraints.maxWidth - 16) / 2
+                        : (constraints.maxWidth - 48) / 4);
 
                 // Group sessions per game
                 final seqSessions = sessions.where((s) => s.gameType == 'SEQUENCE').toList();
                 final pairsSessions = sessions.where((s) => s.gameType == 'PAIRS').toList();
                 final itemsSessions = sessions.where((s) => s.gameType == 'ITEMS').toList();
+                final collabSessions = sessions
+                    .where((s) => s.gameType.contains('COLLABORATIVE'))
+                    .toList();
 
                 return Wrap(
                   spacing: 16,
@@ -2796,6 +2801,16 @@ class _CarePlansPageState extends ConsumerState<CarePlansPage> {
                       previousScore: itemsSessions.length > 1 ? itemsSessions[1].scorePercentage : null,
                       totalSessions: itemsSessions.length,
                       progressStatus: progress.itemsProgress,
+                      width: cardWidth,
+                    ),
+                    _buildGameSummaryCard(
+                      title: 'Shared Picnic Chain',
+                      icon: LucideIcons.users,
+                      color: const Color(0xFF0D9488),
+                      latestScore: collabSessions.isNotEmpty ? collabSessions.first.scorePercentage : null,
+                      previousScore: collabSessions.length > 1 ? collabSessions[1].scorePercentage : null,
+                      totalSessions: collabSessions.length,
+                      progressStatus: progress.collaborativeProgress,
                       width: cardWidth,
                     ),
                   ],
@@ -2850,7 +2865,7 @@ class _CarePlansPageState extends ConsumerState<CarePlansPage> {
         : (isDecline ? LucideIcons.alertTriangle : LucideIcons.activity);
 
     final String evaluationText = isGood
-        ? 'Based on completed practice sessions across Remember the Sequence, Matching Pairs, and Remember the Items, ${resident.name} demonstrates strong short-term memory recall, sequence tracking, and visual association. Memory function is in a good, healthy condition.'
+        ? 'Based on completed practice sessions across Remember the Sequence, Matching Pairs, Remember the Items, and Shared Picnic Memory Chain, ${resident.name} demonstrates strong short-term memory recall, sequence tracking, visual association, and collaborative recall. Memory function is in a good, healthy condition.'
         : (isDecline
             ? 'A downward variation in memory game scores has been recorded across recent practice sessions. The caregiver should observe whether the resident is experiencing fatigue, changes in sleep, or temporary distractions before scheduling a relaxed retry.'
             : 'Memory game accuracy and recall performance remain consistent and steady across practice rounds. Continue regular cognitive exercises to maintain active mental wellness.');
@@ -2898,7 +2913,7 @@ class _CarePlansPageState extends ConsumerState<CarePlansPage> {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Caregiver Memory Assessment • 3 Cognitive Games Practice',
+                      'Caregiver Memory Assessment • 4 Cognitive Games Practice',
                       style: TextStyle(
                         fontSize: 12,
                         color: primaryColor.withValues(alpha: 0.8),
@@ -3201,7 +3216,11 @@ class _CarePlansPageState extends ConsumerState<CarePlansPage> {
             children: recent.map((s) {
               final gameName = s.gameType == 'SEQUENCE'
                   ? 'Sequence'
-                  : (s.gameType == 'PAIRS' ? 'Pairs' : 'Items');
+                  : (s.gameType == 'PAIRS'
+                      ? 'Pairs'
+                      : (s.gameType.contains('COLLABORATIVE')
+                          ? 'Picnic Chain'
+                          : 'Items'));
               final pct = (s.scorePercentage.clamp(0.0, 100.0)) / 100.0;
               final Color barColor = s.scorePercentage >= 80
                   ? AppColors.riskLow
@@ -3212,7 +3231,7 @@ class _CarePlansPageState extends ConsumerState<CarePlansPage> {
                 child: Row(
                   children: [
                     SizedBox(
-                      width: 75,
+                      width: 88,
                       child: Text(
                         gameName,
                         style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.navy),
@@ -3326,9 +3345,14 @@ class _CarePlansPageState extends ConsumerState<CarePlansPage> {
             separatorBuilder: (context, index) => const Divider(height: 1, color: AppColors.border),
             itemBuilder: (context, index) {
               final s = sessions[index];
+              final isCollaborative = s.gameType.contains('COLLABORATIVE');
               final gameTitle = s.gameType == 'SEQUENCE'
                   ? 'Remember the Sequence'
-                  : (s.gameType == 'PAIRS' ? 'Matching Pairs' : 'Remember the Items');
+                  : (s.gameType == 'PAIRS'
+                      ? 'Matching Pairs'
+                      : (isCollaborative
+                          ? 'Shared Picnic Memory Chain'
+                          : 'Remember the Items'));
               final dateStr = s.completedAt != null
                   ? _formatDate(s.completedAt!.toIso8601String())
                   : 'Recent session';
@@ -3338,6 +3362,8 @@ class _CarePlansPageState extends ConsumerState<CarePlansPage> {
                 metrics = 'Level: ${s.totalItems} Tiles • Attempts: ${s.attempts} • Correct: ${s.correctAnswers}';
               } else if (s.gameType == 'PAIRS') {
                 metrics = 'Turns Taken: ${s.attempts} • Pairs Found: ${s.correctAnswers} / ${s.totalItems}';
+              } else if (isCollaborative) {
+                metrics = 'Collaborative Chain: ${s.totalItems} Items • Recalled: ${s.correctAnswers} • Team Attempts: ${s.attempts}';
               } else {
                 metrics = 'Attempts: ${s.attempts} • Recalled: ${s.correctAnswers} / ${s.totalItems} Items';
               }
@@ -3348,10 +3374,18 @@ class _CarePlansPageState extends ConsumerState<CarePlansPage> {
                   children: [
                     CircleAvatar(
                       radius: 18,
-                      backgroundColor: AppColors.primarySoft,
+                      backgroundColor: isCollaborative
+                          ? const Color(0xFFCCFBF1)
+                          : AppColors.primarySoft,
                       child: Text(
                         '#${index + 1}',
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary),
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: isCollaborative
+                              ? const Color(0xFF0F766E)
+                              : AppColors.primary,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 14),
@@ -3359,13 +3393,32 @@ class _CarePlansPageState extends ConsumerState<CarePlansPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
+                          Wrap(
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            spacing: 6,
+                            runSpacing: 4,
                             children: [
                               Text(
                                 gameTitle,
                                 style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: AppColors.navy),
                               ),
-                              const SizedBox(width: 8),
+                              if (isCollaborative)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFECFDF5),
+                                    borderRadius: BorderRadius.circular(4),
+                                    border: Border.all(color: const Color(0xFF99F6E4)),
+                                  ),
+                                  child: const Text(
+                                    'COLLABORATIVE',
+                                    style: TextStyle(
+                                      fontSize: 9.5,
+                                      fontWeight: FontWeight.w800,
+                                      color: Color(0xFF0F766E),
+                                    ),
+                                  ),
+                                ),
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                 decoration: BoxDecoration(

@@ -108,7 +108,7 @@ class DesktopSidebar extends ConsumerWidget {
                   _buildNavItem(
                     context,
                     icon: LucideIcons.gamepad2,
-                    label: strings.isSinhala ? 'ක්‍රියාකාරකම්' : strings.memoryGames,
+                    label: strings.isSinhala ? 'මතක ක්‍රීඩා' : strings.memoryGames,
                     route: '/dashboard/memory-games',
                   ),
                   _buildNavItem(
@@ -208,27 +208,10 @@ class DesktopSidebar extends ConsumerWidget {
             ),
           ),
           const Divider(height: 1, color: AppColors.border),
-          // User Profile Card & Log Out with Soft Floral Accent
+          // User Profile Card & Log Out
           Stack(
             clipBehavior: Clip.none,
             children: [
-              if (!isCollapsed)
-                Positioned(
-                  left: -12,
-                  bottom: -10,
-                  child: IgnorePointer(
-                    child: Opacity(
-                      opacity: 0.85,
-                      child: Image.asset(
-                        'assets/images/banner_flowers_fade.png',
-                        width: 95,
-                        height: 95,
-                        fit: BoxFit.contain,
-                        errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-                      ),
-                    ),
-                  ),
-                ),
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: isCollapsed

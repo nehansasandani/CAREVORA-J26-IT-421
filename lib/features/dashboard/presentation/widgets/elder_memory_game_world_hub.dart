@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../../core/localization/sinhala_name_transliterator.dart';
+import '../../../../core/services/tts_service.dart';
 import '../../../../core/theme/app_colors.dart';
 
 enum _GameCategoryTab { all, individual, collaborative }
@@ -35,6 +37,32 @@ class _ElderMemoryGameWorldHubState extends State<ElderMemoryGameWorldHub>
     with SingleTickerProviderStateMixin {
   _GameCategoryTab _selectedTab = _GameCategoryTab.all;
   late final AnimationController _ambientController;
+  bool? _isTestEnv;
+  Timer? _welcomeSpeakTimer;
+
+  static const String _sinhalaWelcomeSpeech =
+      'අපි මතක ක්‍රීඩා කරමු! ඔබට තනිවම සෙල්ලම් කිරීමට තනි ක්‍රීඩාවක් හෝ මිතුරෙකු සමඟ එක්ව සෙල්ලම් කිරීමට සාමූහික ක්‍රීඩාව තෝරාගන්න.';
+  static const String _englishWelcomeSpeech =
+      "Let's play memory games! Choose an individual game to play on your own, or pick the collaborative game to play together with a friend.";
+
+  void _speakHubWelcome({required bool isSinhala, Duration delay = Duration.zero}) {
+    if (_isTestEnv == true || !mounted) return;
+    _welcomeSpeakTimer?.cancel();
+    if (delay == Duration.zero) {
+      TtsService.instance.speak(
+        isSinhala ? _sinhalaWelcomeSpeech : _englishWelcomeSpeech,
+        isSinhala: isSinhala,
+      );
+      return;
+    }
+    _welcomeSpeakTimer = Timer(delay, () {
+      if (!mounted || _isTestEnv == true) return;
+      TtsService.instance.speak(
+        isSinhala ? _sinhalaWelcomeSpeech : _englishWelcomeSpeech,
+        isSinhala: isSinhala,
+      );
+    });
+  }
 
   @override
   void initState() {
@@ -45,13 +73,32 @@ class _ElderMemoryGameWorldHubState extends State<ElderMemoryGameWorldHub>
     );
     final isTestEnv =
         WidgetsBinding.instance.runtimeType.toString().contains('Test');
+    _isTestEnv = isTestEnv;
     if (!isTestEnv) {
       _ambientController.repeat(reverse: true);
+      // Delay slightly so any previous page's dispose() -> TtsService.stop()
+      // finishes before the Memory Games welcome voice starts.
+      _speakHubWelcome(
+        isSinhala: widget.isSinhala,
+        delay: const Duration(milliseconds: 350),
+      );
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant ElderMemoryGameWorldHub oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isSinhala != widget.isSinhala) {
+      _speakHubWelcome(isSinhala: widget.isSinhala);
     }
   }
 
   @override
   void dispose() {
+    _welcomeSpeakTimer?.cancel();
+    if (_isTestEnv != true) {
+      TtsService.instance.stop();
+    }
     _ambientController.dispose();
     super.dispose();
   }
