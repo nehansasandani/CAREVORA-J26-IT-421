@@ -1765,9 +1765,15 @@ class _ElderInteractiveHomePageState
                   offset: const Offset(0, 3),
                 ),
               ],
-              image: const DecorationImage(
-                image: AssetImage('assets/images/landing/testimonial_1.jpg'),
+              color: const Color(0xFFFDE8E9),
+            ),
+            child: ClipOval(
+              child: Image.asset(
+                'assets/images/landing/testimonial_1.jpg',
                 fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const Center(
+                  child: Text('👵', style: TextStyle(fontSize: 34)),
+                ),
               ),
             ),
           ),
@@ -1854,7 +1860,8 @@ class _ElderInteractiveHomePageState
                       ],
                     ),
                   ),
-                  const Expanded(
+                  const SizedBox(
+                    height: 40,
                     child: Center(
                       child: Text(
                         '28',
@@ -1990,9 +1997,15 @@ class _ElderInteractiveHomePageState
                   offset: const Offset(0, 3),
                 ),
               ],
-              image: const DecorationImage(
-                image: AssetImage('assets/images/landing/caregivers_team.jpg'),
+              color: const Color(0xFFE0F2FE),
+            ),
+            child: ClipOval(
+              child: Image.asset(
+                'assets/images/landing/caregivers_team.jpg',
                 fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const Center(
+                  child: Text('👩‍⚕️', style: TextStyle(fontSize: 34)),
+                ),
               ),
             ),
           ),
@@ -2463,7 +2476,6 @@ class _ElderInteractiveHomePageState
               const SizedBox(height: 10),
             ],
 
-            const Spacer(),
 
             // Bottom Scenery or Blossom/Leaves Trim
             if (bottomDecoration != null) bottomDecoration,
