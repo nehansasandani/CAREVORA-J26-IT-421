@@ -73,7 +73,7 @@ class DesktopSidebar extends ConsumerWidget {
                     context,
                     icon: LucideIcons.home,
                     label: strings.isSinhala ? 'මුල් පිටුව' : strings.overview,
-                    route: '/dashboard',
+                    route: '/dashboard/elder-home',
                   ),
                   _buildNavItem(
                     context,
