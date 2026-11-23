@@ -1636,7 +1636,7 @@ class _ElderInteractiveHomePageState
                     ? const [Color(0xFF16A34A), Color(0xFF22C55E)]
                     : const [Color(0xFFD97706), Color(0xFFF59E0B)],
                 isEmotionalCard: false,
-                bottomDecoration: _buildCard2ParkBenchTrim(),
+                bottomDecoration: null,
                 onTap: () {
                   if (memoryDone) {
                     _showSessionAlreadyCompletedDialog(
@@ -1751,7 +1751,7 @@ class _ElderInteractiveHomePageState
     required String buttonText,
     required List<Color> buttonGradient,
     required bool isEmotionalCard,
-    required Widget bottomDecoration,
+    Widget? bottomDecoration,
     required VoidCallback onTap,
   }) {
     return Container(
@@ -1773,7 +1773,12 @@ class _ElderInteractiveHomePageState
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
-              padding: const EdgeInsets.only(left: 18, right: 18, top: 16, bottom: 6),
+              padding: EdgeInsets.only(
+                left: 18,
+                right: 18,
+                top: 16,
+                bottom: bottomDecoration != null ? 6 : 20,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -1916,8 +1921,8 @@ class _ElderInteractiveHomePageState
               ),
             ),
 
-            // Bottom Blossom or Park Trim
-            bottomDecoration,
+            // Bottom Blossom Trim if provided
+            if (bottomDecoration != null) bottomDecoration,
           ],
         ),
       ),
