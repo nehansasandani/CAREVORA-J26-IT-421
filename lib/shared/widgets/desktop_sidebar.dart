@@ -208,27 +208,10 @@ class DesktopSidebar extends ConsumerWidget {
             ),
           ),
           const Divider(height: 1, color: AppColors.border),
-          // User Profile Card & Log Out with Soft Floral Accent
+          // User Profile Card & Log Out
           Stack(
             clipBehavior: Clip.none,
             children: [
-              if (!isCollapsed)
-                Positioned(
-                  left: -12,
-                  bottom: -10,
-                  child: IgnorePointer(
-                    child: Opacity(
-                      opacity: 0.85,
-                      child: Image.asset(
-                        'assets/images/banner_flowers_fade.png',
-                        width: 95,
-                        height: 95,
-                        fit: BoxFit.contain,
-                        errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-                      ),
-                    ),
-                  ),
-                ),
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: isCollapsed

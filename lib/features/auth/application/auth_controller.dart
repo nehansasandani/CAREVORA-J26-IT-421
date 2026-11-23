@@ -253,6 +253,10 @@ class AuthNotifier extends ChangeNotifier {
           final avatarUrl = data['avatarUrl'] as String?;
 
           final prefs = await SharedPreferences.getInstance();
+          await _resetCollaborativeGameSession(
+            prefs: prefs,
+            cancelBackend: false,
+          );
           if (rememberMe) {
             await prefs.setBool('carevora_auth', true);
             await prefs.setString('carevora_email', normalizedEmail);
@@ -377,6 +381,10 @@ class AuthNotifier extends ChangeNotifier {
 
     if (fallbackState != null) {
       final prefs = await SharedPreferences.getInstance();
+      await _resetCollaborativeGameSession(
+        prefs: prefs,
+        cancelBackend: false,
+      );
       if (rememberMe) {
         await prefs.setBool('carevora_auth', true);
         await prefs.setString('carevora_email', fallbackState.email!);
@@ -444,8 +452,95 @@ class AuthNotifier extends ChangeNotifier {
     });
   }
 
+  Future<void> _resetCollaborativeGameSession({
+    required SharedPreferences prefs,
+    required bool cancelBackend,
+    String? userName,
+    String? token,
+  }) async {
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    await prefs.remove('carevora_picnic_game_invites_v1');
+    await prefs.remove('carevora_picnic_dismissed_invites_v1');
+    await prefs.setInt('carevora_collab_session_epoch_ms', nowMs);
+
+    if (!cancelBackend) return;
+    final cleanUser = (userName ?? '').trim().toLowerCase();
+    if (cleanUser.isEmpty) return;
+
+    // Best-effort cleanup of this user's old backend invites & live rooms on logout
+    unawaited(() async {
+      try {
+        final headers = <String, String>{
+          'Content-Type': 'application/json',
+          if (token != null && token.isNotEmpty)
+            'Authorization': 'Bearer $token',
+        };
+        final getUri = Uri.parse('$baseUrl/api/memory-games/invites');
+        final res = await http
+            .get(getUri, headers: headers)
+            .timeout(const Duration(seconds: 2));
+        if (res.statusCode != 200) return;
+        final decoded = jsonDecode(res.body);
+        final data = decoded['data'] as List?;
+        if (data == null) return;
+
+        for (final item in data) {
+          if (item is! Map) continue;
+          final map = Map<String, dynamic>.from(item);
+          final id = map['id']?.toString() ?? '';
+          if (id.isEmpty) continue;
+
+          final recordType =
+              (map['recordType']?.toString() ?? '').toUpperCase();
+          if (recordType == 'LIVE_ROOM_STATE') {
+            final participants = (map['participants'] as List?)
+                    ?.map((e) => e.toString().trim().toLowerCase())
+                    .toList() ??
+                const <String>[];
+            final stage = (map['stage']?.toString() ?? '');
+            if (participants.contains(cleanUser) && stage != 'ended') {
+              await http
+                  .post(
+                    getUri,
+                    headers: headers,
+                    body: jsonEncode({...map, 'stage': 'ended'}),
+                  )
+                  .timeout(const Duration(seconds: 2));
+            }
+          } else {
+            final sender =
+                (map['senderName']?.toString() ?? '').trim().toLowerCase();
+            final target =
+                (map['targetName']?.toString() ?? '').trim().toLowerCase();
+            final status = (map['status']?.toString() ?? '').toUpperCase();
+            if ((sender == cleanUser || target == cleanUser) &&
+                (status == 'PENDING' || status == 'ACCEPTED')) {
+              final respUri =
+                  Uri.parse('$baseUrl/api/memory-games/invites/$id/respond');
+              await http
+                  .post(
+                    respUri,
+                    headers: headers,
+                    body: jsonEncode({'status': 'CANCELLED'}),
+                  )
+                  .timeout(const Duration(seconds: 2));
+            }
+          }
+        }
+      } catch (_) {}
+    }());
+  }
+
   Future<void> logout() async {
+    final prevUser = _state.userName;
+    final prevToken = _state.token;
     final prefs = await SharedPreferences.getInstance();
+    await _resetCollaborativeGameSession(
+      prefs: prefs,
+      cancelBackend: true,
+      userName: prevUser,
+      token: prevToken,
+    );
     await prefs.remove('carevora_auth');
     await prefs.remove('carevora_role');
     await prefs.remove('carevora_token');

@@ -2155,8 +2155,6 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
         builder: (context, _) {
           final sway = _floatingController.value; // 0.0 -> 1.0 -> 0.0 (3.2s cycle)
           final breeze = _ambientBgAnimation.value; // slow 14s drift
-          final angleLeft = (sway - 0.5) * 0.08;
-          final angleRight = (0.5 - sway) * 0.08;
 
           return SizedBox(
             height: 115,
@@ -2171,49 +2169,6 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                     painter: _SwayingFloralMeadowPainter(
                       swayValue: sway,
                       breezeValue: breeze,
-                    ),
-                  ),
-                ),
-
-                // Left corner swaying floral bouquet accent
-                Positioned(
-                  left: 16,
-                  bottom: -14,
-                  child: Transform.rotate(
-                    angle: angleLeft,
-                    alignment: Alignment.bottomCenter,
-                    child: Opacity(
-                      opacity: 0.72,
-                      child: Image.asset(
-                        'assets/images/banner_flowers_fade.png',
-                        width: 120,
-                        height: 110,
-                        fit: BoxFit.contain,
-                        errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-                      ),
-                    ),
-                  ),
-                ),
-
-                // Right corner swaying floral bouquet accent
-                Positioned(
-                  right: 16,
-                  bottom: -14,
-                  child: Transform.scale(
-                    scaleX: -1,
-                    child: Transform.rotate(
-                      angle: angleRight,
-                      alignment: Alignment.bottomCenter,
-                      child: Opacity(
-                        opacity: 0.72,
-                        child: Image.asset(
-                          'assets/images/banner_flowers_fade.png',
-                          width: 120,
-                          height: 110,
-                          fit: BoxFit.contain,
-                          errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-                        ),
-                      ),
                     ),
                   ),
                 ),
@@ -2337,43 +2292,6 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                             ),
                           );
                         },
-                      ),
-                    ),
-                  ),
-
-                  // Symmetrical corner floral accents
-                  Positioned(
-                    right: 6,
-                    bottom: -14,
-                    child: IgnorePointer(
-                      child: Opacity(
-                        opacity: 0.26,
-                        child: Image.asset(
-                          'assets/images/banner_flowers_fade.png',
-                          width: 118,
-                          height: 118,
-                          fit: BoxFit.contain,
-                          errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-                        ),
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    left: 6,
-                    bottom: -14,
-                    child: IgnorePointer(
-                      child: Transform.scale(
-                        scaleX: -1,
-                        child: Opacity(
-                          opacity: 0.26,
-                          child: Image.asset(
-                            'assets/images/banner_flowers_fade.png',
-                            width: 118,
-                            height: 118,
-                            fit: BoxFit.contain,
-                            errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-                          ),
-                        ),
                       ),
                     ),
                   ),
@@ -3083,24 +3001,6 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                       ],
                     );
                   },
-                ),
-              ),
-            ),
-
-            // Soft floral accent artwork in bottom-right corner
-            Positioned(
-              right: 12,
-              bottom: -18,
-              child: IgnorePointer(
-                child: Opacity(
-                  opacity: 0.35,
-                  child: Image.asset(
-                    'assets/images/banner_flowers_fade.png',
-                    width: 140,
-                    height: 140,
-                    fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-                  ),
                 ),
               ),
             ),
