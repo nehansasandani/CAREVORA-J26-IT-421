@@ -66,6 +66,12 @@ class WebTtsService implements TtsService {
     'වේලාව බලාගන්න ඔබ භාවිතා කරන්නේ මොනවාද?': 'cog_q9.mp3',
     'ඇපල් සහ දොඩම් යන දෙකම පලතුරුද?': 'cog_q10.mp3',
     'ඊළඟ ප්‍රශ්නය': 'cog_next.mp3',
+    'දැන් අපි මතක පරීක්ෂාව ආරම්භ කරමු.': 'cog_start.mp3',
+    'දැන් අපි මතක පරීක්ෂාව ආරම්භ කරමු': 'cog_start.mp3',
+    'හරිම හොඳයි! ඔබ ප්‍රශ්න දහයටම පිළිතුරු දී අවසන්. ප්‍රතිඵල බැලීමට පහත බොත්තම ඔබන්න.': 'cog_submit_ready.mp3',
+    'තව ප්‍රශ්න කිහිපයක් ඉතිරියි. අවසන් කිරීමට පෙර ඒවාටත් පිළිතුරු දෙන්න.': 'cog_submit_pending.mp3',
+    'හරිම විශිෂ්ටයි! ඔබේ පිළිතුරු සුරැකුණා. කැමති නම් මතක ක්‍රීඩා කරන්න, නැතහොත් මුල් පිටුවට යන්න.': 'cog_result_great.mp3',
+    'හොඳ උත්සාහයක්! අපි දැන් සතුටින් සැහැල්ලු මතක ක්‍රීඩාවක් කරමු.': 'cog_result_games.mp3',
   };
 
   static String? _matchSinhalaAudioFile(String rawText) {
@@ -86,6 +92,11 @@ class WebTtsService implements TtsService {
     if (text.contains('වේලාව බලාගන්න')) return 'cog_q9.mp3';
     if (text.contains('ඇපල් සහ දොඩම්')) return 'cog_q10.mp3';
     if (text == 'ඊළඟ ප්‍රශ්නය') return 'cog_next.mp3';
+    if (text.contains('මතක පරීක්ෂාව ආරම්භ කරමු')) return 'cog_start.mp3';
+    if (text.contains('ප්‍රශ්න දහයටම පිළිතුරු දී අවසන්')) return 'cog_submit_ready.mp3';
+    if (text.contains('තව ප්‍රශ්න කිහිපයක් ඉතිරියි')) return 'cog_submit_pending.mp3';
+    if (text.contains('හරිම විශිෂ්ටයි') && text.contains('පිළිතුරු සුරැකුණා')) return 'cog_result_great.mp3';
+    if (text.contains('සැහැල්ලු මතක ක්‍රීඩාවක් කරමු')) return 'cog_result_games.mp3';
 
     for (final entry in _sinhalaAudioFiles.entries) {
       if (text.contains(entry.key)) {
@@ -406,6 +417,8 @@ class WebTtsService implements TtsService {
     'ආතර් පෙන්ඩ්ල්ටන්': 'Arthur Pendleton',
     'නේවාසික සාමාජිකයා': 'Newaasika Saamaajikaya',
     'නෆියා': 'Nafiya',
+    'දැන් අපි මතක පරීක්ෂාව ආරම්භ කරමු.':
+        'Daen api mathaka pareekshaawa aarambha karamu.',
   };
 
   static String _toSinglish(String text) {

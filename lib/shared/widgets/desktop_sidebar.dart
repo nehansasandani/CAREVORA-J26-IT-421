@@ -6,6 +6,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/localization/app_language.dart';
 import '../../core/localization/app_strings.dart';
+import '../../core/localization/sinhala_name_transliterator.dart';
 import '../../features/auth/application/auth_controller.dart';
 import 'carevora_avatar.dart';
 import 'carevora_logo.dart';
@@ -28,6 +29,9 @@ class DesktopSidebar extends ConsumerWidget {
     final width = isCollapsed ? 80.0 : 260.0;
 
     final userName = authState.userName ?? (strings.isSinhala ? 'නේවාසිකයා' : 'Care Specialist');
+    final displayUserName = strings.isSinhala
+        ? SinhalaNameTransliterator.toSinhala(userName, fallback: 'නේවාසිකයා')
+        : userName;
     final roleName = authState.role == UserRole.elder
         ? (strings.isSinhala ? 'වැඩිහිටියා' : 'ELDER')
         : (authState.role == UserRole.doctor
@@ -274,7 +278,7 @@ class DesktopSidebar extends ConsumerWidget {
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        userName,
+                                        displayUserName,
                                         style: AppTextStyles.bodyMedium.copyWith(
                                           fontSize: 13,
                                           fontWeight: FontWeight.w700,
