@@ -16,12 +16,12 @@ class LanguageSelectorButton extends ConsumerWidget {
     if (compact) {
       return InkWell(
         onTap: () => languageNotifier.toggleLanguage(),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(22),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
             color: AppColors.surfaceSecondary,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(22),
             border: Border.all(color: AppColors.border),
           ),
           child: Row(
@@ -30,7 +30,7 @@ class LanguageSelectorButton extends ConsumerWidget {
               Text(
                 isSinhala ? '🇱🇰 සිංහල' : '🇬🇧 EN',
                 style: const TextStyle(
-                  fontSize: 12,
+                  fontSize: 14,
                   fontWeight: FontWeight.w700,
                   color: AppColors.navy,
                 ),
@@ -44,10 +44,10 @@ class LanguageSelectorButton extends ConsumerWidget {
     return Container(
       decoration: BoxDecoration(
         color: const Color(0xFFF1F5F9),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(26),
         border: Border.all(color: AppColors.border),
       ),
-      padding: const EdgeInsets.all(3),
+      padding: const EdgeInsets.all(4),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -57,7 +57,7 @@ class LanguageSelectorButton extends ConsumerWidget {
             isSelected: !isSinhala,
             onTap: () => languageNotifier.setLanguage(AppLanguage.english),
           ),
-          const SizedBox(width: 4),
+          const SizedBox(width: 5),
           _buildLanguageOption(
             title: 'සිංහල',
             flag: '🇱🇰',
@@ -77,13 +77,13 @@ class LanguageSelectorButton extends ConsumerWidget {
   }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(22),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
           color: isSelected ? Colors.white : Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(22),
           boxShadow: isSelected
               ? [
                   BoxShadow(
@@ -97,12 +97,12 @@ class LanguageSelectorButton extends ConsumerWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(flag, style: const TextStyle(fontSize: 14)),
-            const SizedBox(width: 6),
+            Text(flag, style: const TextStyle(fontSize: 16)),
+            const SizedBox(width: 7),
             Text(
               title,
               style: TextStyle(
-                fontSize: 12.5,
+                fontSize: 14,
                 fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
                 color: isSelected ? AppColors.primary : AppColors.muted,
               ),

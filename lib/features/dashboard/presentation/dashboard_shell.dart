@@ -174,44 +174,44 @@ class DashboardShell extends ConsumerWidget {
             children: [
               // Accessible Language Switcher (English / සිංහල)
               LanguageSelectorButton(compact: isMobile),
-              const SizedBox(width: 8),
+              const SizedBox(width: 10),
               // Live Date and Time Chip
               if (!isMobile) _LiveDateTimeChip(isSinhala: strings.isSinhala),
-              if (!isMobile) const SizedBox(width: 8),
+              if (!isMobile) const SizedBox(width: 10),
               // Bell Notification Icon with Badge
               Stack(
                 alignment: Alignment.topRight,
                 children: [
                   IconButton(
-                    padding: EdgeInsets.all(isMobile ? 8 : 12),
+                    padding: EdgeInsets.all(isMobile ? 8 : 10),
                     constraints: const BoxConstraints(),
-                    icon: const Icon(LucideIcons.bell, size: 20, color: AppColors.navy),
+                    icon: const Icon(LucideIcons.bell, size: 24, color: AppColors.navy),
                     onPressed: () => context.go('/dashboard/alerts'),
                   ),
-                    Positioned(
-                      top: isMobile ? 2 : 4,
-                      right: isMobile ? 2 : 4,
-                      child: Container(
-                        width: 16,
-                        height: 16,
-                        decoration: const BoxDecoration(
-                          color: AppColors.riskHigh,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Center(
-                          child: Text(
-                            '${MockCarevoraData.alerts.length}',
-                            style: const TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
+                  Positioned(
+                    top: isMobile ? 2 : 4,
+                    right: isMobile ? 2 : 4,
+                    child: Container(
+                      width: 18,
+                      height: 18,
+                      decoration: const BoxDecoration(
+                        color: AppColors.riskHigh,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Center(
+                        child: Text(
+                          '${MockCarevoraData.alerts.length}',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
                           ),
                         ),
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
+              ),
             ],
           ),
         ],
@@ -290,10 +290,10 @@ class _LiveDateTimeChipState extends State<_LiveDateTimeChip> {
     final timeStr = _formatTime(_now);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8.5),
       decoration: BoxDecoration(
         color: AppColors.surfaceSecondary,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(color: AppColors.border, width: 1.2),
         boxShadow: [
           BoxShadow(
@@ -308,33 +308,35 @@ class _LiveDateTimeChipState extends State<_LiveDateTimeChip> {
         children: [
           const Icon(
             LucideIcons.calendar,
-            size: 14,
+            size: 16,
             color: AppColors.primary,
           ),
-          const SizedBox(width: 7),
+          const SizedBox(width: 8),
           Text(
             dateStr,
-            style: AppTextStyles.caption.copyWith(
-              fontWeight: FontWeight.w600,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
               color: AppColors.navy,
             ),
           ),
           Container(
-            width: 1,
-            height: 13,
-            margin: const EdgeInsets.symmetric(horizontal: 10),
+            width: 1.2,
+            height: 15,
+            margin: const EdgeInsets.symmetric(horizontal: 11),
             color: AppColors.border,
           ),
           const Icon(
             LucideIcons.clock,
-            size: 14,
+            size: 16,
             color: AppColors.primary,
           ),
-          const SizedBox(width: 6),
+          const SizedBox(width: 7),
           Text(
             timeStr,
-            style: AppTextStyles.caption.copyWith(
-              fontWeight: FontWeight.w600,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
               color: AppColors.navy,
             ),
           ),
