@@ -108,7 +108,7 @@ class DesktopSidebar extends ConsumerWidget {
                   _buildNavItem(
                     context,
                     icon: LucideIcons.gamepad2,
-                    label: strings.isSinhala ? 'ක්‍රියාකාරකම්' : strings.memoryGames,
+                    label: strings.isSinhala ? 'මතක ක්‍රීඩා' : strings.memoryGames,
                     route: '/dashboard/memory-games',
                   ),
                   _buildNavItem(

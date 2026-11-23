@@ -9,6 +9,9 @@ TtsService createTtsService() => WebTtsService();
 
 class WebTtsService implements TtsService {
   html.AudioElement? _audio;
+  html.SpeechSynthesisUtterance? _currentUtterance;
+  Timer? _pendingSpeakTimer;
+  int? _speakToken;
   bool _isSpeaking = false;
 
   @override
@@ -73,6 +76,24 @@ class WebTtsService implements TtsService {
     'හරිම විශිෂ්ටයි! ඔබේ පිළිතුරු සුරැකුණා. කැමති නම් මතක ක්‍රීඩා කරන්න, නැතහොත් මුල් පිටුවට යන්න.': 'cog_result_great.mp3',
     'හොඳ උත්සාහයක්! අපි දැන් සතුටින් සැහැල්ලු මතක ක්‍රීඩාවක් කරමු.': 'cog_result_games.mp3',
     'විනෝද චාරිකා මතක ක්‍රීඩාව ක්‍රීඩා කරන ආකාරය. පළමුව, මිතුරෙකු තෝරා එකට හෝ ආරාධනා ඔබා කණ්ඩායම සාදන්න. දෙවනුව, ඔබේ වාරයේදී කූඩයේ කලින් දැමූ භාණ්ඩ පිළිවෙලට තෝරා අලුත් භාණ්ඩයක් එක් කරන්න. අමතක වුණොත් ඉඟියක් ඔබන්න. භාණ්ඩ පහම එකට අසුරා ජය ගන්න!': 'collab_howto.mp3',
+    'අපි මතක ක්‍රීඩා කරමු! ඔබට තනිවම සෙල්ලම් කිරීමට තනි ක්‍රීඩාවක් හෝ මිතුරෙකු සමඟ එක්ව සෙල්ලම් කිරීමට සාමූහික ක්‍රීඩාව තෝරාගන්න.': 'memory_hub_welcome.mp3',
+    // Elder Home Page Native Sinhala Clips
+    'සුබ උදෑසනක්! ඔබගේ සුවබර දිනය අදත් හොඳින් ගතවෙනවාද? ඔබ ගැන අදත් හොඳින් සලකමු!': 'home_greet_morning.mp3',
+    'සුබ දහවලක්! ඔබගේ සුවබර දිනය අදත් හොඳින් ගතවෙනවාද? ඔබ ගැන අදත් හොඳින් සලකමු!': 'home_greet_afternoon.mp3',
+    'සුබ සන්ධ්‍යාවක්! ඔබගේ සුවබර දිනය අදත් හොඳින් ගතවෙනවාද? ඔබ ගැන අදත් හොඳින් සලකමු!': 'home_greet_evening.mp3',
+    'සුබ රාත්‍රියක්! ඔබගේ සුවබර දිනය අදත් හොඳින් ගතවෙනවාද? ඔබ ගැන අදත් හොඳින් සලකමු!': 'home_greet_night.mp3',
+    'ඔබේ දෛනික පුරුදු හොඳින් සිදුවෙනවාද? අද ඔබ සුවෙන් සිටිනවාද?': 'home_mascot.mp3',
+    'ඔබ අද තේ බිව්වද?': 'home_tea_q.mp3',
+    'ඔබ තේ පානය කර තිබීම හරිම සතුටක්!': 'home_tea_yes.mp3',
+    'ඔබ තවම තේ බීලා නැත්නම්, මම රැකබලා ගන්නාට දැන්වුවා ඔබට උණුසුම් තේ එකක් ගෙන එන්න.': 'home_tea_no.mp3',
+    'ඔබ අද ආහාර ගත්තාද?': 'home_meal_q.mp3',
+    'ඔබ ආහාර ගෙන තිබීම හරිම සතුටක්!': 'home_meal_yes.mp3',
+    'ඔබ තවම ආහාර ගෙන නැත්නම්, ඔබට උදව් කිරීමට රැකබලා ගන්නා දැනුවත් කර ඇත.': 'home_meal_no.mp3',
+    'ජලය ප්‍රමාණවත් ලෙස පානය කිරීමට අමතක නොකරන්න.': 'home_hydration.mp3',
+    'සුබ සිතක්, සුවබර ජීවිතයකට මගක් වේ.': 'home_quote.mp3',
+    'ඔබේ ඇමතුම සහායක කණ්ඩායමට යොමු කළා. සුළු මොහොතකින් පැමිණෙනු ඇත.': 'home_call_help.mp3',
+    'සන්සුන් සංගීතය වාදනය ආරම්භ කළා.': 'home_music_start.mp3',
+    'ස්වභාවික කුරුළු නාදය සහ දිය දහරාව වාදනය ආරම්භ කළා.': 'home_nature_start.mp3',
   };
 
   static String? _matchSinhalaAudioFile(String rawText) {
@@ -99,6 +120,25 @@ class WebTtsService implements TtsService {
     if (text.contains('හරිම විශිෂ්ටයි') && text.contains('පිළිතුරු සුරැකුණා')) return 'cog_result_great.mp3';
     if (text.contains('සැහැල්ලු මතක ක්‍රීඩාවක් කරමු')) return 'cog_result_games.mp3';
     if (text.contains('විනෝද චාරිකා මතක ක්‍රීඩාව ක්‍රීඩා කරන ආකාරය')) return 'collab_howto.mp3';
+    if (text.contains('අපි මතක ක්‍රීඩා කරමු')) return 'memory_hub_welcome.mp3';
+    if (text.contains('ඔබගේ සුවබර දිනය අදත් හොඳින් ගතවෙනවාද')) {
+      if (text.contains('සුබ උදෑසනක්')) return 'home_greet_morning.mp3';
+      if (text.contains('සුබ දහවලක්')) return 'home_greet_afternoon.mp3';
+      if (text.contains('සුබ සන්ධ්‍යාවක්')) return 'home_greet_evening.mp3';
+      if (text.contains('සුබ රාත්‍රියක්')) return 'home_greet_night.mp3';
+    }
+    if (text.contains('ඔබේ දෛනික පුරුදු හොඳින් සිදුවෙනවාද')) return 'home_mascot.mp3';
+    if (text.contains('ඔබ අද තේ බිව්වද')) return 'home_tea_q.mp3';
+    if (text.contains('තේ පානය කර තිබීම හරිම සතුටක්')) return 'home_tea_yes.mp3';
+    if (text.contains('උණුසුම් තේ එකක් ගෙන එන්න')) return 'home_tea_no.mp3';
+    if (text.contains('ඔබ අද ආහාර ගත්තාද')) return 'home_meal_q.mp3';
+    if (text.contains('ආහාර ගෙන තිබීම හරිම සතුටක්')) return 'home_meal_yes.mp3';
+    if (text.contains('ආහාර ගෙන නැත්නම්, ඔබට උදව් කිරීමට')) return 'home_meal_no.mp3';
+    if (text.contains('ජලය ප්‍රමාණවත් ලෙස පානය කිරීමට')) return 'home_hydration.mp3';
+    if (text.contains('සුබ සිතක්, සුවබර ජීවිතයකට')) return 'home_quote.mp3';
+    if (text.contains('ඔබේ ඇමතුම සහායක කණ්ඩායමට යොමු කළා')) return 'home_call_help.mp3';
+    if (text.contains('සන්සුන් සංගීතය වාදනය ආරම්භ කළා')) return 'home_music_start.mp3';
+    if (text.contains('ස්වභාවික කුරුළු නාදය සහ දිය දහරාව')) return 'home_nature_start.mp3';
 
     for (final entry in _sinhalaAudioFiles.entries) {
       if (text.contains(entry.key)) {
@@ -538,6 +578,10 @@ class WebTtsService implements TtsService {
   @override
   void stop() {
     try {
+      _pendingSpeakTimer?.cancel();
+      _pendingSpeakTimer = null;
+      _speakToken = (_speakToken ?? 0) + 1;
+      _currentUtterance = null;
       if (_audio != null) {
         _audio!.pause();
         _audio!.currentTime = 0;
@@ -728,35 +772,88 @@ class WebTtsService implements TtsService {
   }
 
   void _speakEnglish(String text, {double rate = 0.95}) {
-    try {
-      if (html.window.speechSynthesis == null) {
-        _isSpeaking = false;
-        onComplete?.call();
-        return;
-      }
-      final utterance = html.SpeechSynthesisUtterance(text);
-      utterance.lang = 'en-US';
-      utterance.rate = rate;
-
-      final voices = html.window.speechSynthesis!.getVoices();
-      final enVoices = voices.where((v) => (v.lang?.toLowerCase().startsWith('en') ?? false)).toList();
-      if (enVoices.isNotEmpty) {
-        final googleEn = enVoices.where((v) => (v.name?.toLowerCase().contains('google') ?? false)).toList();
-        utterance.voice = googleEn.isNotEmpty ? googleEn.first : enVoices.first;
-      }
-
-      utterance.onEnd.listen((_) {
-        _isSpeaking = false;
-        onComplete?.call();
-      });
-      utterance.onError.listen((_) {
-        _isSpeaking = false;
-        onComplete?.call();
-      });
-      html.window.speechSynthesis!.speak(utterance);
-    } catch (e) {
+    final synth = html.window.speechSynthesis;
+    if (synth == null) {
       _isSpeaking = false;
       onComplete?.call();
+      return;
     }
+
+    // Prime Chrome's async voice list immediately
+    synth.getVoices();
+
+    final myToken = (_speakToken ?? 0) + 1;
+    _speakToken = myToken;
+
+    void startUtterance({int attempt = 0}) {
+      if ((_speakToken ?? 0) != myToken) return;
+      try {
+        final voices = synth.getVoices();
+        // Wait briefly once if Chrome hasn't populated voices yet on cold page load
+        if (voices.isEmpty && attempt < 3) {
+          _pendingSpeakTimer?.cancel();
+          _pendingSpeakTimer = Timer(
+            const Duration(milliseconds: 140),
+            () => startUtterance(attempt: attempt + 1),
+          );
+          return;
+        }
+
+        final utterance = html.SpeechSynthesisUtterance(text);
+        _currentUtterance = utterance;
+        utterance.lang = 'en-US';
+        utterance.rate = rate;
+        utterance.pitch = 1.0;
+
+        final enVoices = voices
+            .where((v) => (v.lang?.toLowerCase().startsWith('en') ?? false))
+            .toList();
+        if (enVoices.isNotEmpty) {
+          // Prefer clear male English voice (e.g. Microsoft David / Google UK English Male)
+          final maleEn = enVoices.where((v) {
+            final n = v.name?.toLowerCase() ?? '';
+            return n.contains('male') ||
+                n.contains('david') ||
+                n.contains('mark') ||
+                n.contains('george') ||
+                n.contains('daniel') ||
+                n.contains('guy');
+          }).toList();
+          final googleEn = enVoices
+              .where((v) => (v.name?.toLowerCase().contains('google') ?? false))
+              .toList();
+          utterance.voice = maleEn.isNotEmpty
+              ? maleEn.first
+              : (googleEn.isNotEmpty ? googleEn.first : enVoices.first);
+        }
+
+        utterance.onEnd.listen((_) {
+          if ((_speakToken ?? 0) != myToken) return;
+          _isSpeaking = false;
+          _currentUtterance = null;
+          onComplete?.call();
+        });
+        utterance.onError.listen((_) {
+          if ((_speakToken ?? 0) != myToken) return;
+          _isSpeaking = false;
+          _currentUtterance = null;
+          onComplete?.call();
+        });
+
+        synth.resume();
+        synth.speak(utterance);
+      } catch (e) {
+        _isSpeaking = false;
+        _currentUtterance = null;
+        onComplete?.call();
+      }
+    }
+
+    // Small delay after cancel() avoids Chrome's same-tick cancel()+speak() silent drop bug
+    _pendingSpeakTimer?.cancel();
+    _pendingSpeakTimer = Timer(
+      const Duration(milliseconds: 120),
+      () => startUtterance(),
+    );
   }
 }
