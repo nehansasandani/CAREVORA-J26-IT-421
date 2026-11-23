@@ -1691,6 +1691,8 @@ class _ElderInteractiveHomePageState
             ];
 
             final isWide = constraints.maxWidth >= 680;
+            final cardSpacing = constraints.maxWidth >= 1000 ? 42.0 : 32.0;
+            final rowSpacing = constraints.maxWidth >= 1000 ? 30.0 : 24.0;
 
             if (isWide) {
               return Column(
@@ -1700,18 +1702,18 @@ class _ElderInteractiveHomePageState
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(child: cards[0]),
-                      const SizedBox(width: 26),
+                      SizedBox(width: cardSpacing),
                       Expanded(child: cards[1]),
                     ],
                   ),
-                  const SizedBox(height: 24),
+                  SizedBox(height: rowSpacing),
 
                   // Row 2 (Bottom): සන්සුන් සංගීතය සහ විවේක සුවය & උපකාර ඉල්ලීම
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(child: cards[2]),
-                      const SizedBox(width: 26),
+                      SizedBox(width: cardSpacing),
                       Expanded(child: cards[3]),
                     ],
                   ),
