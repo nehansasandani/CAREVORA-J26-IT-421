@@ -13,6 +13,7 @@ import '../../../shared/widgets/risk_trend_chart.dart';
 import '../../../shared/widgets/score_card.dart';
 import '../../assessment/application/cognitive_assessment_service.dart';
 import '../../auth/application/auth_controller.dart';
+import 'elder_interactive_home_page.dart';
 
 class OverviewPage extends ConsumerStatefulWidget {
   const OverviewPage({super.key});
@@ -279,6 +280,9 @@ class _OverviewPageState extends ConsumerState<OverviewPage> {
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider).state;
     final isElder = authState.isElder;
+    if (isElder) {
+      return const ElderInteractiveHomePage();
+    }
     final resident = _resolveResident(authState);
 
     return SingleChildScrollView(

@@ -8279,11 +8279,75 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
     );
   }
 
+  Widget _buildElderAssessmentHeader() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [
+            Color(0xFF3B0764),
+            Color(0xFF6B21A8),
+            Color(0xFF9333EA),
+          ],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF9333EA).withValues(alpha: 0.25),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.2),
+              shape: BoxShape.circle,
+            ),
+            child: const Text('💖', style: TextStyle(fontSize: 22)),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'මානසික සුවතා කතාබහ (Emotional Wellness)',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'ඔබගේ සිතේ ඇති දේ ආදරයෙන් බෙදාගන්න, AI මිතුරා ඔබ සමඟයි.',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.9),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // --- RESIDENT HEADER CARD ---
   Widget _buildResidentHeaderCard() {
     final authState = ref.watch(authProvider).state;
     if (authState.isElder) {
-      return _buildElderCreativeWelcomeBanner();
+      return _buildElderAssessmentHeader();
     }
     final isSinhala = ref.watch(languageProvider).isSinhala;
 
@@ -16710,8 +16774,8 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 1. Creative Elder Welcome & Routine Interaction Banner (Research Mockup Styled)
-          _buildElderCreativeWelcomeBanner(),
+          // 1. Calming Emotional Assessment Header
+          _buildElderAssessmentHeader(),
           const SizedBox(height: 10),
 
 
