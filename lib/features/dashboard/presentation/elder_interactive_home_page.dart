@@ -1688,26 +1688,28 @@ class _ElderInteractiveHomePageState
               ),
             ];
 
-            if (isDesktop) {
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: cards.map((c) => Expanded(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 6), child: c))).toList(),
-              );
-            } else if (isTablet) {
+            final isWide = constraints.maxWidth >= 680;
+
+            if (isWide) {
               return Column(
                 children: [
+                  // Row 1 (Top): මානසික සුවතා කතාබහ & මතක පරීක්ෂාව සහ විනෝද ක්‍රීඩා
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(child: cards[0]),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 16),
                       Expanded(child: cards[1]),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 18),
+
+                  // Row 2 (Bottom): සන්සුන් සංගීතය සහ විවේක සුවය & උපකාර ඉල්ලීම
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(child: cards[2]),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 16),
                       Expanded(child: cards[3]),
                     ],
                   ),
@@ -1715,7 +1717,12 @@ class _ElderInteractiveHomePageState
               );
             } else {
               return Column(
-                children: cards.map((c) => Padding(padding: const EdgeInsets.only(bottom: 12), child: c)).toList(),
+                children: cards
+                    .map((c) => Padding(
+                          padding: const EdgeInsets.only(bottom: 14),
+                          child: c,
+                        ))
+                    .toList(),
               );
             }
           },
