@@ -3815,3 +3815,113 @@ class _ButterfliesPainter extends CustomPainter {
         oldDelegate.flapProgress != flapProgress;
   }
 }
+
+/// Vector avatar painter for Grandma with glasses, grey hair bun, and cheerful smile
+class _GrandmaAvatarPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cx = size.width / 2;
+    final cy = size.height / 2;
+
+    // Body / Purple Blouse
+    final bodyPaint = Paint()..color = const Color(0xFF7C3AED);
+    final bodyPath = Path()
+      ..moveTo(cx - 36, size.height)
+      ..quadraticBezierTo(cx - 38, cy + 18, cx - 18, cy + 14)
+      ..lineTo(cx + 18, cy + 14)
+      ..quadraticBezierTo(cx + 38, cy + 18, cx + 36, size.height)
+      ..close();
+    canvas.drawPath(bodyPath, bodyPaint);
+
+    // Folded hands over heart
+    final skinPaint = Paint()..color = const Color(0xFFFFE0BD);
+    canvas.drawOval(
+      Rect.fromCenter(center: Offset(cx, cy + 24), width: 34, height: 16),
+      skinPaint,
+    );
+    final handBorder = Paint()
+      ..color = const Color(0xFFFDBA74)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2;
+    canvas.drawOval(
+      Rect.fromCenter(center: Offset(cx, cy + 24), width: 34, height: 16),
+      handBorder,
+    );
+
+    // Neck
+    canvas.drawRect(Rect.fromCenter(center: Offset(cx, cy + 10), width: 14, height: 12), skinPaint);
+
+    // Head / Face
+    canvas.drawCircle(Offset(cx, cy - 8), 24, skinPaint);
+
+    // Rosy cheeks
+    final blushPaint = Paint()..color = const Color(0xFFFDA4AF).withValues(alpha: 0.55);
+    canvas.drawCircle(Offset(cx - 12, cy - 4), 5, blushPaint);
+    canvas.drawCircle(Offset(cx + 12, cy - 4), 5, blushPaint);
+
+    // Grey / Silver Hair
+    final hairPaint = Paint()..color = const Color(0xFFD1D5DB);
+    canvas.drawCircle(Offset(cx, cy - 32), 12, hairPaint);
+    canvas.drawCircle(Offset(cx - 20, cy - 14), 13, hairPaint);
+    canvas.drawCircle(Offset(cx + 20, cy - 14), 13, hairPaint);
+    canvas.drawCircle(Offset(cx - 12, cy - 24), 16, hairPaint);
+    canvas.drawCircle(Offset(cx + 12, cy - 24), 16, hairPaint);
+    canvas.drawCircle(Offset(cx, cy - 22), 18, hairPaint);
+
+    // Forehead
+    final foreheadSkin = Paint()..color = const Color(0xFFFFE0BD);
+    canvas.drawCircle(Offset(cx, cy - 10), 18, foreheadSkin);
+
+    // Spectacles / Glasses (round dark frames)
+    final glassesPaint = Paint()
+      ..color = const Color(0xFF374151)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0;
+    canvas.drawCircle(Offset(cx - 9, cy - 8), 7, glassesPaint);
+    canvas.drawCircle(Offset(cx + 9, cy - 8), 7, glassesPaint);
+    canvas.drawLine(Offset(cx - 2, cy - 8), Offset(cx + 2, cy - 8), glassesPaint);
+    canvas.drawLine(Offset(cx - 16, cy - 8), Offset(cx - 22, cy - 10), glassesPaint);
+    canvas.drawLine(Offset(cx + 16, cy - 8), Offset(cx + 22, cy - 10), glassesPaint);
+
+    // Smiling closed eyes (cheerful curved arcs inside glasses)
+    final eyePaint = Paint()
+      ..color = const Color(0xFF1F2937)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.8
+      ..strokeCap = StrokeCap.round;
+    final leftEye = Path()
+      ..moveTo(cx - 12, cy - 7)
+      ..quadraticBezierTo(cx - 9, cy - 10, cx - 6, cy - 7);
+    final rightEye = Path()
+      ..moveTo(cx + 6, cy - 7)
+      ..quadraticBezierTo(cx + 9, cy - 10, cx + 12, cy - 7);
+    canvas.drawPath(leftEye, eyePaint);
+    canvas.drawPath(rightEye, eyePaint);
+
+    // Cheerful smiling mouth
+    final mouthPaint = Paint()
+      ..color = const Color(0xFFE11D48)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0
+      ..strokeCap = StrokeCap.round;
+    final mouth = Path()
+      ..moveTo(cx - 7, cy + 3)
+      ..quadraticBezierTo(cx, cy + 9, cx + 7, cy + 3);
+    canvas.drawPath(mouth, mouthPaint);
+
+    // Nose
+    final nosePaint = Paint()
+      ..color = const Color(0xFFFDBA74)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5
+      ..strokeCap = StrokeCap.round;
+    final nose = Path()
+      ..moveTo(cx - 1.5, cy - 3)
+      ..quadraticBezierTo(cx + 1.5, cy - 1, cx - 1, cy + 0);
+    canvas.drawPath(nose, nosePaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
