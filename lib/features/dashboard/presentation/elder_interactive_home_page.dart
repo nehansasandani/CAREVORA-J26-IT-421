@@ -1590,7 +1590,7 @@ class _ElderInteractiveHomePageState
                 buttonText: emotionalDone ? 'සම්පූර්ණයි ($nextSlotTime ට) ⏰' : 'අදම සම්පූර්ණ කරන්න',
                 buttonGradient: emotionalDone
                     ? const [Color(0xFF16A34A), Color(0xFF22C55E)]
-                    : const [Color(0xFF6D28D9), Color(0xFF7C3AED)],
+                    : const [Color(0xFFE11D48), Color(0xFFFB7185)],
                 isEmotionalCard: true,
                 bottomDecoration: _buildCard1HibiscusBlossomTrim(),
                 onTap: () {
