@@ -1636,7 +1636,7 @@ class _ElderInteractiveHomePageState
                     ? const [Color(0xFF16A34A), Color(0xFF22C55E)]
                     : const [Color(0xFFD97706), Color(0xFFF59E0B)],
                 isEmotionalCard: false,
-                bottomDecoration: null,
+                bottomDecoration: _buildCard2GoldenAmberTrim(),
                 onTap: () {
                   if (memoryDone) {
                     _showSessionAlreadyCompletedDialog(
@@ -2180,10 +2180,10 @@ class _ElderInteractiveHomePageState
     );
   }
 
-  // Card 2 Bottom Green Park Lawn & Bench Trim
-  Widget _buildCard2ParkBenchTrim() {
+  // Card 2 Bottom Golden Amber Trim (matching Card 2's warm color scheme)
+  Widget _buildCard2GoldenAmberTrim() {
     return Container(
-      height: 44,
+      height: 42,
       width: double.infinity,
       decoration: const BoxDecoration(
         borderRadius: BorderRadius.only(
@@ -2194,47 +2194,59 @@ class _ElderInteractiveHomePageState
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            Color(0xFFE2F7E1),
-            Color(0xFF86EFAC),
-            Color(0xFF22C55E),
+            Color(0xFFFFFBEB), // warm butter cream
+            Color(0xFFFEF3C7), // soft pastel amber
+            Color(0xFFFDE68A), // warm golden tone
           ],
         ),
       ),
       child: Stack(
         children: [
-          // Green hill
+          // Soft golden wavy hill in background
           Positioned(
-            left: -10,
-            right: -10,
-            bottom: -20,
+            left: -20,
+            right: -20,
+            bottom: -22,
             child: Container(
-              height: 50,
-              decoration: const BoxDecoration(
-                color: Color(0xFF16A34A),
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(100),
-                  topRight: Radius.circular(100),
+              height: 46,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF59E0B).withValues(alpha: 0.20),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(120),
+                  topRight: Radius.circular(140),
                 ),
               ),
             ),
           ),
-          // Daisy on left
+          // Left golden cluster
           const Positioned(
-            left: 20,
-            bottom: 6,
-            child: Text('🌼', style: TextStyle(fontSize: 16)),
+            left: 12,
+            bottom: 4,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('🌿', style: TextStyle(fontSize: 14)),
+                SizedBox(width: 3),
+                Text('🌻', style: TextStyle(fontSize: 22)),
+                SizedBox(width: 3),
+                Text('🍁', style: TextStyle(fontSize: 16)),
+              ],
+            ),
           ),
-          // Tree on right
+          // Right golden cluster
           const Positioned(
             right: 12,
             bottom: 4,
-            child: Text('🌳', style: TextStyle(fontSize: 34)),
-          ),
-          // Wooden bench
-          const Positioned(
-            right: 50,
-            bottom: 6,
-            child: Text('🪑', style: TextStyle(fontSize: 22)),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('🍂', style: TextStyle(fontSize: 16)),
+                SizedBox(width: 3),
+                Text('🌻', style: TextStyle(fontSize: 23)),
+                SizedBox(width: 3),
+                Text('🌿', style: TextStyle(fontSize: 15)),
+              ],
+            ),
           ),
         ],
       ),
