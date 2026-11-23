@@ -26,7 +26,7 @@ class DesktopSidebar extends ConsumerWidget {
     final authState = ref.watch(authProvider).state;
     final lang = ref.watch(languageProvider).currentLanguage;
     final strings = AppStrings(lang);
-    final width = isCollapsed ? 80.0 : 260.0;
+    final width = isCollapsed ? 80.0 : 265.0;
 
     final userName = authState.userName ?? (strings.isSinhala ? 'නේවාසිකයා' : 'Care Specialist');
     final displayUserName = strings.isSinhala
@@ -50,23 +50,18 @@ class DesktopSidebar extends ConsumerWidget {
     return Container(
       width: width,
       decoration: const BoxDecoration(
-        color: AppColors.card,
-        border: Border(right: BorderSide(color: AppColors.border, width: 1)),
+        color: Color(0xFFFAF7FF), // Soft lavender pastel sidebar background
+        border: Border(right: BorderSide(color: Color(0xFFEDE9FE), width: 1.5)),
       ),
       child: Column(
         children: [
-          // Logo & Brand Header
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            child: isCollapsed
-                ? const CarevoraLogo(variant: LogoVariant.iconOnly, size: 36)
-                : const CarevoraLogo(variant: LogoVariant.full, size: 36),
-          ),
-          const Divider(height: 1, color: AppColors.border),
-          // Navigation Items
+          // 1. Logo & Brand Header with Top Leaf Accents
+          _buildBrandHeader(isCollapsed),
+
+          // 2. Navigation Items List (Scrollable Pill Capsules)
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               children: [
                 if (authState.isElder) ...[
                   _buildNavItem(
@@ -207,130 +202,358 @@ class DesktopSidebar extends ConsumerWidget {
               ],
             ),
           ),
-          const Divider(height: 1, color: AppColors.border),
-          // User Profile Card & Log Out
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: isCollapsed
-                    ? IconButton(
-                        icon: const Icon(LucideIcons.logOut, color: AppColors.riskHigh),
-                        onPressed: () async {
-                          await ref.read(authProvider).logout();
-                          if (context.mounted) context.go('/login');
-                        },
-                      )
-                    : Column(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(color: AppColors.border, width: 1),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.02),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
+
+          // 3. Pastoral Country Cottage Landscape (Shown in expanded mode)
+          if (!isCollapsed) _buildSidebarLandscapeTrim(),
+
+          // 4. User Profile Card & Log Out Button
+          Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: isCollapsed ? 8 : 12,
+              vertical: 8,
+            ),
+            child: isCollapsed
+                ? IconButton(
+                    icon: const Icon(LucideIcons.logOut, color: AppColors.riskHigh),
+                    onPressed: () async {
+                      await ref.read(authProvider).logout();
+                      if (context.mounted) context.go('/login');
+                    },
+                  )
+                : Column(
+                    children: [
+                      // User Profile Capsule Card
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF5F3FF),
+                          borderRadius: BorderRadius.circular(22),
+                          border: Border.all(color: const Color(0xFFDDD6FE), width: 1.2),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF7C3AED).withValues(alpha: 0.05),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
                             ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 36,
-                                  height: 36,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    border: Border.all(color: const Color(0xFFDDD6FE)),
-                                  ),
-                                  child: CarevoraAvatar(
-                                    avatarUrl: authState.avatarUrl,
-                                    radius: 18,
-                                    initials: initials,
-                                    backgroundColor: const Color(0xFFEDE9FE),
-                                    foregroundColor: const Color(0xFF7C3AED),
-                                  ),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 38,
+                              height: 38,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEDE9FE),
+                                shape: BoxShape.circle,
+                                border: Border.all(color: const Color(0xFFDDD6FE), width: 1.5),
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                initials,
+                                style: const TextStyle(
+                                  color: Color(0xFF6D28D9),
+                                  fontSize: 14.5,
+                                  fontWeight: FontWeight.w900,
                                 ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        displayUserName,
-                                        style: AppTextStyles.bodyMedium.copyWith(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      Text(
-                                        roleName,
-                                        style: AppTextStyles.caption.copyWith(
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.w700,
-                                          color: const Color(0xFF7C3AED),
-                                        ),
-                                      ),
-                                      if (elderHomeName != null && elderHomeName.isNotEmpty) ...[
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          elderHomeName,
-                                          style: AppTextStyles.caption.copyWith(
-                                            fontSize: 9.5,
-                                            color: AppColors.muted,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ],
-                                    ],
-                                  ),
-                                ),
-                              ],
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 10),
-                          InkWell(
-                            onTap: () async {
-                              await ref.read(authProvider).logout();
-                              if (context.mounted) context.go('/login');
-                            },
-                            borderRadius: BorderRadius.circular(8),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Icon(LucideIcons.logOut, size: 16, color: AppColors.riskHigh),
-                                  const SizedBox(width: 8),
                                   Text(
-                                    strings.logOut,
+                                    displayUserName,
                                     style: const TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.riskHigh,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w900,
+                                      color: Color(0xFF1E1B4B),
                                     ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  Text(
+                                    roleName,
+                                    style: const TextStyle(
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFF7C3AED),
+                                    ),
+                                  ),
+                                  Text(
+                                    (elderHomeName != null && elderHomeName.isNotEmpty)
+                                        ? elderHomeName
+                                        : 'Serene Valley Senior Living',
+                                    style: const TextStyle(
+                                      fontSize: 9.5,
+                                      fontWeight: FontWeight.w500,
+                                      color: Color(0xFF64748B),
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ],
                               ),
                             ),
-                          ),
-                        ],
+                            const Icon(
+                              LucideIcons.chevronRight,
+                              size: 19,
+                              color: Color(0xFF7C3AED),
+                            ),
+                          ],
+                        ),
                       ),
-              ),
-            ],
+                      const SizedBox(height: 8),
+
+                      // Log Out Capsule Button
+                      InkWell(
+                        onTap: () async {
+                          await ref.read(authProvider).logout();
+                          if (context.mounted) context.go('/login');
+                        },
+                        borderRadius: BorderRadius.circular(99),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 9),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(99),
+                            border: Border.all(color: const Color(0xFFFECACA), width: 1.2),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.red.withValues(alpha: 0.04),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(LucideIcons.logOut, size: 17, color: Color(0xFFDC2626)),
+                              const SizedBox(width: 8),
+                              Text(
+                                strings.isSinhala ? 'ඉවත්වන්න' : strings.logOut,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w800,
+                                  color: Color(0xFFDC2626),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
           ),
         ],
       ),
     );
   }
 
+  // Brand Header with Carevora Heart Logo & Top Corner Leaves
+  Widget _buildBrandHeader(bool isCollapsed) {
+    if (isCollapsed) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 12),
+        child: CarevoraLogo(variant: LogoVariant.iconOnly, size: 36),
+      );
+    }
+
+    return Stack(
+      clipBehavior: Clip.none,
+      alignment: Alignment.center,
+      children: [
+        // Top left leaves
+        const Positioned(
+          top: -2,
+          left: 2,
+          child: Text('🌿', style: TextStyle(fontSize: 22)),
+        ),
+        // Top right leaves
+        const Positioned(
+          top: -2,
+          right: 2,
+          child: Text('🌿', style: TextStyle(fontSize: 22)),
+        ),
+
+        Padding(
+          padding: const EdgeInsets.only(top: 14, bottom: 10),
+          child: Column(
+            children: [
+              // Carevora Heart Icon Badge
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: const RadialGradient(
+                    colors: [
+                      Color(0xFFEDE9FE),
+                      Color(0xFFFAF5FF),
+                    ],
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF7C3AED).withValues(alpha: 0.15),
+                      blurRadius: 10,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                alignment: Alignment.center,
+                child: const Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Icon(LucideIcons.heart, color: Color(0xFF7C3AED), size: 28),
+                    Positioned(
+                      top: 7,
+                      right: 5,
+                      child: Text('🍃', style: TextStyle(fontSize: 10)),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 5),
+
+              // CAREVORA brand text
+              const Text(
+                'CAREVORA',
+                style: TextStyle(
+                  fontFamily: 'Serif',
+                  fontSize: 19,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFF1E1B4B),
+                  letterSpacing: 3.5,
+                ),
+              ),
+              const SizedBox(height: 1),
+
+              // Tagline
+              const Text(
+                'Compassionate Care, Smarter Tomorrow',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF64748B),
+                  letterSpacing: 0.1,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Pastoral Country Cottage Landscape Trim
+  Widget _buildSidebarLandscapeTrim() {
+    return Container(
+      height: 84,
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Color(0xFFFAF7FF),
+            Color(0xFFF3E8FF),
+            Color(0xFFE9D5FF),
+          ],
+        ),
+      ),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          // Background Purple Mountain Hills
+          Positioned(
+            left: -15,
+            right: -15,
+            bottom: 20,
+            child: Container(
+              height: 44,
+              decoration: BoxDecoration(
+                color: const Color(0xFFDDD6FE).withValues(alpha: 0.8),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(100),
+                  topRight: Radius.circular(80),
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            left: 40,
+            right: -30,
+            bottom: 18,
+            child: Container(
+              height: 40,
+              decoration: BoxDecoration(
+                color: const Color(0xFFC4B5FD).withValues(alpha: 0.75),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(90),
+                  topRight: Radius.circular(110),
+                ),
+              ),
+            ),
+          ),
+
+          // Foreground Green Lawn
+          Positioned(
+            left: -10,
+            right: -10,
+            bottom: -15,
+            child: Container(
+              height: 44,
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Color(0xFF86EFAC),
+                    Color(0xFF22C55E),
+                    Color(0xFF16A34A),
+                  ],
+                ),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(140),
+                  topRight: Radius.circular(120),
+                ),
+              ),
+            ),
+          ),
+
+          // Country Cottage with Purple Roof
+          const Positioned(
+            left: 82,
+            bottom: 8,
+            child: Text('🏡', style: TextStyle(fontSize: 38)),
+          ),
+
+          // Green Shade Tree next to Cottage
+          const Positioned(
+            right: 24,
+            bottom: 6,
+            child: Text('🌳', style: TextStyle(fontSize: 42)),
+          ),
+
+          // Small shrubs & daisy
+          const Positioned(
+            left: 60,
+            bottom: 10,
+            child: Text('🌿', style: TextStyle(fontSize: 16)),
+          ),
+          const Positioned(
+            left: 18,
+            bottom: 6,
+            child: Text('🌼', style: TextStyle(fontSize: 14)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Navigation Pill Item (Matching Mockup with Vivid Theme Icons)
   Widget _buildNavItem(
     BuildContext context, {
     required IconData icon,
@@ -341,50 +564,69 @@ class DesktopSidebar extends ConsumerWidget {
     final isActive = currentRoute == route ||
         (route != '/dashboard' && currentRoute.startsWith(route));
 
+    final effectiveIconColor = _resolveIconColor(icon);
+
     return Padding(
-      padding: const EdgeInsets.only(bottom: 2),
+      padding: const EdgeInsets.only(bottom: 7),
       child: InkWell(
         onTap: () => context.go(route),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(24),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          padding: EdgeInsets.symmetric(
+            horizontal: isCollapsed ? 10 : 14,
+            vertical: isCollapsed ? 10 : 9.5,
+          ),
           decoration: BoxDecoration(
-            color: isActive ? const Color(0xFF7C3AED) : Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: isActive
-                ? [
-                    BoxShadow(
-                      color: const Color(0xFF7C3AED).withValues(alpha: 0.3),
-                      blurRadius: 8,
-                      offset: const Offset(0, 3),
-                    ),
-                  ]
+            gradient: isActive
+                ? const LinearGradient(
+                    colors: [Color(0xFF6D28D9), Color(0xFF7C3AED)],
+                  )
                 : null,
+            color: isActive ? null : Colors.white.withValues(alpha: 0.95),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: isActive ? const Color(0xFF6D28D9) : const Color(0xFFF3E8FF),
+              width: 1.2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: isActive
+                    ? const Color(0xFF7C3AED).withValues(alpha: 0.35)
+                    : Colors.black.withValues(alpha: 0.02),
+                blurRadius: isActive ? 10 : 4,
+                offset: Offset(0, isActive ? 3 : 1),
+              ),
+            ],
           ),
           child: Row(
+            mainAxisAlignment:
+                isCollapsed ? MainAxisAlignment.center : MainAxisAlignment.start,
             children: [
               Icon(
                 icon,
-                size: 18,
-                color: isActive ? Colors.white : AppColors.muted,
+                size: 20,
+                color: isActive ? Colors.white : effectiveIconColor,
               ),
               if (!isCollapsed) ...[
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-                      color: isActive ? Colors.white : AppColors.body,
+                      fontSize: 14,
+                      fontWeight: isActive ? FontWeight.w900 : FontWeight.w800,
+                      color: isActive ? Colors.white : const Color(0xFF1E1B4B),
+                      letterSpacing: 0.1,
                     ),
                   ),
                 ),
                 if (badge != null)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
                     decoration: BoxDecoration(
-                      color: isActive ? Colors.white : AppColors.primary,
+                      color: isActive ? Colors.white : const Color(0xFF7C3AED),
                       borderRadius: BorderRadius.circular(9999),
                     ),
                     child: Text(
@@ -402,5 +644,19 @@ class DesktopSidebar extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  // Theme-specific vibrant icon colors matching the mockup
+  Color _resolveIconColor(IconData icon) {
+    if (icon == LucideIcons.home) return const Color(0xFF7C3AED);
+    if (icon == LucideIcons.user || icon == LucideIcons.users) return const Color(0xFF8B5CF6);
+    if (icon == LucideIcons.heart) return const Color(0xFFF43F5E); // vivid pink heart
+    if (icon == LucideIcons.brain || icon == LucideIcons.gamepad2) return const Color(0xFFF59E0B); // golden puzzle/game
+    if (icon == LucideIcons.activity) return const Color(0xFFE11D48); // magenta pulse wave
+    if (icon == LucideIcons.barChart3 || icon == LucideIcons.trendingUp) return const Color(0xFF6366F1); // indigo bar chart
+    if (icon == LucideIcons.calendar || icon == LucideIcons.phoneCall) return const Color(0xFF8B5CF6);
+    if (icon == LucideIcons.bookOpen || icon == LucideIcons.helpCircle || icon == LucideIcons.stethoscope) return const Color(0xFF3B82F6);
+    if (icon == LucideIcons.settings) return const Color(0xFF7C3AED);
+    return const Color(0xFF7C3AED);
   }
 }
