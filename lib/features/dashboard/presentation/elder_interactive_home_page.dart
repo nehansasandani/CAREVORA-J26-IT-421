@@ -17,12 +17,12 @@ enum DailyAssessmentSlot { morning, afternoon, night }
 
 DailyAssessmentSlot _getCurrentAssessmentSlot(DateTime dt) {
   final hour = dt.hour;
-  if (hour >= 5 && hour < 12) {
-    return DailyAssessmentSlot.morning; // 5:00 AM - 11:59 AM
-  } else if (hour >= 12 && hour < 17) {
-    return DailyAssessmentSlot.afternoon; // 12:00 PM - 4:59 PM
+  if (hour < 12) {
+    return DailyAssessmentSlot.morning; // 12:00 AM - 11:59 AM (පෙ.ව. / උදෑසන)
+  } else if (hour < 17) {
+    return DailyAssessmentSlot.afternoon; // 12:00 PM - 4:59 PM (දහවල්)
   } else {
-    return DailyAssessmentSlot.night; // 5:00 PM - 4:59 AM
+    return DailyAssessmentSlot.night; // 5:00 PM - 11:59 PM (රාත්‍රිය)
   }
 }
 
@@ -66,7 +66,7 @@ String _getNextSlotInfoSi(DailyAssessmentSlot slot) {
     case DailyAssessmentSlot.afternoon:
       return 'සවස 05:00';
     case DailyAssessmentSlot.night:
-      return 'හෙට පෙ.ව. 05:00';
+      return 'හෙට උදෑසන';
   }
 }
 
@@ -158,16 +158,16 @@ class _ElderInteractiveHomePageState
 
   DayPeriod _getCurrentDayPeriod(DateTime dt) {
     final hour = dt.hour;
-    if (hour >= 5 && hour < 12) {
+    if (hour < 12) {
       return DayPeriod.morning;
-    } else if (hour >= 12 && hour < 16) {
+    } else if (hour < 16) {
       // 12:00 PM to 3:59 PM (12 to 15:59)
       return DayPeriod.afternoon;
-    } else if (hour >= 16 && hour < 19) {
+    } else if (hour < 19) {
       // 4:00 PM to 6:59 PM (16 to 18:59) -> Evening (සවස / සන්ධ්‍යාව)
       return DayPeriod.evening;
     } else {
-      // 7:00 PM onwards or before 5:00 AM -> Night (රාත්‍රිය)
+      // 7:00 PM to 11:59 PM -> Night (රාත්‍රිය)
       return DayPeriod.night;
     }
   }

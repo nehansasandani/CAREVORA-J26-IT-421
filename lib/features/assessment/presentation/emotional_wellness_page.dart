@@ -325,11 +325,11 @@ class _EmotionalWellnessPageState extends ConsumerState<EmotionalWellnessPage>
 
   DayPeriod _getCurrentDayPeriod() {
     final hour = DateTime.now().hour;
-    if (hour >= 5 && hour < 12) {
+    if (hour < 12) {
       return DayPeriod.morning;
-    } else if (hour >= 12 && hour < 16) {
+    } else if (hour < 16) {
       return DayPeriod.afternoon;
-    } else if (hour >= 16 && hour < 19) {
+    } else if (hour < 19) {
       return DayPeriod.evening;
     } else {
       return DayPeriod.night;

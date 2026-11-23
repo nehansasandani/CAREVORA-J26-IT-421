@@ -138,13 +138,13 @@ class DashboardShell extends ConsumerWidget {
                 final hour = DateTime.now().hour;
                 String timeGreetingSi = 'සුබ සවසක්';
                 String timeGreetingEn = 'Good evening';
-                if (hour >= 5 && hour < 12) {
+                if (hour < 12) {
                   timeGreetingSi = 'සුබ උදෑසනක්';
                   timeGreetingEn = 'Good morning';
-                } else if (hour >= 12 && hour < 16) {
+                } else if (hour < 16) {
                   timeGreetingSi = 'සුබ දහවලක්';
                   timeGreetingEn = 'Good afternoon';
-                } else if (hour >= 16 && hour < 21) {
+                } else if (hour < 21) {
                   timeGreetingSi = 'සුබ සවසක්';
                   timeGreetingEn = 'Good evening';
                 } else {
