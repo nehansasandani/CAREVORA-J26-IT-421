@@ -535,11 +535,11 @@ class _ElderInteractiveHomePageState
     final doneCount = _getDoneCount(activity);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.92),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.black.withValues(alpha: 0.07)),
+        color: Colors.white.withValues(alpha: 0.95),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.black.withValues(alpha: 0.08)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -551,13 +551,13 @@ class _ElderInteractiveHomePageState
               const Text(
                 'දෛනික සැසි (3/දින):',
                 style: TextStyle(
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF475569),
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF334155),
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
                 decoration: BoxDecoration(
                   color: doneCount == 3 ? const Color(0xFFDCFCE7) : activeThemeColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(99),
@@ -565,15 +565,15 @@ class _ElderInteractiveHomePageState
                 child: Text(
                   '$doneCount / 3 සම්පූර්ණයි',
                   style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w900,
                     color: doneCount == 3 ? const Color(0xFF15803D) : activeThemeColor,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
 
           // 3 Slot Pills Row
           Row(
@@ -587,7 +587,7 @@ class _ElderInteractiveHomePageState
                   activeThemeColor: activeThemeColor,
                 ),
               ),
-              const SizedBox(width: 4),
+              const SizedBox(width: 6),
               Expanded(
                 child: _buildSlotPill(
                   label: 'දහවල',
@@ -597,7 +597,7 @@ class _ElderInteractiveHomePageState
                   activeThemeColor: activeThemeColor,
                 ),
               ),
-              const SizedBox(width: 4),
+              const SizedBox(width: 6),
               Expanded(
                 child: _buildSlotPill(
                   label: 'රාත්‍රිය',
@@ -632,8 +632,8 @@ class _ElderInteractiveHomePageState
       textColor = const Color(0xFF15803D);
       statusSymbol = '✓';
     } else if (isCurrent) {
-      bg = activeThemeColor.withValues(alpha: 0.12);
-      borderColor = activeThemeColor.withValues(alpha: 0.50);
+      bg = activeThemeColor.withValues(alpha: 0.14);
+      borderColor = activeThemeColor.withValues(alpha: 0.55);
       textColor = activeThemeColor;
       statusSymbol = '🔔';
     } else {
@@ -644,27 +644,27 @@ class _ElderInteractiveHomePageState
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: borderColor, width: isCurrent && !isDone ? 1.5 : 1.0),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: borderColor, width: isCurrent && !isDone ? 1.8 : 1.2),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
             '$icon $statusSymbol',
-            style: const TextStyle(fontSize: 12),
+            style: const TextStyle(fontSize: 15),
           ),
-          const SizedBox(height: 1),
+          const SizedBox(height: 3),
           Text(
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              fontSize: 10.5,
-              fontWeight: FontWeight.w700,
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
               color: textColor,
             ),
           ),
@@ -680,22 +680,22 @@ class _ElderInteractiveHomePageState
   }) {
     if (isCurrentDone) {
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         decoration: BoxDecoration(
           color: const Color(0xFFF0FDF4),
           borderRadius: BorderRadius.circular(99),
-          border: Border.all(color: const Color(0xFFBBF7D0)),
+          border: Border.all(color: const Color(0xFFBBF7D0), width: 1.2),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('✅', style: TextStyle(fontSize: 12)),
-            const SizedBox(width: 4),
+            const Text('✅', style: TextStyle(fontSize: 14)),
+            const SizedBox(width: 6),
             Text(
               '$currentSlotName සැසිය සම්පූර්ණයි',
               style: const TextStyle(
-                fontSize: 11.5,
-                fontWeight: FontWeight.w700,
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
                 color: Color(0xFF15803D),
               ),
             ),
@@ -704,21 +704,21 @@ class _ElderInteractiveHomePageState
       );
     } else {
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         decoration: BoxDecoration(
           color: const Color(0xFFFEF2F2),
           borderRadius: BorderRadius.circular(99),
-          border: Border.all(color: const Color(0xFFFECACA)),
+          border: Border.all(color: const Color(0xFFFECACA), width: 1.2),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('🔔', style: TextStyle(fontSize: 12)),
-            const SizedBox(width: 4),
+            const Text('🔔', style: TextStyle(fontSize: 14)),
+            const SizedBox(width: 6),
             Text(
               'අද $currentSlotName සැසිය තවම කර නැත!',
               style: const TextStyle(
-                fontSize: 11.5,
+                fontSize: 14,
                 fontWeight: FontWeight.w800,
                 color: Color(0xFFDC2626),
               ),
@@ -1729,15 +1729,15 @@ class _ElderInteractiveHomePageState
     Widget? sessionTrackerWidget,
   }) {
     return Container(
-      constraints: const BoxConstraints(minHeight: 270),
-      padding: const EdgeInsets.all(18),
+      constraints: const BoxConstraints(minHeight: 285),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
       decoration: BoxDecoration(
         color: backgroundColor,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: borderColor, width: 1.5),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: borderColor, width: 1.8),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 14,
             offset: const Offset(0, 4),
           ),
@@ -1748,28 +1748,28 @@ class _ElderInteractiveHomePageState
         children: [
           // Top Icon Circle
           Container(
-            width: 58,
-            height: 58,
+            width: 64,
+            height: 64,
             decoration: BoxDecoration(
               color: Colors.white,
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.06),
-                  blurRadius: 8,
+                  color: Colors.black.withValues(alpha: 0.07),
+                  blurRadius: 10,
                   offset: const Offset(0, 3),
                 ),
               ],
             ),
             alignment: Alignment.center,
-            child: Text(badgeIcon, style: const TextStyle(fontSize: 30)),
+            child: Text(badgeIcon, style: const TextStyle(fontSize: 32)),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
 
           // Optional Status Badge (e.g. 🔔 තවම කර නැත / ✅ සම්පූර්ණයි)
           if (statusBadgeWidget != null) ...[
             statusBadgeWidget,
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
           ],
 
           // Title
@@ -1777,8 +1777,8 @@ class _ElderInteractiveHomePageState
             title,
             textAlign: TextAlign.center,
             style: const TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.w800,
+              fontSize: 20,
+              fontWeight: FontWeight.w900,
               color: Color(0xFF1E293B),
               height: 1.25,
             ),
@@ -1790,18 +1790,18 @@ class _ElderInteractiveHomePageState
             description,
             textAlign: TextAlign.center,
             style: const TextStyle(
-              fontSize: 13.5,
-              fontWeight: FontWeight.w500,
-              color: Color(0xFF475569),
-              height: 1.35,
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF334155),
+              height: 1.38,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
 
           // Optional 3-Daily Sessions Tracker
           if (sessionTrackerWidget != null) ...[
             sessionTrackerWidget,
-            const SizedBox(height: 14),
+            const SizedBox(height: 16),
           ],
 
           // Action Button
@@ -1810,7 +1810,7 @@ class _ElderInteractiveHomePageState
             borderRadius: BorderRadius.circular(99),
             child: Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 12),
+              padding: const EdgeInsets.symmetric(vertical: 13.5),
               decoration: BoxDecoration(
                 gradient: LinearGradient(colors: buttonGradient),
                 borderRadius: BorderRadius.circular(99),
@@ -1828,8 +1828,9 @@ class _ElderInteractiveHomePageState
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.2,
                 ),
               ),
             ),
