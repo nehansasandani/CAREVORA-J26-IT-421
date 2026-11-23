@@ -113,11 +113,18 @@ class WebTtsService implements TtsService {
     }
     if (text.contains('කාමරයට පමණක් සීමා නොවී')) return 'praise_q5.mp3';
     if (text.contains('බැලීමට පැමිණෙන') || text.contains('දුරකථනයෙන් කතා කරන')) return 'q6.mp3';
-    if (text.contains('උදෑසන තේ පැන්') || text.contains('ව්‍යායාම') || text.contains('උත්සව සඳහා')) return 'q7.mp3';
     if (text.contains('තවත් කෙනෙකු සිටී නම්')) return 'q8.mp3';
     if (text.contains('කරදර හෝ ගැටලු') && text.contains('රැකවරණ')) return 'q9.mp3';
     if (text.contains('සුහද සන්නිවේදනය ඉතා අගනේය')) return 'praise_q9.mp3';
     if (text.contains('සන්සුන් සංගීතයකට') || text.contains('පිරිත්') || text.contains('ගාථා')) return 'q10.mp3';
+
+    // Creative Elder Routine & Banner Matching (Uses native studio-recorded Sinhala audio)
+    if (text.contains('ඖෂධ') || text.contains('බෙහෙත්')) return 'unwell.mp3';
+    if (text.contains('තේ බිව්වද') || text.contains('තේ පැන්') || text.contains('තේ පානය') || text.contains('තේ එකක්') || text.contains('දිවා ආහාරය')) return 'q7.mp3';
+    if (text.contains('නැවුම් සුළං') || text.contains('මුහුණ') || text.contains('විවේකයක්') || text.contains('නින්දකට') || text.contains('සන්සුන්')) return 'quiet.mp3';
+    if (text.contains('රැකබලා ගන්නා') || text.contains('සත්කාර කණ්ඩායම') || text.contains('සත්කාරක නිලධාරියාට') || text.contains('හදිසි දැනුම්දීමක්')) return 'caregiver_alert.mp3';
+    if (text.contains('ඔබ ගැන අදත් හොඳින් සලකමු') || text.contains('සුබ උදෑසනක්') || text.contains('සුබ දහවල්') || text.contains('සුබ සන්ධ්‍යාවක්') || text.contains('සුබ රාත්‍රියක්')) return 'praise_q1.mp3';
+    if (text.contains('නෆියා') || text.contains('මූලික පුරුදු')) return 'comfort_q3.mp3';
 
     if (text.contains('ගොඩක් ඒ ගැන ස්තූතියි') || text.contains('සහනයෙන් පසුවීම')) return 'praise_q1.mp3';
     if (text.contains('එසේ සිතන්න එපා')) return 'comfort_q4.mp3';
@@ -584,8 +591,8 @@ class WebTtsService implements TtsService {
 
       final singlish = _toSinglish(text);
       final utterance = html.SpeechSynthesisUtterance(singlish);
-      utterance.rate = 0.88; // Natural, clear conversational pacing for elder
-      utterance.pitch = 1.02; // Warm, polite, human pitch
+      utterance.rate = 0.78; // Gentle, friendly pacing for elder comprehension
+      utterance.pitch = 1.05; // Warm, polite, friendly human pitch
 
       final voices = html.window.speechSynthesis!.getVoices();
 
