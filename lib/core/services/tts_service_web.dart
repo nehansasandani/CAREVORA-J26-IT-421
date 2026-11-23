@@ -417,6 +417,43 @@ class WebTtsService implements TtsService {
     'ආතර් පෙන්ඩ්ල්ටන්': 'Arthur Pendleton',
     'නේවාසික සාමාජිකයා': 'Newaasika Saamaajikaya',
     'නෆියා': 'Nafiya',
+    'මල්ලී අම්මා': 'Malli Amma',
+    'සුබ දහවලක්': 'Suba dahawalak',
+    'සුබ දහවලක්, මල්ලී අම්මා!': 'Suba dahawalak, Malli Amma!',
+    'සුබ දහවලක්, මල්ලී අම්මා! ඔබගේ සුවබර දිනය අදත් හොඳින් ගතවේවි ද?':
+        'Suba dahawalak, Malli Amma! Obage suwabara dinaya adath hondin gathawewida?',
+    'සුබ උදෑසනක්, මල්ලී අම්මා! ඔබගේ සුවබර දිනය අදත් හොඳින් ගතවේවි ද?':
+        'Suba udaesanak, Malli Amma! Obage suwabara dinaya adath hondin gathawewida?',
+    'සුබ සන්ධ්‍යාවක්, මල්ලී අම්මා! ඔබගේ සුවබර දිනය අදත් හොඳින් ගතවේවි ද?':
+        'Suba sandhyaawak, Malli Amma! Obage suwabara dinaya adath hondin gathawewida?',
+    'සුබ රාත්‍රියක්, මල්ලී අම්මා! ඔබගේ සුවබර දිනය අදත් හොඳින් ගතවේවි ද?':
+        'Suba raathriyak, Malli Amma! Obage suwabara dinaya adath hondin gathawewida?',
+    'ඔබගේ සුවබර දිනය අදත් හොඳින් ගතවේවි ද?':
+        'Obage suwabara dinaya adath hondin gathawewida?',
+    'ඔබගේ සුවබර දිනය අදත් හොඳින් ගතවේවි ද':
+        'Obage suwabara dinaya adath hondin gathawewida',
+    'ඔබ අද තේ බිව්වද?': 'Oba ada tay biwwada?',
+    'ඔබ අද තේ බිව්වද': 'Oba ada tay biwwada',
+    'ඔබ අද ආහාර ගත්තාද?': 'Oba ada aahaara gaththaada?',
+    'ඔබ අද ආහාර ගත්තාද': 'Oba ada aahaara gaththaada',
+    'ජලය ප්‍රමාණවත් ලෙස පානය කිරීමට අමතක නොකරන්න.':
+        'Jalaya pramaanawath lesa paanaya kireemata amathaka nokaranna.',
+    'ජලය ප්‍රමාණවත් ලෙස පානය කිරීමට අමතක නොකරන්න':
+        'Jalaya pramaanawath lesa paanaya kireemata amathaka nokaranna',
+    'මානසික සුවතා කතාබහ': 'Maanasika suwathaa kathaabaha',
+    'මතක පරීක්ෂාව සහ විනෝද ක්‍රීඩා': 'Mathaka pareekshaawa saha vinoda kreeda',
+    'සන්සුන් සංගීතය සහ ස්වභාවික නාද': 'Sansun sangeethaya saha swabhaavika naadha',
+    'උපකාර ඉල්ලීම': 'Upakaara illeema',
+    'උපකාර ඉල්ලීම (සත්කාරක සමඟ සම්බන්ධ වන්න)':
+        'Upakaara illeema, sathkaaraka samanga sambandha wanna',
+    'සුබ සිතක්, සුවබර ජීවිතයකට මගක් වේ.':
+        'Suba sithak, suwabara jeevithayakata magak way.',
+    'ඔබගේ මානසික සුවතාව හොඳ මට්ටමක පවතී!':
+        'Obage maanasika suwathaawa honda mattamaka pawathee!',
+    'දිගටම ඔබේ දෛනික පුරුදු පවත්වාගෙන යන්න.':
+        'Digatama obe dainika purudu pawathwaagena yanna.',
+    'ඔබේ ඇමතුම සහායක කණ්ඩායමට යොමු කළා. සුළු මොහොතකින් පැමිණෙනු ඇත.':
+        'Obe aemathuma sahaayaka kandaayamata yomu kalaa. Sulu mohothakin peminenu etha.',
     'දැන් අපි මතක පරීක්ෂාව ආරම්භ කරමු.':
         'Daen api mathaka pareekshaawa aarambha karamu.',
   };

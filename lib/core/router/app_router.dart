@@ -23,6 +23,7 @@ import '../../features/splash/presentation/pages/splash_page.dart';
 import '../../features/metabolic/presentation/metabolic_health_page.dart';
 import '../../features/dashboard/presentation/emotional_wellness_games_page.dart';
 import '../../features/assessment/presentation/emotional_ralpa_trajectory_page.dart';
+import '../../features/dashboard/presentation/elder_interactive_home_page.dart';
 
 GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
 GlobalKey<NavigatorState> _shellNavigatorKey = GlobalKey<NavigatorState>();
@@ -87,6 +88,10 @@ class AppRouter {
           GoRoute(
             path: '/dashboard',
             builder: (context, state) => const OverviewPage(),
+          ),
+          GoRoute(
+            path: '/dashboard/elder-home',
+            builder: (context, state) => const ElderInteractiveHomePage(),
           ),
           GoRoute(
             path: '/dashboard/residents',

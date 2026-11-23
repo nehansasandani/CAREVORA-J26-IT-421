@@ -132,7 +132,7 @@ class _LoginFormCardState extends ConsumerState<LoginFormCard> {
         if (authState.isAdmin) {
           context.go('/admin/dashboard');
         } else if (authState.isElder) {
-          context.go('/dashboard');
+          context.go('/dashboard/elder-home');
         } else {
           context.go('/dashboard/residents');
         }
