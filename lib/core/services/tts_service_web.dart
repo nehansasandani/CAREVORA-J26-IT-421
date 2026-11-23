@@ -77,6 +77,23 @@ class WebTtsService implements TtsService {
     'හොඳ උත්සාහයක්! අපි දැන් සතුටින් සැහැල්ලු මතක ක්‍රීඩාවක් කරමු.': 'cog_result_games.mp3',
     'විනෝද චාරිකා මතක ක්‍රීඩාව ක්‍රීඩා කරන ආකාරය. පළමුව, මිතුරෙකු තෝරා එකට හෝ ආරාධනා ඔබා කණ්ඩායම සාදන්න. දෙවනුව, ඔබේ වාරයේදී කූඩයේ කලින් දැමූ භාණ්ඩ පිළිවෙලට තෝරා අලුත් භාණ්ඩයක් එක් කරන්න. අමතක වුණොත් ඉඟියක් ඔබන්න. භාණ්ඩ පහම එකට අසුරා ජය ගන්න!': 'collab_howto.mp3',
     'අපි මතක ක්‍රීඩා කරමු! ඔබට තනිවම සෙල්ලම් කිරීමට තනි ක්‍රීඩාවක් හෝ මිතුරෙකු සමඟ එක්ව සෙල්ලම් කිරීමට සාමූහික ක්‍රීඩාව තෝරාගන්න.': 'memory_hub_welcome.mp3',
+    // Elder Home Page Native Sinhala Clips
+    'සුබ උදෑසනක්! ඔබගේ සුවබර දිනය අදත් හොඳින් ගතවෙනවාද? ඔබ ගැන අදත් හොඳින් සලකමු!': 'home_greet_morning.mp3',
+    'සුබ දහවලක්! ඔබගේ සුවබර දිනය අදත් හොඳින් ගතවෙනවාද? ඔබ ගැන අදත් හොඳින් සලකමු!': 'home_greet_afternoon.mp3',
+    'සුබ සන්ධ්‍යාවක්! ඔබගේ සුවබර දිනය අදත් හොඳින් ගතවෙනවාද? ඔබ ගැන අදත් හොඳින් සලකමු!': 'home_greet_evening.mp3',
+    'සුබ රාත්‍රියක්! ඔබගේ සුවබර දිනය අදත් හොඳින් ගතවෙනවාද? ඔබ ගැන අදත් හොඳින් සලකමු!': 'home_greet_night.mp3',
+    'ඔබේ දෛනික පුරුදු හොඳින් සිදුවෙනවාද? අද ඔබ සුවෙන් සිටිනවාද?': 'home_mascot.mp3',
+    'ඔබ අද තේ බිව්වද?': 'home_tea_q.mp3',
+    'ඔබ තේ පානය කර තිබීම හරිම සතුටක්!': 'home_tea_yes.mp3',
+    'ඔබ තවම තේ බීලා නැත්නම්, මම රැකබලා ගන්නාට දැන්වුවා ඔබට උණුසුම් තේ එකක් ගෙන එන්න.': 'home_tea_no.mp3',
+    'ඔබ අද ආහාර ගත්තාද?': 'home_meal_q.mp3',
+    'ඔබ ආහාර ගෙන තිබීම හරිම සතුටක්!': 'home_meal_yes.mp3',
+    'ඔබ තවම ආහාර ගෙන නැත්නම්, ඔබට උදව් කිරීමට රැකබලා ගන්නා දැනුවත් කර ඇත.': 'home_meal_no.mp3',
+    'ජලය ප්‍රමාණවත් ලෙස පානය කිරීමට අමතක නොකරන්න.': 'home_hydration.mp3',
+    'සුබ සිතක්, සුවබර ජීවිතයකට මගක් වේ.': 'home_quote.mp3',
+    'ඔබේ ඇමතුම සහායක කණ්ඩායමට යොමු කළා. සුළු මොහොතකින් පැමිණෙනු ඇත.': 'home_call_help.mp3',
+    'සන්සුන් සංගීතය වාදනය ආරම්භ කළා.': 'home_music_start.mp3',
+    'ස්වභාවික කුරුළු නාදය සහ දිය දහරාව වාදනය ආරම්භ කළා.': 'home_nature_start.mp3',
   };
 
   static String? _matchSinhalaAudioFile(String rawText) {
@@ -104,6 +121,24 @@ class WebTtsService implements TtsService {
     if (text.contains('සැහැල්ලු මතක ක්‍රීඩාවක් කරමු')) return 'cog_result_games.mp3';
     if (text.contains('විනෝද චාරිකා මතක ක්‍රීඩාව ක්‍රීඩා කරන ආකාරය')) return 'collab_howto.mp3';
     if (text.contains('අපි මතක ක්‍රීඩා කරමු')) return 'memory_hub_welcome.mp3';
+    if (text.contains('ඔබගේ සුවබර දිනය අදත් හොඳින් ගතවෙනවාද')) {
+      if (text.contains('සුබ උදෑසනක්')) return 'home_greet_morning.mp3';
+      if (text.contains('සුබ දහවලක්')) return 'home_greet_afternoon.mp3';
+      if (text.contains('සුබ සන්ධ්‍යාවක්')) return 'home_greet_evening.mp3';
+      if (text.contains('සුබ රාත්‍රියක්')) return 'home_greet_night.mp3';
+    }
+    if (text.contains('ඔබේ දෛනික පුරුදු හොඳින් සිදුවෙනවාද')) return 'home_mascot.mp3';
+    if (text.contains('ඔබ අද තේ බිව්වද')) return 'home_tea_q.mp3';
+    if (text.contains('තේ පානය කර තිබීම හරිම සතුටක්')) return 'home_tea_yes.mp3';
+    if (text.contains('උණුසුම් තේ එකක් ගෙන එන්න')) return 'home_tea_no.mp3';
+    if (text.contains('ඔබ අද ආහාර ගත්තාද')) return 'home_meal_q.mp3';
+    if (text.contains('ආහාර ගෙන තිබීම හරිම සතුටක්')) return 'home_meal_yes.mp3';
+    if (text.contains('ආහාර ගෙන නැත්නම්, ඔබට උදව් කිරීමට')) return 'home_meal_no.mp3';
+    if (text.contains('ජලය ප්‍රමාණවත් ලෙස පානය කිරීමට')) return 'home_hydration.mp3';
+    if (text.contains('සුබ සිතක්, සුවබර ජීවිතයකට')) return 'home_quote.mp3';
+    if (text.contains('ඔබේ ඇමතුම සහායක කණ්ඩායමට යොමු කළා')) return 'home_call_help.mp3';
+    if (text.contains('සන්සුන් සංගීතය වාදනය ආරම්භ කළා')) return 'home_music_start.mp3';
+    if (text.contains('ස්වභාවික කුරුළු නාදය සහ දිය දහරාව')) return 'home_nature_start.mp3';
 
     for (final entry in _sinhalaAudioFiles.entries) {
       if (text.contains(entry.key)) {
