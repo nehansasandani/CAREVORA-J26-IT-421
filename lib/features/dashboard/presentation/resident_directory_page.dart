@@ -2911,7 +2911,7 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
                           : 'Memory Condition: Fair (Stable)');
 
                   final String conditionNote = isGood
-                      ? 'Strong cognitive recall across the 3 memory games'
+                      ? 'Strong cognitive recall across the 4 memory games'
                       : (isDecline
                           ? 'Recent game variation observed. Supportive practice advised'
                           : 'Consistent mental recall within expected baseline range');
@@ -2989,6 +2989,8 @@ class _ResidentDirectoryPageState extends ConsumerState<ResidentDirectoryPage> {
             _buildGameScoreRow('Matching Pairs', progress?.latestPairsScore),
             const SizedBox(height: 6),
             _buildGameScoreRow('Remember Items', progress?.latestItemsScore),
+            const SizedBox(height: 6),
+            _buildGameScoreRow('Picnic Memory Chain', progress?.latestCollaborativeScore),
             const SizedBox(height: 12),
 
             // Recent Activity Date

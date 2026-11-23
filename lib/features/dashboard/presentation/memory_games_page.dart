@@ -8,10 +8,14 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/config/app_config.dart';
 import '../../../core/localization/app_language.dart';
+import '../../../core/localization/sinhala_name_transliterator.dart';
+import '../../../core/services/picnic_bgm_player.dart';
+import '../../../core/services/tts_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../assessment/application/memory_game_service.dart';
 import '../../auth/application/auth_controller.dart';
+import 'widgets/elder_game_invite_notifications.dart';
 import 'widgets/elder_memory_game_world_hub.dart';
 
 /// Available games in the Memory Games suite.
@@ -29,6 +33,7 @@ class MemoryGamesPage extends ConsumerStatefulWidget {
   final List<int>? initialSequence;
   final int? residentId;
   final String? token;
+  final String? initialLiveRoomId;
 
   const MemoryGamesPage({
     super.key,
@@ -36,6 +41,7 @@ class MemoryGamesPage extends ConsumerStatefulWidget {
     this.initialSequence,
     this.residentId,
     this.token,
+    this.initialLiveRoomId,
   });
 
   @override
@@ -65,6 +71,16 @@ class _MemoryGamesPageState extends ConsumerState<MemoryGamesPage> {
         const Duration(seconds: 2),
         (_) => _checkHubIncomingInvites(),
       );
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant MemoryGamesPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialGame != MemoryGameType.none &&
+        (widget.initialGame != oldWidget.initialGame ||
+            widget.initialLiveRoomId != oldWidget.initialLiveRoomId)) {
+      _activeGame = widget.initialGame;
     }
   }
 
@@ -195,6 +211,7 @@ class _MemoryGamesPageState extends ConsumerState<MemoryGamesPage> {
           token: effectiveToken,
         );
       case MemoryGameType.collaborative:
+        final isSinhala = ref.watch(languageProvider).isSinhala;
         return _CollaborativeMemoryGameView(
           key: const ValueKey('collaborative_game'),
           onBack: _backToHub,
@@ -203,6 +220,8 @@ class _MemoryGamesPageState extends ConsumerState<MemoryGamesPage> {
           elderHomeName: auth.elderHomeName ?? 'Serene Valley Senior Living',
           hostName: auth.userName ?? 'Sarah Jenkins',
           token: effectiveToken,
+          isSinhala: isSinhala,
+          initialLiveRoomId: widget.initialLiveRoomId,
         );
       case MemoryGameType.none:
         if (auth.isElder) {
@@ -5119,6 +5138,7 @@ Widget _buildGameNavBar({
   required VoidCallback onBack,
   required VoidCallback onReset,
   required String statusBadge,
+  String backLabel = 'All Games',
 }) {
   return Container(
     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
@@ -5155,9 +5175,9 @@ Widget _buildGameNavBar({
                 key: const ValueKey('back_to_games_button'),
                 onPressed: onBack,
                 icon: const Icon(LucideIcons.arrowLeft, size: 18),
-                label: const Text(
-                  'All Games',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                label: Text(
+                  backLabel,
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFFAF5FF),
@@ -5344,6 +5364,8 @@ class _CollaborativeMemoryGameView extends StatefulWidget {
   final String elderHomeName;
   final String hostName;
   final String? token;
+  final bool isSinhala;
+  final String? initialLiveRoomId;
 
   const _CollaborativeMemoryGameView({
     super.key,
@@ -5353,11 +5375,61 @@ class _CollaborativeMemoryGameView extends StatefulWidget {
     required this.elderHomeName,
     required this.hostName,
     this.token,
+    this.isSinhala = false,
+    this.initialLiveRoomId,
   });
 
   @override
   State<_CollaborativeMemoryGameView> createState() =>
       _CollaborativeMemoryGameViewState();
+}
+
+class _CollabPlayerSnapshot {
+  final bool isInvited;
+  final bool hasJoined;
+  final int chainStepsCompleted;
+  final int itemsAdded;
+
+  const _CollabPlayerSnapshot({
+    required this.isInvited,
+    required this.hasJoined,
+    required this.chainStepsCompleted,
+    required this.itemsAdded,
+  });
+}
+
+class _CollabLangSnapshot {
+  final _ChainTurnStage stage;
+  final int currentPlayerIndex;
+  final List<_PicnicChainItem> packedChain;
+  final List<_PicnicChainItem> currentRecallInput;
+  final String? feedbackBannerText;
+  final bool isFeedbackPositive;
+  final String? teammateHintText;
+  final int totalTeamAttempts;
+  final int successfulRecalls;
+  final bool isSaving;
+  final String? saveErrorMessage;
+  final double? lastScore;
+  final bool inviteCodeCopied;
+  final Map<String, _CollabPlayerSnapshot> playerStates;
+
+  const _CollabLangSnapshot({
+    required this.stage,
+    required this.currentPlayerIndex,
+    required this.packedChain,
+    required this.currentRecallInput,
+    required this.feedbackBannerText,
+    required this.isFeedbackPositive,
+    required this.teammateHintText,
+    required this.totalTeamAttempts,
+    required this.successfulRecalls,
+    required this.isSaving,
+    required this.saveErrorMessage,
+    required this.lastScore,
+    required this.inviteCodeCopied,
+    required this.playerStates,
+  });
 }
 
 class _CollaborativeMemoryGameViewState
@@ -5418,12 +5490,100 @@ class _CollaborativeMemoryGameViewState
   ];
 
   static const String _prefsInvitesKey = 'carevora_picnic_game_invites_v1';
+  static const String _prefsDismissedInvitesKey =
+      'carevora_picnic_dismissed_invites_v1';
 
   late List<_InvitedPlayer> _directoryPlayers;
   bool _inviteCodeCopied = false;
   Timer? _inviteSyncTimer;
   final Set<String> _shownIncomingPopupIds = {};
   List<Map<String, dynamic>> _incomingInvitesForMe = [];
+  Set<String>? _dismissedInviteIds;
+  Set<String>? _appliedCancelledInviteIds;
+  int? _friendsPageIndex;
+  String? _liveRoomId;
+  int? _liveRoomVersion;
+  String? _liveRoomStartedBy;
+  int? _liveRoomStartedAt;
+  Set<String>? _liveJoinedPlayers;
+  Set<String>? _sameScreenPlayerNames;
+  Map<String, dynamic>? _pendingLiveStartRoom;
+  Timer? _liveRoomSyncTimer;
+  Set<String>? _syncedTeamPeers;
+  String? _restartRequestedBy;
+  int? _restartRequestId;
+  Set<String>? _restartApprovedBy;
+  int? _shownRestartDialogId;
+  List<String>? _liveTurnOrder;
+  String? _lastSelectedItemKey;
+  String? _lastSelectedByName;
+  String? _lastSelectedAction;
+  int? _lastSelectedAtMs;
+  String? _savedCompletedRoomKey;
+  List<Map<String, dynamic>>? _otherActiveLiveTeams;
+  Set<String>? _busyInGamePlayerNames;
+  PicnicBgmPlayer? _bgmPlayer;
+  bool? _isMusicMuted;
+  Set<String>? _exitedLiveRoomIds;
+
+  PicnicBgmPlayer get _bgm => _bgmPlayer ??= PicnicBgmPlayer();
+
+  void _toggleGameMusic() {
+    final nextMuted = !(_isMusicMuted ?? false);
+    setState(() {
+      _isMusicMuted = nextMuted;
+    });
+    _bgm.setMuted(nextMuted);
+    if (!nextMuted && _stage != _ChainTurnStage.lobbyInvite) {
+      _bgm.startBgm();
+    }
+  }
+
+  void _ensurePlayMusicRunning() {
+    if (_isMusicMuted == true) return;
+    _bgm.startBgm();
+  }
+
+  String _cleanName(String raw) => raw.replaceAll('(You)', '').trim();
+  bool get _isLiveMultiplayerActive =>
+      _liveRoomId != null && _liveRoomId!.isNotEmpty;
+
+  /// Canonical turn order shared across ALL players' screens so 3+ players
+  /// always rotate fairly (Player 1 -> Player 2 -> Player 3 -> Player 1).
+  List<_InvitedPlayer> get _orderedTurnPlayers {
+    final joined = _joinedPlayers;
+    final order = _liveTurnOrder;
+    if (order == null || order.isEmpty) return joined;
+    final List<_InvitedPlayer> ordered = [];
+    final Set<String> addedLowers = {};
+    for (final name in order) {
+      final lower = name.trim().toLowerCase();
+      final match = joined
+          .where((p) => _cleanName(p.name).toLowerCase() == lower)
+          .firstOrNull;
+      if (match != null && addedLowers.add(lower)) {
+        ordered.add(match);
+      }
+    }
+    if (ordered.isEmpty) {
+      for (final p in joined) {
+        final lower = _cleanName(p.name).toLowerCase();
+        if (addedLowers.add(lower)) {
+          ordered.add(p);
+        }
+      }
+    }
+    return ordered;
+  }
+
+  bool get _isMyTurnNow {
+    if (!_isLiveMultiplayerActive) return true;
+    final players = _orderedTurnPlayers;
+    if (players.isEmpty) return false;
+    final idx = _currentPlayerIndex.clamp(0, players.length - 1);
+    return _cleanName(players[idx].name).toLowerCase() ==
+        widget.hostName.trim().toLowerCase();
+  }
 
   _ChainTurnStage _stage = _ChainTurnStage.lobbyInvite;
   int _currentPlayerIndex = 0;
@@ -5437,6 +5597,9 @@ class _CollaborativeMemoryGameViewState
   bool _isSaving = false;
   String? _saveErrorMessage;
   double? _lastScore;
+  Map<bool, _CollabLangSnapshot>? _langSnapshots;
+
+  String get _currentLangCode => widget.isSinhala ? 'si' : 'en';
 
   @override
   void initState() {
@@ -5444,6 +5607,7 @@ class _CollaborativeMemoryGameViewState
     _initPlayers();
     _loadFacilityEldersFromBackend();
     _syncInvites();
+    _syncLiveRoomState();
     final isTestEnv =
         WidgetsBinding.instance.runtimeType.toString().contains('Test');
     if (!isTestEnv) {
@@ -5451,13 +5615,540 @@ class _CollaborativeMemoryGameViewState
         const Duration(seconds: 2),
         (_) => _syncInvites(),
       );
+      _liveRoomSyncTimer = Timer.periodic(
+        const Duration(seconds: 1),
+        (_) => _syncLiveRoomState(),
+      );
     }
+  }
+
+  @override
+  void didUpdateWidget(covariant _CollaborativeMemoryGameView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isSinhala != widget.isSinhala) {
+      _switchLanguageSession(
+        fromSinhala: oldWidget.isSinhala,
+        toSinhala: widget.isSinhala,
+      );
+    }
+    if (widget.initialLiveRoomId != null &&
+        widget.initialLiveRoomId!.isNotEmpty &&
+        widget.initialLiveRoomId != oldWidget.initialLiveRoomId) {
+      _syncLiveRoomState();
+    }
+  }
+
+  void _switchLanguageSession({
+    required bool fromSinhala,
+    required bool toSinhala,
+  }) {
+    final snapshots = _langSnapshots ??= <bool, _CollabLangSnapshot>{};
+
+    // 1. Save outgoing language's complete game + team state independently
+    final savedPlayers = <String, _CollabPlayerSnapshot>{};
+    for (final p in _directoryPlayers) {
+      savedPlayers[p.name.trim().toLowerCase()] = _CollabPlayerSnapshot(
+        isInvited: p.isInvited,
+        hasJoined: p.hasJoined,
+        chainStepsCompleted: p.chainStepsCompleted,
+        itemsAdded: p.itemsAdded,
+      );
+    }
+    snapshots[fromSinhala] = _CollabLangSnapshot(
+      stage: _stage,
+      currentPlayerIndex: _currentPlayerIndex,
+      packedChain: List<_PicnicChainItem>.from(_packedChain),
+      currentRecallInput: List<_PicnicChainItem>.from(_currentRecallInput),
+      feedbackBannerText: _feedbackBannerText,
+      isFeedbackPositive: _isFeedbackPositive,
+      teammateHintText: _teammateHintText,
+      totalTeamAttempts: _totalTeamAttempts,
+      successfulRecalls: _successfulRecalls,
+      isSaving: _isSaving,
+      saveErrorMessage: _saveErrorMessage,
+      lastScore: _lastScore,
+      inviteCodeCopied: _inviteCodeCopied,
+      playerStates: savedPlayers,
+    );
+
+    // 2. Restore target language's own independent state (or start a fresh lobby)
+    final target = snapshots[toSinhala];
+    if (target != null) {
+      _stage = target.stage;
+      _packedChain
+        ..clear()
+        ..addAll(target.packedChain);
+      _currentRecallInput
+        ..clear()
+        ..addAll(target.currentRecallInput);
+      _feedbackBannerText = target.feedbackBannerText;
+      _isFeedbackPositive = target.isFeedbackPositive;
+      _teammateHintText = target.teammateHintText;
+      _totalTeamAttempts = target.totalTeamAttempts;
+      _successfulRecalls = target.successfulRecalls;
+      _isSaving = target.isSaving;
+      _saveErrorMessage = target.saveErrorMessage;
+      _lastScore = target.lastScore;
+      _inviteCodeCopied = target.inviteCodeCopied;
+      for (final p in _directoryPlayers) {
+        if (p.isHost) {
+          p.isInvited = true;
+          p.hasJoined = true;
+        } else {
+          final ps = target.playerStates[p.name.trim().toLowerCase()];
+          p.isInvited = ps?.isInvited ?? false;
+          p.hasJoined = ps?.hasJoined ?? false;
+          p.chainStepsCompleted = ps?.chainStepsCompleted ?? 0;
+          p.itemsAdded = ps?.itemsAdded ?? 0;
+        }
+      }
+      final joinedCount = _joinedPlayers.length;
+      _currentPlayerIndex =
+          joinedCount > 0 && target.currentPlayerIndex < joinedCount
+              ? target.currentPlayerIndex
+              : 0;
+    } else {
+      _stage = _ChainTurnStage.lobbyInvite;
+      _currentPlayerIndex = 0;
+      _packedChain.clear();
+      _currentRecallInput.clear();
+      _feedbackBannerText = null;
+      _isFeedbackPositive = true;
+      _teammateHintText = null;
+      _totalTeamAttempts = 0;
+      _successfulRecalls = 0;
+      _isSaving = false;
+      _saveErrorMessage = null;
+      _lastScore = null;
+      _inviteCodeCopied = false;
+      for (final p in _directoryPlayers) {
+        p.chainStepsCompleted = 0;
+        p.itemsAdded = 0;
+        if (p.isHost) {
+          p.isInvited = true;
+          p.hasJoined = true;
+        } else {
+          p.isInvited = false;
+          p.hasJoined = false;
+        }
+      }
+    }
+    _incomingInvitesForMe = [];
+    if (_stage == _ChainTurnStage.lobbyInvite ||
+        _stage == _ChainTurnStage.completed) {
+      _bgmPlayer?.stopBgm();
+    } else {
+      _ensurePlayMusicRunning();
+    }
+    _syncInvites();
   }
 
   @override
   void dispose() {
     _inviteSyncTimer?.cancel();
+    _liveRoomSyncTimer?.cancel();
+    TtsService.instance.stop();
+    _bgmPlayer?.dispose();
     super.dispose();
+  }
+
+  Future<void> _showHowToPlayDialog() async {
+    final isSi = widget.isSinhala;
+    final tts = TtsService.instance;
+    const sinhalaGuideSpeech =
+        'විනෝද චාරිකා මතක ක්‍රීඩාව ක්‍රීඩා කරන ආකාරය. පළමුව, මිතුරෙකු තෝරා එකට හෝ ආරාධනා ඔබා කණ්ඩායම සාදන්න. දෙවනුව, ඔබේ වාරයේදී කූඩයේ කලින් දැමූ භාණ්ඩ පිළිවෙලට තෝරා අලුත් භාණ්ඩයක් එක් කරන්න. අමතක වුණොත් ඉඟියක් ඔබන්න. භාණ්ඩ පහම එකට අසුරා ජය ගන්න!';
+    const englishGuideSpeech =
+        'How to play Picnic Memory Party. Step 1: Build your team. Pick a friend and tap Sit Together or Invite. Step 2: Recall and pack. On your turn, tap the earlier picnic items in order, then pack one new item into the basket. Step 3: Pack 5 items and win! Tap Hint anytime if you forget. Pack all 5 items together to celebrate a team win!';
+
+    bool isSpeakingNow = false;
+    bool pausedBgmForGuide = false;
+    bool dialogOpen = true;
+
+    void stopGuideSpeech({void Function(VoidCallback)? setDlgState}) {
+      tts.onComplete = null;
+      tts.stop();
+      if (pausedBgmForGuide) {
+        pausedBgmForGuide = false;
+        if (mounted &&
+            _stage != _ChainTurnStage.lobbyInvite &&
+            _stage != _ChainTurnStage.completed &&
+            !(_isMusicMuted ?? false)) {
+          _ensurePlayMusicRunning();
+        }
+      }
+      if (isSpeakingNow) {
+        isSpeakingNow = false;
+        if (dialogOpen && setDlgState != null) {
+          setDlgState(() {});
+        }
+      }
+    }
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogCtx) {
+        return StatefulBuilder(
+          builder: (ctx, setDlgState) {
+            void toggleSpeak() {
+              if (isSpeakingNow) {
+                stopGuideSpeech(setDlgState: setDlgState);
+                return;
+              }
+              if (_stage != _ChainTurnStage.lobbyInvite &&
+                  _stage != _ChainTurnStage.completed &&
+                  !(_isMusicMuted ?? false)) {
+                _bgmPlayer?.stopBgm();
+                pausedBgmForGuide = true;
+              }
+              setDlgState(() => isSpeakingNow = true);
+              tts.onComplete = () {
+                if (pausedBgmForGuide) {
+                  pausedBgmForGuide = false;
+                  if (mounted &&
+                      _stage != _ChainTurnStage.lobbyInvite &&
+                      _stage != _ChainTurnStage.completed &&
+                      !(_isMusicMuted ?? false)) {
+                    _ensurePlayMusicRunning();
+                  }
+                }
+                if (dialogOpen) {
+                  isSpeakingNow = false;
+                  setDlgState(() {});
+                }
+              };
+              tts.speak(
+                isSi ? sinhalaGuideSpeech : englishGuideSpeech,
+                isSinhala: isSi,
+              );
+            }
+
+            return Dialog(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              insetPadding: const EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 20,
+              ),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 530),
+                child: AuroraGradientBorderFrame(
+                  borderRadius: 24,
+                  borderWidth: 3.0,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(21),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF1E1B4B).withValues(alpha: 0.22),
+                          blurRadius: 28,
+                          offset: const Offset(0, 12),
+                        ),
+                      ],
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Cosmic Header Strip with Listen button
+                        Container(
+                          padding: const EdgeInsets.fromLTRB(20, 16, 14, 16),
+                          decoration: const BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                Color(0xFF1E1B4B),
+                                Color(0xFF1D4ED8),
+                                Color(0xFF0D9488),
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 42,
+                                height: 42,
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.20),
+                                  borderRadius: BorderRadius.circular(13),
+                                  border: Border.all(
+                                    color: Colors.white.withValues(alpha: 0.45),
+                                    width: 1.5,
+                                  ),
+                                ),
+                                child: const Center(
+                                  child: Text('🧺', style: TextStyle(fontSize: 22)),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      isSi ? 'ක්‍රීඩා කරන ආකාරය' : 'How to Play',
+                                      style: const TextStyle(
+                                        fontSize: 19,
+                                        fontWeight: FontWeight.w900,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 1),
+                                    Text(
+                                      isSi
+                                          ? 'සරල පියවර 3 කින් එකට සෙල්ලම් කරමු'
+                                          : '3 simple steps to play together',
+                                      style: TextStyle(
+                                        fontSize: 12.5,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.white.withValues(alpha: 0.88),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              ElevatedButton.icon(
+                                key: const ValueKey('collab_howto_listen_button'),
+                                onPressed: toggleSpeak,
+                                icon: Icon(
+                                  isSpeakingNow
+                                      ? Icons.stop_rounded
+                                      : Icons.volume_up_rounded,
+                                  size: 18,
+                                ),
+                                label: Text(
+                                  isSpeakingNow
+                                      ? (isSi ? 'නවත්වන්න' : 'Stop')
+                                      : (isSi ? 'අසන්න' : 'Listen'),
+                                  style: const TextStyle(
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: isSpeakingNow
+                                      ? const Color(0xFFEF4444)
+                                      : const Color(0xFFFDE68A),
+                                  foregroundColor: isSpeakingNow
+                                      ? Colors.white
+                                      : const Color(0xFF1E1B4B),
+                                  elevation: 0,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 10,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(13),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              IconButton(
+                                onPressed: () => Navigator.of(dialogCtx).pop(),
+                                icon: const Icon(
+                                  Icons.close_rounded,
+                                  color: Colors.white,
+                                  size: 22,
+                                ),
+                                tooltip: isSi ? 'වසන්න' : 'Close',
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // 3 Elder-Friendly Visual Step Cards
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _buildHowToPlayStepCard(
+                                stepNumber: '1',
+                                emoji: '👥',
+                                title: isSi
+                                    ? 'කණ්ඩායම සාදන්න'
+                                    : 'Build Your Team',
+                                description: isSi
+                                    ? 'මිතුරෙකු තෝරා "එකට" (එකම තිරයේ) හෝ "ආරාධනා" (වෙනම උපාංගවල) ඔබා ක්‍රීඩාව අරඹන්න.'
+                                    : 'Pick a friend and tap "Sit Together" (same screen) or "Invite" (separate devices) to start.',
+                                accentColor: const Color(0xFF2563EB),
+                                bgColors: const [
+                                  Color(0xFFEFF6FF),
+                                  Color(0xFFEEF2FF),
+                                ],
+                              ),
+                              const SizedBox(height: 11),
+                              _buildHowToPlayStepCard(
+                                stepNumber: '2',
+                                emoji: '🧺',
+                                title: isSi
+                                    ? 'මතකයෙන් කූඩය අසුරන්න'
+                                    : 'Recall & Pack Together',
+                                description: isSi
+                                    ? 'ඔබේ වාරයේදී කලින් දැමූ භාණ්ඩ පිළිවෙලට තෝරා, අලුත් භාණ්ඩයක් කූඩයට එක් කරන්න.'
+                                    : 'On your turn, tap the earlier picnic items in order, then pack 1 new item into the basket.',
+                                accentColor: const Color(0xFF0D9488),
+                                bgColors: const [
+                                  Color(0xFFECFDF5),
+                                  Color(0xFFF0FDFA),
+                                ],
+                              ),
+                              const SizedBox(height: 11),
+                              _buildHowToPlayStepCard(
+                                stepNumber: '3',
+                                emoji: '🏆',
+                                title: isSi
+                                    ? 'භාණ්ඩ 5ම අසුරා ජය ගන්න!'
+                                    : 'Pack 5 Items & Win!',
+                                description: isSi
+                                    ? 'අමතක වුණොත් ඕනෑම වෙලාවක "💡 ඉඟියක්" ඔබන්න. භාණ්ඩ 5ම එකට අසුරා ජය ගන්න!'
+                                    : 'Forgot an item? Tap "💡 Hint" anytime! Pack all 5 items together to celebrate a team win!',
+                                accentColor: const Color(0xFFD97706),
+                                bgColors: const [
+                                  Color(0xFFFFFBEB),
+                                  Color(0xFFFEF3C7),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              SizedBox(
+                                height: 46,
+                                child: ElevatedButton(
+                                  key: const ValueKey('collab_howto_got_it_button'),
+                                  onPressed: () => Navigator.of(dialogCtx).pop(),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF1D4ED8),
+                                    foregroundColor: Colors.white,
+                                    elevation: 0,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    isSi
+                                        ? '👍 හරි, තේරුණා!'
+                                        : "👍 Got It! Let's Play",
+                                    style: const TextStyle(
+                                      fontSize: 15.5,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    ).whenComplete(() {
+      dialogOpen = false;
+      stopGuideSpeech();
+    });
+  }
+
+  Widget _buildHowToPlayStepCard({
+    required String stepNumber,
+    required String emoji,
+    required String title,
+    required String description,
+    required Color accentColor,
+    required List<Color> bgColors,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: bgColors,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: accentColor.withValues(alpha: 0.30),
+          width: 1.5,
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(13),
+              border: Border.all(
+                color: accentColor.withValues(alpha: 0.35),
+                width: 1.5,
+              ),
+            ),
+            child: Center(
+              child: Text(emoji, style: const TextStyle(fontSize: 22)),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: accentColor,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        stepNumber,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 7),
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w900,
+                          color: accentColor,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  description,
+                  style: const TextStyle(
+                    fontSize: 13.5,
+                    height: 1.38,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1E293B),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _initPlayers() {
@@ -5774,7 +6465,21 @@ class _CollaborativeMemoryGameViewState
             if (item is Map) {
               final map = Map<String, dynamic>.from(item);
               final id = map['id']?.toString() ?? '';
-              if (id.isNotEmpty) merged[id] = map;
+              if (id.isNotEmpty) {
+                final existing = merged[id];
+                final existingStatus =
+                    (existing?['status']?.toString() ?? '').toUpperCase();
+                final incomingStatus =
+                    (map['status']?.toString() ?? '').toUpperCase();
+                // Never let a stale backend PENDING overwrite a local ACCEPTED/DECLINED/CANCELLED
+                if (existing != null &&
+                    existingStatus.isNotEmpty &&
+                    existingStatus != 'PENDING' &&
+                    incomingStatus == 'PENDING') {
+                  continue;
+                }
+                merged[id] = map;
+              }
             }
           }
         }
@@ -5797,30 +6502,193 @@ class _CollaborativeMemoryGameViewState
     } catch (_) {}
   }
 
+  Future<Set<String>> _readDismissedInviteIds() async {
+    final result = <String>{...?_dismissedInviteIds};
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final list = prefs.getStringList(_prefsDismissedInvitesKey);
+      if (list != null) {
+        result.addAll(list);
+      }
+    } catch (_) {}
+    _dismissedInviteIds = result;
+    return result;
+  }
+
+  Future<void> _persistDismissedInviteIds(Iterable<String> ids) async {
+    final cleanIds = ids.where((id) => id.isNotEmpty).toSet();
+    if (cleanIds.isEmpty) return;
+    final current = await _readDismissedInviteIds();
+    current.addAll(cleanIds);
+    _dismissedInviteIds = current;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList(_prefsDismissedInvitesKey, current.toList());
+    } catch (_) {}
+  }
+
+  Future<void> _cancelInvitesMatching({String? targetPlayerName}) async {
+    final syncLang = _currentLangCode;
+    final myNameLower = widget.hostName.trim().toLowerCase();
+    final targetLower = targetPlayerName?.trim().toLowerCase();
+    final allInvites = await _readAllInvites();
+    final idsToCancel = <String>{};
+
+    if (targetLower != null && targetLower.isNotEmpty) {
+      idsToCancel.add(
+        'inv_${syncLang}_${widget.elderHomeId}_${widget.hostName.trim()}_${targetPlayerName!.trim()}'
+            .replaceAll(' ', '_')
+            .toLowerCase(),
+      );
+      idsToCancel.add(
+        'inv_${widget.elderHomeId}_${widget.hostName.trim()}_${targetPlayerName.trim()}'
+            .replaceAll(' ', '_')
+            .toLowerCase(),
+      );
+    }
+
+    final updatedList = <Map<String, dynamic>>[];
+    for (final inv in allInvites) {
+      if ((inv['recordType']?.toString() ?? '').toUpperCase() ==
+          'LIVE_ROOM_STATE') {
+        updatedList.add(inv);
+        continue;
+      }
+      final homeId = int.tryParse(inv['elderHomeId']?.toString() ?? '') ??
+          widget.elderHomeId;
+      final invLang = (inv['lang']?.toString() ?? 'en').toLowerCase();
+      final senderLower = (inv['senderName']?.toString() ?? '').trim().toLowerCase();
+      final invTargetLower =
+          (inv['targetName']?.toString() ?? '').trim().toLowerCase();
+      final invId = inv['id']?.toString() ?? '';
+
+      final matchesHomeAndLang = targetLower != null
+          ? homeId == widget.elderHomeId
+          : (homeId == widget.elderHomeId && invLang == syncLang);
+      final involvesMe =
+          senderLower == myNameLower || invTargetLower == myNameLower;
+      final matchesTarget = targetLower == null
+          ? true
+          : (senderLower == targetLower || invTargetLower == targetLower);
+
+      if (matchesHomeAndLang && involvesMe && matchesTarget) {
+        if (invId.isNotEmpty) idsToCancel.add(invId);
+        updatedList.add({...inv, 'status': 'CANCELLED'});
+      } else {
+        updatedList.add(inv);
+      }
+    }
+
+    // Immediately record dismissed IDs so polling never re-adds them
+    (_dismissedInviteIds ??= <String>{}).addAll(idsToCancel);
+    await _persistDismissedInviteIds(idsToCancel);
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_prefsInvitesKey, jsonEncode(updatedList));
+    } catch (_) {}
+
+    // Fire-and-forget backend cancellation so Back / Remove stays instant
+    for (final invId in idsToCancel) {
+      final uri = Uri.parse(
+        '${AppConfig.backendBaseUrl}/api/memory-games/invites/$invId/respond',
+      );
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+        if (widget.token != null && widget.token!.isNotEmpty)
+          'Authorization': 'Bearer ${widget.token}',
+      };
+      unawaited(
+        http
+            .post(
+              uri,
+              headers: headers,
+              body: jsonEncode({'status': 'CANCELLED'}),
+            )
+            .timeout(const Duration(seconds: 2))
+            .then((_) {}, onError: (_) {}),
+      );
+    }
+  }
+
   Future<void> _syncInvites() async {
     if (!mounted) return;
+    final syncLang = _currentLangCode;
+    final dismissed = await _readDismissedInviteIds();
+    int sessionEpoch = 0;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      sessionEpoch = prefs.getInt('carevora_collab_session_epoch_ms') ?? 0;
+    } catch (_) {}
     final allInvites = await _readAllInvites();
-    if (!mounted) return;
+    if (!mounted || _currentLangCode != syncLang) return;
 
     final myNameLower = widget.hostName.trim().toLowerCase();
     final List<Map<String, dynamic>> incomingPendingForMe = [];
+    final appliedCancelled = _appliedCancelledInviteIds ??= <String>{};
+    final Set<String> activeAcceptedPeers = {};
+    final Set<String> newlyCancelledPeers = {};
+    final Map<String, String> peerDisplayByLower = {};
+    final Map<String, Set<String>> acceptedGraph = {};
 
     setState(() {
       for (final inv in allInvites) {
+        if ((inv['recordType']?.toString() ?? '').toUpperCase() ==
+            'LIVE_ROOM_STATE') {
+          continue;
+        }
+        final createdAt = int.tryParse(inv['createdAt']?.toString() ?? '') ?? 0;
+        if (sessionEpoch > 0 && createdAt > 0 && createdAt < sessionEpoch) {
+          continue;
+        }
         final homeId = int.tryParse(inv['elderHomeId']?.toString() ?? '') ??
             widget.elderHomeId;
         if (homeId != widget.elderHomeId) continue;
 
+        final invLang = (inv['lang']?.toString() ?? 'en').toLowerCase();
         final senderName = (inv['senderName']?.toString() ?? '').trim();
         final targetName = (inv['targetName']?.toString() ?? '').trim();
+        final senderLower = senderName.toLowerCase();
+        final targetLower = targetName.toLowerCase();
         final status = (inv['status']?.toString() ?? 'PENDING').toUpperCase();
         final invId = inv['id']?.toString() ?? '';
 
-        // Case A: I am the SENDER (e.g., Malini Bandara invited Kamal Perera)
-        if (senderName.toLowerCase() == myNameLower) {
+        if (status == 'CANCELLED') {
+          if (invId.isEmpty || !appliedCancelled.contains(invId)) {
+            if (invId.isNotEmpty) appliedCancelled.add(invId);
+            if (senderLower == myNameLower && targetLower.isNotEmpty) {
+              newlyCancelledPeers.add(targetLower);
+            } else if (targetLower == myNameLower && senderLower.isNotEmpty) {
+              newlyCancelledPeers.add(senderLower);
+            }
+          }
+          continue;
+        }
+
+        if (invId.isNotEmpty && dismissed.contains(invId)) {
+          continue;
+        }
+
+        // Collect all valid ACCEPTED edges so every teammate sees ALL joined members!
+        if (status == 'ACCEPTED' &&
+            senderLower.isNotEmpty &&
+            targetLower.isNotEmpty) {
+          final allowEdge =
+              senderLower != myNameLower || invLang == syncLang;
+          if (allowEdge) {
+            peerDisplayByLower[senderLower] = senderName;
+            peerDisplayByLower[targetLower] = targetName;
+            (acceptedGraph[senderLower] ??= <String>{}).add(targetLower);
+            (acceptedGraph[targetLower] ??= <String>{}).add(senderLower);
+          }
+        }
+
+        // Case A: I am the SENDER (strictly isolated per language so EN/SI sessions never leak)
+        if (senderLower == myNameLower && invLang == syncLang) {
           for (final p in _directoryPlayers) {
-            if (p.name.toLowerCase() == targetName.toLowerCase()) {
+            if (p.name.toLowerCase() == targetLower) {
               if (status == 'ACCEPTED') {
+                activeAcceptedPeers.add(targetLower);
                 if (!p.hasJoined) {
                   _feedbackBannerText =
                       '✅ ${p.name} accepted your invitation and joined the game!';
@@ -5845,10 +6713,10 @@ class _CollaborativeMemoryGameViewState
         }
 
         // Case B: I am the TARGET ELDER (e.g., Kamal Perera logged in and received Malini's invite!)
-        if (targetName.toLowerCase() == myNameLower) {
+        if (targetLower == myNameLower) {
           // Ensure sender exists in directory list
           var senderPlayer = _directoryPlayers
-              .where((p) => p.name.toLowerCase() == senderName.toLowerCase())
+              .where((p) => p.name.toLowerCase() == senderLower)
               .firstOrNull;
           if (senderPlayer == null && senderName.isNotEmpty) {
             senderPlayer = _InvitedPlayer(
@@ -5865,16 +6733,102 @@ class _CollaborativeMemoryGameViewState
           if (status == 'PENDING') {
             incomingPendingForMe.add(inv);
           } else if (status == 'ACCEPTED' && senderPlayer != null) {
+            activeAcceptedPeers.add(senderLower);
             senderPlayer.isInvited = true;
             senderPlayer.hasJoined = true;
           }
         }
       }
-      _incomingInvitesForMe = incomingPendingForMe;
+
+      // Transitive BFS: everyone in the connected team sees ALL joined players!
+      final Set<String> connectedTeamLowers = {myNameLower};
+      final List<String> bfsQueue = [myNameLower];
+      while (bfsQueue.isNotEmpty) {
+        final curr = bfsQueue.removeAt(0);
+        for (final next in (acceptedGraph[curr] ?? const <String>{})) {
+          if (connectedTeamLowers.add(next)) {
+            bfsQueue.add(next);
+          }
+        }
+      }
+      connectedTeamLowers.remove(myNameLower);
+
+      final prevSynced = _syncedTeamPeers ??= <String>{};
+      final sameScreen = _sameScreenPlayerNames ?? const <String>{};
+      final teamColors = [
+        const Color(0xFF0D9488),
+        const Color(0xFF7C3AED),
+        const Color(0xFFDB2777),
+        const Color(0xFFD97706),
+      ];
+
+      for (final peerLower in connectedTeamLowers) {
+        activeAcceptedPeers.add(peerLower);
+        var peer = _directoryPlayers
+            .where((p) => !p.isHost && _cleanName(p.name).toLowerCase() == peerLower)
+            .firstOrNull;
+        if (peer == null) {
+          final rawName = peerDisplayByLower[peerLower] ?? peerLower;
+          peer = _InvitedPlayer(
+            id: 'team_peer_$peerLower',
+            name: rawName,
+            roleLabel: 'Fellow Elder • ${widget.elderHomeName}',
+            elderHomeId: widget.elderHomeId,
+            elderHomeName: widget.elderHomeName,
+            color: teamColors[_directoryPlayers.length % teamColors.length],
+          );
+          _directoryPlayers.add(peer);
+        }
+        peer.isInvited = true;
+        peer.hasJoined = true;
+      }
+
+      // If a previously synced teammate disconnected from the group, remove them cleanly
+      for (final oldPeer in prevSynced.toList()) {
+        if (!connectedTeamLowers.contains(oldPeer) &&
+            !sameScreen.contains(oldPeer)) {
+          newlyCancelledPeers.add(oldPeer);
+        }
+      }
+      _syncedTeamPeers = Set<String>.from(connectedTeamLowers);
+
+      // Propagate removals from the other player's side cleanly
+      for (final peerLower in newlyCancelledPeers) {
+        if (activeAcceptedPeers.contains(peerLower)) continue;
+        for (final p in _directoryPlayers) {
+          if (!p.isHost && p.name.trim().toLowerCase() == peerLower) {
+            p.isInvited = false;
+            p.hasJoined = false;
+            p.itemsAdded = 0;
+            p.chainStepsCompleted = 0;
+            if (_feedbackBannerText != null &&
+                _feedbackBannerText!.toLowerCase().contains(peerLower)) {
+              _feedbackBannerText = null;
+            }
+          }
+        }
+      }
+      if (_currentPlayerIndex >= _joinedPlayers.length) {
+        _currentPlayerIndex = 0;
+      }
+      if (_stage != _ChainTurnStage.lobbyInvite &&
+          _joinedPlayers.length < _minPlayers) {
+        _stage = _ChainTurnStage.lobbyInvite;
+      }
+
+      // Never show Accept/Decline again for a sender who is ALREADY joined in the room!
+      final joinedLowerNames = _directoryPlayers
+          .where((p) => p.hasJoined && !p.isHost)
+          .map((p) => p.name.trim().toLowerCase())
+          .toSet();
+      _incomingInvitesForMe = incomingPendingForMe.where((inv) {
+        final s = (inv['senderName']?.toString() ?? '').trim().toLowerCase();
+        return !joinedLowerNames.contains(s);
+      }).toList();
     });
 
-    // Show notification dialog ONLY to the target elder who received the invite!
-    for (final inv in incomingPendingForMe) {
+    // Show notification dialog ONLY for genuinely pending (unjoined) invites!
+    for (final inv in _incomingInvitesForMe) {
       final invId = inv['id']?.toString() ?? '';
       if (invId.isNotEmpty && !_shownIncomingPopupIds.contains(invId)) {
         _shownIncomingPopupIds.add(invId);
@@ -5890,19 +6844,22 @@ class _CollaborativeMemoryGameViewState
       _directoryPlayers.where((p) => p.hasJoined).toList();
 
   Future<void> _sendInviteNotification(_InvitedPlayer player) async {
+    final langCode = _currentLangCode;
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
     final inviteId =
-        'inv_${widget.elderHomeId}_${widget.hostName.trim()}_${player.name.trim()}'
+        'inv_${langCode}_${widget.elderHomeId}_${widget.hostName.trim()}_${player.name.trim()}_$nowMs'
             .replaceAll(' ', '_')
             .toLowerCase();
 
     final inviteRecord = <String, dynamic>{
       'id': inviteId,
+      'lang': langCode,
       'senderName': widget.hostName.trim(),
       'targetName': player.name.trim(),
       'elderHomeId': widget.elderHomeId,
       'elderHomeName': widget.elderHomeName,
       'status': 'PENDING',
-      'createdAt': DateTime.now().millisecondsSinceEpoch,
+      'createdAt': nowMs,
     };
 
     // Update sender's screen ONLY (no popup shown to sender!)
@@ -5931,37 +6888,13 @@ class _CollaborativeMemoryGameViewState
   }
 
   Future<void> _cancelSentInvite(_InvitedPlayer player) async {
-    final inviteId =
-        'inv_${widget.elderHomeId}_${widget.hostName.trim()}_${player.name.trim()}'
-            .replaceAll(' ', '_')
-            .toLowerCase();
-    final record = <String, dynamic>{
-      'id': inviteId,
-      'senderName': widget.hostName.trim(),
-      'targetName': player.name.trim(),
-      'elderHomeId': widget.elderHomeId,
-      'elderHomeName': widget.elderHomeName,
-      'status': 'CANCELLED',
-    };
     setState(() {
       player.isInvited = false;
       player.hasJoined = false;
-      _feedbackBannerText = 'Invitation to ${player.name} cancelled.';
-      _isFeedbackPositive = false;
+      _feedbackBannerText = null;
+      _isFeedbackPositive = true;
     });
-    await _saveInviteRecord(record);
-    try {
-      final uri = Uri.parse(
-        '${AppConfig.backendBaseUrl}/api/memory-games/invites/$inviteId/respond',
-      );
-      await http
-          .post(
-            uri,
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'status': 'CANCELLED'}),
-          )
-          .timeout(const Duration(seconds: 2));
-    } catch (_) {}
+    await _cancelInvitesMatching(targetPlayerName: player.name);
   }
 
   Future<void> _respondToIncomingInvite(
@@ -5983,10 +6916,15 @@ class _CollaborativeMemoryGameViewState
       final uri = Uri.parse(
         '${AppConfig.backendBaseUrl}/api/memory-games/invites/$inviteId/respond',
       );
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+        if (widget.token != null && widget.token!.isNotEmpty)
+          'Authorization': 'Bearer ${widget.token}',
+      };
       await http
           .post(
             uri,
-            headers: {'Content-Type': 'application/json'},
+            headers: headers,
             body: jsonEncode({'status': newStatus}),
           )
           .timeout(const Duration(seconds: 2));
@@ -5994,7 +6932,13 @@ class _CollaborativeMemoryGameViewState
 
     if (!mounted) return;
     setState(() {
-      _incomingInvitesForMe.removeWhere((e) => e['id']?.toString() == inviteId);
+      _incomingInvitesForMe.removeWhere(
+        (e) =>
+            e['id']?.toString() == inviteId ||
+            (accept &&
+                (e['senderName']?.toString() ?? '').trim().toLowerCase() ==
+                    senderName.toLowerCase()),
+      );
       for (final p in _directoryPlayers) {
         if (p.name.toLowerCase() == senderName.toLowerCase()) {
           p.isInvited = accept;
@@ -6009,6 +6953,8 @@ class _CollaborativeMemoryGameViewState
   }
 
   void _sitTogetherQuickJoin(_InvitedPlayer player) {
+    (_sameScreenPlayerNames ??= <String>{})
+        .add(_cleanName(player.name).toLowerCase());
     setState(() {
       player.isInvited = true;
       player.hasJoined = true;
@@ -6022,10 +6968,17 @@ class _CollaborativeMemoryGameViewState
     Map<String, dynamic> invite,
   ) {
     if (!mounted) return;
+    final isSi = _isSi;
     final senderName = (invite['senderName']?.toString() ?? 'Fellow Elder').trim();
     final targetName = (invite['targetName']?.toString() ?? widget.hostName).trim();
     final homeName =
         (invite['elderHomeName']?.toString() ?? widget.elderHomeName).trim();
+    final displaySender = isSi
+        ? SinhalaNameTransliterator.toSinhala(senderName, fallback: senderName)
+        : senderName;
+    final displayTarget = isSi
+        ? SinhalaNameTransliterator.toSinhala(targetName, fallback: targetName)
+        : targetName;
 
     showDialog<void>(
       context: context,
@@ -6036,132 +6989,249 @@ class _CollaborativeMemoryGameViewState
           elevation: 0,
           insetPadding:
               const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 480),
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: const Color(0xFF2563EB), width: 2),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF2563EB).withValues(alpha: 0.2),
-                  blurRadius: 28,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFDBEAFE),
-                    borderRadius: BorderRadius.circular(20),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 460),
+            child: AuroraGradientBorderFrame(
+              borderRadius: 28,
+              borderWidth: 3.4,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(24.6),
+                child: Container(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Color(0xFFFFFFFF), Color(0xFFF8FAFF)],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                    ),
                   ),
-                  child: Row(
+                  child: Column(
                     mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Icon(
-                        LucideIcons.bell,
-                        size: 15,
-                        color: Color(0xFF1D4ED8),
-                      ),
-                      const SizedBox(width: 6),
-                      Flexible(
-                        child: Text(
-                          'Incoming Game Invite for $targetName',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF1D4ED8),
+                      // Vibrant Cosmic Header Banner
+                      Container(
+                        padding: const EdgeInsets.fromLTRB(22, 18, 22, 20),
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Color(0xFF1E1B4B),
+                              Color(0xFF4F46E5),
+                              Color(0xFF9333EA),
+                              Color(0xFF0D9488),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
                           ),
+                        ),
+                        child: Column(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 13,
+                                vertical: 5,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.16),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.30),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    LucideIcons.bell,
+                                    size: 14,
+                                    color: Color(0xFFFDE68A),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Flexible(
+                                    child: Text(
+                                      isSi
+                                          ? '$displayTarget සඳහා ක්‍රීඩා ආරාධනාවක්'
+                                          : 'Incoming Game Invite for $targetName',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w800,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            Container(
+                              padding: const EdgeInsets.all(3),
+                              decoration: const BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: LinearGradient(
+                                  colors: [
+                                    Color(0xFFFDE68A),
+                                    Color(0xFFEC4899),
+                                    Color(0xFF34D399),
+                                  ],
+                                ),
+                              ),
+                              child: CircleAvatar(
+                                radius: 28,
+                                backgroundColor: const Color(0xFF0D9488),
+                                child: Text(
+                                  senderName.isNotEmpty
+                                      ? senderName.substring(0, 1).toUpperCase()
+                                      : 'E',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 23,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 11),
+                            Text(
+                              isSi
+                                  ? 'විනෝද චාරිකා ක්‍රීඩාවට එක්වෙමුද? 🧺'
+                                  : 'Join Picnic Memory Game? 🧺',
+                              style: AppTextStyles.h3.copyWith(
+                                fontSize: 21,
+                                fontWeight: FontWeight.w900,
+                                color: Colors.white,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // Body & Action Buttons
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(24, 20, 24, 22),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 13,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF5F3FF),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: const Color(0xFFDDD6FE),
+                                ),
+                              ),
+                              child: Text(
+                                isSi
+                                    ? 'ආයුබෝවන් $displayTarget! $homeName හි ඔබේ මිතුරු $displaySender ඔබට "හවුල් විනෝද චාරිකා මතක ක්‍රීඩාව" එකට සෙල්ලම් කිරීමට ආරාධනා කරයි.'
+                                    : 'Hello $targetName! Your fellow elder $senderName in $homeName has invited you to play "Shared Picnic Memory Chain" together.',
+                                style: AppTextStyles.body.copyWith(
+                                  fontSize: 14.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.navy,
+                                  height: 1.48,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            Wrap(
+                              spacing: 12,
+                              runSpacing: 10,
+                              alignment: WrapAlignment.center,
+                              children: [
+                                OutlinedButton.icon(
+                                  onPressed: () {
+                                    Navigator.of(dialogCtx).pop();
+                                    _respondToIncomingInvite(
+                                      invite,
+                                      accept: false,
+                                    );
+                                  },
+                                  icon: const Icon(LucideIcons.x, size: 16),
+                                  label: Text(
+                                    isSi ? 'එපා' : 'Decline',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: const Color(0xFFDC2626),
+                                    backgroundColor: const Color(0xFFFEF2F2),
+                                    side: const BorderSide(
+                                      color: Color(0xFFFCA5A5),
+                                      width: 1.4,
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 18,
+                                      vertical: 12,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                  ),
+                                ),
+                                Container(
+                                  decoration: BoxDecoration(
+                                    gradient: const LinearGradient(
+                                      colors: [
+                                        Color(0xFF10B981),
+                                        Color(0xFF0D9488),
+                                      ],
+                                    ),
+                                    borderRadius: BorderRadius.circular(14),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: const Color(0xFF10B981)
+                                            .withValues(alpha: 0.30),
+                                        blurRadius: 12,
+                                        offset: const Offset(0, 5),
+                                      ),
+                                    ],
+                                  ),
+                                  child: ElevatedButton.icon(
+                                    onPressed: () {
+                                      Navigator.of(dialogCtx).pop();
+                                      _respondToIncomingInvite(
+                                        invite,
+                                        accept: true,
+                                      );
+                                    },
+                                    icon:
+                                        const Icon(LucideIcons.check, size: 17),
+                                    label: Text(
+                                      isSi
+                                          ? 'එක්වී සෙල්ලම් කරන්න'
+                                          : 'Accept & Join Game',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.transparent,
+                                      shadowColor: Colors.transparent,
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 22,
+                                        vertical: 12,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(14),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 16),
-                CircleAvatar(
-                  radius: 28,
-                  backgroundColor: const Color(0xFF0D9488),
-                  child: Text(
-                    senderName.isNotEmpty
-                        ? senderName.substring(0, 1).toUpperCase()
-                        : 'E',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                Text(
-                  'Join Picnic Memory Game?',
-                  style: AppTextStyles.h3.copyWith(
-                    fontSize: 21,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.navy,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Hello $targetName! Your fellow elder $senderName in $homeName has invited you to play "Shared Picnic Memory Chain" together.',
-                  style: AppTextStyles.body.copyWith(
-                    fontSize: 14.5,
-                    color: const Color(0xFF475569),
-                    height: 1.45,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 22),
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 10,
-                  alignment: WrapAlignment.center,
-                  children: [
-                    OutlinedButton.icon(
-                      onPressed: () {
-                        Navigator.of(dialogCtx).pop();
-                        _respondToIncomingInvite(invite, accept: false);
-                      },
-                      icon: const Icon(LucideIcons.x, size: 16),
-                      label: const Text('Decline'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.riskHigh,
-                        side: const BorderSide(color: AppColors.riskHigh),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 18,
-                          vertical: 12,
-                        ),
-                      ),
-                    ),
-                    ElevatedButton.icon(
-                      onPressed: () {
-                        Navigator.of(dialogCtx).pop();
-                        _respondToIncomingInvite(invite, accept: true);
-                      },
-                      icon: const Icon(LucideIcons.check, size: 17),
-                      label: const Text(
-                        'Accept & Join Game',
-                        style: TextStyle(fontWeight: FontWeight.w800),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.riskLow,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 22,
-                          vertical: 12,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+              ),
             ),
           ),
         );
@@ -6169,7 +7239,7 @@ class _CollaborativeMemoryGameViewState
     );
   }
 
-  void _removeJoinedPlayer(_InvitedPlayer player) {
+  Future<void> _removeJoinedPlayer(_InvitedPlayer player) async {
     if (player.isHost) return;
     if (_stage != _ChainTurnStage.lobbyInvite &&
         _joinedPlayers.length <= _minPlayers) {
@@ -6183,10 +7253,1225 @@ class _CollaborativeMemoryGameViewState
     setState(() {
       player.isInvited = false;
       player.hasJoined = false;
+      player.itemsAdded = 0;
+      player.chainStepsCompleted = 0;
+      if (_feedbackBannerText != null &&
+          _feedbackBannerText!
+              .toLowerCase()
+              .contains(player.name.trim().toLowerCase())) {
+        _feedbackBannerText = null;
+      }
       if (_currentPlayerIndex >= _joinedPlayers.length) {
         _currentPlayerIndex = 0;
       }
     });
+    await _cancelInvitesMatching(targetPlayerName: player.name);
+  }
+
+  Future<void> _publishLiveRoomState({bool markEnded = false}) async {
+    final roomId = _liveRoomId;
+    if (roomId == null || roomId.isEmpty) return;
+
+    final nextVersion = (_liveRoomVersion ?? 0) + 1;
+    _liveRoomVersion = nextVersion;
+
+    final turnPlayers = _orderedTurnPlayers;
+    final cleanParticipants = turnPlayers
+        .map((p) => _cleanName(p.name))
+        .where((n) => n.isNotEmpty)
+        .toList();
+    final safeIdx = turnPlayers.isNotEmpty
+        ? _currentPlayerIndex.clamp(0, turnPlayers.length - 1)
+        : 0;
+    final activeTurnClean = turnPlayers.isNotEmpty
+        ? _cleanName(turnPlayers[safeIdx].name)
+        : widget.hostName.trim();
+    final joinedSet = (_liveJoinedPlayers ??= <String>{})
+      ..add(widget.hostName.trim());
+
+    final payload = <String, dynamic>{
+      'id': roomId,
+      'recordType': 'LIVE_ROOM_STATE',
+      'elderHomeId': widget.elderHomeId,
+      'startedBy': _liveRoomStartedBy ?? widget.hostName.trim(),
+      'startedAt': _liveRoomStartedAt ?? DateTime.now().millisecondsSinceEpoch,
+      'version': nextVersion,
+      'participants': cleanParticipants,
+      'joinedLivePlayers': joinedSet.toList(),
+      'stage': markEnded ? 'ended' : _stage.name,
+      'currentTurnPlayerName': activeTurnClean,
+      'packedChain': _packedChain
+          .map((c) => {
+                'key': c.key,
+                'addedBy': _cleanName(c.addedByPlayerName),
+              })
+          .toList(),
+      'currentRecallKeys': _currentRecallInput.map((c) => c.key).toList(),
+      'feedbackBannerText': _feedbackBannerText,
+      'isFeedbackPositive': _isFeedbackPositive,
+      'teammateHintText': _teammateHintText,
+      'totalTeamAttempts': _totalTeamAttempts,
+      'successfulRecalls': _successfulRecalls,
+      'lastScore': _lastScore,
+      'restartRequestedBy': _restartRequestedBy,
+      'restartRequestId': _restartRequestId,
+      'restartApprovedBy': (_restartApprovedBy ?? const <String>{}).toList(),
+      'lastSelectedItemKey': _lastSelectedItemKey,
+      'lastSelectedByName': _lastSelectedByName,
+      'lastSelectedAction': _lastSelectedAction,
+      'lastSelectedAtMs': _lastSelectedAtMs,
+      'updatedAt': DateTime.now().millisecondsSinceEpoch,
+    };
+
+    try {
+      final uri =
+          Uri.parse('${AppConfig.backendBaseUrl}/api/memory-games/invites');
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+        if (widget.token != null && widget.token!.isNotEmpty)
+          'Authorization': 'Bearer ${widget.token}',
+      };
+      await http
+          .post(uri, headers: headers, body: jsonEncode(payload))
+          .timeout(const Duration(seconds: 2));
+    } catch (_) {}
+  }
+
+  Future<void> _syncLiveRoomState() async {
+    if (!mounted) return;
+    final myNameLower = widget.hostName.trim().toLowerCase();
+    if (myNameLower.isEmpty) return;
+
+    int sessionEpoch = 0;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      sessionEpoch = prefs.getInt('carevora_collab_session_epoch_ms') ?? 0;
+    } catch (_) {}
+
+    List<Map<String, dynamic>> liveRooms = [];
+    try {
+      final uri =
+          Uri.parse('${AppConfig.backendBaseUrl}/api/memory-games/invites');
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+        if (widget.token != null && widget.token!.isNotEmpty)
+          'Authorization': 'Bearer ${widget.token}',
+      };
+      final res = await http
+          .get(uri, headers: headers)
+          .timeout(const Duration(seconds: 2));
+      if (res.statusCode == 200) {
+        final decoded = jsonDecode(res.body);
+        final data = decoded['data'] as List?;
+        if (data != null) {
+          for (final item in data) {
+            if (item is Map) {
+              final map = Map<String, dynamic>.from(item);
+              if ((map['recordType']?.toString() ?? '').toUpperCase() ==
+                  'LIVE_ROOM_STATE') {
+                liveRooms.add(map);
+              }
+            }
+          }
+        }
+      }
+    } catch (_) {
+      return;
+    }
+    if (!mounted) return;
+
+    // 1. If routed via "Join Game Now!" button to a NEW active room, switch & join it immediately!
+    final targetRoomId = widget.initialLiveRoomId;
+    final exitedRooms = _exitedLiveRoomIds ?? const <String>{};
+    if (targetRoomId != null &&
+        targetRoomId.isNotEmpty &&
+        targetRoomId != _liveRoomId &&
+        !exitedRooms.contains(targetRoomId)) {
+      final directRoom = liveRooms
+          .where((r) => r['id']?.toString() == targetRoomId)
+          .firstOrNull;
+      final directStage = directRoom?['stage']?.toString() ?? '';
+      if (directRoom != null &&
+          directStage != 'ended' &&
+          directStage != 'completed' &&
+          directStage != 'lobbyInvite') {
+        await _joinLiveRoom(directRoom);
+        return;
+      }
+    }
+
+    // 2. If already inside an active live multiplayer room, pull newer moves (or Play Another Round)!
+    if (_liveRoomId != null && _liveRoomId!.isNotEmpty) {
+      final match = liveRooms
+          .where((r) => r['id']?.toString() == _liveRoomId)
+          .firstOrNull;
+      if (match != null) {
+        final remoteVersion =
+            int.tryParse(match['version']?.toString() ?? '') ?? 0;
+        final remoteStage = (match['stage']?.toString() ?? '');
+        if (remoteStage == 'ended') {
+          _bgmPlayer?.stopBgm();
+          final endNotice = match['feedbackBannerText']?.toString().trim();
+          setState(() {
+            _liveRoomId = null;
+            _liveRoomVersion = null;
+            _liveTurnOrder = null;
+            _liveJoinedPlayers = null;
+            _restartRequestedBy = null;
+            _restartRequestId = null;
+            _restartApprovedBy = null;
+            _lastSelectedItemKey = null;
+            _lastSelectedByName = null;
+            _lastSelectedAction = null;
+            _lastSelectedAtMs = null;
+            _stage = _ChainTurnStage.lobbyInvite;
+            _packedChain.clear();
+            _currentRecallInput.clear();
+            _feedbackBannerText =
+                (endNotice != null && endNotice.isNotEmpty) ? endNotice : null;
+            _isFeedbackPositive = false;
+            _teammateHintText = null;
+          });
+          return;
+        }
+        if (remoteVersion > (_liveRoomVersion ?? 0)) {
+          _applyRemoteLiveRoomState(match);
+        }
+      }
+      // If our current room is completed and a partner started a brand-new room, join it cleanly
+      if (_stage == _ChainTurnStage.completed) {
+        for (final room in liveRooms) {
+          final rId = room['id']?.toString() ?? '';
+          if (rId.isEmpty || rId == _liveRoomId) continue;
+          final rStage = room['stage']?.toString() ?? '';
+          if (rStage == 'completed' ||
+              rStage == 'ended' ||
+              rStage == 'lobbyInvite') {
+            continue;
+          }
+          final rStartedAt =
+              int.tryParse(room['startedAt']?.toString() ?? '') ?? 0;
+          if (rStartedAt <= (_liveRoomStartedAt ?? 0)) continue;
+          final participants = (room['participants'] as List?)
+                  ?.map((e) => e.toString().trim().toLowerCase())
+                  .toList() ??
+              const <String>[];
+          if (participants.contains(myNameLower)) {
+            await _joinLiveRoom(room);
+            return;
+          }
+        }
+      }
+      return;
+    }
+
+    // 3. Otherwise in Lobby, detect if a partner started a live game AND track other active teams playing now!
+    if (_stage == _ChainTurnStage.lobbyInvite) {
+      Map<String, dynamic>? newestActive;
+      int newestStartedAt = -1;
+      final List<Map<String, dynamic>> otherTeams = [];
+      final Set<String> busyPlayers = {};
+      final nowMs = DateTime.now().millisecondsSinceEpoch;
+
+      for (final room in liveRooms) {
+        final stage = (room['stage']?.toString() ?? '');
+        if (stage == 'completed' || stage == 'ended' || stage == 'lobbyInvite') {
+          continue;
+        }
+        final homeId = int.tryParse(room['elderHomeId']?.toString() ?? '') ??
+            widget.elderHomeId;
+        if (homeId != widget.elderHomeId) continue;
+
+        final updatedAt = int.tryParse(room['updatedAt']?.toString() ?? '') ??
+            int.tryParse(room['startedAt']?.toString() ?? '') ??
+            0;
+        // Ignore stale abandoned rooms older than 15 minutes
+        if (updatedAt > 0 && (nowMs - updatedAt) > 15 * 60 * 1000) {
+          continue;
+        }
+
+        final participants = (room['participants'] as List?)
+                ?.map((e) => e.toString().trim())
+                .where((e) => e.isNotEmpty)
+                .toList() ??
+            const <String>[];
+        final participantLowers =
+            participants.map((e) => e.toLowerCase()).toList();
+        if (participants.length < _minPlayers) continue;
+
+        final startedByLower =
+            (room['startedBy']?.toString() ?? '').trim().toLowerCase();
+        final startedAt = int.tryParse(room['startedAt']?.toString() ?? '') ?? 0;
+
+        if (participantLowers.contains(myNameLower)) {
+          final rId = room['id']?.toString() ?? '';
+          if (exitedRooms.contains(rId)) continue;
+          if (startedByLower.isNotEmpty && startedByLower != myNameLower) {
+            if (sessionEpoch > 0 && startedAt > 0 && startedAt < sessionEpoch) {
+              continue;
+            }
+            if (startedAt >= newestStartedAt) {
+              newestStartedAt = startedAt;
+              newestActive = room;
+            }
+          }
+        } else {
+          // Another team is actively playing right now!
+          otherTeams.add(room);
+          busyPlayers.addAll(participantLowers);
+        }
+      }
+
+      otherTeams.sort((a, b) {
+        final ta = int.tryParse(a['startedAt']?.toString() ?? '') ?? 0;
+        final tb = int.tryParse(b['startedAt']?.toString() ?? '') ?? 0;
+        return tb.compareTo(ta);
+      });
+
+      String teamSignature(List<Map<String, dynamic>> list) => list
+          .map((r) =>
+              '${r['id']}:${r['version']}:${(r['packedChain'] as List?)?.length ?? 0}')
+          .join('|');
+
+      final pendingChanged = (_pendingLiveStartRoom?['id']?.toString() ?? '') !=
+          (newestActive?['id']?.toString() ?? '');
+      final teamsChanged = teamSignature(_otherActiveLiveTeams ?? const []) !=
+          teamSignature(otherTeams);
+
+      if (pendingChanged || teamsChanged) {
+        setState(() {
+          _pendingLiveStartRoom = newestActive;
+          _otherActiveLiveTeams = otherTeams;
+          _busyInGamePlayerNames = busyPlayers;
+        });
+      }
+    }
+  }
+
+  Future<void> _joinLiveRoom(Map<String, dynamic> room) async {
+    final roomId = room['id']?.toString() ?? '';
+    if (roomId.isEmpty) return;
+
+    _liveRoomId = roomId;
+    _liveRoomStartedBy = room['startedBy']?.toString();
+    _liveRoomStartedAt =
+        int.tryParse(room['startedAt']?.toString() ?? '') ??
+            DateTime.now().millisecondsSinceEpoch;
+    final joinedList = (room['joinedLivePlayers'] as List?)
+            ?.map((e) => e.toString().trim())
+            .where((e) => e.isNotEmpty)
+            .toSet() ??
+        <String>{};
+    joinedList.add(widget.hostName.trim());
+    _liveJoinedPlayers = joinedList;
+
+    _applyRemoteLiveRoomState(room);
+    _ensurePlayMusicRunning();
+
+    // Notify backend that I joined the live game so "Join Quickly!" banner clears
+    final updatedRoom = <String, dynamic>{
+      ...room,
+      'joinedLivePlayers': joinedList.toList(),
+    };
+    try {
+      final uri =
+          Uri.parse('${AppConfig.backendBaseUrl}/api/memory-games/invites');
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+        if (widget.token != null && widget.token!.isNotEmpty)
+          'Authorization': 'Bearer ${widget.token}',
+      };
+      await http
+          .post(uri, headers: headers, body: jsonEncode(updatedRoom))
+          .timeout(const Duration(seconds: 2));
+    } catch (_) {}
+  }
+
+  void _applyRemoteLiveRoomState(Map<String, dynamic> room) {
+    final participants = (room['participants'] as List?)
+            ?.map((e) => e.toString().trim())
+            .where((e) => e.isNotEmpty)
+            .toList() ??
+        const <String>[];
+    final stageStr = (room['stage']?.toString() ?? 'addNewItemToChain');
+    final turnNameLower =
+        (room['currentTurnPlayerName']?.toString() ?? '').trim().toLowerCase();
+    final remoteVersion =
+        int.tryParse(room['version']?.toString() ?? '') ?? 1;
+
+    _ChainTurnStage parsedStage = _ChainTurnStage.addNewItemToChain;
+    for (final s in _ChainTurnStage.values) {
+      if (s.name == stageStr) {
+        parsedStage = s;
+        break;
+      }
+    }
+
+    final List<_PicnicChainItem> rebuiltChain = [];
+    final rawChain = room['packedChain'] as List?;
+    if (rawChain != null) {
+      for (final entry in rawChain) {
+        if (entry is Map) {
+          final key = entry['key']?.toString() ?? '';
+          final addedBy = entry['addedBy']?.toString() ?? '';
+          final base = _picnicPool.where((p) => p.key == key).firstOrNull;
+          if (base != null) {
+            rebuiltChain.add(base.withAddedBy(addedBy));
+          }
+        }
+      }
+    }
+
+    final List<_PicnicChainItem> rebuiltRecall = [];
+    final rawRecall = room['currentRecallKeys'] as List?;
+    if (rawRecall != null) {
+      for (final k in rawRecall) {
+        final key = k.toString();
+        final base = _picnicPool.where((p) => p.key == key).firstOrNull;
+        if (base != null) rebuiltRecall.add(base);
+      }
+    }
+
+    setState(() {
+      _pendingLiveStartRoom = null;
+      _liveRoomId = room['id']?.toString();
+      _liveRoomVersion = remoteVersion;
+      _liveRoomStartedBy = room['startedBy']?.toString();
+      _liveRoomStartedAt =
+          int.tryParse(room['startedAt']?.toString() ?? '') ??
+              _liveRoomStartedAt;
+      final remoteLiveJoined = (room['joinedLivePlayers'] as List?)
+              ?.map((e) => e.toString().trim())
+              .where((e) => e.isNotEmpty)
+              .toSet() ??
+          <String>{};
+      if (remoteLiveJoined.isNotEmpty) {
+        _liveJoinedPlayers = remoteLiveJoined;
+      }
+
+      // Ensure all room participants are present & marked joined
+      final participantLowers =
+          participants.map((e) => e.toLowerCase()).toSet();
+      for (final pName in participants) {
+        final lower = pName.toLowerCase();
+        if (lower == widget.hostName.trim().toLowerCase()) continue;
+        final exists = _directoryPlayers
+            .any((p) => _cleanName(p.name).toLowerCase() == lower);
+        if (!exists) {
+          _directoryPlayers.add(
+            _InvitedPlayer(
+              id: 'live_peer_$lower',
+              name: pName,
+              roleLabel: 'Fellow Elder • ${widget.elderHomeName}',
+              elderHomeId: widget.elderHomeId,
+              elderHomeName: widget.elderHomeName,
+              color: const Color(0xFF0D9488),
+              isInvited: true,
+              hasJoined: true,
+            ),
+          );
+        }
+      }
+      for (final p in _directoryPlayers) {
+        if (p.isHost) {
+          p.isInvited = true;
+          p.hasJoined = true;
+        } else if (participantLowers
+            .contains(_cleanName(p.name).toLowerCase())) {
+          p.isInvited = true;
+          p.hasJoined = true;
+        }
+      }
+
+      // Preserve canonical shared turn order so 3+ players rotate in exact sync
+      if (participants.isNotEmpty) {
+        _liveTurnOrder = List<String>.from(participants);
+      }
+
+      // Match active player index against canonical _orderedTurnPlayers
+      final ordered = _orderedTurnPlayers;
+      int matchedIdx = 0;
+      for (var i = 0; i < ordered.length; i++) {
+        if (_cleanName(ordered[i].name).toLowerCase() == turnNameLower) {
+          matchedIdx = i;
+          break;
+        }
+      }
+
+      _stage = parsedStage;
+      _currentPlayerIndex = matchedIdx;
+      _packedChain
+        ..clear()
+        ..addAll(rebuiltChain);
+      _currentRecallInput
+        ..clear()
+        ..addAll(rebuiltRecall);
+      _feedbackBannerText = room['feedbackBannerText']?.toString();
+      _isFeedbackPositive = room['isFeedbackPositive'] != false;
+      _teammateHintText = room['teammateHintText']?.toString();
+      _lastSelectedItemKey = room['lastSelectedItemKey']?.toString();
+      _lastSelectedByName = room['lastSelectedByName']?.toString();
+      _lastSelectedAction = room['lastSelectedAction']?.toString();
+      _lastSelectedAtMs =
+          int.tryParse(room['lastSelectedAtMs']?.toString() ?? '');
+      _totalTeamAttempts =
+          int.tryParse(room['totalTeamAttempts']?.toString() ?? '') ??
+              _totalTeamAttempts;
+      _successfulRecalls =
+          int.tryParse(room['successfulRecalls']?.toString() ?? '') ??
+              _successfulRecalls;
+      final scoreVal = room['lastScore'];
+      if (scoreVal is num) {
+        _lastScore = scoreVal.toDouble();
+      }
+
+      // Sync collaborative restart request state
+      final rawReqBy = room['restartRequestedBy']?.toString().trim();
+      final rawReqId =
+          int.tryParse(room['restartRequestId']?.toString() ?? '');
+      final rawApproved = (room['restartApprovedBy'] as List?)
+              ?.map((e) => e.toString().trim().toLowerCase())
+              .where((e) => e.isNotEmpty)
+              .toSet() ??
+          <String>{};
+      _restartRequestedBy =
+          (rawReqBy != null && rawReqBy.isNotEmpty) ? rawReqBy : null;
+      _restartRequestId = rawReqId;
+      _restartApprovedBy = rawApproved.isNotEmpty ? rawApproved : null;
+    });
+
+    // Save completed collaborative game score for EVERY participating elder (once per round!)
+    if (parsedStage == _ChainTurnStage.completed && mounted) {
+      final completedKey =
+          '${room['id'] ?? _liveRoomId ?? 'room'}_${room['startedAt'] ?? _liveRoomStartedAt ?? 0}';
+      if (_savedCompletedRoomKey != completedKey) {
+        _savedCompletedRoomKey = completedKey;
+        _bgm.playVictoryChime();
+        _saveSession(
+          score: _lastScore ?? 100.0,
+          attempts: _totalTeamAttempts,
+          correctAnswers: _packedChain.length,
+          totalItems: _targetChainLength,
+        );
+      }
+    }
+
+    // Prompt teammate politely if another player asked to restart together
+    final reqBy = _restartRequestedBy;
+    final reqId = _restartRequestId;
+    final myLower = widget.hostName.trim().toLowerCase();
+    final alreadyApproved =
+        _restartApprovedBy?.contains(myLower) ?? false;
+    if (reqBy != null &&
+        reqId != null &&
+        reqBy.toLowerCase() != myLower &&
+        !alreadyApproved &&
+        _shownRestartDialogId != reqId &&
+        mounted) {
+      _shownRestartDialogId = reqId;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _restartRequestId == reqId) {
+          _showTeammateRestartVoteDialog(reqBy, reqId);
+        }
+      });
+    }
+  }
+
+  void _onTapResetButton() {
+    if (_isLiveMultiplayerActive && _stage != _ChainTurnStage.lobbyInvite) {
+      _showInitiateRestartConfirmDialog();
+    } else {
+      _refreshLobbyFromScratch();
+    }
+  }
+
+  void _showInitiateRestartConfirmDialog() {
+    final isSi = _isSi;
+    final isNewRound = _stage == _ChainTurnStage.completed;
+    showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogCtx) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 430),
+            child: AuroraGradientBorderFrame(
+              borderRadius: 24,
+              borderWidth: 3.0,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(21),
+                child: Container(
+                  color: Colors.white,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 16,
+                        ),
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Color(0xFF1E1B4B),
+                              Color(0xFF4F46E5),
+                              Color(0xFF0D9488),
+                            ],
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Text(
+                              isNewRound ? '🎮' : '🔄',
+                              style: const TextStyle(fontSize: 22),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                isNewRound
+                                    ? (isSi
+                                        ? 'තව වටයක් එකට ක්‍රීඩා කරමුද?'
+                                        : 'Play Another Round Together?')
+                                    : (isSi
+                                        ? 'සැවොම සමඟ නැවත අරඹමුද?'
+                                        : 'Restart Game Together?'),
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w900,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          children: [
+                            Text(
+                              isNewRound
+                                  ? (isSi
+                                      ? 'මේ කණ්ඩායම සමඟම තව වටයක් සෙල්ලම් කරමුදැයි අනිත් මිතුරන්ගෙන් අසමුද?'
+                                      : 'Ask your teammates if they would like to play another round together with the same team?')
+                                  : (isSi
+                                      ? 'මේ කණ්ඩායම සමඟම වටය 1 සිට අලුතින් ආරම්භ කිරීමට අනිත් මිතුරන්ගෙන් අසමුද?'
+                                      : 'Would you like to ask your teammates to restart from Round 1 together with the same team?'),
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 14.5,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.navy,
+                                height: 1.45,
+                              ),
+                            ),
+                            const SizedBox(height: 18),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton(
+                                    onPressed: () =>
+                                        Navigator.of(dialogCtx).pop(),
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: AppColors.muted,
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 12,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(13),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      isSi ? 'එපා' : 'Cancel',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    onPressed: () {
+                                      Navigator.of(dialogCtx).pop();
+                                      _requestTeamRestart();
+                                    },
+                                    icon: const Icon(
+                                      LucideIcons.rotateCcw,
+                                      size: 16,
+                                    ),
+                                    label: Text(
+                                      isSi
+                                          ? 'මිතුරන්ගෙන් අසන්න'
+                                          : 'Ask Team',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFF4F46E5),
+                                      foregroundColor: Colors.white,
+                                      elevation: 0,
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 12,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(13),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _requestTeamRestart() {
+    final reqId = DateTime.now().millisecondsSinceEpoch;
+    final myClean = widget.hostName.trim();
+    setState(() {
+      _restartRequestedBy = myClean;
+      _restartRequestId = reqId;
+      _restartApprovedBy = {myClean.toLowerCase()};
+      _shownRestartDialogId = reqId;
+    });
+    _publishLiveRoomState();
+  }
+
+  void _showTeammateRestartVoteDialog(String requesterName, int reqId) {
+    final isSi = _isSi;
+    final isNewRound = _stage == _ChainTurnStage.completed;
+    final dispRequester = isSi
+        ? SinhalaNameTransliterator.toSinhala(
+            requesterName,
+            fallback: requesterName,
+          )
+        : requesterName;
+
+    showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogCtx) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 440),
+            child: AuroraGradientBorderFrame(
+              borderRadius: 24,
+              borderWidth: 3.2,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(21),
+                child: Container(
+                  color: Colors.white,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 16,
+                        ),
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Color(0xFF312E81),
+                              Color(0xFF7C3AED),
+                              Color(0xFF0D9488),
+                            ],
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Text(
+                              isNewRound ? '🎮' : '🔄',
+                              style: const TextStyle(fontSize: 22),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                isNewRound
+                                    ? (isSi
+                                        ? '$dispRequester තව වටයක් සෙල්ලම් කරමුදැයි අසයි!'
+                                        : 'Play Another Round with $requesterName?')
+                                    : (isSi
+                                        ? '$dispRequester නැවත අරඹමුදැයි අසයි!'
+                                        : 'Restart Request from $requesterName!'),
+                                style: const TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w900,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          children: [
+                            Text(
+                              isNewRound
+                                  ? (isSi
+                                      ? '$dispRequester තව වටයක් එකට සෙල්ලම් කිරීමට කැමතියි. ඔබත් එක්වෙනවාද?'
+                                      : '$requesterName would like to play another round together! Would you like to join?')
+                                  : (isSi
+                                      ? '$dispRequester මේ ක්‍රීඩාව මුල සිට නැවත ආරම්භ කිරීමට කැමතියි. ඔබත් එකඟද?'
+                                      : '$requesterName would like to restart this Picnic Game from Round 1 together. Do you agree?'),
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 14.5,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.navy,
+                                height: 1.45,
+                              ),
+                            ),
+                            const SizedBox(height: 18),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton(
+                                    onPressed: () {
+                                      Navigator.of(dialogCtx).pop();
+                                      _respondToRestartRequest(approve: false);
+                                    },
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: const Color(0xFFDC2626),
+                                      backgroundColor: const Color(0xFFFEF2F2),
+                                      side: const BorderSide(
+                                        color: Color(0xFFFCA5A5),
+                                      ),
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 12,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(13),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      isNewRound
+                                          ? (isSi ? 'එපා' : 'Not Now')
+                                          : (isSi
+                                              ? 'දිගටම සෙල්ලම් කරමු'
+                                              : 'Keep Playing'),
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                        fontSize: 12.5,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    onPressed: () {
+                                      Navigator.of(dialogCtx).pop();
+                                      _respondToRestartRequest(approve: true);
+                                    },
+                                    icon: const Icon(
+                                      LucideIcons.check,
+                                      size: 16,
+                                    ),
+                                    label: Text(
+                                      isNewRound
+                                          ? (isSi
+                                              ? 'ඔව්, සෙල්ලම් කරමු!'
+                                              : 'Yes, Play Again!')
+                                          : (isSi
+                                              ? 'ඔව්, අරඹමු!'
+                                              : 'Yes, Restart!'),
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFF10B981),
+                                      foregroundColor: Colors.white,
+                                      elevation: 0,
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 12,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(13),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _respondToRestartRequest({required bool approve}) {
+    final myClean = widget.hostName.trim();
+    final myLower = myClean.toLowerCase();
+
+    if (!approve) {
+      final isAfterFinish = _stage == _ChainTurnStage.completed;
+      setState(() {
+        _restartRequestedBy = null;
+        _restartRequestId = null;
+        _restartApprovedBy = null;
+        _feedbackBannerText = isAfterFinish
+            ? '$myClean is not ready for another round yet.'
+            : '$myClean wants to keep playing this round!';
+        _isFeedbackPositive = true;
+      });
+      _publishLiveRoomState();
+      return;
+    }
+
+    final approved = (_restartApprovedBy ??= <String>{})..add(myLower);
+    final allApproved = _joinedPlayers.every(
+      (p) => approved.contains(_cleanName(p.name).toLowerCase()),
+    );
+
+    if (allApproved) {
+      setState(() {
+        for (final p in _directoryPlayers) {
+          p.chainStepsCompleted = 0;
+          p.itemsAdded = 0;
+        }
+        _packedChain.clear();
+        _currentRecallInput.clear();
+        _currentPlayerIndex = 0;
+        _totalTeamAttempts = 0;
+        _successfulRecalls = 0;
+        _teammateHintText = null;
+        _lastScore = null;
+        _restartRequestedBy = null;
+        _restartRequestId = null;
+        _restartApprovedBy = null;
+        _lastSelectedItemKey = null;
+        _lastSelectedByName = null;
+        _lastSelectedAction = null;
+        _lastSelectedAtMs = null;
+        _stage = _ChainTurnStage.addNewItemToChain;
+        _feedbackBannerText = 'Team agreed! Fresh Round 1 started together!';
+        _isFeedbackPositive = true;
+      });
+      _ensurePlayMusicRunning();
+    } else {
+      setState(() {
+        _restartApprovedBy = Set<String>.from(approved);
+      });
+    }
+    _publishLiveRoomState();
+  }
+
+  Future<void> _refreshLobbyFromScratch() async {
+    _bgmPlayer?.stopBgm();
+    if (_isLiveMultiplayerActive) {
+      await _publishLiveRoomState(markEnded: true);
+    }
+    setState(() {
+      _liveRoomId = null;
+      _liveRoomVersion = null;
+      _liveRoomStartedBy = null;
+      _liveRoomStartedAt = null;
+      _liveJoinedPlayers = null;
+      _pendingLiveStartRoom = null;
+      _restartRequestedBy = null;
+      _restartRequestId = null;
+      _restartApprovedBy = null;
+      _shownRestartDialogId = null;
+      _syncedTeamPeers = null;
+      _liveTurnOrder = null;
+      _lastSelectedItemKey = null;
+      _lastSelectedByName = null;
+      _lastSelectedAction = null;
+      _lastSelectedAtMs = null;
+      _sameScreenPlayerNames?.clear();
+      _stage = _ChainTurnStage.lobbyInvite;
+      _currentPlayerIndex = 0;
+      _packedChain.clear();
+      _currentRecallInput.clear();
+      _teammateHintText = null;
+      _feedbackBannerText = null;
+      _isFeedbackPositive = true;
+      _totalTeamAttempts = 0;
+      _successfulRecalls = 0;
+      _lastScore = null;
+      _incomingInvitesForMe = [];
+      for (final p in _directoryPlayers) {
+        p.chainStepsCompleted = 0;
+        p.itemsAdded = 0;
+        if (p.isHost) {
+          p.isInvited = true;
+          p.hasJoined = true;
+        } else {
+          p.isInvited = false;
+          p.hasJoined = false;
+        }
+      }
+    });
+    await _cancelInvitesMatching();
+  }
+
+  Future<void> _leaveLiveRoomGracefully({required bool notifyTeammates}) async {
+    final exitingId = _liveRoomId;
+    if (exitingId != null && exitingId.isNotEmpty) {
+      (_exitedLiveRoomIds ??= <String>{}).add(exitingId);
+    }
+    if (widget.initialLiveRoomId != null &&
+        widget.initialLiveRoomId!.isNotEmpty) {
+      (_exitedLiveRoomIds ??= <String>{}).add(widget.initialLiveRoomId!);
+    }
+    if (!_isLiveMultiplayerActive) return;
+    final myClean = widget.hostName.trim();
+    final myLower = myClean.toLowerCase();
+
+    if (notifyTeammates &&
+        _stage != _ChainTurnStage.lobbyInvite &&
+        _stage != _ChainTurnStage.completed) {
+      final remainingOrder = (_liveTurnOrder ??
+              _joinedPlayers.map((p) => _cleanName(p.name)).toList())
+          .where((n) => n.trim().toLowerCase() != myLower)
+          .toList();
+      _liveTurnOrder = remainingOrder;
+      _liveJoinedPlayers?.removeWhere((n) => n.toLowerCase() == myLower);
+      _feedbackBannerText = '$myClean left the game.';
+      _isFeedbackPositive = false;
+      if (remainingOrder.length < _minPlayers) {
+        await _publishLiveRoomState(markEnded: true);
+      } else {
+        if (_currentPlayerIndex >= remainingOrder.length) {
+          _currentPlayerIndex = 0;
+        }
+        await _publishLiveRoomState();
+      }
+    }
+
+    if (mounted) {
+      setState(() {
+        _liveRoomId = null;
+        _liveRoomVersion = null;
+        _liveRoomStartedBy = null;
+        _liveRoomStartedAt = null;
+        _liveJoinedPlayers = null;
+        _liveTurnOrder = null;
+        _pendingLiveStartRoom = null;
+        _restartRequestedBy = null;
+        _restartRequestId = null;
+        _restartApprovedBy = null;
+        _lastSelectedItemKey = null;
+        _lastSelectedByName = null;
+        _lastSelectedAction = null;
+        _lastSelectedAtMs = null;
+      });
+    } else {
+      _liveRoomId = null;
+      _liveRoomVersion = null;
+    }
+  }
+
+  void _showLeaveGameConfirmDialog({required bool exitToHub}) {
+    final isSi = _isSi;
+    showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogCtx) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: AuroraGradientBorderFrame(
+              borderRadius: 24,
+              borderWidth: 3.0,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(21),
+                child: Container(
+                  color: Colors.white,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 16,
+                        ),
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Color(0xFF9F1239),
+                              Color(0xFFE11D48),
+                              Color(0xFFF59E0B),
+                            ],
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            const Text('🚪', style: TextStyle(fontSize: 21)),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                isSi
+                                    ? 'ක්‍රීඩාවෙන් ඉවත් වෙන්නද?'
+                                    : 'Leave This Game?',
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w900,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          children: [
+                            Text(
+                              _isLiveMultiplayerActive
+                                  ? (isSi
+                                      ? 'ඔබට මෙම ක්‍රීඩාවෙන් ඉවත් වීමට අවශ්‍යද? අනිත් මිතුරන්ට ඒ බව දැනුම් දෙනු ඇත.'
+                                      : 'Are you sure you want to leave this game? Your teammates will be notified.')
+                                  : (isSi
+                                      ? 'ඔබට මෙම ක්‍රීඩාවෙන් ඉවත් වීමට අවශ්‍යද?'
+                                      : 'Are you sure you want to leave this game?'),
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 14.5,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.navy,
+                                height: 1.45,
+                              ),
+                            ),
+                            const SizedBox(height: 18),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton(
+                                    onPressed: () =>
+                                        Navigator.of(dialogCtx).pop(),
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: const Color(0xFF047857),
+                                      backgroundColor: const Color(0xFFECFDF5),
+                                      side: const BorderSide(
+                                        color: Color(0xFF6EE7B7),
+                                      ),
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 12,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(13),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      isSi
+                                          ? 'දිගටම සෙල්ලම් කරමු'
+                                          : 'Stay & Play',
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                        fontSize: 12.5,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    onPressed: () async {
+                                      Navigator.of(dialogCtx).pop();
+                                      if (exitToHub) {
+                                        await _leaveLiveRoomGracefully(
+                                          notifyTeammates: true,
+                                        );
+                                        if (_packedChain.isEmpty) {
+                                          await _cancelInvitesMatching();
+                                        }
+                                        widget.onBack();
+                                      } else {
+                                        await _returnToInviteLobby();
+                                      }
+                                    },
+                                    icon: const Icon(
+                                      Icons.logout_rounded,
+                                      size: 16,
+                                    ),
+                                    label: Text(
+                                      isSi ? 'ඉවත් වෙන්න' : 'Leave Game',
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFFDC2626),
+                                      foregroundColor: Colors.white,
+                                      elevation: 0,
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 12,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(13),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _handleBackToHub() async {
+    if (_stage != _ChainTurnStage.lobbyInvite &&
+        _stage != _ChainTurnStage.completed) {
+      _showLeaveGameConfirmDialog(exitToHub: true);
+      return;
+    }
+    if (_isLiveMultiplayerActive) {
+      await _leaveLiveRoomGracefully(notifyTeammates: false);
+    }
+    // If leaving without playing the game, refresh/clear lobby state & invites
+    if (_stage == _ChainTurnStage.lobbyInvite || _packedChain.isEmpty) {
+      await _cancelInvitesMatching();
+    }
+    widget.onBack();
   }
 
   void _startCollaborativeGame() {
@@ -6199,6 +8484,25 @@ class _CollaborativeMemoryGameViewState
       return;
     }
 
+    // If a partner already started the game, join their live game instead of starting a duplicate!
+    if (_pendingLiveStartRoom != null) {
+      _joinLiveRoom(_pendingLiveStartRoom!);
+      return;
+    }
+
+    final sameScreen = _sameScreenPlayerNames ?? const <String>{};
+    final hasOnlinePartner = _joinedPlayers.any(
+      (p) => !p.isHost && !sameScreen.contains(_cleanName(p.name).toLowerCase()),
+    );
+    final reusingCompletedLiveRoom =
+        hasOnlinePartner &&
+        _isLiveMultiplayerActive &&
+        _stage == _ChainTurnStage.completed;
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    final turnOrderPlayers =
+        reusingCompletedLiveRoom ? _orderedTurnPlayers : _joinedPlayers;
+    final starterClean = _cleanName(turnOrderPlayers[0].name);
+
     setState(() {
       for (final p in _directoryPlayers) {
         p.chainStepsCompleted = 0;
@@ -6210,14 +8514,60 @@ class _CollaborativeMemoryGameViewState
       _totalTeamAttempts = 0;
       _successfulRecalls = 0;
       _teammateHintText = null;
+      _lastScore = null;
+      _restartRequestedBy = null;
+      _restartRequestId = null;
+      _restartApprovedBy = null;
       _feedbackBannerText =
-          "Round 1: ${_joinedPlayers[0].name}, pick the first item to pack into our Shared Picnic Basket!";
+          "Round 1: $starterClean, pick the first item to pack into our Shared Picnic Basket!";
       _isFeedbackPositive = true;
       _stage = _ChainTurnStage.addNewItemToChain;
+      _pendingLiveStartRoom = null;
+      _lastSelectedItemKey = null;
+      _lastSelectedByName = null;
+      _lastSelectedAction = null;
+      _lastSelectedAtMs = null;
+
+      if (hasOnlinePartner) {
+        if (reusingCompletedLiveRoom) {
+          // Reuse the same live room so ALL teammates on the Victory screen
+          // automatically start the new round together immediately!
+          _liveRoomStartedBy = widget.hostName.trim();
+          _liveRoomStartedAt = nowMs;
+          _liveJoinedPlayers = turnOrderPlayers
+              .map((p) => _cleanName(p.name))
+              .where((n) => n.isNotEmpty)
+              .toSet();
+        } else {
+          _liveTurnOrder = _joinedPlayers
+              .map((p) => _cleanName(p.name))
+              .where((n) => n.isNotEmpty)
+              .toList();
+          _liveRoomId = 'live_room_${widget.elderHomeId}_$nowMs';
+          _liveRoomVersion = 0;
+          _liveRoomStartedBy = widget.hostName.trim();
+          _liveRoomStartedAt = nowMs;
+          _liveJoinedPlayers = {widget.hostName.trim()};
+        }
+      } else {
+        _liveTurnOrder = null;
+        _liveRoomId = null;
+        _liveRoomVersion = null;
+      }
     });
+
+    if (hasOnlinePartner) {
+      _publishLiveRoomState();
+    }
+    _ensurePlayMusicRunning();
   }
 
-  void _returnToInviteLobby() {
+  Future<void> _returnToInviteLobby() async {
+    _bgmPlayer?.stopBgm();
+    await _leaveLiveRoomGracefully(
+      notifyTeammates: _stage != _ChainTurnStage.completed,
+    );
+    if (!mounted) return;
     setState(() {
       _stage = _ChainTurnStage.lobbyInvite;
       _teammateHintText = null;
@@ -6226,34 +8576,49 @@ class _CollaborativeMemoryGameViewState
   }
 
   void _askInvitedTeammateForHint() {
-    final teammates = _joinedPlayers
-        .where((p) => p.id != _joinedPlayers[_currentPlayerIndex].id)
+    final turnPlayers = _orderedTurnPlayers;
+    if (turnPlayers.isEmpty) return;
+    final safeIdx = _currentPlayerIndex.clamp(0, turnPlayers.length - 1);
+    final activePlayer = turnPlayers[safeIdx];
+    final teammates = turnPlayers
+        .where((p) => p.id != activePlayer.id)
         .toList();
-    final helperName =
-        teammates.isNotEmpty ? teammates.first.name : 'Your Teammate';
+    final helperName = teammates.isNotEmpty
+        ? _cleanName(teammates.first.name)
+        : 'Your Teammate';
 
     if (_stage == _ChainTurnStage.recallExistingChain &&
         _currentRecallInput.length < _packedChain.length) {
       final nextItem = _packedChain[_currentRecallInput.length];
+      final packer = _cleanName(nextItem.addedByPlayerName);
       setState(() {
         _teammateHintText =
-            '💬 $helperName whispers: "Item #${_currentRecallInput.length + 1} in our basket is ${nextItem.label} (packed by ${nextItem.addedByPlayerName})!"';
+            'HINT_RECALL|$helperName|${_currentRecallInput.length + 1}|${nextItem.key}|$packer';
       });
+      if (_isLiveMultiplayerActive) _publishLiveRoomState();
     } else if (_stage == _ChainTurnStage.addNewItemToChain) {
       final unpacked = _picnicPool
           .where((item) => !_packedChain.any((c) => c.key == item.key))
           .toList();
       if (unpacked.isNotEmpty) {
         setState(() {
-          _teammateHintText =
-              '💬 $helperName suggests: "How about packing the ${unpacked.first.label} next?"';
+          _teammateHintText = 'HINT_SUGGEST|$helperName|${unpacked.first.key}';
         });
+        if (_isLiveMultiplayerActive) _publishLiveRoomState();
       }
     }
   }
 
   void _onTapPicnicItem(_PicnicChainItem item) {
-    final activePlayer = _joinedPlayers[_currentPlayerIndex];
+    if (_isLiveMultiplayerActive && !_isMyTurnNow) {
+      return;
+    }
+    final turnPlayers = _orderedTurnPlayers;
+    if (turnPlayers.isEmpty) return;
+    final safeIdx = _currentPlayerIndex.clamp(0, turnPlayers.length - 1);
+    final activePlayer = turnPlayers[safeIdx];
+    final activeClean = _cleanName(activePlayer.name);
+    final tapNowMs = DateTime.now().millisecondsSinceEpoch;
 
     if (_stage == _ChainTurnStage.recallExistingChain) {
       final expectedIndex = _currentRecallInput.length;
@@ -6263,18 +8628,25 @@ class _CollaborativeMemoryGameViewState
       _totalTeamAttempts++;
 
       if (item.key == expectedItem.key) {
+        _bgm.playTapChime();
         _successfulRecalls++;
         activePlayer.chainStepsCompleted++;
+        bool completedNow = false;
         setState(() {
+          _lastSelectedItemKey = item.key;
+          _lastSelectedByName = activeClean;
+          _lastSelectedAction = 'recalled';
+          _lastSelectedAtMs = tapNowMs;
           _currentRecallInput.add(item);
           _teammateHintText = null;
           if (_currentRecallInput.length == _packedChain.length) {
             if (_packedChain.length >= _targetChainLength) {
+              completedNow = true;
               _completeChainGame();
             } else {
               _stage = _ChainTurnStage.addNewItemToChain;
               _feedbackBannerText =
-                  'Spot on, ${activePlayer.name}! You remembered all ${_packedChain.length} items in order! Now pick 1 NEW item to add to the basket.';
+                  'Spot on, $activeClean! You remembered all ${_packedChain.length} items in order! Now pick 1 NEW item to add to the basket.';
               _isFeedbackPositive = true;
             }
           } else {
@@ -6283,18 +8655,28 @@ class _CollaborativeMemoryGameViewState
             _isFeedbackPositive = true;
           }
         });
+        if (_isLiveMultiplayerActive && !completedNow) {
+          _publishLiveRoomState();
+        }
       } else {
-        final helper = _joinedPlayers
-            .firstWhere(
-              (p) => p.id != activePlayer.id,
-              orElse: () => activePlayer,
-            )
-            .name;
+        final helper = _cleanName(
+          turnPlayers
+              .firstWhere(
+                (p) => p.id != activePlayer.id,
+                orElse: () => activePlayer,
+              )
+              .name,
+        );
         setState(() {
+          _lastSelectedItemKey = item.key;
+          _lastSelectedByName = activeClean;
+          _lastSelectedAction = 'wrong';
+          _lastSelectedAtMs = tapNowMs;
           _feedbackBannerText =
               'Not quite! Ask $helper for a hint — we are looking for Item #${expectedIndex + 1} in the basket order.';
           _isFeedbackPositive = false;
         });
+        if (_isLiveMultiplayerActive) _publishLiveRoomState();
       }
     } else if (_stage == _ChainTurnStage.addNewItemToChain) {
       if (_packedChain.any((c) => c.key == item.key)) {
@@ -6306,24 +8688,30 @@ class _CollaborativeMemoryGameViewState
         return;
       }
 
-      final packedItem = item.withAddedBy(activePlayer.name);
+      final packedItem = item.withAddedBy(activeClean);
+      _bgm.playTapChime();
       activePlayer.itemsAdded++;
       _totalTeamAttempts++;
       _successfulRecalls++;
 
-      final nextPlayerIndex = (_currentPlayerIndex + 1) % _joinedPlayers.length;
-      final nextPlayer = _joinedPlayers[nextPlayerIndex];
+      final nextPlayerIndex = (safeIdx + 1) % turnPlayers.length;
+      final nextPlayerClean = _cleanName(turnPlayers[nextPlayerIndex].name);
 
       setState(() {
+        _lastSelectedItemKey = item.key;
+        _lastSelectedByName = activeClean;
+        _lastSelectedAction = 'packed';
+        _lastSelectedAtMs = tapNowMs;
         _packedChain.add(packedItem);
         _currentRecallInput.clear();
         _teammateHintText = null;
         _currentPlayerIndex = nextPlayerIndex;
         _stage = _ChainTurnStage.recallExistingChain;
         _feedbackBannerText =
-            '${activePlayer.name} packed "${item.label}"! Now it is ${nextPlayer.name}\'s turn to recall the ${_packedChain.length}-item chain in order!';
+            '$activeClean packed "${item.label}"! Now it is $nextPlayerClean\'s turn to recall the ${_packedChain.length}-item chain in order!';
         _isFeedbackPositive = true;
       });
+      if (_isLiveMultiplayerActive) _publishLiveRoomState();
     }
   }
 
@@ -6341,6 +8729,13 @@ class _CollaborativeMemoryGameViewState
       _isFeedbackPositive = true;
     });
 
+    if (_isLiveMultiplayerActive) {
+      _publishLiveRoomState();
+    }
+
+    _savedCompletedRoomKey =
+        '${_liveRoomId ?? 'local'}_${_liveRoomStartedAt ?? 0}';
+    _bgm.playVictoryChime();
     _saveSession(
       score: roundedScore,
       attempts: _totalTeamAttempts,
@@ -6400,573 +8795,392 @@ class _CollaborativeMemoryGameViewState
     }
   }
 
+  bool get _isSi => widget.isSinhala;
+
+  String _itemLabel(_PicnicChainItem item) {
+    if (!_isSi) return item.label;
+    switch (item.key) {
+      case 'tea':
+        return 'උණු තේ';
+      case 'apple':
+        return 'රතු ඇපල්';
+      case 'sunhat':
+        return 'අව්ව තොප්පිය';
+      case 'flower':
+        return 'මල් පොකුර';
+      case 'book':
+        return 'කතා පොත';
+      case 'music':
+        return 'පොඩි රේඩියෝව';
+      case 'cake':
+        return 'බෙරි කේක්';
+      case 'lantern':
+        return 'පහන් කූඩුව';
+      default:
+        return item.label;
+    }
+  }
+
+  String _safePlayerDisplayName(_InvitedPlayer p) {
+    final clean = p.name.trim();
+    if (clean.isEmpty || clean == '-') {
+      return _isSi ? 'නේවාසික මිතුරා' : 'Fellow Resident';
+    }
+    if (!_isSi) return clean;
+    final hasYou = clean.contains('(You)');
+    final base = clean.replaceAll('(You)', '').trim();
+    final siBase = SinhalaNameTransliterator.toSinhala(base, fallback: 'මිතුරා');
+    return hasYou ? '$siBase (ඔබ)' : siBase;
+  }
+
+  String _safePlayerInitial(_InvitedPlayer p) {
+    final clean = p.name.trim();
+    if (clean.isEmpty || clean == '-') return 'R';
+    return clean.substring(0, 1).toUpperCase();
+  }
+
+  String _localizeHintText(String raw) {
+    final isSi = _isSi;
+    if (raw.startsWith('HINT_RECALL|')) {
+      final parts = raw.split('|');
+      final helper = parts.length > 1 ? parts[1] : 'Your Teammate';
+      final slot = parts.length > 2 ? parts[2] : '1';
+      final itemKey = parts.length > 3 ? parts[3] : '';
+      final packer = parts.length > 4 ? parts[4] : '';
+      final item = _picnicPool.where((p) => p.key == itemKey).firstOrNull;
+      final itemLabel = item != null ? _itemLabel(item) : itemKey;
+      if (isSi) {
+        final siHelper =
+            SinhalaNameTransliterator.toSinhala(helper, fallback: helper);
+        final siPacker = packer.isNotEmpty
+            ? SinhalaNameTransliterator.toSinhala(packer, fallback: packer)
+            : '';
+        return siPacker.isNotEmpty
+            ? '💬 $siHelper රහසින් කියයි: "කූඩයේ #$slot භාණ්ඩය \"$itemLabel\" ($siPacker දැම්මේ)!"'
+            : '💬 $siHelper රහසින් කියයි: "කූඩයේ #$slot භාණ්ඩය \"$itemLabel\"!"';
+      }
+      return packer.isNotEmpty
+          ? '💬 $helper whispers: "Item #$slot in our basket is $itemLabel (packed by $packer)!"'
+          : '💬 $helper whispers: "Item #$slot in our basket is $itemLabel!"';
+    }
+    if (raw.startsWith('HINT_SUGGEST|')) {
+      final parts = raw.split('|');
+      final helper = parts.length > 1 ? parts[1] : 'Your Teammate';
+      final itemKey = parts.length > 2 ? parts[2] : '';
+      final item = _picnicPool.where((p) => p.key == itemKey).firstOrNull;
+      final itemLabel = item != null ? _itemLabel(item) : itemKey;
+      if (isSi) {
+        final siHelper =
+            SinhalaNameTransliterator.toSinhala(helper, fallback: helper);
+        return '💬 $siHelper යෝජනා කරයි: "ඊළඟට \"$itemLabel\" කූඩයට දමමුද?"';
+      }
+      return '💬 $helper suggests: "How about packing the $itemLabel next?"';
+    }
+    return raw;
+  }
+
+  String _localizeBannerText(String raw) {
+    if (!_isSi) return raw;
+    if (raw.contains('You accepted ') && raw.contains("'s invitation!")) {
+      final name = raw
+          .replaceAll('✅', '')
+          .split('You accepted ')
+          .last
+          .split("'s invitation!")
+          .first
+          .trim();
+      final siName = SinhalaNameTransliterator.toSinhala(name, fallback: name);
+      return '✅ ඔබ $siName ගේ ආරාධනාව පිළිගත්තා! දැන් ඔබ ක්‍රීඩා කාමරයට එක්වී සිටී.';
+    }
+    if (raw.contains('You declined ') && raw.contains("'s invitation.")) {
+      final name = raw
+          .split('You declined ')
+          .last
+          .split("'s invitation.")
+          .first
+          .trim();
+      final siName = SinhalaNameTransliterator.toSinhala(name, fallback: name);
+      return '💌 ඔබ $siName ගේ ආරාධනාව ප්‍රතික්ෂේප කළේය.';
+    }
+    if (raw.contains('sat down with you at the same screen')) {
+      final name = raw
+          .replaceAll('🪑', '')
+          .split('sat down with you')
+          .first
+          .trim();
+      final siName = SinhalaNameTransliterator.toSinhala(name, fallback: name);
+      return '🪑 $siName ඔබ සමඟ එකම තිරයේ සෙල්ලම් කිරීමට සූදානම්!';
+    }
+    if (raw.contains('left the game.')) {
+      final name = raw.split('left the game.').first.trim();
+      final siName = SinhalaNameTransliterator.toSinhala(name, fallback: name);
+      return '👋 $siName ක්‍රීඩාවෙන් ඉවත් විය.';
+    }
+    if (raw.contains('is already in the basket!')) {
+      final enItem = raw.split('is already in the basket!').first.trim();
+      final matchedItem =
+          _picnicPool.where((p) => p.label == enItem).firstOrNull;
+      final siItem = matchedItem != null ? _itemLabel(matchedItem) : enItem;
+      return '🧺 "$siItem" දැනටමත් කූඩයේ තිබේ! අලුත් භාණ්ඩයක් තෝරන්න.';
+    }
+    if (raw.contains('Minimum 2 players')) {
+      return 'අවම වශයෙන් ක්‍රීඩකයින් 2ක් අවශ්‍යයි.';
+    }
+    if (raw.contains('accepted your invitation')) {
+      final name = raw
+          .replaceAll('✅', '')
+          .split('accepted your invitation')
+          .first
+          .trim();
+      final siName = SinhalaNameTransliterator.toSinhala(name, fallback: name);
+      return '✅ $siName ඔබේ ආරාධනාව පිළිගෙන ක්‍රීඩාවට එක් විය!';
+    }
+    if (raw.contains('copied!')) {
+      return 'කාමර අංකය $_roomInviteCode පිටපත් විය! මිතුරන් සමඟ බෙදාගන්න.';
+    }
+    if (raw.contains('joined your room')) {
+      return '✅ මිතුරා ඔබේ කණ්ඩායමට එක් විය!';
+    }
+    if (raw.contains('Invitation notification sent') ||
+        raw.contains('Invitation sent to')) {
+      return '🔔 ආරාධනා පණිවිඩය යවන ලදී! මිතුරා පිළිගන්නා තුරු රැඳී සිටින්න.';
+    }
+    if (raw.contains('declined the invitation')) {
+      final name = raw.split('declined the invitation').first.trim();
+      final siName = SinhalaNameTransliterator.toSinhala(name, fallback: name);
+      return '💌 $siName ආරාධනාව ප්‍රතික්ෂේප කළේය.';
+    }
+    if (raw.startsWith('Round 1:')) {
+      final actor = raw
+          .replaceFirst('Round 1:', '')
+          .split(', pick')
+          .first
+          .replaceAll('(You)', '')
+          .trim();
+      final siActor =
+          SinhalaNameTransliterator.toSinhala(actor, fallback: actor);
+      return '🧺 වටය 1: $siActor, විනෝද චාරිකා කූඩයට පළමු භාණ්ඩය තෝරන්න!';
+    }
+    if (raw.contains('Spot on,') || raw.contains('Great! Now pick')) {
+      return '🎉 හරිම හොඳයි! පිළිවෙල හරියටම මතක තබා ගත්තා! දැන් කූඩයට අලුත් භාණ්ඩයක් තෝරන්න!';
+    }
+    if (raw.contains('packed "')) {
+      final parts = raw.split(' packed "');
+      final actor = parts.first.replaceAll('(You)', '').trim();
+      final siActor =
+          SinhalaNameTransliterator.toSinhala(actor, fallback: actor);
+      final afterItem = parts.length > 1 ? parts[1] : '';
+      final enItem = afterItem.split('"').first.trim();
+      final matchedItem =
+          _picnicPool.where((p) => p.label == enItem).firstOrNull;
+      final siItem = matchedItem != null ? _itemLabel(matchedItem) : enItem;
+      String nextNameSi = 'ඊළඟ මිතුරා';
+      if (afterItem.contains('Now it is ') && afterItem.contains("'s turn")) {
+        final rawNext = afterItem
+            .split('Now it is ')
+            .last
+            .split("'s turn")
+            .first
+            .replaceAll('(You)', '')
+            .trim();
+        if (rawNext.isNotEmpty) {
+          nextNameSi =
+              SinhalaNameTransliterator.toSinhala(rawNext, fallback: rawNext);
+        }
+      }
+      return '🧺 $siActor "$siItem" කූඩයට දැම්මා! දැන් $nextNameSi ගේ වාරයයි — පිළිවෙලට මතකයෙන් තෝරන්න!';
+    }
+    if (raw.contains('Correct!')) {
+      return '✨ නිවැරදියි! ඊළඟ භාණ්ඩයත් මතකයෙන් තෝරන්න.';
+    }
+    if (raw.contains('Not quite')) {
+      return '💛 කමක් නැහැ! නැවත උත්සාහ කරන්න හෝ මිතුරාගෙන් ඉඟියක් අසන්න.';
+    }
+    if (raw.contains('Team agreed! Fresh Round 1')) {
+      return '🔄 සැවොම එකඟ වුණා! අලුත් වටය 1 එකට ආරම්භ වුණා!';
+    }
+    if (raw.contains('is not ready for another round yet.')) {
+      final name = raw.split('is not ready for another round yet.').first.trim();
+      final siName = SinhalaNameTransliterator.toSinhala(name, fallback: name);
+      return '💛 $siName දැන් තව වටයකට සූදානම් නැත.';
+    }
+    if (raw.contains('wants to keep playing')) {
+      final name = raw.split('wants to keep playing').first.trim();
+      final siName = SinhalaNameTransliterator.toSinhala(name, fallback: name);
+      return '💛 $siName මේ වටය දිගටම සෙල්ලම් කිරීමට කැමතියි!';
+    }
+    if (raw.contains('Wonderful Teamwork') ||
+        raw.contains('Amazing Teamwork') ||
+        raw.contains('completed')) {
+      return '🎉 විශිෂ්ටයි! ඔබ සියලු දෙනාම එක්ව විනෝද චාරිකා කූඩය සම්පූර්ණ කළා!';
+    }
+    return raw;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isSi = _isSi;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildGameNavBar(
-          gameTitle: 'Shared Picnic Memory Chain',
+          gameTitle:
+              isSi ? 'හවුල් විනෝද චාරිකා මතක දාමය' : 'Shared Picnic Memory Chain',
+          backLabel: isSi ? 'සියලුම ක්‍රීඩා' : 'All Games',
           gameIcon: LucideIcons.users,
           gameColor: const Color(0xFF2563EB),
-          onBack: widget.onBack,
-          onReset: _returnToInviteLobby,
-          statusBadge:
-              '${_joinedPlayers.length} Players Joined • Chain: ${_packedChain.length} / $_targetChainLength',
+          onBack: _handleBackToHub,
+          onReset: _onTapResetButton,
+          statusBadge: isSi
+              ? 'ක්‍රීඩකයින් ${_joinedPlayers.length} • දාමය ${_packedChain.length} / $_targetChainLength'
+              : '${_joinedPlayers.length} ${_joinedPlayers.length == 1 ? 'Player' : 'Players'} • Chain ${_packedChain.length} / $_targetChainLength',
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 12),
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppColors.border, width: 1.5),
+            gradient: const LinearGradient(
+              colors: [
+                Color(0xFFFFFFFF),
+                Color(0xFFFAFCFF),
+                Color(0xFFF5F3FF),
+              ],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+            borderRadius: BorderRadius.circular(26),
+            border: Border.all(
+              color: const Color(0xFF93C5FD).withValues(alpha: 0.75),
+              width: 1.5,
+            ),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF2563EB).withValues(alpha: 0.05),
-                blurRadius: 18,
-                offset: const Offset(0, 6),
+                color: const Color(0xFF2563EB).withValues(alpha: 0.11),
+                blurRadius: 28,
+                offset: const Offset(0, 10),
               ),
             ],
           ),
-          child: _stage == _ChainTurnStage.lobbyInvite
-              ? _buildInviteLobbyView()
-              : _buildChainGameplayView(),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(25),
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeInCubic,
+              child: _stage == _ChainTurnStage.lobbyInvite
+                  ? KeyedSubtree(
+                      key: ValueKey('collab_lobby_stage_$isSi'),
+                      child: _buildInviteLobbyView(),
+                    )
+                  : KeyedSubtree(
+                      key: ValueKey('collab_gameplay_stage_$isSi'),
+                      child: _buildChainGameplayView(),
+                    ),
+            ),
+          ),
         ),
       ],
     );
   }
 
   Widget _buildInviteLobbyView() {
+    final isSi = _isSi;
     final canStart = _joinedPlayers.length >= _minPlayers;
+    final fellowElders =
+        _directoryPlayers.where((p) => !p.isHost).toList();
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // 1. Invite Header & Room Code Card
+        // 1. Compact Sleek Virtual Picnic Game Room Header Strip
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFFEFF6FF), Color(0xFFF5F3FF)],
+          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Color(0xFF1E1B4B),
+                Color(0xFF1D4ED8),
+                Color(0xFF0D9488),
+              ],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: const Color(0xFFBFDBFE)),
           ),
           child: Wrap(
             alignment: WrapAlignment.spaceBetween,
             crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 16,
-            runSpacing: 12,
+            spacing: 14,
+            runSpacing: 10,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        LucideIcons.users,
-                        color: Color(0xFF2563EB),
-                        size: 22,
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFFEF3C7), Color(0xFFFDE68A)],
                       ),
-                      const SizedBox(width: 10),
+                      borderRadius: BorderRadius.circular(15),
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
+                    child: const Center(
+                      child: Text('🧺', style: TextStyle(fontSize: 25)),
+                    ),
+                  ),
+                  const SizedBox(width: 13),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       Text(
-                        'Invite Players to Your Memory Chain Room',
-                        style: AppTextStyles.h3.copyWith(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.navy,
+                        isSi
+                            ? 'විනෝද චාරිකා මතක ක්‍රීඩාව! 🍉☕'
+                            : 'Picnic Memory Party! 🍉☕',
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                          letterSpacing: -0.3,
                         ),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Invite fellow elders from ${widget.elderHomeName} to join (Minimum 2 elders required). Together you will pack a picnic basket and recall the item chain in order!',
-                    style: AppTextStyles.body.copyWith(
-                      fontSize: 13.5,
-                      color: const Color(0xFF475569),
-                    ),
-                  ),
-                ],
-              ),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: const Color(0xFF93C5FD)),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'ROOM INVITE CODE',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF64748B),
-                          ),
-                        ),
-                        Text(
-                          _roomInviteCode,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w900,
-                            color: Color(0xFF1D4ED8),
-                            letterSpacing: 1.1,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(width: 12),
-                    OutlinedButton.icon(
-                      key: const ValueKey('copy_invite_code_button'),
-                      onPressed: () {
-                        setState(() {
-                          _inviteCodeCopied = true;
-                          _feedbackBannerText =
-                              'Room Invite Code $_roomInviteCode copied! Share it with friends to join.';
-                          _isFeedbackPositive = true;
-                        });
-                      },
-                      icon: Icon(
-                        _inviteCodeCopied
-                            ? LucideIcons.check
-                            : LucideIcons.share2,
-                        size: 14,
-                      ),
-                      label: Text(_inviteCodeCopied ? 'Copied!' : 'Share Code'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFF2563EB),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-
-        if (_feedbackBannerText != null) ...[
-          const SizedBox(height: 14),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: _isFeedbackPositive
-                  ? AppColors.riskLowBg
-                  : const Color(0xFFFEF3C7),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: _isFeedbackPositive
-                    ? AppColors.riskLow.withValues(alpha: 0.4)
-                    : const Color(0xFFF59E0B),
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  _isFeedbackPositive ? LucideIcons.check : LucideIcons.info,
-                  size: 18,
-                  color: _isFeedbackPositive
-                      ? AppColors.riskLow
-                      : const Color(0xFFD97706),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    _feedbackBannerText!,
-                    style: const TextStyle(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.navy,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-
-        // 2. Incoming Invite Notification Banner (Shown ONLY to the target Elder who received the invite!)
-        if (_incomingInvitesForMe.isNotEmpty) ...[
-          const SizedBox(height: 16),
-          ..._incomingInvitesForMe.map((inv) {
-            final senderName =
-                (inv['senderName']?.toString() ?? 'Fellow Elder').trim();
-            final invId = inv['id']?.toString() ?? senderName;
-            return Container(
-              key: ValueKey('incoming_notification_banner_$invId'),
-              margin: const EdgeInsets.only(bottom: 10),
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFEFF6FF), Color(0xFFDBEAFE)],
-                ),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFF2563EB), width: 1.5),
-              ),
-              child: Wrap(
-                alignment: WrapAlignment.spaceBetween,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: 12,
-                runSpacing: 10,
-                children: [
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        LucideIcons.bell,
-                        size: 20,
-                        color: Color(0xFF1D4ED8),
-                      ),
-                      const SizedBox(width: 10),
-                      Flexible(
-                        child: Text(
-                          'New Game Invite from $senderName (${widget.elderHomeName}): "Join my Shared Picnic Memory Chain!"',
-                          style: const TextStyle(
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF1E3A8A),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      ElevatedButton.icon(
-                        key: ValueKey('accept_incoming_btn_$invId'),
-                        onPressed: () =>
-                            _respondToIncomingInvite(inv, accept: true),
-                        icon: const Icon(LucideIcons.check, size: 15),
-                        label: const Text('Accept & Join Game'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.riskLow,
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 8,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      OutlinedButton(
-                        key: ValueKey('decline_incoming_btn_$invId'),
-                        onPressed: () =>
-                            _respondToIncomingInvite(inv, accept: false),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.riskHigh,
-                          side: const BorderSide(color: AppColors.riskHigh),
-                        ),
-                        child: const Text('Decline'),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            );
-          }),
-        ],
-
-        const SizedBox(height: 20),
-
-        // 3. Online Elders Directory in Same Elder Home (Hybrid: Notification Invite + Sit Together)
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Flexible(
-              child: Text(
-                'Available Elders in ${widget.elderHomeName} (${_joinedPlayers.length} Joined • Minimum $_minPlayers Required)',
-                style: AppTextStyles.h4.copyWith(
-                  fontSize: 15.5,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.navy,
-                ),
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: const Color(0xFFDBEAFE),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                widget.elderHomeName,
-                style: const TextStyle(
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF1D4ED8),
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-
-        Column(
-          children: _directoryPlayers.map((player) {
-            return Container(
-              key: ValueKey('invite_player_row_${player.id}'),
-              margin: const EdgeInsets.only(bottom: 10),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: player.hasJoined
-                    ? player.color.withValues(alpha: 0.06)
-                    : const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: player.hasJoined
-                      ? player.color.withValues(alpha: 0.45)
-                      : const Color(0xFFE2E8F0),
-                  width: player.hasJoined ? 1.5 : 1,
-                ),
-              ),
-              child: Wrap(
-                alignment: WrapAlignment.spaceBetween,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: 12,
-                runSpacing: 10,
-                children: [
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      CircleAvatar(
-                        radius: 18,
-                        backgroundColor: player.color,
-                        child: Text(
-                          player.name.substring(0, 1).toUpperCase(),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            player.name,
-                            style: const TextStyle(
-                              fontSize: 14.5,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.navy,
-                            ),
-                          ),
-                          Text(
-                            player.roleLabel,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: AppColors.muted,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  if (player.isHost)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFDBEAFE),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: const Text(
-                        'Host • Ready',
+                      const SizedBox(height: 2),
+                      Text(
+                        isSi
+                            ? 'මිතුරන් සමඟ එක්ව විනෝද චාරිකා කූඩයක් අසුරමු'
+                            : 'Invite a friend & pack a picnic basket together',
                         style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF1D4ED8),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white.withValues(alpha: 0.90),
                         ),
                       ),
-                    )
-                  else if (player.hasJoined)
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.riskLowBg,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                LucideIcons.check,
-                                size: 14,
-                                color: AppColors.riskLow,
-                              ),
-                              SizedBox(width: 4),
-                              Text(
-                                'Accepted & Joined',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.riskLow,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        IconButton(
-                          key: ValueKey('remove_invited_${player.id}'),
-                          onPressed: () => _removeJoinedPlayer(player),
-                          icon: const Icon(LucideIcons.x, size: 16),
-                          tooltip: 'Remove from room',
-                          color: AppColors.muted,
-                        ),
-                      ],
-                    )
-                  else if (player.isInvited && !player.hasJoined)
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFEF3C7),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                LucideIcons.clock,
-                                size: 14,
-                                color: Color(0xFFD97706),
-                              ),
-                              const SizedBox(width: 5),
-                              Text(
-                                'Invite Sent • Waiting for ${player.name}',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w800,
-                                  color: Color(0xFF92400E),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        OutlinedButton(
-                          onPressed: () => _cancelSentInvite(player),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: AppColors.muted,
-                            side: const BorderSide(color: Color(0xFFCBD5E1)),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 6,
-                            ),
-                          ),
-                          child: const Text('Cancel'),
-                        ),
-                      ],
-                    )
-                  else
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        OutlinedButton.icon(
-                          key: ValueKey('sit_together_${player.id}'),
-                          onPressed: () => _sitTogetherQuickJoin(player),
-                          icon: const Icon(LucideIcons.users, size: 15),
-                          label: const Text('Sit Together (Same Screen)'),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: const Color(0xFF0D9488),
-                            side: const BorderSide(color: Color(0xFF0D9488)),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 10,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                        ),
-                        ElevatedButton.icon(
-                          key: ValueKey('send_invite_${player.id}'),
-                          onPressed: () => _sendInviteNotification(player),
-                          icon: const Icon(LucideIcons.bell, size: 15),
-                          label: const Text('Send Invite Notification'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF2563EB),
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 10,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                    ],
+                  ),
                 ],
               ),
-            );
-          }).toList(),
-        ),
-
-        const SizedBox(height: 24),
-
-        // 4. Start Collaborative Game CTA (Enforces Minimum 2 Players)
-        Center(
-          child: Column(
-            children: [
-              ElevatedButton.icon(
-                key: const ValueKey('start_collaborative_chain_button'),
-                onPressed: canStart ? _startCollaborativeGame : null,
-                icon: const Icon(LucideIcons.play, size: 18),
+              OutlinedButton.icon(
+                key: const ValueKey('collab_how_to_play_lobby_button'),
+                onPressed: _showHowToPlayDialog,
+                icon: const Icon(Icons.help_outline_rounded, size: 18),
                 label: Text(
-                  canStart
-                      ? 'Start Picnic Memory Chain (${_joinedPlayers.length} Players Ready)'
-                      : 'Invite at Least 1 More Player to Start (Min 2 Players)',
+                  isSi ? 'ක්‍රීඩා කරන ආකාරය' : 'How to Play',
                   style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w900,
                   ),
                 ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2563EB),
+                style: OutlinedButton.styleFrom(
                   foregroundColor: Colors.white,
-                  disabledBackgroundColor: const Color(0xFFCBD5E1),
-                  disabledForegroundColor: const Color(0xFF64748B),
+                  backgroundColor: Colors.white.withValues(alpha: 0.18),
+                  side: BorderSide(
+                    color: Colors.white.withValues(alpha: 0.65),
+                    width: 1.5,
+                  ),
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 28,
-                    vertical: 15,
+                    horizontal: 15,
+                    vertical: 11,
                   ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
@@ -6976,265 +9190,1340 @@ class _CollaborativeMemoryGameViewState
             ],
           ),
         ),
+
+        // 1b. Live Game Started Prompt Banner (when partner already clicked Start!)
+        if (_pendingLiveStartRoom != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+            child: AuroraGradientBorderFrame(
+              borderRadius: 18,
+              borderWidth: 2.8,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 13,
+                ),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFECFDF5), Color(0xFFEEF2FF)],
+                  ),
+                  borderRadius: BorderRadius.circular(15.2),
+                ),
+                child: Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 12,
+                  runSpacing: 10,
+                  children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text('🚀', style: TextStyle(fontSize: 22)),
+                        const SizedBox(width: 10),
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 460),
+                          child: Text(
+                            () {
+                              final rawStarter = (_pendingLiveStartRoom![
+                                          'startedBy']
+                                      ?.toString() ??
+                                  'Your Friend')
+                                  .trim();
+                              final disp = isSi
+                                  ? SinhalaNameTransliterator.toSinhala(
+                                      rawStarter,
+                                      fallback: rawStarter,
+                                    )
+                                  : rawStarter;
+                              return isSi
+                                  ? '$disp ක්‍රීඩාව ආරම්භ කළා! දැන්ම ඉක්මනින් එක්වී එකට සෙල්ලම් කරන්න!'
+                                  : '$rawStarter started the game! Join quickly to play together live!';
+                            }(),
+                            style: const TextStyle(
+                              fontSize: 14.5,
+                              fontWeight: FontWeight.w900,
+                              color: Color(0xFF1E3A8A),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    ElevatedButton.icon(
+                      onPressed: () => _joinLiveRoom(_pendingLiveStartRoom!),
+                      icon: const Icon(LucideIcons.gamepad2, size: 17),
+                      label: Text(
+                        isSi ? 'ඉක්මනින් එක්වන්න!' : 'Join Game Now!',
+                        style: const TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF10B981),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 18,
+                          vertical: 11,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(13),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+        // 2. Incoming Invite Alert (if any)
+        if (_incomingInvitesForMe.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+            child: Column(
+              children: _incomingInvitesForMe.map((inv) {
+                final senderName =
+                    (inv['senderName']?.toString() ?? 'Fellow Elder').trim();
+                final displaySender = isSi
+                    ? SinhalaNameTransliterator.toSinhala(senderName)
+                    : senderName;
+                final invId = inv['id']?.toString() ?? senderName;
+                return Container(
+                  key: ValueKey('incoming_notification_banner_$invId'),
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFEFF6FF), Color(0xFFCCFBF1)],
+                    ),
+                    borderRadius: BorderRadius.circular(15),
+                    border: Border.all(
+                      color: const Color(0xFF2563EB),
+                      width: 1.5,
+                    ),
+                  ),
+                  child: Wrap(
+                    alignment: WrapAlignment.spaceBetween,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 10,
+                    runSpacing: 8,
+                    children: [
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            LucideIcons.bell,
+                            size: 18,
+                            color: Color(0xFF1D4ED8),
+                          ),
+                          const SizedBox(width: 8),
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 440),
+                            child: Text(
+                              isSi
+                                  ? '🎉 $displaySender ඔබට විනෝද චාරිකා ක්‍රීඩාවට ආරාධනා කරයි!'
+                                  : '🎉 $senderName invited you to play Picnic Memory Chain!',
+                              style: const TextStyle(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF1E3A8A),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          ElevatedButton.icon(
+                            key: ValueKey('accept_incoming_btn_$invId'),
+                            onPressed: () =>
+                                _respondToIncomingInvite(inv, accept: true),
+                            icon: const Icon(LucideIcons.check, size: 14),
+                            label: Text(
+                              isSi ? 'එක්වන්න' : 'Accept & Join',
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.w800),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF10B981),
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 8,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          OutlinedButton(
+                            key: ValueKey('decline_incoming_btn_$invId'),
+                            onPressed: () =>
+                                _respondToIncomingInvite(inv, accept: false),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.riskHigh,
+                              side: const BorderSide(color: AppColors.riskHigh),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: Text(isSi ? 'එපා' : 'Decline'),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+
+        // 2b. Compact "Currently Playing Teams" Strip (shown ONLY when other teams are live!)
+        if ((_otherActiveLiveTeams ?? const []).isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 12, 18, 0),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFEEF2FF), Color(0xFFF0FDF4)],
+                ),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: const Color(0xFFA5B4FC),
+                  width: 1.3,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Text('🎮', style: TextStyle(fontSize: 15)),
+                      const SizedBox(width: 7),
+                      Text(
+                        isSi
+                            ? 'දැන් ක්‍රීඩා කරන කණ්ඩායම් (${_otherActiveLiveTeams!.length})'
+                            : 'Currently Playing Teams (${_otherActiveLiveTeams!.length})',
+                        style: const TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFF312E81),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 8,
+                    children: _otherActiveLiveTeams!.map((room) {
+                      final rawNames = (room['participants'] as List?)
+                              ?.map((e) => e.toString().trim())
+                              .where((e) => e.isNotEmpty)
+                              .toList() ??
+                          const <String>[];
+                      final displayNames = rawNames.map((n) {
+                        if (!isSi) return n;
+                        return SinhalaNameTransliterator.toSinhala(
+                          n,
+                          fallback: n,
+                        );
+                      }).join(' • ');
+                      final basketCount =
+                          (room['packedChain'] as List?)?.length ?? 0;
+
+                      return Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 7,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(13),
+                          border: Border.all(
+                            color: const Color(0xFF6EE7B7),
+                            width: 1.2,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFF10B981),
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 7),
+                            Text(
+                              isSi ? 'සජීවී' : 'LIVE',
+                              style: const TextStyle(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w900,
+                                color: Color(0xFF059669),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: Text(
+                                displayNames,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 12.8,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.navy,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFEF3C7),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                '🧺 $basketCount / $_targetChainLength',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w900,
+                                  color: Color(0xFF92400E),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+        // 3. ZERO-SCROLL 2-Column Smart Game Lobby Workspace
+        Padding(
+          padding: const EdgeInsets.all(18),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final isWide = constraints.maxWidth >= 740;
+              final teamPanel = _buildTeamReadyPanel(isSi, canStart);
+              final friendsPanel = _buildCompactFriendsPanel(isSi, fellowElders);
+
+              if (isWide) {
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(flex: 4, child: teamPanel),
+                    const SizedBox(width: 16),
+                    Expanded(flex: 6, child: friendsPanel),
+                  ],
+                );
+              }
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  teamPanel,
+                  const SizedBox(height: 14),
+                  friendsPanel,
+                ],
+              );
+            },
+          ),
+        ),
       ],
     );
   }
 
-  Widget _buildChainGameplayView() {
-    final activePlayer = _joinedPlayers[_currentPlayerIndex];
-    final isCompleted = _stage == _ChainTurnStage.completed;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // 1. Active Players Turn Bar + Invite More Players Button
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            ...List.generate(_joinedPlayers.length, (i) {
-              final p = _joinedPlayers[i];
-              final isTurn = !isCompleted && _currentPlayerIndex == i;
-              return Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  color: isTurn
-                      ? p.color.withValues(alpha: 0.14)
-                      : const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: isTurn ? p.color : const Color(0xFFCBD5E1),
-                    width: isTurn ? 2 : 1,
+  Widget _buildTeamReadyPanel(bool isSi, bool canStart) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFF0F9FF), Color(0xFFF5F3FF)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: canStart ? const Color(0xFF6EE7B7) : const Color(0xFFBAE6FD),
+          width: 1.5,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              const Text('🎉', style: TextStyle(fontSize: 18)),
+              const SizedBox(width: 7),
+              Expanded(
+                child: Text(
+                  isSi
+                      ? 'ඔබේ කණ්ඩායම (${_joinedPlayers.length})'
+                      : 'Your Picnic Team (${_joinedPlayers.length})',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.navy,
                   ),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    CircleAvatar(
-                      radius: 11,
-                      backgroundColor: p.color,
-                      child: Text(
-                        '${i + 1}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      p.name,
-                      style: TextStyle(
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                decoration: BoxDecoration(
+                  color: canStart
+                      ? const Color(0xFFDCFCE7)
+                      : const Color(0xFFFEF3C7),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  canStart
+                      ? (isSi ? 'සූදානම්!' : 'READY!')
+                      : (isSi ? 'අවම 2' : 'MIN 2'),
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                    color: canStart
+                        ? const Color(0xFF047857)
+                        : const Color(0xFFB45309),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Joined Players Cards
+          ..._joinedPlayers.map((jp) {
+            final display = _safePlayerDisplayName(jp);
+            return Container(
+              key: jp.isHost ? ValueKey('invite_player_row_${jp.id}') : null,
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: jp.color.withValues(alpha: 0.45),
+                  width: 1.4,
+                ),
+              ),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 15,
+                    backgroundColor: jp.color,
+                    child: Text(
+                      _safePlayerInitial(jp),
+                      style: const TextStyle(
+                        color: Colors.white,
                         fontSize: 13,
-                        fontWeight: FontWeight.w800,
-                        color: isTurn ? p.color : AppColors.navy,
+                        fontWeight: FontWeight.w900,
                       ),
                     ),
-                    if (isTurn) ...[
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: p.color,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: const Text(
-                          'ACTIVE TURN',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 9.5,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          display,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 14,
                             fontWeight: FontWeight.w800,
+                            color: AppColors.navy,
+                          ),
+                        ),
+                        Text(
+                          jp.isHost
+                              ? (isSi ? '👑 ප්‍රධාන ක්‍රීඩකයා' : '👑 Host • Ready')
+                              : (isSi ? '✅ එක්වී සිටී' : '✅ Joined & Ready'),
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w700,
+                            color: jp.isHost
+                                ? const Color(0xFF1D4ED8)
+                                : const Color(0xFF059669),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (!jp.isHost)
+                    Material(
+                      color: const Color(0xFFFEF2F2),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(11),
+                        side: const BorderSide(
+                          color: Color(0xFFFCA5A5),
+                          width: 1.2,
+                        ),
+                      ),
+                      child: InkWell(
+                        key: ValueKey('remove_invited_${jp.id}'),
+                        onTap: () => _removeJoinedPlayer(jp),
+                        borderRadius: BorderRadius.circular(11),
+                        hoverColor: const Color(0xFFFEE2E2),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 11,
+                            vertical: 7,
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.close_rounded,
+                                size: 15,
+                                color: Color(0xFFDC2626),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                isSi ? 'ඉවත්' : 'Remove',
+                                style: const TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: Color(0xFFDC2626),
+                                  height: 1.1,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
-                    ],
-                  ],
+                    ),
+                ],
+              ),
+            );
+          }),
+
+          if (!canStart)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFFBEB),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFFCD34D)),
+              ),
+              child: Text(
+                isSi
+                    ? '👉 දකුණු පසින් මිතුරෙකු තෝරා එක් කරගන්න'
+                    : '👉 Pick a friend on the right to start playing!',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFFB45309),
                 ),
-              );
-            }),
-            OutlinedButton.icon(
-              key: const ValueKey('manage_invites_button'),
-              onPressed: _returnToInviteLobby,
-              icon: const Icon(LucideIcons.userPlus, size: 15),
-              label: const Text('Invite More Players'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFF2563EB),
-                side: const BorderSide(color: Color(0xFF93C5FD)),
               ),
             ),
-            if (!isCompleted)
-              OutlinedButton.icon(
-                key: const ValueKey('ask_teammate_hint_button'),
-                onPressed: _askInvitedTeammateForHint,
-                icon: const Icon(LucideIcons.messageCircle, size: 15),
-                label: const Text('Ask Teammate for Hint'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFF7C3AED),
-                  side: const BorderSide(color: Color(0xFFC4B5FD)),
+
+          if (_feedbackBannerText != null) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: _isFeedbackPositive
+                    ? const Color(0xFFECFDF5)
+                    : const Color(0xFFFFFBEB),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: _isFeedbackPositive
+                      ? const Color(0xFF6EE7B7)
+                      : const Color(0xFFFCD34D),
                 ),
               ),
+              child: Text(
+                _localizeBannerText(_feedbackBannerText!),
+                style: const TextStyle(
+                  fontSize: 12.2,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.navy,
+                ),
+              ),
+            ),
           ],
-        ),
 
-        const SizedBox(height: 16),
+          const SizedBox(height: 14),
 
-        // 2. Turn Guidance Banner
-        if (_feedbackBannerText != null)
+          // Big Hero Start Button — ALWAYS Visible without Scrolling!
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
             decoration: BoxDecoration(
-              color: isCompleted
-                  ? AppColors.riskLowBg
-                  : (_isFeedbackPositive
-                      ? const Color(0xFFEFF6FF)
-                      : const Color(0xFFFEF3C7)),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: isCompleted
-                    ? AppColors.riskLow
-                    : (_isFeedbackPositive
-                        ? const Color(0xFF93C5FD)
-                        : const Color(0xFFF59E0B)),
+              gradient: canStart
+                  ? const LinearGradient(
+                      colors: [
+                        Color(0xFF2563EB),
+                        Color(0xFF7C3AED),
+                        Color(0xFF0D9488),
+                      ],
+                    )
+                  : null,
+              color: canStart ? null : const Color(0xFFE2E8F0),
+              borderRadius: BorderRadius.circular(18),
+              boxShadow: canStart
+                  ? [
+                      BoxShadow(
+                        color: const Color(0xFF2563EB).withValues(alpha: 0.30),
+                        blurRadius: 16,
+                        offset: const Offset(0, 6),
+                      ),
+                    ]
+                  : null,
+            ),
+            child: ElevatedButton.icon(
+              key: const ValueKey('start_collaborative_chain_button'),
+              onPressed: canStart ? _startCollaborativeGame : null,
+              icon: const Icon(LucideIcons.gamepad2, size: 20),
+              label: Text(
+                canStart
+                    ? (isSi ? 'ක්‍රීඩාව ආරම්භ කරන්න!' : 'Start Picnic Game!')
+                    : (isSi
+                        ? 'මිතුරෙකු එක් කරන්න'
+                        : 'Add 1 Friend to Start'),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
-            ),
-            child: Text(
-              _feedbackBannerText!,
-              style: const TextStyle(
-                fontSize: 14.5,
-                fontWeight: FontWeight.w800,
-                color: AppColors.navy,
-              ),
-            ),
-          ),
-
-        if (_teammateHintText != null) ...[
-          const SizedBox(height: 10),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF5F3FF),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFC4B5FD)),
-            ),
-            child: Text(
-              _teammateHintText!,
-              style: const TextStyle(
-                fontSize: 13.5,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF5B21B6),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.transparent,
+                shadowColor: Colors.transparent,
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: Colors.transparent,
+                disabledForegroundColor: const Color(0xFF64748B),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 16,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18),
+                ),
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
 
-        const SizedBox(height: 20),
+  Widget _buildCompactFriendsPanel(
+    bool isSi,
+    List<_InvitedPlayer> fellowElders,
+  ) {
+    const int pageSize = 4;
+    final totalPages =
+        fellowElders.isEmpty ? 1 : (fellowElders.length / pageSize).ceil();
+    final safePage = (_friendsPageIndex ?? 0).clamp(0, totalPages - 1);
+    final startIdx = safePage * pageSize;
+    final endIdx = (startIdx + pageSize).clamp(0, fellowElders.length);
+    final visibleElders = fellowElders.sublist(startIdx, endIdx);
 
-        // 3. Visual Shared Picnic Basket Chain Progress
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF8FAFC),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFFFFFFF), Color(0xFFF8FAFF)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFDBEAFE), width: 1.4),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                _stage == _ChainTurnStage.recallExistingChain
-                    ? 'Step 1: Recall Basket Chain in Order (${_currentRecallInput.length} / ${_packedChain.length} Recalled)'
-                    : 'Shared Picnic Basket Chain (${_packedChain.length} / $_targetChainLength Items Packed)',
-                style: AppTextStyles.h4.copyWith(
-                  fontSize: 14.5,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.navy,
+              Row(
+                children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF2563EB), Color(0xFF0D9488)],
+                      ),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      LucideIcons.users,
+                      size: 16,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(width: 9),
+                  Text(
+                    isSi ? 'ආරාධනා කළ හැකි මිතුරන්' : 'Friends to Invite',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.navy,
+                    ),
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEFF6FF),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFBFDBFE)),
+                ),
+                child: Text(
+                  widget.elderHomeName,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF1D4ED8),
+                  ),
                 ),
               ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: List.generate(_targetChainLength, (slotIndex) {
-                  final isPacked = slotIndex < _packedChain.length;
-                  final isRevealed = _stage !=
-                          _ChainTurnStage.recallExistingChain ||
-                      slotIndex < _currentRecallInput.length ||
-                      isCompleted;
-                  final item = isPacked ? _packedChain[slotIndex] : null;
+            ],
+          ),
+          const SizedBox(height: 14),
 
-                  return Container(
+          // Balanced 2x2 game-card grid (4 friends per page, zero scroll, zero stretch!)
+          LayoutBuilder(
+            builder: (context, constraints) {
+              const spacing = 12.0;
+              final isTwoCol = constraints.maxWidth >= 420;
+              final tileWidth = isTwoCol
+                  ? (constraints.maxWidth - spacing) / 2
+                  : constraints.maxWidth;
+
+              return Wrap(
+                spacing: spacing,
+                runSpacing: spacing,
+                children: visibleElders.map((player) {
+                  final displayName = _safePlayerDisplayName(player);
+                  final initial = _safePlayerInitial(player);
+                  final isBusyInGame = !player.hasJoined &&
+                      (_busyInGamePlayerNames?.contains(
+                            _cleanName(player.name).toLowerCase(),
+                          ) ??
+                          false);
+
+                  return SizedBox(
+                    width: tileWidth,
+                    child: Container(
+                      key: ValueKey('invite_player_row_${player.id}'),
+                      padding: const EdgeInsets.all(13),
+                      decoration: BoxDecoration(
+                        color: player.hasJoined
+                            ? const Color(0xFFF0FDF4)
+                            : isBusyInGame
+                                ? const Color(0xFFF8FAFC)
+                                : Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: player.hasJoined
+                              ? const Color(0xFF6EE7B7)
+                              : isBusyInGame
+                                  ? const Color(0xFFC7D2FE)
+                                  : player.color.withValues(alpha: 0.24),
+                          width: 1.4,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: player.color.withValues(alpha: 0.07),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Row(
+                            children: [
+                              Stack(
+                                clipBehavior: Clip.none,
+                                children: [
+                                  CircleAvatar(
+                                    radius: 18,
+                                    backgroundColor: player.color,
+                                    child: Text(
+                                      initial,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 14.5,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                  ),
+                                  Positioned(
+                                    right: -1,
+                                    bottom: -1,
+                                    child: Container(
+                                      width: 10,
+                                      height: 10,
+                                      decoration: BoxDecoration(
+                                        color: isBusyInGame
+                                            ? const Color(0xFFF59E0B)
+                                            : const Color(0xFF10B981),
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: Colors.white,
+                                          width: 1.8,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  displayName,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 14.5,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.navy,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          if (isBusyInGame)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 9,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEEF2FF),
+                                borderRadius: BorderRadius.circular(11),
+                                border: Border.all(
+                                  color: const Color(0xFFA5B4FC),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Text(
+                                    '🎮',
+                                    style: TextStyle(fontSize: 13),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Flexible(
+                                    child: Text(
+                                      isSi
+                                          ? 'ක්‍රීඩාවේ නිරතයි'
+                                          : 'Playing Now',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w900,
+                                        color: Color(0xFF4338CA),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          else if (player.hasJoined)
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 8,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFDCFCE7),
+                                      borderRadius: BorderRadius.circular(11),
+                                      border: Border.all(
+                                        color: const Color(0xFF6EE7B7),
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(
+                                          LucideIcons.check,
+                                          size: 13.5,
+                                          color: Color(0xFF059669),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Flexible(
+                                          child: Text(
+                                            isSi ? 'එක්වී ඇත' : 'Joined',
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w800,
+                                              color: Color(0xFF047857),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Material(
+                                  color: const Color(0xFFFEF2F2),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(11),
+                                    side: const BorderSide(
+                                      color: Color(0xFFFCA5A5),
+                                      width: 1.2,
+                                    ),
+                                  ),
+                                  child: InkWell(
+                                    onTap: () => _removeJoinedPlayer(player),
+                                    borderRadius: BorderRadius.circular(11),
+                                    hoverColor: const Color(0xFFFEE2E2),
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 11,
+                                        vertical: 8,
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(
+                                            Icons.close_rounded,
+                                            size: 15,
+                                            color: Color(0xFFDC2626),
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            isSi ? 'ඉවත්' : 'Remove',
+                                            style: const TextStyle(
+                                              fontSize: 12.5,
+                                              fontWeight: FontWeight.w800,
+                                              color: Color(0xFFDC2626),
+                                              height: 1.1,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            )
+                          else if (player.isInvited && !player.hasJoined)
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 8,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFFFFBEB),
+                                      borderRadius: BorderRadius.circular(11),
+                                      border: Border.all(
+                                        color: const Color(0xFFFCD34D),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      isSi ? '⏳ රැඳී සිටී...' : '⏳ Waiting...',
+                                      textAlign: TextAlign.center,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w800,
+                                        color: Color(0xFF92400E),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                OutlinedButton(
+                                  onPressed: () => _cancelSentInvite(player),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: AppColors.muted,
+                                    side: const BorderSide(
+                                      color: Color(0xFFCBD5E1),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 9,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(11),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    isSi ? 'අවලංගු' : 'Cancel',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            )
+                          else
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton.icon(
+                                    key: ValueKey('sit_together_${player.id}'),
+                                    onPressed: () =>
+                                        _sitTogetherQuickJoin(player),
+                                    icon: const Icon(
+                                      LucideIcons.users,
+                                      size: 13.5,
+                                    ),
+                                    label: Text(
+                                      isSi ? 'එකට' : 'Sit Together',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: const Color(0xFF0F766E),
+                                      backgroundColor: const Color(0xFFF0FDFA),
+                                      side: const BorderSide(
+                                        color: Color(0xFF2DD4BF),
+                                      ),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 10,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(11),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    key: ValueKey('send_invite_${player.id}'),
+                                    onPressed: () =>
+                                        _sendInviteNotification(player),
+                                    icon: const Icon(
+                                      LucideIcons.bell,
+                                      size: 13.5,
+                                    ),
+                                    label: Text(
+                                      isSi ? 'ආරාධනා' : 'Invite',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFF2563EB),
+                                      foregroundColor: Colors.white,
+                                      elevation: 0,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 10,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(11),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList(),
+              );
+            },
+          ),
+
+          // Elder-friendly page switcher when there are more than 4 friends
+          if (totalPages > 1) ...[
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: safePage > 0
+                      ? () => setState(() => _friendsPageIndex = safePage - 1)
+                      : null,
+                  icon: const Icon(Icons.chevron_left_rounded, size: 18),
+                  label: Text(
+                    isSi ? 'පෙර' : 'Prev',
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF1D4ED8),
+                    side: BorderSide(
+                      color: safePage > 0
+                          ? const Color(0xFF93C5FD)
+                          : const Color(0xFFE2E8F0),
+                    ),
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 10,
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(11),
+                    ),
+                  ),
+                ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: List.generate(totalPages, (idx) {
+                    final active = idx == safePage;
+                    return GestureDetector(
+                      onTap: () => setState(() => _friendsPageIndex = idx),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        margin: const EdgeInsets.symmetric(horizontal: 3),
+                        width: active ? 22 : 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: active
+                              ? const Color(0xFF2563EB)
+                              : const Color(0xFFCBD5E1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+                ElevatedButton.icon(
+                  onPressed: safePage < totalPages - 1
+                      ? () => setState(() => _friendsPageIndex = safePage + 1)
+                      : null,
+                  icon: Text(
+                    isSi ? 'තව මිතුරන්' : 'More Friends',
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  label: const Icon(Icons.chevron_right_rounded, size: 18),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF2563EB),
+                    foregroundColor: Colors.white,
+                    disabledBackgroundColor: const Color(0xFFE2E8F0),
+                    disabledForegroundColor: const Color(0xFF94A3B8),
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(11),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChainGameplayView() {
+    final isSi = _isSi;
+    final turnPlayers = _orderedTurnPlayers;
+    final safeIdx = turnPlayers.isNotEmpty
+        ? _currentPlayerIndex.clamp(0, turnPlayers.length - 1)
+        : 0;
+    final activePlayer = turnPlayers[safeIdx];
+    final activeName = _safePlayerDisplayName(activePlayer);
+    final isCompleted = _stage == _ChainTurnStage.completed;
+    final isRecallStage = _stage == _ChainTurnStage.recallExistingChain;
+    final isMuted = _isMusicMuted ?? false;
+    final lastPickedItem = _lastSelectedItemKey != null
+        ? _picnicPool.where((p) => p.key == _lastSelectedItemKey).firstOrNull
+        : null;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // 1. Sleek Compact Cosmic Turn Header + Music / Hint / Leave Bar
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Color(0xFF1E1B4B),
+                Color(0xFF3730A3),
+                Color(0xFF0D9488),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+          child: Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 10,
+            runSpacing: 8,
+            children: [
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: List.generate(turnPlayers.length, (i) {
+                  final p = turnPlayers[i];
+                  final pName = _safePlayerDisplayName(p);
+                  final isTurn = !isCompleted && safeIdx == i;
+                  final hasEnteredLive = !_isLiveMultiplayerActive ||
+                      p.isHost ||
+                      (_liveJoinedPlayers?.any(
+                            (n) =>
+                                n.toLowerCase() ==
+                                _cleanName(p.name).toLowerCase(),
+                          ) ??
+                          false);
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 220),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
                     ),
                     decoration: BoxDecoration(
-                      color: isPacked
-                          ? (isRevealed
-                              ? item!.color.withValues(alpha: 0.12)
-                              : const Color(0xFFEFF6FF))
-                          : Colors.white,
-                      borderRadius: BorderRadius.circular(12),
+                      color: isTurn
+                          ? Colors.white
+                          : Colors.white.withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(15),
                       border: Border.all(
-                        color: isPacked
-                            ? (isRevealed
-                                ? item!.color
-                                : const Color(0xFF93C5FD))
-                            : const Color(0xFFCBD5E1),
+                        color: isTurn
+                            ? const Color(0xFFFDE68A)
+                            : Colors.white.withValues(alpha: 0.28),
+                        width: isTurn ? 2 : 1,
                       ),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            CircleAvatar(
+                              radius: 11,
+                              backgroundColor: p.color,
+                              child: Text(
+                                _safePlayerInitial(p),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                            ),
+                            if (_isLiveMultiplayerActive)
+                              Positioned(
+                                right: -2,
+                                bottom: -2,
+                                child: Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: BoxDecoration(
+                                    color: hasEnteredLive
+                                        ? const Color(0xFF10B981)
+                                        : const Color(0xFFF59E0B),
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: Colors.white,
+                                      width: 1.3,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(width: 7),
                         Text(
-                          '#${slotIndex + 1}',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.muted,
+                          pName,
+                          style: TextStyle(
+                            fontSize: 12.8,
+                            fontWeight: FontWeight.w900,
+                            color: isTurn ? AppColors.navy : Colors.white,
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        if (!isPacked)
-                          const Text(
-                            'Empty Slot',
-                            style: TextStyle(
-                              fontSize: 12.5,
-                              color: AppColors.muted,
+                        if (_isLiveMultiplayerActive && !hasEnteredLive) ...[
+                          const SizedBox(width: 5),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
                             ),
-                          )
-                        else if (isRevealed) ...[
-                          Icon(item!.icon, size: 16, color: item.color),
-                          const SizedBox(width: 6),
-                          Text(
-                            '${item.label} (${item.addedByPlayerName})',
-                            style: const TextStyle(
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.navy,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFEF3C7),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              isSi ? '⏳ එක්වෙමින්' : '⏳ Joining',
+                              style: const TextStyle(
+                                color: Color(0xFF92400E),
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w800,
+                              ),
                             ),
                           ),
-                        ] else ...[
-                          const Icon(
-                            LucideIcons.helpCircle,
-                            size: 16,
-                            color: Color(0xFF2563EB),
-                          ),
+                        ],
+                        if (isTurn) ...[
                           const SizedBox(width: 6),
-                          const Text(
-                            'Tap Below to Recall',
-                            style: TextStyle(
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF2563EB),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFF7C3AED), Color(0xFFEC4899)],
+                              ),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              p.isHost || !_isLiveMultiplayerActive
+                                  ? (isSi ? 'ඔබේ වාරය' : 'YOUR TURN')
+                                  : (isSi ? 'වාරය' : 'PLAYING'),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w900,
+                              ),
                             ),
                           ),
                         ],
@@ -7243,171 +10532,1032 @@ class _CollaborativeMemoryGameViewState
                   );
                 }),
               ),
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                children: [
+                  // How to Play Guide Button (accessible mid-game)
+                  OutlinedButton.icon(
+                    key: const ValueKey('collab_how_to_play_play_button'),
+                    onPressed: _showHowToPlayDialog,
+                    icon: const Icon(Icons.help_outline_rounded, size: 15),
+                    label: Text(
+                      isSi ? 'උදව්' : 'Guide',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      backgroundColor: Colors.white.withValues(alpha: 0.14),
+                      side: BorderSide(
+                        color: Colors.white.withValues(alpha: 0.50),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 11,
+                        vertical: 7,
+                      ),
+                      minimumSize: Size.zero,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(11),
+                      ),
+                    ),
+                  ),
+                  // Gentle Picnic Music Toggle Pill
+                  OutlinedButton.icon(
+                    key: const ValueKey('collab_music_toggle_button'),
+                    onPressed: _toggleGameMusic,
+                    icon: Icon(
+                      isMuted ? Icons.music_off_rounded : Icons.music_note_rounded,
+                      size: 15,
+                    ),
+                    label: Text(
+                      isMuted
+                          ? (isSi ? 'සංගීතය: OFF' : 'Music: OFF')
+                          : (isSi ? 'සංගීතය: ON' : 'Music: ON'),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: isMuted
+                          ? Colors.white.withValues(alpha: 0.75)
+                          : const Color(0xFFA7F3D0),
+                      backgroundColor: isMuted
+                          ? Colors.white.withValues(alpha: 0.08)
+                          : const Color(0xFF10B981).withValues(alpha: 0.22),
+                      side: BorderSide(
+                        color: isMuted
+                            ? Colors.white.withValues(alpha: 0.30)
+                            : const Color(0xFF6EE7B7).withValues(alpha: 0.70),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 11,
+                        vertical: 7,
+                      ),
+                      minimumSize: Size.zero,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(11),
+                      ),
+                    ),
+                  ),
+                  if (!isCompleted) ...[
+                    ElevatedButton.icon(
+                      key: const ValueKey('ask_teammate_hint_button'),
+                      onPressed: _askInvitedTeammateForHint,
+                      icon: const Icon(LucideIcons.messageCircle, size: 14),
+                      label: Text(
+                        isSi ? '💡 ඉඟියක්' : '💡 Hint',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFFDE68A),
+                        foregroundColor: const Color(0xFF4C1D95),
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 11,
+                          vertical: 7,
+                        ),
+                        minimumSize: Size.zero,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(11),
+                        ),
+                      ),
+                    ),
+                    OutlinedButton.icon(
+                      key: const ValueKey('leave_live_game_button'),
+                      onPressed: () =>
+                          _showLeaveGameConfirmDialog(exitToHub: false),
+                      icon: const Icon(Icons.logout_rounded, size: 14),
+                      label: Text(
+                        isSi ? 'ඉවත්වන්න' : 'Leave Game',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFFFEE2E2),
+                        backgroundColor:
+                            const Color(0xFFDC2626).withValues(alpha: 0.28),
+                        side: BorderSide(
+                          color: const Color(0xFFFCA5A5).withValues(alpha: 0.70),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 11,
+                          vertical: 7,
+                        ),
+                        minimumSize: Size.zero,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(11),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
             ],
           ),
         ),
 
-        const SizedBox(height: 20),
+        // 2. ZERO-SCROLL 2-Column Smart Virtual Picnic Play Arena
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Live Restart / Play Another Round Approval Strip (if active)
+              if (_restartRequestedBy != null)
+                _buildRestartVoteStrip(isSi, isCompleted),
 
-        // 4. Picnic Items Selection Grid
-        if (!isCompleted) ...[
-          Text(
-            _stage == _ChainTurnStage.recallExistingChain
-                ? "${activePlayer.name}: Tap Item #${_currentRecallInput.length + 1} that was packed into the basket"
-                : "${activePlayer.name}: Pick 1 NEW item below to pack into the Shared Picnic Basket",
-            style: AppTextStyles.h4.copyWith(
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
-              color: AppColors.navy,
-            ),
-          ),
-          const SizedBox(height: 14),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final crossAxisCount = constraints.maxWidth > 700 ? 4 : 2;
-              return GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: _picnicPool.length,
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: crossAxisCount,
-                  crossAxisSpacing: 14,
-                  mainAxisSpacing: 14,
-                  childAspectRatio: 1.35,
-                ),
-                itemBuilder: (context, index) {
-                  final item = _picnicPool[index];
-                  final alreadyPacked =
-                      _packedChain.any((c) => c.key == item.key);
-                  final recalledThisTurn =
-                      _currentRecallInput.any((c) => c.key == item.key);
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final isWide = constraints.maxWidth >= 740;
+                  final leftBasketPanel = _buildGameplayLeftBasketPanel(
+                    isSi: isSi,
+                    isCompleted: isCompleted,
+                    isRecallStage: isRecallStage,
+                    lastPickedItem: lastPickedItem,
+                  );
+                  final rightPlayBoard = isCompleted
+                      ? _buildCompactVictoryPanel(isSi)
+                      : _buildGameplayRightItemsBoard(
+                          isSi: isSi,
+                          isRecallStage: isRecallStage,
+                          activeName: activeName,
+                        );
 
-                  final isDisabledInAddMode =
-                      _stage == _ChainTurnStage.addNewItemToChain &&
-                          alreadyPacked;
-
-                  return InkWell(
-                    key: ValueKey('picnic_chain_item_${item.key}'),
-                    onTap: isDisabledInAddMode
-                        ? null
-                        : () => _onTapPicnicItem(item),
-                    borderRadius: BorderRadius.circular(16),
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: isDisabledInAddMode
-                            ? const Color(0xFFF1F5F9)
-                            : (recalledThisTurn
-                                ? AppColors.riskLowBg
-                                : Colors.white),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: isDisabledInAddMode
-                              ? const Color(0xFFCBD5E1)
-                              : (recalledThisTurn
-                                  ? AppColors.riskLow
-                                  : item.color.withValues(alpha: 0.45)),
-                          width: 1.8,
-                        ),
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            item.icon,
-                            size: 32,
-                            color: isDisabledInAddMode
-                                ? AppColors.muted
-                                : item.color,
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            item.label,
-                            style: TextStyle(
-                              fontSize: 13.5,
-                              fontWeight: FontWeight.w800,
-                              color: isDisabledInAddMode
-                                  ? AppColors.muted
-                                  : AppColors.navy,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          if (isDisabledInAddMode)
-                            const Text(
-                              'Already Packed',
-                              style: TextStyle(
-                                fontSize: 10.5,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.muted,
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
+                  if (isWide) {
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(flex: 4, child: leftBasketPanel),
+                        const SizedBox(width: 14),
+                        Expanded(flex: 6, child: rightPlayBoard),
+                      ],
+                    );
+                  }
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      leftBasketPanel,
+                      const SizedBox(height: 12),
+                      rightPlayBoard,
+                    ],
                   );
                 },
-              );
-            },
+              ),
+            ],
           ),
-        ] else ...[
-          // Completed Summary View
-          Center(
-            child: Column(
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRestartVoteStrip(bool isSi, bool isCompleted) {
+    final reqBy = _restartRequestedBy!;
+    final dispReq = isSi
+        ? SinhalaNameTransliterator.toSinhala(reqBy, fallback: reqBy)
+        : reqBy;
+    final myLower = widget.hostName.trim().toLowerCase();
+    final approvedCount = _restartApprovedBy?.length ?? 1;
+    final totalCount = _joinedPlayers.length;
+    final iApproved = _restartApprovedBy?.contains(myLower) ?? false;
+    final isRequester = reqBy.toLowerCase() == myLower;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFEEF2FF), Color(0xFFECFDF5)],
+        ),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFF6366F1), width: 1.5),
+      ),
+      child: Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 10,
+        runSpacing: 8,
+        children: [
+          Text(
+            iApproved
+                ? (isCompleted
+                    ? (isSi
+                        ? '⏳ තව වටයක් සඳහා මිතුරන් අනුමත කරන තුරු රැඳී සිටී ($approvedCount / $totalCount)...'
+                        : '⏳ Waiting for teammates to join another round ($approvedCount / $totalCount)...')
+                    : (isSi
+                        ? '⏳ මිතුරන් අනුමත කරන තුරු රැඳී සිටී ($approvedCount / $totalCount)...'
+                        : '⏳ Waiting for teammates to approve restart ($approvedCount / $totalCount)...'))
+                : (isCompleted
+                    ? (isSi
+                        ? '🎮 $dispReq තව වටයක් එකට සෙල්ලම් කරමුදැයි අසයි!'
+                        : '🎮 $reqBy wants to play another round together!')
+                    : (isSi
+                        ? '🔄 $dispReq ක්‍රීඩාව මුල සිට නැවත අරඹමුදැයි අසයි!'
+                        : '🔄 $reqBy asked to restart the game together!')),
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w900,
+              color: Color(0xFF1E3A8A),
+            ),
+          ),
+          if (isRequester)
+            OutlinedButton(
+              onPressed: () {
+                setState(() {
+                  _restartRequestedBy = null;
+                  _restartRequestId = null;
+                  _restartApprovedBy = null;
+                });
+                _publishLiveRoomState();
+              },
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.muted,
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                minimumSize: Size.zero,
+              ),
+              child: Text(
+                isSi ? 'අවලංගු කරන්න' : 'Cancel',
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
+              ),
+            )
+          else if (!iApproved)
+            Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  'Team Score: ${(_lastScore ?? 100.0).toStringAsFixed(0)}%',
-                  style: AppTextStyles.h2.copyWith(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.riskLow,
-                  ),
-                ),
-                if (_isSaving)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 6),
-                    child: Text('Saving collaborative session...'),
-                  ),
-                if (_saveErrorMessage != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 6),
-                    child: Text(
-                      _saveErrorMessage!,
-                      style: const TextStyle(color: AppColors.riskHigh),
+                ElevatedButton.icon(
+                  onPressed: () => _respondToRestartRequest(approve: true),
+                  icon: const Icon(LucideIcons.check, size: 14),
+                  label: Text(
+                    isCompleted
+                        ? (isSi ? 'ඔව්, සෙල්ලම් කරමු' : 'Yes, Play Again')
+                        : (isSi ? 'ඔව්, අරඹමු' : 'Yes, Restart'),
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    ElevatedButton.icon(
-                      key: const ValueKey('play_chain_again_button'),
-                      onPressed: _startCollaborativeGame,
-                      icon: const Icon(LucideIcons.rotateCcw, size: 17),
-                      label: const Text('Play Another Round Together'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF2563EB),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 22,
-                          vertical: 13,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF10B981),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                    minimumSize: Size.zero,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                OutlinedButton(
+                  onPressed: () => _respondToRestartRequest(approve: false),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFFDC2626),
+                    side: const BorderSide(color: Color(0xFFFCA5A5)),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                    minimumSize: Size.zero,
+                  ),
+                  child: Text(
+                    isCompleted
+                        ? (isSi ? 'එපා' : 'Not Now')
+                        : (isSi ? 'එපා' : 'Keep Playing'),
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGameplayLeftBasketPanel({
+    required bool isSi,
+    required bool isCompleted,
+    required bool isRecallStage,
+    required _PicnicChainItem? lastPickedItem,
+  }) {
+    final rawFeedback = _feedbackBannerText;
+    final spotlightVisible = !isCompleted &&
+        lastPickedItem != null &&
+        _lastSelectedByName != null &&
+        _lastSelectedByName!.isNotEmpty;
+    final isRedundantPickBanner = spotlightVisible &&
+        rawFeedback != null &&
+        (rawFeedback.contains('packed "') || rawFeedback.contains('Correct!'));
+    final showFeedback = rawFeedback != null && !isRedundantPickBanner;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [
+            Color(0xFFFFFBEB),
+            Color(0xFFFEF9C3),
+            Color(0xFFECFDF5),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFFCD34D), width: 1.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Basket Title + Progress Chip
+          Row(
+            children: [
+              const Text('🧺', style: TextStyle(fontSize: 20)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  isRecallStage
+                      ? (isSi ? 'පිළිවෙලට මතකයෙන් තෝරන්න' : 'Recall in Order')
+                      : (isSi ? 'විනෝද චාරිකා කූඩය' : 'Picnic Basket'),
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.navy,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFF59E0B)),
+                ),
+                child: Text(
+                  isRecallStage
+                      ? '${_currentRecallInput.length} / ${_packedChain.length}'
+                      : '${_packedChain.length} / $_targetChainLength',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                    color: Color(0xFFB45309),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          // 5 Compact Plush Basket Slots (zero scroll!)
+          ...List.generate(_targetChainLength, (slotIndex) {
+            final isPacked = slotIndex < _packedChain.length;
+            final isRevealed = !isRecallStage ||
+                slotIndex < _currentRecallInput.length ||
+                isCompleted;
+            final item = isPacked ? _packedChain[slotIndex] : null;
+            final isNextToRecall =
+                isRecallStage && slotIndex == _currentRecallInput.length;
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 7),
+              padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
+              decoration: BoxDecoration(
+                color: isNextToRecall
+                    ? const Color(0xFFDBEAFE)
+                    : isPacked
+                        ? (isRevealed ? Colors.white : const Color(0xFFEFF6FF))
+                        : Colors.white.withValues(alpha: 0.65),
+                borderRadius: BorderRadius.circular(13),
+                border: Border.all(
+                  color: isNextToRecall
+                      ? const Color(0xFF2563EB)
+                      : isPacked
+                          ? (isRevealed ? item!.color : const Color(0xFF93C5FD))
+                          : const Color(0xFFCBD5E1),
+                  width: isNextToRecall ? 2.0 : (isPacked ? 1.5 : 1.0),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 22,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      color: isPacked && isRevealed
+                          ? item!.color
+                          : isNextToRecall
+                              ? const Color(0xFF2563EB)
+                              : const Color(0xFFE2E8F0),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Text(
+                        '${slotIndex + 1}',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w900,
+                          color: (isPacked && isRevealed) || isNextToRecall
+                              ? Colors.white
+                              : const Color(0xFF475569),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    OutlinedButton.icon(
-                      onPressed: _returnToInviteLobby,
-                      icon: const Icon(LucideIcons.users, size: 17),
-                      label: const Text('Back to Invite Lobby'),
+                  ),
+                  const SizedBox(width: 9),
+                  if (!isPacked)
+                    Text(
+                      isSi ? 'හිස්' : 'Empty Slot',
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF94A3B8),
+                      ),
+                    )
+                  else if (isRevealed) ...[
+                    Icon(item!.icon, size: 17, color: item.color),
+                    const SizedBox(width: 7),
+                    Expanded(
+                      child: Text(
+                        _itemLabel(item),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.navy,
+                        ),
+                      ),
+                    ),
+                    const Icon(
+                      LucideIcons.check,
+                      size: 14,
+                      color: Color(0xFF10B981),
+                    ),
+                  ] else ...[
+                    const Icon(
+                      LucideIcons.helpCircle,
+                      size: 16,
+                      color: Color(0xFF2563EB),
+                    ),
+                    const SizedBox(width: 7),
+                    Text(
+                      isNextToRecall
+                          ? (isSi ? 'මෙය තෝරන්න!' : 'Tap this item!')
+                          : (isSi ? 'මතකයෙන් තෝරන්න' : 'Hidden in basket'),
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w800,
+                        color: isNextToRecall
+                            ? const Color(0xFF1D4ED8)
+                            : const Color(0xFF3B82F6),
+                      ),
                     ),
                   ],
+                ],
+              ),
+            );
+          }),
+
+          // Live Selected Spotlight inside left panel (zero vertical bloat above grid!)
+          if (spotlightVisible) ...[
+            const SizedBox(height: 4),
+            TweenAnimationBuilder<double>(
+              key: ValueKey('live_picked_spotlight_${_lastSelectedAtMs ?? 0}'),
+              tween: Tween(begin: 0.94, end: 1.0),
+              duration: const Duration(milliseconds: 260),
+              curve: Curves.easeOutBack,
+              builder: (context, scale, child) =>
+                  Transform.scale(scale: scale, child: child),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(13),
+                  border: Border.all(
+                    color: _lastSelectedAction == 'wrong'
+                        ? const Color(0xFFF59E0B)
+                        : lastPickedItem!.color,
+                    width: 1.6,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        color: lastPickedItem!.color,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        lastPickedItem.icon,
+                        size: 15,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(width: 9),
+                    Expanded(
+                      child: Text(
+                        () {
+                          final rawActor = _lastSelectedByName!;
+                          final actorDisp = isSi
+                              ? SinhalaNameTransliterator.toSinhala(
+                                  rawActor,
+                                  fallback: rawActor,
+                                )
+                              : rawActor;
+                          final itemDisp = _itemLabel(lastPickedItem);
+                          if (_lastSelectedAction == 'packed') {
+                            return isSi
+                                ? '✨ $actorDisp: "$itemDisp" කූඩයට දැම්මා!'
+                                : '✨ $rawActor packed "$itemDisp"!';
+                          }
+                          if (_lastSelectedAction == 'recalled') {
+                            return isSi
+                                ? '✅ $actorDisp: "$itemDisp" නිවැරදියි!'
+                                : '✅ $rawActor recalled "$itemDisp"!';
+                          }
+                          return isSi
+                              ? '💛 $actorDisp: "$itemDisp" — නැවත උත්සාහ කරමු!'
+                              : '💛 $rawActor tapped "$itemDisp" — try again!';
+                        }(),
+                        style: const TextStyle(
+                          fontSize: 12.3,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.navy,
+                          height: 1.25,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+
+          // Hint or non-duplicate guidance pill
+          if (_teammateHintText != null) ...[
+            const SizedBox(height: 7),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFAF5FF),
+                borderRadius: BorderRadius.circular(13),
+                border: Border.all(color: const Color(0xFFA78BFA)),
+              ),
+              child: Text(
+                '💡 ${_localizeHintText(_teammateHintText!)}',
+                style: const TextStyle(
+                  fontSize: 12.2,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF4C1D95),
+                  height: 1.3,
+                ),
+              ),
+            ),
+          ] else if (showFeedback) ...[
+            const SizedBox(height: 7),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
+              decoration: BoxDecoration(
+                color: _isFeedbackPositive
+                    ? const Color(0xFFEFF6FF)
+                    : const Color(0xFFFFF7ED),
+                borderRadius: BorderRadius.circular(13),
+                border: Border.all(
+                  color: _isFeedbackPositive
+                      ? const Color(0xFF93C5FD)
+                      : const Color(0xFFF59E0B),
+                ),
+              ),
+              child: Text(
+                _localizeBannerText(rawFeedback),
+                style: const TextStyle(
+                  fontSize: 12.2,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.navy,
+                  height: 1.3,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGameplayRightItemsBoard({
+    required bool isSi,
+    required bool isRecallStage,
+    required String activeName,
+  }) {
+    final isWaitingForPartner = _isLiveMultiplayerActive && !_isMyTurnNow;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFFFFFFF), Color(0xFFF5F7FF)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFDBEAFE), width: 1.4),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Clear High-Contrast Turn Prompt Strip
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              gradient: isWaitingForPartner
+                  ? const LinearGradient(
+                      colors: [Color(0xFFFEF3C7), Color(0xFFFFFBEB)],
+                    )
+                  : const LinearGradient(
+                      colors: [Color(0xFF4F46E5), Color(0xFF0D9488)],
+                    ),
+              borderRadius: BorderRadius.circular(14),
+              border: isWaitingForPartner
+                  ? Border.all(color: const Color(0xFFF59E0B), width: 1.3)
+                  : null,
+            ),
+            child: Row(
+              children: [
+                Text(
+                  isWaitingForPartner ? '⏳' : (isRecallStage ? '🎯' : '🧺'),
+                  style: const TextStyle(fontSize: 17),
+                ),
+                const SizedBox(width: 9),
+                Expanded(
+                  child: Text(
+                    isWaitingForPartner
+                        ? (isSi
+                            ? '$activeName ගේ වාරයයි... භාණ්ඩය තෝරන තුරු බලා සිටින්න!'
+                            : "Watching $activeName's turn... Please wait!")
+                        : isRecallStage
+                            ? (isSi
+                                ? '$activeName: කූඩයේ #${_currentRecallInput.length + 1} භාණ්ඩය තෝරන්න'
+                                : '$activeName: Tap Item #${_currentRecallInput.length + 1} in order')
+                            : (isSi
+                                ? '$activeName: කූඩයට අලුත් භාණ්ඩයක් තෝරන්න'
+                                : '$activeName: Pick 1 NEW item for the basket'),
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w900,
+                      color: isWaitingForPartner
+                          ? const Color(0xFF92400E)
+                          : Colors.white,
+                    ),
+                  ),
                 ),
               ],
             ),
           ),
+          const SizedBox(height: 12),
+
+          // Plush 4x2 Zero-Scroll Tactile Picnic Item Grid
+          Opacity(
+            opacity: isWaitingForPartner ? 0.72 : 1.0,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final crossAxisCount = constraints.maxWidth >= 460 ? 4 : 2;
+                return GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: _picnicPool.length,
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: crossAxisCount,
+                    crossAxisSpacing: 10,
+                    mainAxisSpacing: 10,
+                    childAspectRatio: crossAxisCount == 4 ? 1.05 : 1.55,
+                  ),
+                  itemBuilder: (context, index) {
+                    final item = _picnicPool[index];
+                    final alreadyPacked =
+                        _packedChain.any((c) => c.key == item.key);
+                    final recalledThisTurn =
+                        _currentRecallInput.any((c) => c.key == item.key);
+                    final isDisabledInAddMode =
+                        _stage == _ChainTurnStage.addNewItemToChain &&
+                            alreadyPacked;
+                    final isJustPickedByTeam =
+                        _lastSelectedItemKey == item.key &&
+                            _lastSelectedByName != null &&
+                            _lastSelectedByName!.isNotEmpty;
+                    final pickerFirstName = isJustPickedByTeam
+                        ? (() {
+                            final rawFirst =
+                                _lastSelectedByName!.split(' ').first.trim();
+                            return isSi
+                                ? SinhalaNameTransliterator.toSinhala(
+                                    rawFirst,
+                                    fallback: rawFirst,
+                                  )
+                                : rawFirst;
+                          })()
+                        : '';
+
+                    return Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        key: ValueKey('picnic_chain_item_${item.key}'),
+                        onTap: (isDisabledInAddMode || isWaitingForPartner)
+                            ? null
+                            : () => _onTapPicnicItem(item),
+                        borderRadius: BorderRadius.circular(18),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 180),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            gradient:
+                                isDisabledInAddMode && !isJustPickedByTeam
+                                    ? null
+                                    : LinearGradient(
+                                        colors: isJustPickedByTeam
+                                            ? [
+                                                item.color
+                                                    .withValues(alpha: 0.24),
+                                                const Color(0xFFFFFFFF),
+                                              ]
+                                            : recalledThisTurn
+                                                ? const [
+                                                    Color(0xFFECFDF5),
+                                                    Color(0xFFD1FAE5),
+                                                  ]
+                                                : [
+                                                    Colors.white,
+                                                    item.color
+                                                        .withValues(alpha: 0.12),
+                                                  ],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      ),
+                            color: isDisabledInAddMode && !isJustPickedByTeam
+                                ? const Color(0xFFF1F5F9)
+                                : null,
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(
+                              color: isJustPickedByTeam
+                                  ? item.color
+                                  : isDisabledInAddMode
+                                      ? const Color(0xFFCBD5E1)
+                                      : (recalledThisTurn
+                                          ? const Color(0xFF10B981)
+                                          : item.color.withValues(alpha: 0.55)),
+                              width: isJustPickedByTeam
+                                  ? 2.8
+                                  : (recalledThisTurn ? 2.2 : 1.6),
+                            ),
+                            boxShadow:
+                                isDisabledInAddMode && !isJustPickedByTeam
+                                    ? null
+                                    : [
+                                        BoxShadow(
+                                          color: item.color.withValues(
+                                            alpha: isJustPickedByTeam
+                                                ? 0.34
+                                                : 0.14,
+                                          ),
+                                          blurRadius:
+                                              isJustPickedByTeam ? 16 : 10,
+                                          offset: const Offset(0, 4),
+                                        ),
+                                      ],
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Container(
+                                width: 42,
+                                height: 42,
+                                decoration: BoxDecoration(
+                                  color:
+                                      isDisabledInAddMode && !isJustPickedByTeam
+                                          ? const Color(0xFFE2E8F0)
+                                          : item.color.withValues(alpha: 0.18),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  item.icon,
+                                  size: 22,
+                                  color:
+                                      isDisabledInAddMode && !isJustPickedByTeam
+                                          ? AppColors.muted
+                                          : item.color,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                _itemLabel(item),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w900,
+                                  color:
+                                      isDisabledInAddMode && !isJustPickedByTeam
+                                          ? AppColors.muted
+                                          : AppColors.navy,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              if (isJustPickedByTeam)
+                                Container(
+                                  margin: const EdgeInsets.only(top: 3),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 7,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: item.color,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Text(
+                                    isSi
+                                        ? '👆 $pickerFirstName තේරුවා'
+                                        : '👆 $pickerFirstName picked',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 9.5,
+                                      fontWeight: FontWeight.w900,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                )
+                              else if (isDisabledInAddMode)
+                                Text(
+                                  isSi ? '✓ දැම්මා' : '✓ Packed',
+                                  style: const TextStyle(
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w800,
+                                    color: Color(0xFF059669),
+                                  ),
+                                )
+                              else if (recalledThisTurn)
+                                Text(
+                                  isSi ? '✓ හරි!' : '✓ Recalled!',
+                                  style: const TextStyle(
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w800,
+                                    color: Color(0xFF059669),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
         ],
-      ],
+      ),
+    );
+  }
+
+  Widget _buildCompactVictoryPanel(bool isSi) {
+    return AuroraGradientBorderFrame(
+      borderRadius: 24,
+      borderWidth: 3.2,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 24),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [
+              Color(0xFF1E1B4B),
+              Color(0xFF4C1D95),
+              Color(0xFF0F766E),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(20.8),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text('🎉🧺🏆', style: TextStyle(fontSize: 36)),
+            const SizedBox(height: 10),
+            Text(
+              isSi ? 'විශිෂ්ට කණ්ඩායම් ජයක්!' : 'Wonderful Teamwork!',
+              style: const TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w900,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 6),
+            TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0.0, end: _lastScore ?? 100.0),
+              duration: const Duration(milliseconds: 900),
+              curve: Curves.easeOutCubic,
+              builder: (context, val, _) => Text(
+                isSi
+                    ? 'කණ්ඩායම් ලකුණු: ${val.toStringAsFixed(0)}%'
+                    : 'Team Score: ${val.toStringAsFixed(0)}%',
+                style: const TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFFFDE68A),
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            const Text('⭐⭐⭐⭐⭐', style: TextStyle(fontSize: 20)),
+            if (_isSaving)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(
+                  isSi ? 'සුරකිමින්...' : 'Saving session...',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.85),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            if (_saveErrorMessage != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(
+                  _saveErrorMessage!,
+                  style: const TextStyle(color: Color(0xFFFCA5A5)),
+                ),
+              ),
+            const SizedBox(height: 18),
+            Wrap(
+              spacing: 10,
+              runSpacing: 8,
+              alignment: WrapAlignment.center,
+              children: [
+                ElevatedButton.icon(
+                  key: const ValueKey('play_chain_again_button'),
+                  onPressed: _isLiveMultiplayerActive
+                      ? _showInitiateRestartConfirmDialog
+                      : _startCollaborativeGame,
+                  icon: const Icon(LucideIcons.rotateCcw, size: 16),
+                  label: Text(
+                    isSi ? 'තව වටයක් ක්‍රීඩා කරන්න' : 'Play Another Round',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: const Color(0xFF4C1D95),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+                OutlinedButton.icon(
+                  onPressed: _returnToInviteLobby,
+                  icon: const Icon(LucideIcons.users, size: 16),
+                  label: Text(
+                    isSi ? 'කාමරයට ආපසු' : 'Back to Lobby',
+                    style: const TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    side: BorderSide(
+                      color: Colors.white.withValues(alpha: 0.50),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
-
-

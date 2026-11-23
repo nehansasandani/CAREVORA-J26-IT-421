@@ -72,6 +72,7 @@ class WebTtsService implements TtsService {
     'තව ප්‍රශ්න කිහිපයක් ඉතිරියි. අවසන් කිරීමට පෙර ඒවාටත් පිළිතුරු දෙන්න.': 'cog_submit_pending.mp3',
     'හරිම විශිෂ්ටයි! ඔබේ පිළිතුරු සුරැකුණා. කැමති නම් මතක ක්‍රීඩා කරන්න, නැතහොත් මුල් පිටුවට යන්න.': 'cog_result_great.mp3',
     'හොඳ උත්සාහයක්! අපි දැන් සතුටින් සැහැල්ලු මතක ක්‍රීඩාවක් කරමු.': 'cog_result_games.mp3',
+    'විනෝද චාරිකා මතක ක්‍රීඩාව ක්‍රීඩා කරන ආකාරය. පළමුව, මිතුරෙකු තෝරා එකට හෝ ආරාධනා ඔබා කණ්ඩායම සාදන්න. දෙවනුව, ඔබේ වාරයේදී කූඩයේ කලින් දැමූ භාණ්ඩ පිළිවෙලට තෝරා අලුත් භාණ්ඩයක් එක් කරන්න. අමතක වුණොත් ඉඟියක් ඔබන්න. භාණ්ඩ පහම එකට අසුරා ජය ගන්න!': 'collab_howto.mp3',
   };
 
   static String? _matchSinhalaAudioFile(String rawText) {
@@ -97,6 +98,7 @@ class WebTtsService implements TtsService {
     if (text.contains('තව ප්‍රශ්න කිහිපයක් ඉතිරියි')) return 'cog_submit_pending.mp3';
     if (text.contains('හරිම විශිෂ්ටයි') && text.contains('පිළිතුරු සුරැකුණා')) return 'cog_result_great.mp3';
     if (text.contains('සැහැල්ලු මතක ක්‍රීඩාවක් කරමු')) return 'cog_result_games.mp3';
+    if (text.contains('විනෝද චාරිකා මතක ක්‍රීඩාව ක්‍රීඩා කරන ආකාරය')) return 'collab_howto.mp3';
 
     for (final entry in _sinhalaAudioFiles.entries) {
       if (text.contains(entry.key)) {

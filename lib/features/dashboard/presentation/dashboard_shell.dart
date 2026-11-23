@@ -14,6 +14,7 @@ import '../../../core/localization/app_strings.dart';
 import '../../../core/localization/sinhala_name_transliterator.dart';
 import '../../../data/mock/mock_carevora_data.dart';
 import '../../auth/application/auth_controller.dart';
+import 'widgets/elder_game_invite_notifications.dart';
 
 class DashboardShell extends ConsumerWidget {
   final Widget child;
@@ -27,50 +28,75 @@ class DashboardShell extends ConsumerWidget {
     final lang = ref.watch(languageProvider).currentLanguage;
     final strings = AppStrings(lang);
 
-    return Scaffold(
-      backgroundColor: AppColors.dashboardBg,
-      drawer: Drawer(
-        backgroundColor: AppColors.card,
-        child: SafeArea(
-          child: DesktopSidebar(currentRoute: location, isCollapsed: false),
+    return ElderInviteNotificationHost(
+      enabled: authState.isElder,
+      elderName: authState.userName,
+      elderHomeId: authState.elderHomeId ?? 1,
+      token: authState.token,
+      isSinhala: strings.isSinhala,
+      builder: (ctx, elderBellButton) => Scaffold(
+        backgroundColor: AppColors.dashboardBg,
+        drawer: Drawer(
+          backgroundColor: AppColors.card,
+          child: SafeArea(
+            child: DesktopSidebar(currentRoute: location, isCollapsed: false),
+          ),
         ),
-      ),
-      body: ResponsiveBuilder(
-        mobile: (context) => Column(
-          children: [
-            _buildTopBar(context, authState, strings: strings, isMobile: true),
-            Expanded(child: child),
-            MobileBottomNav(
-              currentRoute: location,
-              isElder: authState.isElder,
-            ),
-          ],
-        ),
-        tablet: (context) => Row(
-          children: [
-            DesktopSidebar(currentRoute: location, isCollapsed: true),
-            Expanded(
-              child: Column(
-                children: [
-                  _buildTopBar(context, authState, strings: strings, isMobile: false),
-                  Expanded(child: child),
-                ],
+        body: ResponsiveBuilder(
+          mobile: (context) => Column(
+            children: [
+              _buildTopBar(
+                context,
+                authState,
+                strings: strings,
+                isMobile: true,
+                elderBellButton: elderBellButton,
               ),
-            ),
-          ],
-        ),
-        desktop: (context) => Row(
-          children: [
-            DesktopSidebar(currentRoute: location, isCollapsed: false),
-            Expanded(
-              child: Column(
-                children: [
-                  _buildTopBar(context, authState, strings: strings, isMobile: false),
-                  Expanded(child: child),
-                ],
+              Expanded(child: child),
+              MobileBottomNav(
+                currentRoute: location,
+                isElder: authState.isElder,
               ),
-            ),
-          ],
+            ],
+          ),
+          tablet: (context) => Row(
+            children: [
+              DesktopSidebar(currentRoute: location, isCollapsed: true),
+              Expanded(
+                child: Column(
+                  children: [
+                    _buildTopBar(
+                      context,
+                      authState,
+                      strings: strings,
+                      isMobile: false,
+                      elderBellButton: elderBellButton,
+                    ),
+                    Expanded(child: child),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          desktop: (context) => Row(
+            children: [
+              DesktopSidebar(currentRoute: location, isCollapsed: false),
+              Expanded(
+                child: Column(
+                  children: [
+                    _buildTopBar(
+                      context,
+                      authState,
+                      strings: strings,
+                      isMobile: false,
+                      elderBellButton: elderBellButton,
+                    ),
+                    Expanded(child: child),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -81,6 +107,7 @@ class DashboardShell extends ConsumerWidget {
     AuthState authState, {
     required AppStrings strings,
     required bool isMobile,
+    Widget? elderBellButton,
   }) {
     return Container(
       padding: EdgeInsets.symmetric(
@@ -178,16 +205,19 @@ class DashboardShell extends ConsumerWidget {
               // Live Date and Time Chip
               if (!isMobile) _LiveDateTimeChip(isSinhala: strings.isSinhala),
               if (!isMobile) const SizedBox(width: 8),
-              // Bell Notification Icon with Badge
-              Stack(
-                alignment: Alignment.topRight,
-                children: [
-                  IconButton(
-                    padding: EdgeInsets.all(isMobile ? 8 : 12),
-                    constraints: const BoxConstraints(),
-                    icon: const Icon(LucideIcons.bell, size: 20, color: AppColors.navy),
-                    onPressed: () => context.go('/dashboard/alerts'),
-                  ),
+              // Bell Notification Icon with Badge (Elder gets live game invite notifications; Staff keeps clinical alerts)
+              if (authState.isElder && elderBellButton != null)
+                elderBellButton
+              else
+                Stack(
+                  alignment: Alignment.topRight,
+                  children: [
+                    IconButton(
+                      padding: EdgeInsets.all(isMobile ? 8 : 12),
+                      constraints: const BoxConstraints(),
+                      icon: const Icon(LucideIcons.bell, size: 20, color: AppColors.navy),
+                      onPressed: () => context.go('/dashboard/alerts'),
+                    ),
                     Positioned(
                       top: isMobile ? 2 : 4,
                       right: isMobile ? 2 : 4,
