@@ -154,11 +154,14 @@ class DashboardShell extends ConsumerWidget {
 
                 final rawName = authState.userName ?? 'Kumara';
                 final displayName = strings.isSinhala ? _toSinhalaName(rawName) : rawName;
+                final honorificName = strings.isSinhala
+                    ? (displayName.contains('මහත්මිය') || displayName.contains('මහතා') ? displayName : '$displayName මහත්මිය')
+                    : rawName;
                 final elderGreeting = strings.isSinhala
-                    ? '$timeGreetingSi, $displayName!'
+                    ? '$timeGreetingSi, $honorificName!'
                     : '$timeGreetingEn, $rawName!';
                 final elderSubtitle = strings.isSinhala
-                    ? 'ඔබේ මනෝසෞඛ්‍ය හා සුවසාධනය වෙනුවෙන් අපි ඔබ සමඟයි.'
+                    ? 'ඔබගේ සම්පූර්ණ දිනක් සඳහා අප සමග සිටියයුතු අපි සතුටුයි.'
                     : 'We are with you for your mental health and wellness.';
 
                 return Column(
@@ -169,6 +172,10 @@ class DashboardShell extends ConsumerWidget {
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        if (authState.isElder && strings.isSinhala) ...[
+                          const Text('🌱', style: TextStyle(fontSize: 15)),
+                          const SizedBox(width: 5),
+                        ],
                         Flexible(
                           child: Text(
                             authState.isElder ? elderGreeting : strings.welcomeBack,
