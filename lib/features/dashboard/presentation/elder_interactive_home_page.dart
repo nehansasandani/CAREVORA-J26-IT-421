@@ -37,6 +37,17 @@ String _getSlotNameSi(DailyAssessmentSlot slot) {
   }
 }
 
+String _getSlotActionName(DailyAssessmentSlot slot) {
+  switch (slot) {
+    case DailyAssessmentSlot.morning:
+      return 'උදෑසන';
+    case DailyAssessmentSlot.afternoon:
+      return 'දහවල්';
+    case DailyAssessmentSlot.night:
+      return 'රාත්‍රී';
+  }
+}
+
 String _getSlotIcon(DailyAssessmentSlot slot) {
   switch (slot) {
     case DailyAssessmentSlot.morning:
@@ -532,145 +543,159 @@ class _ElderInteractiveHomePageState
     final morningDone = _isSlotDone(activity, DailyAssessmentSlot.morning);
     final afternoonDone = _isSlotDone(activity, DailyAssessmentSlot.afternoon);
     final nightDone = _isSlotDone(activity, DailyAssessmentSlot.night);
-    final doneCount = _getDoneCount(activity);
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.95),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.black.withValues(alpha: 0.08)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Header row: Slot counter
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'දෛනික සැසි (3/දින):',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w900,
-                  color: Color(0xFF3B0764),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
-                decoration: BoxDecoration(
-                  color: doneCount == 3 ? const Color(0xFFDCFCE7) : activeThemeColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(99),
-                ),
-                child: Text(
-                  '$doneCount / 3 සම්පූර්ණයි',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w900,
-                    color: doneCount == 3 ? const Color(0xFF15803D) : activeThemeColor,
-                  ),
-                ),
-              ),
-            ],
+    return Row(
+      children: [
+        // 1. උදෑසන
+        Expanded(
+          child: _buildMockupSlotCard(
+            label: 'උදෑසන',
+            timeRange: '(6.00 – 10.00)',
+            iconWidget: const Text('🌅', style: TextStyle(fontSize: 26)),
+            isDone: morningDone,
+            isCurrent: currentSlot == DailyAssessmentSlot.morning,
+            activeColor: const Color(0xFFF59E0B),
           ),
-          const SizedBox(height: 8),
+        ),
+        const SizedBox(width: 8),
 
-          // 3 Slot Pills Row
-          Row(
-            children: [
-              Expanded(
-                child: _buildSlotPill(
-                  label: 'උදෑසන',
-                  icon: '🌅',
-                  isDone: morningDone,
-                  isCurrent: currentSlot == DailyAssessmentSlot.morning,
-                  activeThemeColor: activeThemeColor,
-                ),
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: _buildSlotPill(
-                  label: 'දහවල',
-                  icon: '☀️',
-                  isDone: afternoonDone,
-                  isCurrent: currentSlot == DailyAssessmentSlot.afternoon,
-                  activeThemeColor: activeThemeColor,
-                ),
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: _buildSlotPill(
-                  label: 'රාත්‍රිය',
-                  icon: '🌙',
-                  isDone: nightDone,
-                  isCurrent: currentSlot == DailyAssessmentSlot.night,
-                  activeThemeColor: activeThemeColor,
-                ),
-              ),
-            ],
+        // 2. දවල්
+        Expanded(
+          child: _buildMockupSlotCard(
+            label: 'දවල්',
+            timeRange: '(10.00 – 4.00)',
+            iconWidget: const Text('☀️', style: TextStyle(fontSize: 26)),
+            isDone: afternoonDone,
+            isCurrent: currentSlot == DailyAssessmentSlot.afternoon,
+            activeColor: const Color(0xFFF59E0B),
           ),
-        ],
-      ),
+        ),
+        const SizedBox(width: 8),
+
+        // 3. රාත්‍රී
+        Expanded(
+          child: _buildMockupSlotCard(
+            label: 'රාත්‍රී',
+            timeRange: '(4.00 – 9.00)',
+            iconWidget: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('🌙', style: TextStyle(fontSize: 21)),
+                Text('⭐', style: TextStyle(fontSize: 13)),
+              ],
+            ),
+            isDone: nightDone,
+            isCurrent: currentSlot == DailyAssessmentSlot.night,
+            activeColor: const Color(0xFF7E22CE),
+          ),
+        ),
+      ],
     );
   }
 
-  Widget _buildSlotPill({
+  Widget _buildMockupSlotCard({
     required String label,
-    required String icon,
+    required String timeRange,
+    required Widget iconWidget,
     required bool isDone,
     required bool isCurrent,
-    required Color activeThemeColor,
+    required Color activeColor,
   }) {
     Color bg;
     Color borderColor;
-    Color textColor;
-    String statusSymbol;
+    double borderWidth;
 
-    if (isDone) {
-      bg = const Color(0xFFDCFCE7);
-      borderColor = const Color(0xFF86EFAC);
-      textColor = const Color(0xFF15803D);
-      statusSymbol = '✓';
-    } else if (isCurrent) {
-      bg = activeThemeColor.withValues(alpha: 0.14);
-      borderColor = activeThemeColor.withValues(alpha: 0.55);
-      textColor = activeThemeColor;
-      // In Card 1 (emotional purple), show hourglass with purple border as in mockup; in Card 2 (amber), show bell
-      statusSymbol = activeThemeColor == const Color(0xFF7E22CE) ? '⏳' : '🔔';
+    if (isCurrent && !isDone) {
+      bg = const Color(0xFFFFFBEB); // warm soft amber tint
+      borderColor = const Color(0xFFFBBF24); // golden amber highlight
+      borderWidth = 1.8;
+    } else if (isDone) {
+      bg = const Color(0xFFF0FDF4); // soft green tint
+      borderColor = const Color(0xFF86EFAC); // soft green border
+      borderWidth = 1.5;
     } else {
-      bg = const Color(0xFFF8FAFC);
+      bg = const Color(0xFFF8FAFC); // soft clean light grey
       borderColor = const Color(0xFFE2E8F0);
-      textColor = const Color(0xFF94A3B8);
-      statusSymbol = '⏳';
+      borderWidth = 1.2;
     }
 
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: borderColor, width: isCurrent && !isDone ? 1.8 : 1.2),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            '$icon $statusSymbol',
-            style: const TextStyle(fontSize: 15),
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: borderColor, width: borderWidth),
+            boxShadow: isCurrent && !isDone
+                ? [
+                    BoxShadow(
+                      color: activeColor.withValues(alpha: 0.14),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : null,
           ),
-          const SizedBox(height: 3),
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w800,
-              color: textColor,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              iconWidget,
+              const SizedBox(height: 4),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFF3B0764),
+                  letterSpacing: 0.1,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                timeRange,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF475569),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // Floating Green Checkmark Badge if done
+        if (isDone)
+          Positioned(
+            top: -5,
+            right: -5,
+            child: Container(
+              width: 22,
+              height: 22,
+              decoration: BoxDecoration(
+                color: const Color(0xFF22C55E),
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 2),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF22C55E).withValues(alpha: 0.35),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              alignment: Alignment.center,
+              child: const Icon(Icons.check_rounded, color: Colors.white, size: 14),
             ),
           ),
-        ],
-      ),
+      ],
     );
   }
 
@@ -682,20 +707,20 @@ class _ElderInteractiveHomePageState
   }) {
     if (isCurrentDone) {
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
         decoration: BoxDecoration(
           color: const Color(0xFFF0FDF4),
           borderRadius: BorderRadius.circular(99),
           border: Border.all(color: const Color(0xFFBBF7D0), width: 1.2),
         ),
-        child: Row(
+        child: const Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('✅', style: TextStyle(fontSize: 20)),
-            const SizedBox(width: 8),
+            Text('✅', style: TextStyle(fontSize: 18)),
+            SizedBox(width: 6),
             Text(
-              '$currentSlotName සැසිය සම්පූර්ණයි',
-              style: const TextStyle(
+              'සැසිය සම්පූර්ණයි',
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w800,
                 color: Color(0xFF15803D),
@@ -706,11 +731,11 @@ class _ElderInteractiveHomePageState
       );
     } else {
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
         decoration: BoxDecoration(
-          color: const Color(0xFFFEF2F2),
+          color: const Color(0xFFFFF1F2),
           borderRadius: BorderRadius.circular(99),
-          border: Border.all(color: const Color(0xFFFECACA), width: 1.2),
+          border: Border.all(color: const Color(0xFFFECDD3), width: 1.2),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -723,17 +748,17 @@ class _ElderInteractiveHomePageState
                 return Transform.rotate(
                   angle: angle,
                   alignment: Alignment.topCenter,
-                  child: const Text('🔔', style: TextStyle(fontSize: 25)),
+                  child: const Text('🔔', style: TextStyle(fontSize: 20)),
                 );
               },
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 6),
             Text(
-              customNotDoneText ?? 'අද $currentSlotName සැසිය තවම කර නැත!',
+              customNotDoneText ?? 'දැන් සිදු කරන්න',
               style: const TextStyle(
-                fontSize: 14,
+                fontSize: 14.5,
                 fontWeight: FontWeight.w800,
-                color: Color(0xFFDC2626),
+                color: Color(0xFFE11D48),
               ),
             ),
           ],
@@ -1619,22 +1644,24 @@ class _ElderInteractiveHomePageState
 
         LayoutBuilder(
           builder: (context, constraints) {
+            final slotAction = _getSlotActionName(currentSlot);
+
             final assessmentCards = [
-              // Card 1: මානසික සුවතා කාලය (Unified Royal Purple Theme)
+              // Card 1: මානසික ක්‍රියාකාරකම් (Unified Royal Purple Theme)
               _wrapWithFloatingReminder(
                 isDone: emotionalDone,
                 child: _buildTopAssessmentCard(
                   backgroundColor: Colors.white,
                   borderColor: emotionalDone ? const Color(0xFF86EFAC) : const Color(0xFFE9D5FF),
-                  iconBorderColor: const Color(0xFF8B5CF6),
-                  badgeIcon: '💓',
-                  title: 'මානසික සුවතා කාලය',
-                  description: 'ඔබගේ හැඟීම්, මානසික තත්වය සහ සෞඛ්‍ය සුවතාවය පිළිබඳ සරල ප්‍රශ්න කිහිපයකට පිළිතුරු දෙන්න.',
+                  iconBorderColor: const Color(0xFFF472B6),
+                  badgeIcon: '🧠',
+                  title: 'මානසික ක්‍රියාකාරකම්',
+                  description: '',
                   statusBadgeWidget: _buildSlotStatusBadge(
                     isCurrentDone: emotionalDone,
                     currentSlotName: currentSlotName,
                     activeColor: const Color(0xFF7E22CE),
-                    customNotDoneText: 'අද මානසික ඇගයීම සම්පූර්ණ කරන්න!',
+                    customNotDoneText: 'දැන් සිදු කරන්න',
                   ),
                   sessionTrackerWidget: _buildDailySessionTracker(
                     activity: 'emotional',
@@ -1642,7 +1669,9 @@ class _ElderInteractiveHomePageState
                     activeThemeColor: const Color(0xFF7E22CE),
                   ),
                   topRightIllustration: _buildGrandmaIllustrationExact(),
-                  buttonText: emotionalDone ? 'සම්පූර්ණයි ($nextSlotTime ට) ⏰' : 'අදම සම්පූර්ණ කරන්න ➔',
+                  buttonText: emotionalDone
+                      ? 'සම්පූර්ණයි ($nextSlotTime ට) ⏰'
+                      : '$slotAction ක්‍රියාකාරකම කරන්න ➔',
                   buttonGradient: emotionalDone
                       ? const [Color(0xFF16A34A), Color(0xFF22C55E)]
                       : const [Color(0xFF6B21A8), Color(0xFF7C3AED)],
@@ -1652,7 +1681,7 @@ class _ElderInteractiveHomePageState
                     if (emotionalDone) {
                       _showSessionAlreadyCompletedDialog(
                         context: context,
-                        activityTitle: 'මානසික සුවතා කාලය',
+                        activityTitle: 'මානසික ක්‍රියාකාරකම්',
                         activityKey: 'emotional',
                         slot: currentSlot,
                         onContinueAnyway: () {
@@ -1661,28 +1690,28 @@ class _ElderInteractiveHomePageState
                       );
                     } else {
                       _markSessionCompleted('emotional', currentSlot);
-                      _speak('මානසික සුවතා කාලය වෙත ඔබව සාදරයෙන් පිළිගන්නවා.');
+                      _speak('මානසික ක්‍රියාකාරකම් වෙත ඔබව සාදරයෙන් පිළිගන්නවා.');
                       context.go('/dashboard/emotional');
                     }
                   },
                 ),
               ),
 
-              // Card 2: මනස පරීක්ෂණ සහ විනෝද ක්‍රීඩා (Unified Royal Purple Theme)
+              // Card 2: මනස පරීක්ෂණ ක්‍රියාකාරකම් (Unified Royal Purple Theme)
               _wrapWithFloatingReminder(
                 isDone: memoryDone,
                 child: _buildTopAssessmentCard(
                   backgroundColor: Colors.white,
                   borderColor: memoryDone ? const Color(0xFF86EFAC) : const Color(0xFFE9D5FF),
-                  iconBorderColor: const Color(0xFF8B5CF6),
+                  iconBorderColor: const Color(0xFFA855F7),
                   badgeIcon: '🧩',
-                  title: 'මනස පරීක්ෂණ සහ විනෝද ක්‍රීඩා',
-                  description: 'ඔබගේ මතකය වර්ධනය කරගන්න සහ මනස සතුටු කරගන්න විනෝද ක්‍රීඩා කරන්න.',
+                  title: 'මනස පරීක්ෂණ ක්‍රියාකාරකම්',
+                  description: '',
                   statusBadgeWidget: _buildSlotStatusBadge(
                     isCurrentDone: memoryDone,
                     currentSlotName: currentSlotName,
                     activeColor: const Color(0xFFD97706),
-                    customNotDoneText: 'අද ක්‍රීඩා ක්‍රියාකාරකම් කරන්න!',
+                    customNotDoneText: 'දැන් සිදු කරන්න',
                   ),
                   sessionTrackerWidget: _buildDailySessionTracker(
                     activity: 'memory',
@@ -1690,7 +1719,9 @@ class _ElderInteractiveHomePageState
                     activeThemeColor: const Color(0xFFD97706),
                   ),
                   topRightIllustration: _buildCrosswordLightbulbIllustrationExact(),
-                  buttonText: memoryDone ? 'සම්පූර්ණයි ($nextSlotTime ට) ⏰' : 'ක්‍රීඩා කරන්න ➔',
+                  buttonText: memoryDone
+                      ? 'සම්පූර්ණයි ($nextSlotTime ට) ⏰'
+                      : '$slotAction ක්‍රීඩාව කරන්න ➔',
                   buttonGradient: memoryDone
                       ? const [Color(0xFF16A34A), Color(0xFF22C55E)]
                       : const [Color(0xFF6B21A8), Color(0xFF7C3AED)],
@@ -1700,7 +1731,7 @@ class _ElderInteractiveHomePageState
                     if (memoryDone) {
                       _showSessionAlreadyCompletedDialog(
                         context: context,
-                        activityTitle: 'මනස පරීක්ෂණ සහ විනෝද ක්‍රීඩා',
+                        activityTitle: 'මනස පරීක්ෂණ ක්‍රියාකාරකම්',
                         activityKey: 'memory',
                         slot: currentSlot,
                         onContinueAnyway: () {
@@ -1709,7 +1740,7 @@ class _ElderInteractiveHomePageState
                       );
                     } else {
                       _markSessionCompleted('memory', currentSlot);
-                      _speak('මනස පරීක්ෂණ සහ විනෝද ක්‍රීඩා පිටුවට යමු.');
+                      _speak('මනස පරීක්ෂණ ක්‍රියාකාරකම් පිටුවට යමු.');
                       context.go('/dashboard/memory-games');
                     }
                   },
@@ -1961,7 +1992,7 @@ class _ElderInteractiveHomePageState
     required Color iconBorderColor,
     required String badgeIcon,
     required String title,
-    required String description,
+    String? description,
     required Widget statusBadgeWidget,
     required Widget sessionTrackerWidget,
     required Widget topRightIllustration,
@@ -1994,12 +2025,12 @@ class _ElderInteractiveHomePageState
                 left: 18,
                 right: 18,
                 top: 16,
-                bottom: bottomDecoration != null ? 6 : 20,
+                bottom: bottomDecoration != null ? 8 : 20,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Upper Row: Left Column (Badge+Title, Status, Description) & Right Illustration
+                  // Upper Row: Left Column (Badge+Title & Status) & Right Illustration
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -2015,7 +2046,7 @@ class _ElderInteractiveHomePageState
                                   width: 48,
                                   height: 48,
                                   decoration: BoxDecoration(
-                                    color: Colors.white,
+                                    color: isEmotionalCard ? const Color(0xFFFDF2F8) : const Color(0xFFFAF5FF),
                                     shape: BoxShape.circle,
                                     border: Border.all(color: iconBorderColor, width: 2.2),
                                     boxShadow: [
@@ -2028,17 +2059,8 @@ class _ElderInteractiveHomePageState
                                   ),
                                   alignment: Alignment.center,
                                   child: isEmotionalCard
-                                      ? Container(
-                                          width: 34,
-                                          height: 34,
-                                          decoration: const BoxDecoration(
-                                            color: Color(0xFFF43F5E),
-                                            shape: BoxShape.circle,
-                                          ),
-                                          alignment: Alignment.center,
-                                          child: const Icon(LucideIcons.activity, color: Colors.white, size: 19),
-                                        )
-                                      : Text(badgeIcon, style: const TextStyle(fontSize: 24)),
+                                      ? const Icon(LucideIcons.brain, color: Color(0xFFE11D48), size: 24)
+                                      : const Icon(LucideIcons.puzzle, color: Color(0xFF7C3AED), size: 23),
                                 ),
                                 const SizedBox(width: 10),
                                 Expanded(
@@ -2054,22 +2076,22 @@ class _ElderInteractiveHomePageState
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 8),
+                            const SizedBox(height: 10),
 
                             // Status Badge
                             statusBadgeWidget,
-                            const SizedBox(height: 8),
-
-                            // Description
-                            Text(
-                              description,
-                              style: const TextStyle(
-                                fontSize: 13.5,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF334155),
-                                height: 1.35,
+                            if (description != null && description.isNotEmpty) ...[
+                              const SizedBox(height: 8),
+                              Text(
+                                description,
+                                style: const TextStyle(
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF334155),
+                                  height: 1.35,
+                                ),
                               ),
-                            ),
+                            ],
                           ],
                         ),
                       ),
@@ -2080,60 +2102,63 @@ class _ElderInteractiveHomePageState
                       topRightIllustration,
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
 
-                  // Full-Width Daily Sessions Tracker Box
+                  // Direct 3-Slot Session Cards Row (Clean & Elder-Friendly)
                   sessionTrackerWidget,
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 16),
 
-                  // Compact, beautifully centered Action Pill Button (reduced length)
+                  // Action Pill Button with left sparkles
                   Center(
-                    child: InkWell(
-                      onTap: onTap,
-                      borderRadius: BorderRadius.circular(99),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 11),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(colors: buttonGradient),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Left decorative sparkle rays
+                        const Padding(
+                          padding: EdgeInsets.only(right: 6),
+                          child: Text('✨', style: TextStyle(fontSize: 22)),
+                        ),
+                        InkWell(
+                          onTap: onTap,
                           borderRadius: BorderRadius.circular(99),
-                          boxShadow: [
-                            BoxShadow(
-                              color: buttonGradient.first.withValues(alpha: 0.38),
-                              blurRadius: 8,
-                              offset: const Offset(0, 3),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            if (isEmotionalCard)
-                              const Icon(LucideIcons.clipboardCheck, color: Colors.white, size: 19)
-                            else
-                              Container(
-                                padding: const EdgeInsets.all(2.5),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.25),
-                                  shape: BoxShape.circle,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 10.5),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(colors: buttonGradient),
+                              borderRadius: BorderRadius.circular(99),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: buttonGradient.first.withValues(alpha: 0.38),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 3),
                                 ),
-                                child: const Icon(LucideIcons.gamepad2, color: Colors.white, size: 16),
-                              ),
-                            const SizedBox(width: 8),
-                            Text(
-                              buttonText,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 15,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 0.2,
-                              ),
+                              ],
                             ),
-                            const SizedBox(width: 6),
-                            const Icon(LucideIcons.arrowRight, color: Colors.white, size: 17),
-                          ],
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                if (isEmotionalCard)
+                                  const Icon(LucideIcons.brain, color: Colors.white, size: 20)
+                                else
+                                  const Icon(LucideIcons.gamepad2, color: Colors.white, size: 20),
+                                const SizedBox(width: 8),
+                                Text(
+                                  buttonText,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 0.2,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                const Icon(LucideIcons.arrowRight, color: Colors.white, size: 17),
+                              ],
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
                   ),
                 ],
@@ -2152,7 +2177,7 @@ class _ElderInteractiveHomePageState
   // ILLUSTRATIONS & DECORATIONS
   // =========================================================================
 
-  // Card 1: Smiling Grandmother with Glasses & Floating Hearts
+  // Card 1: Smiling Grandmother with Glasses, Idea Lightbulb & Floating Hearts
   Widget _buildGrandmaIllustrationExact() {
     return SizedBox(
       width: 120,
@@ -2180,26 +2205,41 @@ class _ElderInteractiveHomePageState
             size: const Size(86, 95),
             painter: _GrandmaAvatarPainter(),
           ),
+          // Glowing Idea Lightbulb on top right (matching mockup)
+          Positioned(
+            top: -2,
+            right: 8,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFFFBBF24).withValues(alpha: 0.65),
+                        blurRadius: 14,
+                        spreadRadius: 4,
+                      ),
+                    ],
+                  ),
+                ),
+                const Text('💡', style: TextStyle(fontSize: 22)),
+              ],
+            ),
+          ),
           // Floating Hearts
           const Positioned(
-            top: 2,
-            right: 4,
-            child: Text('💕', style: TextStyle(fontSize: 18)),
-          ),
-          const Positioned(
-            top: 10,
+            top: 14,
             left: 2,
-            child: Text('💖', style: TextStyle(fontSize: 15)),
-          ),
-          const Positioned(
-            bottom: 22,
-            left: 0,
-            child: Text('💕', style: TextStyle(fontSize: 16)),
+            child: Text('💖', style: TextStyle(fontSize: 14)),
           ),
           const Positioned(
             bottom: 18,
-            right: 2,
-            child: Text('💖', style: TextStyle(fontSize: 14)),
+            left: 0,
+            child: Text('💕', style: TextStyle(fontSize: 15)),
           ),
           const Positioned(
             bottom: 2,
@@ -2211,7 +2251,7 @@ class _ElderInteractiveHomePageState
     );
   }
 
-  // Card 2: 3D Crossword Puzzle Board with Glowing Lightbulb
+  // Card 2: 3D Crossword Puzzle Board with Glowing Lightbulb & Pencil
   Widget _buildCrosswordLightbulbIllustrationExact() {
     return SizedBox(
       width: 125,
@@ -2292,6 +2332,16 @@ class _ElderInteractiveHomePageState
             right: 0,
             bottom: 22,
             child: Text('🌿', style: TextStyle(fontSize: 24)),
+          ),
+
+          // Pencil leaning on the crossword board on bottom right (matching mockup)
+          Positioned(
+            right: 14,
+            bottom: 6,
+            child: Transform.rotate(
+              angle: 0.35,
+              child: const Text('✏️', style: TextStyle(fontSize: 28)),
+            ),
           ),
 
           // 3D Purple Puzzle Piece leaning on bottom left
