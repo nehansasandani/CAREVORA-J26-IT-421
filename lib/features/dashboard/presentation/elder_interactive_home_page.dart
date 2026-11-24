@@ -762,15 +762,11 @@ class _ElderInteractiveHomePageState
                 _buildInteractiveHeroBanner(elderDisplayName, dayPeriod, authState.avatarUrl),
                 const SizedBox(height: 24),
 
-                // 3. Quick Access Title & 4 Large Action Cards
+                // 3. Quick Access Title & Large Action Cards
                 _buildQuickAccessSection(context, isSinhala),
                 const SizedBox(height: 24),
 
-                // 4. Bottom Row (My Wellness, Recent Activity, Nature Quote)
-                _buildBottomDashboardRow(context, isSinhala),
-                const SizedBox(height: 20),
-
-                // 5. Animated swaying floral garden at the bottom of the page content
+                // 4. Animated swaying floral garden at the bottom of the page content
                 _buildAnimatedBottomFlowerGarden(),
                 const SizedBox(height: 20),
               ],
