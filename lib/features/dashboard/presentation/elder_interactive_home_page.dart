@@ -42,7 +42,7 @@ String _getSlotActionName(DailyAssessmentSlot slot) {
     case DailyAssessmentSlot.morning:
       return 'උදෑසන';
     case DailyAssessmentSlot.afternoon:
-      return 'දහවල්';
+      return 'දනවල්';
     case DailyAssessmentSlot.night:
       return 'රාත්‍රී';
   }
@@ -554,19 +554,21 @@ class _ElderInteractiveHomePageState
             iconWidget: const Text('🌅', style: TextStyle(fontSize: 22)),
             isDone: morningDone,
             isCurrent: currentSlot == DailyAssessmentSlot.morning,
+            slotType: DailyAssessmentSlot.morning,
             activeColor: const Color(0xFF9333EA),
           ),
         ),
         const SizedBox(width: 6),
 
-        // 2. දවල්
+        // 2. දනවල්
         Expanded(
           child: _buildMockupSlotCard(
-            label: 'දවල්',
+            label: 'දනවල්',
             timeRange: '(10.00 – 4.00)',
             iconWidget: const Text('☀️', style: TextStyle(fontSize: 22)),
             isDone: afternoonDone,
             isCurrent: currentSlot == DailyAssessmentSlot.afternoon,
+            slotType: DailyAssessmentSlot.afternoon,
             activeColor: const Color(0xFF9333EA),
           ),
         ),
@@ -586,6 +588,7 @@ class _ElderInteractiveHomePageState
             ),
             isDone: nightDone,
             isCurrent: currentSlot == DailyAssessmentSlot.night,
+            slotType: DailyAssessmentSlot.night,
             activeColor: const Color(0xFF9333EA),
           ),
         ),
@@ -599,6 +602,7 @@ class _ElderInteractiveHomePageState
     required Widget iconWidget,
     required bool isDone,
     required bool isCurrent,
+    required DailyAssessmentSlot slotType,
     required Color activeColor,
   }) {
     Color bg;
@@ -612,6 +616,10 @@ class _ElderInteractiveHomePageState
     } else if (isDone) {
       bg = const Color(0xFFF0FDF4); // soft green tint
       borderColor = const Color(0xFF86EFAC); // soft green border
+      borderWidth = 1.4;
+    } else if (slotType == DailyAssessmentSlot.morning) {
+      bg = const Color(0xFFFFFDF5); // warm cream
+      borderColor = const Color(0xFFFCD34D); // warm golden amber border (matching mockup)
       borderWidth = 1.4;
     } else {
       bg = const Color(0xFFFAFAFA); // soft clean light grey
@@ -671,14 +679,14 @@ class _ElderInteractiveHomePageState
           ),
         ),
 
-        // Floating Green Checkmark Badge if done
-        if (isDone)
+        // Floating Green Checkmark Badge if done or active current slot (matching mockup)
+        if (isDone || isCurrent)
           Positioned(
-            top: -4,
-            right: -4,
+            top: -5,
+            right: -5,
             child: Container(
-              width: 19,
-              height: 19,
+              width: 20,
+              height: 20,
               decoration: BoxDecoration(
                 color: const Color(0xFF22C55E),
                 shape: BoxShape.circle,
@@ -692,7 +700,7 @@ class _ElderInteractiveHomePageState
                 ],
               ),
               alignment: Alignment.center,
-              child: const Icon(Icons.check_rounded, color: Colors.white, size: 12),
+              child: const Icon(Icons.check_rounded, color: Colors.white, size: 13),
             ),
           ),
       ],
@@ -733,9 +741,9 @@ class _ElderInteractiveHomePageState
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 3.5),
         decoration: BoxDecoration(
-          color: const Color(0xFFFAF5FF), // soft lavender
+          color: const Color(0xFFFEF3C7), // warm soft cream (matching mockup)
           borderRadius: BorderRadius.circular(99),
-          border: Border.all(color: const Color(0xFFDDD6FE), width: 1.1),
+          border: Border.all(color: const Color(0xFFFDE68A), width: 1.1),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -748,7 +756,7 @@ class _ElderInteractiveHomePageState
                 return Transform.rotate(
                   angle: angle,
                   alignment: Alignment.topCenter,
-                  child: const Text('🔔', style: TextStyle(fontSize: 17)),
+                  child: const Text('🔔', style: TextStyle(fontSize: 16)),
                 );
               },
             ),
@@ -758,7 +766,7 @@ class _ElderInteractiveHomePageState
               style: const TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w800,
-                color: Color(0xFF7C3AED), // Royal Purple matching the page!
+                color: Color(0xFF3B0764), // deep purple text
               ),
             ),
           ],
@@ -1710,12 +1718,12 @@ class _ElderInteractiveHomePageState
                   topRightIllustration: _buildGrandmaIllustrationExact(),
                   buttonText: emotionalDone
                       ? 'සම්පූර්ණයි ($nextSlotTime ට) ⏰'
-                      : '$slotAction ක්‍රියාකාරකම කරන්න ➔',
+                      : '$slotAction ක්‍රියාකාරකම කරන්න',
                   buttonGradient: emotionalDone
                       ? const [Color(0xFF16A34A), Color(0xFF22C55E)]
-                      : const [Color(0xFF6B21A8), Color(0xFF7C3AED)],
+                      : const [Color(0xFF4C1D95), Color(0xFF6B21A8)],
                   isEmotionalCard: true,
-                  bottomDecoration: _buildLavenderBlossomTrimCompact(),
+                  bottomDecoration: null,
                   onTap: () {
                     if (emotionalDone) {
                       _showSessionAlreadyCompletedDialog(
@@ -1760,12 +1768,12 @@ class _ElderInteractiveHomePageState
                   topRightIllustration: _buildCrosswordLightbulbIllustrationExact(),
                   buttonText: memoryDone
                       ? 'සම්පූර්ණයි ($nextSlotTime ට) ⏰'
-                      : '$slotAction ක්‍රීඩාව කරන්න ➔',
+                      : '$slotAction ක්‍රීඩාව කරන්න',
                   buttonGradient: memoryDone
                       ? const [Color(0xFF16A34A), Color(0xFF22C55E)]
-                      : const [Color(0xFF6B21A8), Color(0xFF7C3AED)],
+                      : const [Color(0xFF4C1D95), Color(0xFF6B21A8)],
                   isEmotionalCard: false,
-                  bottomDecoration: _buildLavenderBlossomTrimCompact(),
+                  bottomDecoration: null,
                   onTap: () {
                     if (memoryDone) {
                       _showSessionAlreadyCompletedDialog(
@@ -2023,6 +2031,16 @@ class _ElderInteractiveHomePageState
   }
 
   // =========================================================================
+  // PURPLE BOTANICAL CORNER SPRIG (Matching Mockup)
+  // =========================================================================
+  Widget _buildPurpleCornerSprig({required bool isLeft}) {
+    return CustomPaint(
+      size: const Size(38, 38),
+      painter: _PurpleBotanicalCornerPainter(isLeft: isLeft),
+    );
+  }
+
+  // =========================================================================
   // TOP ROW ASSESSMENT CARD (EXACT MOCKUP DESIGN FOR CARDS 1 & 2)
   // =========================================================================
   Widget _buildTopAssessmentCard({
@@ -2044,28 +2062,37 @@ class _ElderInteractiveHomePageState
     return Container(
       decoration: BoxDecoration(
         color: backgroundColor,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(color: borderColor, width: 1.8),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 12,
+            blurRadius: 14,
             offset: const Offset(0, 4),
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+        borderRadius: BorderRadius.circular(22),
+        child: Stack(
           children: [
+            // Bottom-Left Purple Botanical Corner Foliage
+            Positioned(
+              left: 4,
+              bottom: 4,
+              child: _buildPurpleCornerSprig(isLeft: true),
+            ),
+
+            // Bottom-Right Purple Botanical Corner Foliage
+            Positioned(
+              right: 4,
+              bottom: 4,
+              child: _buildPurpleCornerSprig(isLeft: false),
+            ),
+
+            // Main Content
             Padding(
-              padding: EdgeInsets.only(
-                left: 15,
-                right: 15,
-                top: 13,
-                bottom: bottomDecoration != null ? 6 : 14,
-              ),
+              padding: const EdgeInsets.fromLTRB(16, 13, 16, 13),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -2082,15 +2109,19 @@ class _ElderInteractiveHomePageState
                             Row(
                               children: [
                                 Container(
-                                  width: 38,
-                                  height: 38,
+                                  width: 44,
+                                  height: 44,
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFFFAF5FF),
-                                    shape: BoxShape.circle,
-                                    border: Border.all(color: const Color(0xFFC084FC), width: 1.8),
+                                    color: isEmotionalCard
+                                        ? const Color(0xFF5B21B6) // Solid Royal Purple squircle
+                                        : Colors.white,
+                                    borderRadius: BorderRadius.circular(13),
+                                    border: isEmotionalCard
+                                        ? null
+                                        : Border.all(color: const Color(0xFF7C3AED), width: 1.8),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: const Color(0xFF8B5CF6).withValues(alpha: 0.20),
+                                        color: const Color(0xFF6B21A8).withValues(alpha: 0.18),
                                         blurRadius: 6,
                                         offset: const Offset(0, 2),
                                       ),
@@ -2098,17 +2129,17 @@ class _ElderInteractiveHomePageState
                                   ),
                                   alignment: Alignment.center,
                                   child: isEmotionalCard
-                                      ? const Icon(LucideIcons.brain, color: Color(0xFF7C3AED), size: 21)
-                                      : const Icon(LucideIcons.puzzle, color: Color(0xFF7C3AED), size: 20),
+                                      ? const Icon(LucideIcons.brain, color: Colors.white, size: 24)
+                                      : const Icon(LucideIcons.puzzle, color: Color(0xFF6B21A8), size: 22),
                                 ),
-                                const SizedBox(width: 8),
+                                const SizedBox(width: 9),
                                 Expanded(
                                   child: Text(
                                     title,
                                     style: const TextStyle(
-                                      fontSize: 17,
+                                      fontSize: 17.5,
                                       fontWeight: FontWeight.w900,
-                                      color: Color(0xFF3B0764),
+                                      color: Color(0xFF1E1B4B),
                                       letterSpacing: 0.1,
                                     ),
                                   ),
@@ -2147,65 +2178,52 @@ class _ElderInteractiveHomePageState
                   sessionTrackerWidget,
                   const SizedBox(height: 11),
 
-                  // Action Pill Button with left sparkles (compact height)
+                  // Centered Royal Purple Action Pill Button
                   Center(
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Left decorative sparkle rays
-                        const Padding(
-                          padding: EdgeInsets.only(right: 5),
-                          child: Text('✨', style: TextStyle(fontSize: 18)),
-                        ),
-                        InkWell(
-                          onTap: onTap,
+                    child: InkWell(
+                      onTap: onTap,
+                      borderRadius: BorderRadius.circular(99),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 9.5),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(colors: buttonGradient),
                           borderRadius: BorderRadius.circular(99),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 8.5),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(colors: buttonGradient),
-                              borderRadius: BorderRadius.circular(99),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: buttonGradient.first.withValues(alpha: 0.35),
-                                  blurRadius: 7,
-                                  offset: const Offset(0, 3),
-                                ),
-                              ],
+                          boxShadow: [
+                            BoxShadow(
+                              color: buttonGradient.first.withValues(alpha: 0.35),
+                              blurRadius: 7,
+                              offset: const Offset(0, 3),
                             ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                if (isEmotionalCard)
-                                  const Icon(LucideIcons.brain, color: Colors.white, size: 17)
-                                else
-                                  const Icon(LucideIcons.gamepad2, color: Colors.white, size: 17),
-                                const SizedBox(width: 7),
-                                Text(
-                                  buttonText,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w800,
-                                    letterSpacing: 0.2,
-                                  ),
-                                ),
-                                const SizedBox(width: 5),
-                                const Icon(LucideIcons.arrowRight, color: Colors.white, size: 15),
-                              ],
-                            ),
-                          ),
+                          ],
                         ),
-                      ],
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            if (isEmotionalCard)
+                              const Icon(LucideIcons.brain, color: Colors.white, size: 18)
+                            else
+                              const Icon(LucideIcons.gamepad2, color: Colors.white, size: 18),
+                            const SizedBox(width: 8),
+                            Text(
+                              buttonText,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 14.5,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.2,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 16),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
-
-            // Bottom Blossom Trim if provided
-            if (bottomDecoration != null) bottomDecoration,
           ],
         ),
       ),
@@ -2216,7 +2234,7 @@ class _ElderInteractiveHomePageState
   // ILLUSTRATIONS & DECORATIONS
   // =========================================================================
 
-  // Card 1: Smiling Grandmother with Glasses, Idea Lightbulb & Floating Hearts (Compact)
+  // Card 1: Smiling Grandmother with Glasses & Floating Pink Hearts (Exact Mockup Match)
   Widget _buildGrandmaIllustrationExact() {
     return SizedBox(
       width: 95,
@@ -2227,8 +2245,8 @@ class _ElderInteractiveHomePageState
         children: [
           // Soft radial purple glow
           Container(
-            width: 66,
-            height: 66,
+            width: 72,
+            height: 72,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: RadialGradient(
@@ -2244,46 +2262,26 @@ class _ElderInteractiveHomePageState
             size: const Size(68, 76),
             painter: _GrandmaAvatarPainter(),
           ),
-          // Glowing Idea Lightbulb on top right
-          Positioned(
-            top: -4,
-            right: 4,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Container(
-                  width: 24,
-                  height: 24,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFFFBBF24).withValues(alpha: 0.65),
-                        blurRadius: 10,
-                        spreadRadius: 3,
-                      ),
-                    ],
-                  ),
-                ),
-                const Text('💡', style: TextStyle(fontSize: 18)),
-              ],
-            ),
-          ),
-          // Floating Hearts
+          // Floating Pink Hearts around Grandma (matching mockup)
           const Positioned(
-            top: 8,
-            left: 0,
-            child: Text('💜', style: TextStyle(fontSize: 12)),
+            top: 4,
+            left: -4,
+            child: Text('💖', style: TextStyle(fontSize: 14)),
           ),
           const Positioned(
-            bottom: 12,
-            left: -2,
-            child: Text('🌸', style: TextStyle(fontSize: 13)),
+            top: 26,
+            left: -8,
+            child: Text('💕', style: TextStyle(fontSize: 12)),
           ),
           const Positioned(
-            bottom: 0,
-            right: 2,
-            child: Text('🌿', style: TextStyle(fontSize: 15)),
+            top: 4,
+            right: -4,
+            child: Text('💖', style: TextStyle(fontSize: 14)),
+          ),
+          const Positioned(
+            top: 26,
+            right: -8,
+            child: Text('💕', style: TextStyle(fontSize: 12)),
           ),
         ],
       ),
@@ -5166,6 +5164,84 @@ class _ElderListeningMusicPainter extends CustomPainter {
     final earCushion = Paint()..color = const Color(0xFF0F172A);
     canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(cx - 24, cy - 13, 7, 16), const Radius.circular(3)), earCushion);
     canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(cx + 17, cy - 13, 7, 16), const Radius.circular(3)), earCushion);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+// =========================================================================
+// PURPLE BOTANICAL CORNER PAINTER (Matching Mockup)
+// =========================================================================
+class _PurpleBotanicalCornerPainter extends CustomPainter {
+  final bool isLeft;
+  const _PurpleBotanicalCornerPainter({required this.isLeft});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.save();
+    if (!isLeft) {
+      canvas.translate(size.width, 0);
+      canvas.scale(-1, 1);
+    }
+
+    final stemPaint = Paint()
+      ..color = const Color(0xFF8B5CF6).withValues(alpha: 0.60)
+      ..strokeWidth = 2.0
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    final leafPaint1 = Paint()
+      ..color = const Color(0xFFC084FC).withValues(alpha: 0.70)
+      ..style = PaintingStyle.fill;
+
+    final leafPaint2 = Paint()
+      ..color = const Color(0xFF7C3AED).withValues(alpha: 0.65)
+      ..style = PaintingStyle.fill;
+
+    final leafPaint3 = Paint()
+      ..color = const Color(0xFFA855F7).withValues(alpha: 0.75)
+      ..style = PaintingStyle.fill;
+
+    final leafPaint4 = Paint()
+      ..color = const Color(0xFFDDD6FE).withValues(alpha: 0.80)
+      ..style = PaintingStyle.fill;
+
+    // Curved stem from corner
+    final path = Path()
+      ..moveTo(2, size.height - 2)
+      ..quadraticBezierTo(size.width * 0.42, size.height * 0.55, size.width * 0.88, 4);
+    canvas.drawPath(path, stemPaint);
+
+    // Leaf 1 (lower left)
+    canvas.save();
+    canvas.translate(size.width * 0.32, size.height * 0.68);
+    canvas.rotate(-0.65);
+    canvas.drawOval(Rect.fromCenter(center: Offset.zero, width: 14, height: 7), leafPaint1);
+    canvas.restore();
+
+    // Leaf 2 (middle upward)
+    canvas.save();
+    canvas.translate(size.width * 0.58, size.height * 0.44);
+    canvas.rotate(0.50);
+    canvas.drawOval(Rect.fromCenter(center: Offset.zero, width: 15, height: 7.5), leafPaint2);
+    canvas.restore();
+
+    // Leaf 3 (tip)
+    canvas.save();
+    canvas.translate(size.width * 0.88, 4);
+    canvas.rotate(0.20);
+    canvas.drawOval(Rect.fromCenter(center: Offset.zero, width: 16, height: 8), leafPaint3);
+    canvas.restore();
+
+    // Leaf 4 (small soft accent)
+    canvas.save();
+    canvas.translate(size.width * 0.48, size.height * 0.60);
+    canvas.rotate(-0.25);
+    canvas.drawOval(Rect.fromCenter(center: Offset.zero, width: 10, height: 5), leafPaint4);
+    canvas.restore();
+
+    canvas.restore();
   }
 
   @override
