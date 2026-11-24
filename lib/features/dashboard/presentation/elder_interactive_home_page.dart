@@ -690,8 +690,8 @@ class _ElderInteractiveHomePageState
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('✅', style: TextStyle(fontSize: 14)),
-            const SizedBox(width: 6),
+            const Text('✅', style: TextStyle(fontSize: 20)),
+            const SizedBox(width: 8),
             Text(
               '$currentSlotName සැසිය සම්පූර්ණයි',
               style: const TextStyle(
@@ -714,8 +714,19 @@ class _ElderInteractiveHomePageState
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('🔔', style: TextStyle(fontSize: 14)),
-            const SizedBox(width: 6),
+            // Swinging animated bell to catch elder's eye and remind them
+            AnimatedBuilder(
+              animation: _floatingController,
+              builder: (context, _) {
+                final angle = math.sin(_floatingController.value * 4 * math.pi) * 0.28;
+                return Transform.rotate(
+                  angle: angle,
+                  alignment: Alignment.topCenter,
+                  child: const Text('🔔', style: TextStyle(fontSize: 25)),
+                );
+              },
+            ),
+            const SizedBox(width: 8),
             Text(
               'අද $currentSlotName සැසිය තවම කර නැත!',
               style: const TextStyle(
@@ -1611,171 +1622,334 @@ class _ElderInteractiveHomePageState
 
         LayoutBuilder(
           builder: (context, constraints) {
-            final cards = [
+            final assessmentCards = [
               // Card 1: මානසික සුවතා කතාබහ (Rose Theme with Smiling Grandma & Blossom Trim)
-              _buildTopAssessmentCard(
-                backgroundColor: const Color(0xFFFFF0F5), // soft lavender blush / rose
-                borderColor: emotionalDone ? const Color(0xFF86EFAC) : const Color(0xFFFECDD3),
-                iconBorderColor: const Color(0xFFF472B6),
-                badgeIcon: '💓',
-                title: 'මානසික සුවතා කතාබහ',
-                description: 'ඔබගේ හැඟීම්, මානසික තත්වය සහ සෞඛ්‍ය සුවතාවය පිළිබඳ සරල ප්‍රශ්න කිහිපයකට පිළිතුරු දෙන්න.',
-                statusBadgeWidget: _buildSlotStatusBadge(
-                  isCurrentDone: emotionalDone,
-                  currentSlotName: currentSlotName,
-                  activeColor: const Color(0xFF7E22CE),
+              _wrapWithFloatingReminder(
+                isDone: emotionalDone,
+                child: _buildTopAssessmentCard(
+                  backgroundColor: const Color(0xFFFFF0F5), // soft lavender blush / rose
+                  borderColor: emotionalDone ? const Color(0xFF86EFAC) : const Color(0xFFFECDD3),
+                  iconBorderColor: const Color(0xFFF472B6),
+                  badgeIcon: '💓',
+                  title: 'මානසික සුවතා කතාබහ',
+                  description: 'ඔබගේ හැඟීම්, මානසික තත්වය සහ සෞඛ්‍ය සුවතාවය පිළිබඳ සරල ප්‍රශ්න කිහිපයකට පිළිතුරු දෙන්න.',
+                  statusBadgeWidget: _buildSlotStatusBadge(
+                    isCurrentDone: emotionalDone,
+                    currentSlotName: currentSlotName,
+                    activeColor: const Color(0xFF7E22CE),
+                  ),
+                  sessionTrackerWidget: _buildDailySessionTracker(
+                    activity: 'emotional',
+                    currentSlot: currentSlot,
+                    activeThemeColor: const Color(0xFF7E22CE),
+                  ),
+                  topRightIllustration: _buildGrandmaIllustrationExact(),
+                  buttonText: emotionalDone ? 'සම්පූර්ණයි ($nextSlotTime ට) ⏰' : 'අදම සම්පූර්ණ කරන්න',
+                  buttonGradient: emotionalDone
+                      ? const [Color(0xFF16A34A), Color(0xFF22C55E)]
+                      : const [Color(0xFFF43F5E), Color(0xFFF472B6)],
+                  isEmotionalCard: true,
+                  bottomDecoration: _buildCard1HibiscusBlossomTrim(),
+                  onTap: () {
+                    if (emotionalDone) {
+                      _showSessionAlreadyCompletedDialog(
+                        context: context,
+                        activityTitle: 'මානසික සුවතා කතාබහ',
+                        activityKey: 'emotional',
+                        slot: currentSlot,
+                        onContinueAnyway: () {
+                          context.go('/dashboard/emotional');
+                        },
+                      );
+                    } else {
+                      _markSessionCompleted('emotional', currentSlot);
+                      _speak('මානසික සුවතා කතාබහ වෙත ඔබව සාදරයෙන් පිළිගන්නවා.');
+                      context.go('/dashboard/emotional');
+                    }
+                  },
                 ),
-                sessionTrackerWidget: _buildDailySessionTracker(
-                  activity: 'emotional',
-                  currentSlot: currentSlot,
-                  activeThemeColor: const Color(0xFF7E22CE),
-                ),
-                topRightIllustration: _buildGrandmaIllustrationExact(),
-                buttonText: emotionalDone ? 'සම්පූර්ණයි ($nextSlotTime ට) ⏰' : 'අදම සම්පූර්ණ කරන්න',
-                buttonGradient: emotionalDone
-                    ? const [Color(0xFF16A34A), Color(0xFF22C55E)]
-                    : const [Color(0xFFF43F5E), Color(0xFFF472B6)],
-                isEmotionalCard: true,
-                bottomDecoration: _buildCard1HibiscusBlossomTrim(),
-                onTap: () {
-                  if (emotionalDone) {
-                    _showSessionAlreadyCompletedDialog(
-                      context: context,
-                      activityTitle: 'මානසික සුවතා කතාබහ',
-                      activityKey: 'emotional',
-                      slot: currentSlot,
-                      onContinueAnyway: () {
-                        context.go('/dashboard/emotional');
-                      },
-                    );
-                  } else {
-                    _markSessionCompleted('emotional', currentSlot);
-                    _speak('මානසික සුවතා කතාබහ වෙත ඔබව සාදරයෙන් පිළිගන්නවා.');
-                    context.go('/dashboard/emotional');
-                  }
-                },
               ),
 
               // Card 2: මනස පරීක්ෂණ සහ විනෝද ක්‍රීඩා (Warm Gold Theme with Crossword & Lightbulb)
-              _buildTopAssessmentCard(
-                backgroundColor: const Color(0xFFFFFBEB), // warm butter/cream
-                borderColor: memoryDone ? const Color(0xFF86EFAC) : const Color(0xFFFDE68A),
-                iconBorderColor: const Color(0xFF22C55E),
-                badgeIcon: '🧩',
-                title: 'මනස පරීක්ෂණ සහ විනෝද ක්‍රීඩා',
-                description: 'ඔබගේ මතකය වර්ධනය කරගන්න සහ මනස සතුටු කරගන්න විනෝද ක්‍රීඩා කරන්න.',
-                statusBadgeWidget: _buildSlotStatusBadge(
-                  isCurrentDone: memoryDone,
-                  currentSlotName: currentSlotName,
-                  activeColor: const Color(0xFFD97706),
+              _wrapWithFloatingReminder(
+                isDone: memoryDone,
+                child: _buildTopAssessmentCard(
+                  backgroundColor: const Color(0xFFFFFBEB), // warm butter/cream
+                  borderColor: memoryDone ? const Color(0xFF86EFAC) : const Color(0xFFFDE68A),
+                  iconBorderColor: const Color(0xFF22C55E),
+                  badgeIcon: '🧩',
+                  title: 'මනස පරීක්ෂණ සහ විනෝද ක්‍රීඩා',
+                  description: 'ඔබගේ මතකය වර්ධනය කරගන්න සහ මනස සතුටු කරගන්න විනෝද ක්‍රීඩා කරන්න.',
+                  statusBadgeWidget: _buildSlotStatusBadge(
+                    isCurrentDone: memoryDone,
+                    currentSlotName: currentSlotName,
+                    activeColor: const Color(0xFFD97706),
+                  ),
+                  sessionTrackerWidget: _buildDailySessionTracker(
+                    activity: 'memory',
+                    currentSlot: currentSlot,
+                    activeThemeColor: const Color(0xFFD97706),
+                  ),
+                  topRightIllustration: _buildCrosswordLightbulbIllustrationExact(),
+                  buttonText: memoryDone ? 'සම්පූර්ණයි ($nextSlotTime ට) ⏰' : 'ක්‍රීඩා කරන්න',
+                  buttonGradient: memoryDone
+                      ? const [Color(0xFF16A34A), Color(0xFF22C55E)]
+                      : const [Color(0xFFD97706), Color(0xFFF59E0B)],
+                  isEmotionalCard: false,
+                  bottomDecoration: _buildCard2GoldenAmberTrim(),
+                  onTap: () {
+                    if (memoryDone) {
+                      _showSessionAlreadyCompletedDialog(
+                        context: context,
+                        activityTitle: 'මනස පරීක්ෂණ සහ විනෝද ක්‍රීඩා',
+                        activityKey: 'memory',
+                        slot: currentSlot,
+                        onContinueAnyway: () {
+                          context.go('/dashboard/memory-games');
+                        },
+                      );
+                    } else {
+                      _markSessionCompleted('memory', currentSlot);
+                      _speak('මනස පරීක්ෂණ සහ විනෝද ක්‍රීඩා පිටුවට යමු.');
+                      context.go('/dashboard/memory-games');
+                    }
+                  },
                 ),
-                sessionTrackerWidget: _buildDailySessionTracker(
-                  activity: 'memory',
-                  currentSlot: currentSlot,
-                  activeThemeColor: const Color(0xFFD97706),
-                ),
-                topRightIllustration: _buildCrosswordLightbulbIllustrationExact(),
-                buttonText: memoryDone ? 'සම්පූර්ණයි ($nextSlotTime ට) ⏰' : 'ක්‍රීඩා කරන්න',
-                buttonGradient: memoryDone
-                    ? const [Color(0xFF16A34A), Color(0xFF22C55E)]
-                    : const [Color(0xFFD97706), Color(0xFFF59E0B)],
-                isEmotionalCard: false,
-                bottomDecoration: _buildCard2GoldenAmberTrim(),
+              ),
+            ];
+
+            final leisureCards = [
+              // Card 1: පොත් කියවීම (Reading Books - Soft Lavender Theme)
+              _buildMockupLeisureCard(
+                backgroundColor: const Color(0xFFFAF5FF),
+                borderColor: const Color(0xFFE9D5FF),
+                badgeIcon: const Icon(Icons.menu_book_rounded, color: Color(0xFF7C3AED), size: 21),
+                title: 'පොත් කියවීම',
+                titleColor: const Color(0xFF4C1D95),
+                description: 'ඔබ කැමති කතා, නවකතා සහ උපදේශනා පොත් කියවමින් දැනුම සහ සතුට වැඩි කරගන්න.',
+                illustration: _buildGrandmaReadingBookIllustration(),
+                buttonText: 'පොත් කියවන්න',
+                buttonIcon: const Icon(Icons.menu_book_rounded, color: Colors.white, size: 16),
+                buttonGradient: const [Color(0xFF7C3AED), Color(0xFF9333EA)],
+                bottomTrim: _buildLavenderBlossomTrim(),
                 onTap: () {
-                  if (memoryDone) {
-                    _showSessionAlreadyCompletedDialog(
-                      context: context,
-                      activityTitle: 'මනස පරීක්ෂණ සහ විනෝද ක්‍රීඩා',
-                      activityKey: 'memory',
-                      slot: currentSlot,
-                      onContinueAnyway: () {
-                        context.go('/dashboard/memory-games');
-                      },
-                    );
-                  } else {
-                    _markSessionCompleted('memory', currentSlot);
-                    _speak('මනස පරීක්ෂණ සහ විනෝද ක්‍රීඩා පිටුවට යමු.');
-                    context.go('/dashboard/memory-games');
-                  }
+                  _showReadingLibraryModal(context);
                 },
               ),
 
-              // Card 3: සන්සුන් සංගීතය සහ විවේක සුවය (Emerald Mint Theme with Park Landscape)
-              _buildQuickCard(
-                backgroundColor: const Color(0xFFF0FDF4),
-                borderColor: const Color(0xFFBBF7D0),
-                badgeIcon: '🎧',
-                topRightIllustration: _buildHeadphonesMusicIllustration(),
-                title: 'සන්සුන් සංගීතය\nසහ විවේක සුවය',
-                description: 'සිත සන්සුන් කිරීම සහ සුවසේ විවේක ගැනීම.',
-                buttonText: 'සංගීතය අසන්න ▶',
-                buttonGradient: const [Color(0xFF059669), Color(0xFF10B981)],
-                bottomDecoration: _buildParkNatureLandscape(),
+              // Card 2: නිර්මාණාත්මක ක්‍රියාකාරකම් (Creative Activities - Soft Warm Amber Theme)
+              _buildMockupLeisureCard(
+                backgroundColor: const Color(0xFFFFFBEB),
+                borderColor: const Color(0xFFFDE68A),
+                badgeIcon: const Text('🎨', style: TextStyle(fontSize: 20)),
+                title: 'නිර්මාණාත්මක ක්‍රියාකාරකම්',
+                titleColor: const Color(0xFF78350F),
+                description: 'චිත්‍ර ඇඳීම, මල් වගාව හෝ අත්කම් නිර්මාණයේ නිරතව සතුටක් ලබාගන්න.',
+                illustration: _buildGrandmaPaintingArtIllustration(),
+                buttonText: 'නිර්මාණය කරන්න',
+                buttonIcon: const Text('🎨', style: TextStyle(fontSize: 15)),
+                buttonGradient: const [Color(0xFFD97706), Color(0xFFF59E0B)],
+                bottomTrim: _buildGoldenFloraTrim(),
+                onTap: () {
+                  _showCreativeActivitiesModal(context);
+                },
+              ),
+
+              // Card 3: සංගීතය සහ විවේකය (Music & Relaxation - Soft Sky Blue Theme)
+              _buildMockupLeisureCard(
+                backgroundColor: const Color(0xFFF0F9FF),
+                borderColor: const Color(0xFFBAE6FD),
+                badgeIcon: const Icon(Icons.headphones_rounded, color: Color(0xFF0284C7), size: 21),
+                title: 'සංගීතය සහ විවේකය',
+                titleColor: const Color(0xFF075985),
+                topTrailingWidget: const Text('🎵', style: TextStyle(fontSize: 18)),
+                description: 'සංගීතය අසමින් සිත නිදහස් කරගන්න හා විවේක ගන්න.',
+                illustration: _buildElderListeningMusicIllustration(),
+                buttonText: 'සංගීතය අසන්න',
+                buttonIcon: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 18),
+                buttonGradient: const [Color(0xFF0284C7), Color(0xFF38BDF8)],
+                bottomTrim: _buildSkyBlueFloraTrim(),
                 onTap: () {
                   _speak('සන්සුන් සංගීතය සහ ස්වභාවික ශබ්ද ඔබ වෙනුවෙන් වාදනය කරමු.');
                   _showMusicPlayerModal(context);
                 },
               ),
-
-              // Card 4: උපකාර ඉල්ලීම (Sky Blue Theme with Caregiver Avatar & Meadow Landscape)
-              _buildQuickCard(
-                backgroundColor: const Color(0xFFF0F9FF),
-                borderColor: const Color(0xFFBAE6FD),
-                badgeIcon: '📞',
-                topRightIllustration: _buildCaregiverWithHeadsetIllustration(),
-                title: 'උපකාර ඉල්ලීම\n(සත්කාරක සම්බන්ධ වන්න)',
-                description: 'ඔබට අවශ්‍යතාවයක් ඇති නම් රැකබලා ගන්නාට දැන්ම අමතන්න.',
-                buttonText: '📞 අමතන්න දැන්ම',
-                buttonGradient: const [Color(0xFF0284C7), Color(0xFF38BDF8)],
-                bottomDecoration: _buildCottageMeadowLandscape(),
-                onTap: () {
-                  _handleEmergencyCall(context);
-                },
-              ),
             ];
 
-            final isWide = constraints.maxWidth >= 680;
-            final cardSpacing = constraints.maxWidth >= 1000 ? 42.0 : 32.0;
-            final rowSpacing = constraints.maxWidth >= 1000 ? 30.0 : 24.0;
+            final isDesktopWide = constraints.maxWidth >= 950;
+            final isTablet = constraints.maxWidth >= 650 && constraints.maxWidth < 950;
+            final cardSpacing = constraints.maxWidth >= 1000 ? 36.0 : 24.0;
+            final rowSpacing = constraints.maxWidth >= 1000 ? 28.0 : 22.0;
 
-            if (isWide) {
+            if (isDesktopWide) {
               return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Row 1 (Top): මානසික සුවතා කතාබහ & මනස පරීක්ෂණ සහ විනෝද ක්‍රීඩා
+                  // Row 1 (Top Assessment Cards): මානසික සුවතා කතාබහ & මනස පරීක්ෂණ සහ විනෝද ක්‍රීඩා
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(child: cards[0]),
+                      Expanded(child: assessmentCards[0]),
                       SizedBox(width: cardSpacing),
-                      Expanded(child: cards[1]),
+                      Expanded(child: assessmentCards[1]),
                     ],
                   ),
-                  SizedBox(height: rowSpacing),
+                  SizedBox(height: rowSpacing + 8),
 
-                  // Row 2 (Bottom): සන්සුන් සංගීතය සහ විවේක සුවය & උපකාර ඉල්ලීම
+                  // Section Heading: නිදහසේ කාලය ගත කරන්න කැමතිද? [මගේ කැමැත්ත තෝරන්න]
+                  _buildLeisureSectionHeader(isSinhala),
+                  const SizedBox(height: 18),
+
+                  // Leisure Row: All 3 cards side-by-side in exact reference mockup layout
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(child: cards[2]),
-                      SizedBox(width: cardSpacing),
-                      Expanded(child: cards[3]),
+                      Expanded(child: leisureCards[0]),
+                      const SizedBox(width: 18),
+                      Expanded(child: leisureCards[1]),
+                      const SizedBox(width: 18),
+                      Expanded(child: leisureCards[2]),
                     ],
                   ),
                 ],
               );
+            } else if (isTablet) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(child: assessmentCards[0]),
+                      const SizedBox(width: 20),
+                      Expanded(child: assessmentCards[1]),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  _buildLeisureSectionHeader(isSinhala),
+                  const SizedBox(height: 16),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(child: leisureCards[0]),
+                      const SizedBox(width: 16),
+                      Expanded(child: leisureCards[1]),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  leisureCards[2],
+                ],
+              );
             } else {
               return Column(
-                children: cards
-                    .map((c) => Padding(
-                          padding: const EdgeInsets.only(bottom: 20),
-                          child: c,
-                        ))
-                    .toList(),
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 20),
+                    child: assessmentCards[0],
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 24),
+                    child: assessmentCards[1],
+                  ),
+                  _buildLeisureSectionHeader(isSinhala),
+                  const SizedBox(height: 16),
+                  ...leisureCards.map((c) => Padding(
+                        padding: const EdgeInsets.only(bottom: 20),
+                        child: c,
+                      )),
+                ],
               );
             }
           },
         ),
       ],
+    );
+  }
+
+  // =========================================================================
+  // LEISURE & RELAXATION SECTION HEADER ("අද නිදහසේ කාලය ගත කරන්න කැමතිද?")
+  // =========================================================================
+  Widget _buildLeisureSectionHeader(bool isSinhala) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Wrap(
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 10,
+          runSpacing: 6,
+          children: [
+            const Text('🍃', style: TextStyle(fontSize: 22)),
+            Text(
+              isSinhala
+                  ? 'නිදහසේ කාලය ගත කරන්න කැමතිද?'
+                  : 'Would you like to relax today?',
+              style: const TextStyle(
+                fontSize: 21,
+                fontWeight: FontWeight.w900,
+                color: Color(0xFF1E1B4B),
+                letterSpacing: 0.1,
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFFDCFCE7),
+                borderRadius: BorderRadius.circular(99),
+                border: Border.all(color: const Color(0xFFBBF7D0)),
+              ),
+              child: Text(
+                isSinhala ? 'මගේ කැමැත්ත තෝරන්න' : 'Choose Your Preference',
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF15803D),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 5),
+        Text(
+          isSinhala
+              ? 'දිනපතා විනෝදයෙන්, සතුටින් සහ නිරෝගීව සිටීමට ඔබ කැමති ක්‍රියාකාරකම් තෝරන්න.'
+              : 'Choose the activities you love to stay joyful, happy, and healthy every day.',
+          style: const TextStyle(
+            fontSize: 13.5,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF64748B),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // =========================================================================
+  // GENTLE UP-AND-DOWN FLOATING REMINDER FOR INCOMPLETE ASSESSMENT CARDS
+  // =========================================================================
+  Widget _wrapWithFloatingReminder({
+    required Widget child,
+    required bool isDone,
+  }) {
+    if (isDone) {
+      // Completed cards rest calmly at normal position
+      return child;
+    }
+
+    return AnimatedBuilder(
+      animation: _floatingController,
+      builder: (context, _) {
+        final progress = CurvedAnimation(
+          parent: _floatingController,
+          curve: Curves.easeInOutSine,
+        ).value;
+        // Smoothly floats up and down by 6.0 pixels to catch the elder's eye and remind them
+        final offsetY = -6.0 * progress;
+        return Transform.translate(
+          offset: Offset(0, offsetY),
+          child: child,
+        );
+      },
     );
   }
 
@@ -2623,6 +2797,697 @@ class _ElderInteractiveHomePageState
             child: Text('🌲', style: TextStyle(fontSize: 36)),
           ),
         ],
+      ),
+    );
+  }
+
+
+  // =========================================================================
+  // LEISURE SECTION CARDS: EXACT REFERENCE MOCKUP DESIGN
+  // =========================================================================
+
+  // Mockup Leisure Card Widget
+  Widget _buildMockupLeisureCard({
+    required Color backgroundColor,
+    required Color borderColor,
+    required Widget badgeIcon,
+    required String title,
+    required Color titleColor,
+    required String description,
+    required Widget illustration,
+    required String buttonText,
+    required Widget buttonIcon,
+    required List<Color> buttonGradient,
+    required Widget bottomTrim,
+    Widget? topTrailingWidget,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: borderColor, width: 1.8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(22),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Top Row: Badge + Title + Optional Trailing
+                  Row(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: borderColor.withValues(alpha: 0.9), width: 1.8),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.05),
+                              blurRadius: 5,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        alignment: Alignment.center,
+                        child: badgeIcon,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          title,
+                          style: TextStyle(
+                            fontSize: 16.5,
+                            fontWeight: FontWeight.w900,
+                            color: titleColor,
+                            letterSpacing: 0.1,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (topTrailingWidget != null) topTrailingWidget,
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+
+                  // Middle Row: Description text on left, Illustration on right
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        flex: 6,
+                        child: Text(
+                          description,
+                          style: const TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF475569),
+                            height: 1.35,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        flex: 5,
+                        child: illustration,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+
+                  // Action Pill Button
+                  InkWell(
+                    onTap: onTap,
+                    borderRadius: BorderRadius.circular(99),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(colors: buttonGradient),
+                        borderRadius: BorderRadius.circular(99),
+                        boxShadow: [
+                          BoxShadow(
+                            color: buttonGradient.first.withValues(alpha: 0.35),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          buttonIcon,
+                          const SizedBox(width: 6),
+                          Text(
+                            buttonText,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.2,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 15),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Bottom Floral Trim
+            bottomTrim,
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Card 1 Illustration: Grandma Reading Book in Armchair with Bookshelf & Table Lamp
+  Widget _buildGrandmaReadingBookIllustration() {
+    return SizedBox(
+      height: 105,
+      child: Stack(
+        alignment: Alignment.centerRight,
+        clipBehavior: Clip.none,
+        children: [
+          // Background soft purple aura
+          Positioned(
+            right: 8,
+            top: 10,
+            child: Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFFE9D5FF).withValues(alpha: 0.40),
+              ),
+            ),
+          ),
+          // Bookshelf on far right
+          Positioned(
+            right: 2,
+            top: 8,
+            child: Container(
+              width: 36,
+              height: 68,
+              decoration: BoxDecoration(
+                color: const Color(0xFFD4A373).withValues(alpha: 0.90),
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(color: const Color(0xFFBC6C25), width: 1.2),
+              ),
+              padding: const EdgeInsets.all(2.5),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      Container(width: 5, height: 22, color: const Color(0xFF2563EB)),
+                      Container(width: 5, height: 20, color: const Color(0xFFDC2626)),
+                      Container(width: 5, height: 23, color: const Color(0xFF16A34A)),
+                      Container(width: 5, height: 19, color: const Color(0xFFEAB308)),
+                    ],
+                  ),
+                  Container(height: 1.5, color: const Color(0xFFBC6C25)),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      Container(width: 5, height: 19, color: const Color(0xFF9333EA)),
+                      Container(width: 5, height: 22, color: const Color(0xFFEA580C)),
+                      Container(width: 5, height: 20, color: const Color(0xFF0284C7)),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // Warm Table Lamp on left
+          Positioned(
+            right: 76,
+            top: 24,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 22,
+                  height: 14,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFFDE047),
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(8),
+                      topRight: Radius.circular(8),
+                      bottomLeft: Radius.circular(2),
+                      bottomRight: Radius.circular(2),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Color(0xFFFDE047),
+                        blurRadius: 10,
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                ),
+                Container(width: 2.5, height: 16, color: const Color(0xFF78350F)),
+                Container(width: 14, height: 3, decoration: BoxDecoration(color: const Color(0xFF78350F), borderRadius: BorderRadius.circular(2))),
+              ],
+            ),
+          ),
+          // Grandmother sitting & reading red book
+          Positioned(
+            right: 22,
+            bottom: 2,
+            child: SizedBox(
+              width: 72,
+              height: 86,
+              child: CustomPaint(
+                painter: _GrandmaReadingPainter(),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Card 2 Illustration: Grandma Painting Purple Flowers on Wooden Easel
+  Widget _buildGrandmaPaintingArtIllustration() {
+    return SizedBox(
+      height: 105,
+      child: Stack(
+        alignment: Alignment.centerRight,
+        clipBehavior: Clip.none,
+        children: [
+          // Background warm amber aura
+          Positioned(
+            right: 8,
+            top: 10,
+            child: Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFFFEF3C7).withValues(alpha: 0.40),
+              ),
+            ),
+          ),
+          // Artist Easel with Canvas painting
+          Positioned(
+            right: 2,
+            bottom: 2,
+            child: SizedBox(
+              width: 54,
+              height: 86,
+              child: Stack(
+                alignment: Alignment.topCenter,
+                children: [
+                  Positioned(left: 6, bottom: 0, top: 10, child: Container(width: 3, color: const Color(0xFF9A3412))),
+                  Positioned(right: 6, bottom: 0, top: 10, child: Container(width: 3, color: const Color(0xFF9A3412))),
+                  Positioned(left: 25, bottom: 0, top: 0, child: Container(width: 3.5, color: const Color(0xFF7C2D12))),
+                  Positioned(
+                    top: 12,
+                    child: Container(
+                      width: 44,
+                      height: 54,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: const Color(0xFFB45309), width: 1.5),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.08),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      padding: const EdgeInsets.all(2),
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Positioned(
+                            bottom: 2,
+                            child: Container(width: 2.5, height: 26, color: const Color(0xFF16A34A)),
+                          ),
+                          const Positioned(
+                            top: 4,
+                            child: Text('🌸', style: TextStyle(fontSize: 16)),
+                          ),
+                          const Positioned(
+                            top: 14,
+                            left: 2,
+                            child: Text('🪻', style: TextStyle(fontSize: 12)),
+                          ),
+                          const Positioned(
+                            top: 14,
+                            right: 2,
+                            child: Text('🪻', style: TextStyle(fontSize: 12)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: 66,
+                    child: Container(
+                      width: 50,
+                      height: 3.5,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF78350F),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // Grandmother painting with brush
+          Positioned(
+            right: 44,
+            bottom: 2,
+            child: SizedBox(
+              width: 68,
+              height: 86,
+              child: CustomPaint(
+                painter: _GrandmaPaintingPainter(),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Card 3 Illustration: Elder with Headphones & Floating Musical Notes
+  Widget _buildElderListeningMusicIllustration() {
+    return SizedBox(
+      height: 105,
+      child: Stack(
+        alignment: Alignment.centerRight,
+        clipBehavior: Clip.none,
+        children: [
+          // Soft puffy blue cloud in background
+          Positioned(
+            right: 6,
+            top: 14,
+            child: Container(
+              width: 86,
+              height: 52,
+              decoration: BoxDecoration(
+                color: const Color(0xFFE0F2FE).withValues(alpha: 0.70),
+                borderRadius: BorderRadius.circular(26),
+              ),
+            ),
+          ),
+          Positioned(
+            right: 24,
+            top: 4,
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFFE0F2FE).withValues(alpha: 0.80),
+              ),
+            ),
+          ),
+          // Floating purple & magenta musical notes
+          const Positioned(
+            right: 76,
+            top: 10,
+            child: Text('🎵', style: TextStyle(fontSize: 18, color: Color(0xFF9333EA))),
+          ),
+          const Positioned(
+            right: 84,
+            top: 36,
+            child: Text('🎶', style: TextStyle(fontSize: 16, color: Color(0xFFEC4899))),
+          ),
+          const Positioned(
+            right: 12,
+            top: 6,
+            child: Text('🎵', style: TextStyle(fontSize: 14, color: Color(0xFF0284C7))),
+          ),
+          // Elder wearing modern headphones
+          Positioned(
+            right: 12,
+            bottom: 2,
+            child: SizedBox(
+              width: 74,
+              height: 88,
+              child: CustomPaint(
+                painter: _ElderListeningMusicPainter(),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Card 1 Floral Trim (Lavender with Hibiscus Blossoms)
+  Widget _buildLavenderBlossomTrim() {
+    return Container(
+      height: 32,
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        color: Color(0xFFF3E8FF),
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(22),
+          bottomRight: Radius.circular(22),
+        ),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      child: const Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              Text('🌸', style: TextStyle(fontSize: 14)),
+              SizedBox(width: 2),
+              Text('🌺', style: TextStyle(fontSize: 14)),
+              SizedBox(width: 2),
+              Text('🍃', style: TextStyle(fontSize: 11)),
+            ],
+          ),
+          Row(
+            children: [
+              Text('🍃', style: TextStyle(fontSize: 11)),
+              SizedBox(width: 2),
+              Text('🌺', style: TextStyle(fontSize: 14)),
+              SizedBox(width: 2),
+              Text('🌸', style: TextStyle(fontSize: 14)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Card 2 Floral Trim (Golden Amber with Sunflowers)
+  Widget _buildGoldenFloraTrim() {
+    return Container(
+      height: 32,
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        color: Color(0xFFFEF3C7),
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(22),
+          bottomRight: Radius.circular(22),
+        ),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      child: const Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              Text('🌻', style: TextStyle(fontSize: 14)),
+              SizedBox(width: 2),
+              Text('🌼', style: TextStyle(fontSize: 14)),
+              SizedBox(width: 2),
+              Text('🍃', style: TextStyle(fontSize: 11)),
+            ],
+          ),
+          Row(
+            children: [
+              Text('🍃', style: TextStyle(fontSize: 11)),
+              SizedBox(width: 2),
+              Text('🌼', style: TextStyle(fontSize: 14)),
+              SizedBox(width: 2),
+              Text('🌻', style: TextStyle(fontSize: 14)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Card 3 Floral Trim (Sky Blue with Flowers)
+  Widget _buildSkyBlueFloraTrim() {
+    return Container(
+      height: 32,
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        color: Color(0xFFE0F2FE),
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(22),
+          bottomRight: Radius.circular(22),
+        ),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      child: const Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              Text('🌸', style: TextStyle(fontSize: 14)),
+              SizedBox(width: 2),
+              Text('🪻', style: TextStyle(fontSize: 14)),
+              SizedBox(width: 2),
+              Text('🍃', style: TextStyle(fontSize: 11)),
+            ],
+          ),
+          Row(
+            children: [
+              Text('🍃', style: TextStyle(fontSize: 11)),
+              SizedBox(width: 2),
+              Text('🪻', style: TextStyle(fontSize: 14)),
+              SizedBox(width: 2),
+              Text('🌸', style: TextStyle(fontSize: 14)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Creative Activities Modal Sheet
+  void _showCreativeActivitiesModal(BuildContext context) {
+    _speak('නිර්මාණාත්මක ක්‍රියාකාරකම් වෙත ඔබව සාදරයෙන් පිළිගන්නවා.');
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Text('🎨', style: TextStyle(fontSize: 26)),
+                SizedBox(width: 10),
+                Text(
+                  'නිර්මාණාත්මක ක්‍රියාකාරකම්',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Color(0xFF1E1B4B)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'චිත්‍ර ඇඳීම, මල් වගාව හෝ අත්කම් නිර්මාණයේ නිරතව සතුටක් ලබාගන්න:',
+              style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(Icons.palette_rounded, color: Color(0xFFD97706), size: 24),
+              title: const Text('චිත්‍ර ඇඳීම සහ වර්ණ ගැන්වීම', style: TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Digital Coloring & Art Therapy'),
+              trailing: const Icon(Icons.arrow_forward_ios_rounded, color: Color(0xFFD97706), size: 18),
+              onTap: () {
+                Navigator.pop(ctx);
+                _speak('මනස සතුටු කරන චිත්‍ර වර්ණ ගැන්වීම ආරම්භ කළා.');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.yard_rounded, color: Color(0xFF16A34A), size: 24),
+              title: const Text('මල් වගාව සහ ගෙවතු වගා උපදෙස්', style: TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Flower Gardening & Nature Joy'),
+              trailing: const Icon(Icons.arrow_forward_ios_rounded, color: Color(0xFF16A34A), size: 18),
+              onTap: () {
+                Navigator.pop(ctx);
+                _speak('මල් වගාව: උදෑසන මල් පැලවලට ජලය යෙදීම සහ මල් පිබිදීම නැරඹීම මනසට මහත් සතුටක් ගෙනදෙයි.');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.cut_rounded, color: Color(0xFF7C3AED), size: 24),
+              title: const Text('සරල අත්කම් නිර්මාණ සහ විනෝදාංශ', style: TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Simple Crafts & Creative Hobbies'),
+              trailing: const Icon(Icons.arrow_forward_ios_rounded, color: Color(0xFF7C3AED), size: 18),
+              onTap: () {
+                Navigator.pop(ctx);
+                _speak('සරල අත්කම් නිර්මාණ මඟින් ඇඟිලි හා දෑත්වල ක්‍රියාකාරිත්වය ප්‍රබෝධමත් වේ.');
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Reading Library Modal Sheet
+  void _showReadingLibraryModal(BuildContext context) {
+    _speak('පොත් කියවීම: කතා, නවකතා සහ උපදේශනා පොත් කියවීම සඳහා ඔබව සාදරයෙන් පිළිගන්නවා.');
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Text('📖', style: TextStyle(fontSize: 26)),
+                SizedBox(width: 10),
+                Text(
+                  'පොත් කියවීම (නවකතා සහ රසකතා)',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Color(0xFF1E1B4B)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'දැනුම සහ සතුට වැඩි කරවන ආදර්ශවත් කතාන්දර සහ පොත්පත්:',
+              style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(Icons.newspaper_rounded, color: Color(0xFF7C3AED), size: 24),
+              title: const Text('අද දවසේ ප්‍රධාන පුවත් සහ විස්තර', style: TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Today\'s Inspiring News & Updates'),
+              trailing: const Icon(Icons.menu_book_rounded, color: Color(0xFF7C3AED), size: 26),
+              onTap: () {
+                Navigator.pop(ctx);
+                _speak('අද දවසේ පුවත්: ලක්දිව කාලගුණය යහපත් අතර, වැඩිහිටි සුභසාධන සේවා ඉතා සාර්ථකව ක්‍රියාත්මක වේ.');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.menu_book_rounded, color: Color(0xFF7C3AED), size: 24),
+              title: const Text('ආදර්ශවත් ජාතක කතා සහ කෙටිකතා', style: TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Moral Stories & Nostalgic Tales'),
+              trailing: const Icon(Icons.menu_book_rounded, color: Color(0xFF7C3AED), size: 26),
+              onTap: () {
+                Navigator.pop(ctx);
+                _speak('වණ්ණුපථ ජාතකය: උත්සාහය හා ධෛර්යය තුළින් ඕනෑම අභියෝගයක් ජයගත හැකි අයුරු මෙම කතාවෙන් කියවේ.');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.health_and_safety_rounded, color: Color(0xFF16A34A), size: 24),
+              title: const Text('සුවබර දිවියකට නිරෝගී උපදෙස්', style: TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Senior Wellness & Nutrition Tips'),
+              trailing: const Icon(Icons.menu_book_rounded, color: Color(0xFF16A34A), size: 26),
+              onTap: () {
+                Navigator.pop(ctx);
+                _speak('සුවදායී උපදෙස: දිනපතා ප්‍රමාණවත් පරිදි ජලය පානය කරන්න. උදෑසන සුළු ඇවිදීමක් ඔබේ නිරෝගීභාවයට මහඟු පිටුවහලකි.');
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -3988,3 +4853,221 @@ class _GrandmaAvatarPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
+
+// =========================================================================
+// CUSTOM PAINTERS FOR LEISURE MOCKUP ILLUSTRATIONS
+// =========================================================================
+
+class _GrandmaReadingPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cx = size.width * 0.48;
+    final cy = size.height * 0.45;
+
+    // Armchair back
+    final chairPaint = Paint()..color = const Color(0xFFFBBF24);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(cx + 4, cy + 4), width: 44, height: 58), const Radius.circular(16)),
+      chairPaint,
+    );
+
+    // Body / Purple blouse
+    final bodyPaint = Paint()..color = const Color(0xFF7C3AED);
+    final bodyPath = Path()
+      ..moveTo(cx - 20, size.height)
+      ..quadraticBezierTo(cx - 22, cy + 12, cx - 12, cy + 8)
+      ..lineTo(cx + 12, cy + 8)
+      ..quadraticBezierTo(cx + 22, cy + 12, cx + 20, size.height)
+      ..close();
+    canvas.drawPath(bodyPath, bodyPaint);
+
+    // Head / Face
+    final skinPaint = Paint()..color = const Color(0xFFFFE0BD);
+    canvas.drawCircle(Offset(cx, cy - 8), 16, skinPaint);
+
+    // Rosy cheeks
+    final blushPaint = Paint()..color = const Color(0xFFFDA4AF).withValues(alpha: 0.6);
+    canvas.drawCircle(Offset(cx - 8, cy - 5), 3.5, blushPaint);
+    canvas.drawCircle(Offset(cx + 8, cy - 5), 3.5, blushPaint);
+
+    // Hair (Silver bun)
+    final hairPaint = Paint()..color = const Color(0xFFE2E8F0);
+    canvas.drawArc(Rect.fromCircle(center: Offset(cx, cy - 9), radius: 17), 3.14, 3.14, true, hairPaint);
+    canvas.drawCircle(Offset(cx, cy - 25), 8, hairPaint);
+
+    // Glasses
+    final glassesPaint = Paint()
+      ..color = const Color(0xFF1E293B)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.3;
+    canvas.drawCircle(Offset(cx - 6, cy - 8), 4.5, glassesPaint);
+    canvas.drawCircle(Offset(cx + 6, cy - 8), 4.5, glassesPaint);
+    canvas.drawLine(Offset(cx - 1.5, cy - 8), Offset(cx + 1.5, cy - 8), glassesPaint);
+
+    // Smile
+    final smilePaint = Paint()
+      ..color = const Color(0xFFBE123C)
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = 1.4;
+    canvas.drawArc(Rect.fromCircle(center: Offset(cx, cy - 2), radius: 4), 0.2, 2.7, false, smilePaint);
+
+    // Open Red Book in hands
+    final bookCover = Paint()..color = const Color(0xFFDC2626);
+    final bookPages = Paint()..color = Colors.white;
+    // Left page
+    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(cx - 16, cy + 16, 15, 18), const Radius.circular(2)), bookCover);
+    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(cx - 15, cy + 17, 13, 16), const Radius.circular(1.5)), bookPages);
+    // Right page
+    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(cx + 1, cy + 16, 15, 18), const Radius.circular(2)), bookCover);
+    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(cx + 2, cy + 17, 13, 16), const Radius.circular(1.5)), bookPages);
+
+    // Hands holding book
+    canvas.drawCircle(Offset(cx - 15, cy + 24), 3.5, skinPaint);
+    canvas.drawCircle(Offset(cx + 15, cy + 24), 3.5, skinPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _GrandmaPaintingPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cx = size.width * 0.42;
+    final cy = size.height * 0.42;
+
+    // Body / Purple blouse
+    final bodyPaint = Paint()..color = const Color(0xFF7C3AED);
+    final bodyPath = Path()
+      ..moveTo(cx - 18, size.height)
+      ..quadraticBezierTo(cx - 20, cy + 12, cx - 10, cy + 8)
+      ..lineTo(cx + 10, cy + 8)
+      ..quadraticBezierTo(cx + 20, cy + 12, cx + 18, size.height)
+      ..close();
+    canvas.drawPath(bodyPath, bodyPaint);
+
+    // Head / Face
+    final skinPaint = Paint()..color = const Color(0xFFFFE0BD);
+    canvas.drawCircle(Offset(cx, cy - 8), 16, skinPaint);
+
+    // Rosy cheeks
+    final blushPaint = Paint()..color = const Color(0xFFFDA4AF).withValues(alpha: 0.6);
+    canvas.drawCircle(Offset(cx - 8, cy - 5), 3.5, blushPaint);
+    canvas.drawCircle(Offset(cx + 8, cy - 5), 3.5, blushPaint);
+
+    // Hair (Silver bun)
+    final hairPaint = Paint()..color = const Color(0xFFE2E8F0);
+    canvas.drawArc(Rect.fromCircle(center: Offset(cx, cy - 9), radius: 17), 3.14, 3.14, true, hairPaint);
+    canvas.drawCircle(Offset(cx, cy - 25), 8, hairPaint);
+
+    // Glasses
+    final glassesPaint = Paint()
+      ..color = const Color(0xFF1E293B)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.3;
+    canvas.drawCircle(Offset(cx - 6, cy - 8), 4.5, glassesPaint);
+    canvas.drawCircle(Offset(cx + 6, cy - 8), 4.5, glassesPaint);
+    canvas.drawLine(Offset(cx - 1.5, cy - 8), Offset(cx + 1.5, cy - 8), glassesPaint);
+
+    // Smile
+    final smilePaint = Paint()
+      ..color = const Color(0xFFBE123C)
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = 1.4;
+    canvas.drawArc(Rect.fromCircle(center: Offset(cx, cy - 2), radius: 4), 0.2, 2.7, false, smilePaint);
+
+    // Right arm holding paintbrush extended towards easel
+    final armPaint = Paint()
+      ..color = const Color(0xFF7C3AED)
+      ..strokeWidth = 6
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(Offset(cx + 8, cy + 14), Offset(cx + 28, cy + 22), armPaint);
+
+    // Hand & Paintbrush
+    canvas.drawCircle(Offset(cx + 28, cy + 22), 4, skinPaint);
+    final brushPaint = Paint()
+      ..color = const Color(0xFFB45309)
+      ..strokeWidth = 2.5
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(Offset(cx + 26, cy + 24), Offset(cx + 42, cy + 16), brushPaint);
+    final brushTip = Paint()..color = const Color(0xFF9333EA);
+    canvas.drawCircle(Offset(cx + 43, cy + 15), 2.5, brushTip);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _ElderListeningMusicPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cx = size.width * 0.48;
+    final cy = size.height * 0.44;
+
+    // Body / Purple shirt
+    final bodyPaint = Paint()..color = const Color(0xFF6B21A8);
+    final bodyPath = Path()
+      ..moveTo(cx - 20, size.height)
+      ..quadraticBezierTo(cx - 22, cy + 12, cx - 12, cy + 8)
+      ..lineTo(cx + 12, cy + 8)
+      ..quadraticBezierTo(cx + 22, cy + 12, cx + 20, size.height)
+      ..close();
+    canvas.drawPath(bodyPath, bodyPaint);
+
+    // Head / Face
+    final skinPaint = Paint()..color = const Color(0xFFFFE0BD);
+    canvas.drawCircle(Offset(cx, cy - 6), 17, skinPaint);
+
+    // Rosy cheeks
+    final blushPaint = Paint()..color = const Color(0xFFFDA4AF).withValues(alpha: 0.6);
+    canvas.drawCircle(Offset(cx - 9, cy - 3), 4, blushPaint);
+    canvas.drawCircle(Offset(cx + 9, cy - 3), 4, blushPaint);
+
+    // Silver hair
+    final hairPaint = Paint()..color = const Color(0xFFE2E8F0);
+    canvas.drawArc(Rect.fromCircle(center: Offset(cx, cy - 8), radius: 18), 3.14, 3.14, true, hairPaint);
+
+    // Closed smiling eyes in pure musical bliss (peaceful crescents)
+    final eyePaint = Paint()
+      ..color = const Color(0xFF1E293B)
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = 1.6;
+    canvas.drawArc(Rect.fromCircle(center: Offset(cx - 6, cy - 6), radius: 4), 3.4, 2.5, false, eyePaint);
+    canvas.drawArc(Rect.fromCircle(center: Offset(cx + 6, cy - 6), radius: 4), 3.4, 2.5, false, eyePaint);
+
+    // Glasses frames
+    final glassesPaint = Paint()
+      ..color = const Color(0xFF334155)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.3;
+    canvas.drawCircle(Offset(cx - 6, cy - 6), 5.5, glassesPaint);
+    canvas.drawCircle(Offset(cx + 6, cy - 6), 5.5, glassesPaint);
+    canvas.drawLine(Offset(cx - 0.5, cy - 6), Offset(cx + 0.5, cy - 6), glassesPaint);
+
+    // Peaceful Smile
+    final smilePaint = Paint()
+      ..color = const Color(0xFFBE123C)
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = 1.6;
+    canvas.drawArc(Rect.fromCircle(center: Offset(cx, cy), radius: 5), 0.2, 2.7, false, smilePaint);
+
+    // Big Modern Over-Ear Headphones
+    final hpHeadband = Paint()
+      ..color = const Color(0xFF1E293B)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4.2;
+    canvas.drawArc(Rect.fromCircle(center: Offset(cx, cy - 7), radius: 21), 3.14, 3.14, false, hpHeadband);
+
+    // Ear cushions
+    final earCushion = Paint()..color = const Color(0xFF0F172A);
+    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(cx - 24, cy - 13, 7, 16), const Radius.circular(3)), earCushion);
+    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(cx + 17, cy - 13, 7, 16), const Radius.circular(3)), earCushion);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
