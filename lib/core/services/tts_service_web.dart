@@ -109,6 +109,11 @@ class WebTtsService implements TtsService {
     'කලබල වෙන්න එපා, නිදහසේ බලමු!': 'pairs_encourage_2.mp3',
     'දැන් හරිම ළඟයි, ආයෙත් බලමු!': 'pairs_encourage_3.mp3',
     'හරිම විශිෂ්ටයි! ඔබ ගැළපෙන යුගල හයම සාර්ථකව සොයා ගත්තා! ඔබේ මතක ශක්තිය හරිම අපූරුයි!': 'pairs_complete.mp3',
+    // Remember the Items Game Native Sinhala Clips
+    'මෙහි පෙන්වන හුරුපුරුදු භාණ්ඩ හතර හොඳින් බලා මතක තබාගන්න. සූදානම් වූ පසු පහළ බොත්තම ඔබන්න.': 'items_study.mp3',
+    'දැන් ඔබ කලින් දුටු භාණ්ඩ හතර තෝරා, පිළිතුරු පරීක්ෂා කරන්න ඔබන්න.': 'items_select.mp3',
+    'හරිම විශිෂ්ටයි! ඔබ භාණ්ඩ හතරම නිවැරදිව මතක තබා ගත්තා!': 'items_perfect.mp3',
+    'හොඳ උත්සාහයක්! ඉතා හොඳ මතක පුහුණුවක්. කැමති නම් ආයෙත් උත්සාහ කරමු!': 'items_goodtry.mp3',
   };
 
   static String? _matchSinhalaAudioFile(String rawText) {
@@ -167,6 +172,10 @@ class WebTtsService implements TtsService {
     if (text.contains('කලබල වෙන්න එපා, නිදහසේ බලමු')) return 'pairs_encourage_2.mp3';
     if (text.contains('දැන් හරිම ළඟයි, ආයෙත් බලමු')) return 'pairs_encourage_3.mp3';
     if (text.contains('ඔබ ගැළපෙන යුගල හයම සාර්ථකව සොයා ගත්තා')) return 'pairs_complete.mp3';
+    if (text.contains('හුරුපුරුදු භාණ්ඩ හතර හොඳින් බලා මතක තබාගන්න')) return 'items_study.mp3';
+    if (text.contains('ඔබ කලින් දුටු භාණ්ඩ හතර තෝරා')) return 'items_select.mp3';
+    if (text.contains('ඔබ භාණ්ඩ හතරම නිවැරදිව මතක තබා ගත්තා')) return 'items_perfect.mp3';
+    if (text.contains('ඉතා හොඳ මතක පුහුණුවක්')) return 'items_goodtry.mp3';
 
     for (final entry in _sinhalaAudioFiles.entries) {
       if (text.contains(entry.key)) {
