@@ -1007,7 +1007,7 @@ class _ElderInteractiveHomePageState
               top: 0,
               bottom: 0,
               child: Opacity(
-                opacity: 0.90,
+                opacity: 0.85,
                 child: Image.asset(
                   'assets/images/banner_flowers_fade.png',
                   fit: BoxFit.cover,
@@ -1032,20 +1032,35 @@ class _ElderInteractiveHomePageState
               ),
             ),
 
-            // Main Banner Content
+            // Main Banner Content: Balanced Layout with Greeting on Left and Wellness Card on Right
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildBannerLeftGreeting(greetingTitle, greetingSubtitle, avatarUrl),
+              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 15),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final isWide = constraints.maxWidth >= 820;
+                  final leftGreeting = _buildBannerLeftGreeting(greetingTitle, greetingSubtitle, avatarUrl);
+                  final rightWellness = _buildBannerWellnessCard();
 
-                  // Bottom Hydration Reminder Pill
-                  if (_showHydrationReminder) ...[
-                    const SizedBox(height: 12),
-                    _buildHydrationReminderPill(),
-                  ],
-                ],
+                  if (isWide) {
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Expanded(child: leftGreeting),
+                        const SizedBox(width: 16),
+                        rightWellness,
+                      ],
+                    );
+                  } else {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        leftGreeting,
+                        const SizedBox(height: 12),
+                        rightWellness,
+                      ],
+                    );
+                  }
+                },
               ),
             ),
           ],
@@ -1061,8 +1076,8 @@ class _ElderInteractiveHomePageState
       children: [
         // Elder photo
         Container(
-          width: 82,
-          height: 82,
+          width: 78,
+          height: 78,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             border: Border.all(color: Colors.white, width: 3),
@@ -1091,7 +1106,7 @@ class _ElderInteractiveHomePageState
                 title,
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 23,
+                  fontSize: 22.5,
                   fontWeight: FontWeight.w800,
                   letterSpacing: 0.2,
                   shadows: [
@@ -1099,12 +1114,12 @@ class _ElderInteractiveHomePageState
                   ],
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 3),
               Text(
                 subtitle,
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.95),
-                  fontSize: 15.5,
+                  fontSize: 15,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -1124,13 +1139,13 @@ class _ElderInteractiveHomePageState
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(LucideIcons.volume2, size: 16, color: Colors.white),
+                      Icon(LucideIcons.volume2, size: 15, color: Colors.white),
                       SizedBox(width: 6),
                       Text(
                         'ඔබ ගැන අදත් හොඳින් සලකමු! ·|||··||·',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 13.5,
+                          fontSize: 13,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -1145,18 +1160,144 @@ class _ElderInteractiveHomePageState
     );
   }
 
+  // Right side of banner: Frosted-Glass Hydration & Wellness Care Card
+  Widget _buildBannerWellnessCard() {
+    if (!_showHydrationReminder) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.20),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('🌸', style: TextStyle(fontSize: 20)),
+            SizedBox(width: 8),
+            Text(
+              'අද දිනය සතුටින් හා සුවබරව ගත කරන්න! 💕',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 13.5,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 380),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.94),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white, width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: const Color(0xFFEFF6FF),
+              shape: BoxShape.circle,
+              border: Border.all(color: const Color(0xFF93C5FD), width: 1.2),
+            ),
+            alignment: Alignment.center,
+            child: const Text('💧', style: TextStyle(fontSize: 20)),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'ජලය ප්‍රමාණවත් ලෙස පානය කළාද?',
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF1E293B),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    InkWell(
+                      onTap: () => _speak('ජලය ප්‍රමාණවත් ලෙස පානය කිරීමට අමතක නොකරන්න. නිරෝගී සුවයට ජලය අත්‍යවශ්‍යයි.'),
+                      borderRadius: BorderRadius.circular(99),
+                      child: Container(
+                        padding: const EdgeInsets.all(3.5),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFF3E8FF),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(LucideIcons.volume2, size: 14, color: Color(0xFF7E22CE)),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                const Text(
+                  'නිරෝගී සුවයට දිනපතා ජලය පානය ඉතා වැදගත් වේ 🌸',
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF64748B),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          InkWell(
+            onTap: () => setState(() => _showHydrationReminder = false),
+            borderRadius: BorderRadius.circular(99),
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: const BoxDecoration(
+                color: Color(0xFFF1F5F9),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(LucideIcons.x, size: 14, color: Color(0xFF64748B)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // =========================================================================
   // 2.1 DAILY ROUTINE QUESTION CARDS (Placed beautifully below Welcome Banner)
   // =========================================================================
   Widget _buildDailyRoutineSection(DayPeriod period) {
     String card1Icon;
     String card1Title;
+    String card1Subtitle;
     String card1Speak;
     String card1YesFeedback;
     String card1NoFeedback;
 
     String card2Icon;
     String card2Title;
+    String card2Subtitle;
     String card2Speak;
     String card2YesFeedback;
     String card2NoFeedback;
@@ -1165,12 +1306,14 @@ class _ElderInteractiveHomePageState
       case DayPeriod.morning:
         card1Icon = '☕';
         card1Title = 'ඔබ අද තේ බිව්වද?';
+        card1Subtitle = 'උදෑසන උණුසුම් තේ පැන් සමඟ ප්‍රබෝධමත් වන්න ☕';
         card1Speak = 'ඔබ අද තේ බිව්වද?';
         card1YesFeedback = 'ඔබ තේ පානය කර තිබීම සතුටක්!';
         card1NoFeedback = 'ඔබ තවම තේ බීලා නැත්නම්, මම රැකබලා ගන්නාට දැන්වුවා ඔබට උණුසුම් තේ එකක් ගෙන එන්න.';
 
         card2Icon = '🚿';
         card2Title = 'මුහුණ හෝදාගත්තාද?';
+        card2Subtitle = 'නැවුම් පිරිසිදු බවෙන් අද දවස සතුටින් අරඹන්න 🌸';
         card2Speak = 'මුහුණ හෝදාගත්තාද?';
         card2YesFeedback = 'ඉතා විශිෂ්ටයි! ඔබ ප්‍රබෝධමත්ව අද දවස සතුටින් ගත කිරීමට සූදානම්.';
         card2NoFeedback = 'අපි මුහුණ සෝදා ප්‍රබෝධමත් වෙමු. ඔබට උදව් අවශ්‍ය නම් රැකබලා ගන්නා දැනුවත් කර ඇත.';
@@ -1179,12 +1322,14 @@ class _ElderInteractiveHomePageState
       case DayPeriod.afternoon:
         card1Icon = '🍲';
         card1Title = 'දිවා ආහාරය ගත්තාද?';
+        card1Subtitle = 'නියමිත වේලාවට පෝෂ්‍යදායී ආහාර වේලක් ලබාගන්න 🥗';
         card1Speak = 'දිවා ආහාරය ගත්තාද?';
         card1YesFeedback = 'ඔබ දිවා ආහාරය ගෙන තිබීම සතුටක්!';
         card1NoFeedback = 'ඔබ තවම දිවා ආහාරය ගෙන නැත්නම්, ඔබට උදව් කිරීමට රැකබලා ගන්නා දැනුවත් කර ඇත.';
 
         card2Icon = '🛋️';
         card2Title = 'කෙටි විවේකයක් ගත්තාද?';
+        card2Subtitle = 'මනස හා සිරුර ප්‍රබෝධමත්ව තබාගැනීමට විවේකයක් ගන්න 🛋️';
         card2Speak = 'කෙටි විවේකයක් ගත්තාද?';
         card2YesFeedback = 'ඉතා විශිෂ්ටයි! කෙටි විවේකයක් ගැනීමෙන් ඔබේ මනසට සහ සිරුරට නව ප්‍රබෝධයක් ලැබේ.';
         card2NoFeedback = 'සුවදායක කෙටි විවේකයක් ලබා ගැනීමට සහායක කණ්ඩායම දැනුවත් කර ඇත.';
@@ -1193,12 +1338,14 @@ class _ElderInteractiveHomePageState
       case DayPeriod.evening:
         card1Icon = '☕';
         card1Title = 'සවස තේ පැන් පානය කළාද?';
+        card1Subtitle = 'සවස් කාලයේ සුවදායක තේ පැන් වේලක් භුක්ති විඳින්න ☕';
         card1Speak = 'සවස තේ පැන් පානය කළාද?';
         card1YesFeedback = 'සවස උණුසුම් තේ පැන් පානය කර තිබීම සතුටක්!';
         card1NoFeedback = 'ඔබ තවම සවස තේ බීලා නැත්නම්, රැකබලා ගන්නා ඔබ වෙත පැමිණෙනු ඇත.';
 
         card2Icon = '🌿';
         card2Title = 'නැවුම් සුළං සුවය වින්දාද?';
+        card2Subtitle = 'සන්ධ්‍යා සුළං සුවය විඳිමින් මනස සන්සුන් කරගන්න 🍃';
         card2Speak = 'නැවුම් සුළං සුවය වින්දාද?';
         card2YesFeedback = 'නැවුම් සවස සුළං සුවය විඳීම ඔබේ මනස සන්සුන් කරයි!';
         card2NoFeedback = 'සවස නැවුම් සුළං සුවය විඳීමට ඔබට උපකාර කිරීමට රැකබලා ගන්නා පැමිණෙනු ඇත.';
@@ -1207,12 +1354,14 @@ class _ElderInteractiveHomePageState
       case DayPeriod.night:
         card1Icon = '💊';
         card1Title = 'රාත්‍රී ආහාර හා ඖෂධ ගත්තාද?';
+        card1Subtitle = 'නිරෝගී සුවය උදෙසා නියමිත වේලාවට ඖෂධ ලබාගන්න 💊';
         card1Speak = 'රාත්‍රී ආහාර හා ඖෂධ ගත්තාද?';
         card1YesFeedback = 'ඉතා විශිෂ්ටයි! රාත්‍රී ආහාර සහ ඖෂධ නියමිත වේලාවට ලබා ගැනීම නීරෝගී බවට ඉතා වැදගත්.';
         card1NoFeedback = 'ඔබ තවම රාත්‍රී ආහාර හෝ ඖෂධ ගෙන නැත්නම්, ඔබට උදව් කිරීමට රැකබලා ගන්නා දැනුවත් කළා.';
 
         card2Icon = '🛏️';
         card2Title = 'සුව නින්දකට සූදානම්ද?';
+        card2Subtitle = 'සුවදායක නින්දක් සඳහා සන්සුන්ව සැතපෙන්න 🌙';
         card2Speak = 'සුව නින්දකට සූදානම්ද?';
         card2YesFeedback = 'සුවබර, සැනසිලිදායක නින්දක් සහ මිහිරි සිහින ඔබට ප්‍රාර්ථනා කරනවා!';
         card2NoFeedback = 'සුව නින්දකට සූදානම් වීමට ඔබට උපකාර කිරීමට රැකබලා ගන්නා දැනුවත් කර ඇත.';
@@ -1222,6 +1371,7 @@ class _ElderInteractiveHomePageState
     final card1 = _buildSingleRoutineCard(
       icon: card1Icon,
       title: card1Title,
+      subtitle: card1Subtitle,
       speakText: card1Speak,
       isYes: _routine1AnsweredYes,
       isNo: _routine1AnsweredNo,
@@ -1244,6 +1394,7 @@ class _ElderInteractiveHomePageState
     final card2 = _buildSingleRoutineCard(
       icon: card2Icon,
       title: card2Title,
+      subtitle: card2Subtitle,
       speakText: card2Speak,
       isYes: _routine2AnsweredYes,
       isNo: _routine2AnsweredNo,
@@ -1290,6 +1441,7 @@ class _ElderInteractiveHomePageState
   Widget _buildSingleRoutineCard({
     required String icon,
     required String title,
+    required String subtitle,
     required String speakText,
     required bool isYes,
     required bool isNo,
@@ -1297,7 +1449,6 @@ class _ElderInteractiveHomePageState
     required VoidCallback onNo,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(22),
@@ -1305,211 +1456,215 @@ class _ElderInteractiveHomePageState
           color: isYes
               ? const Color(0xFF86EFAC)
               : (isNo ? const Color(0xFFFECACA) : const Color(0xFFE9D5FF)),
-          width: 1.6,
+          width: 1.8,
         ),
         boxShadow: [
           BoxShadow(
             color: isYes
-                ? const Color(0xFF22C55E).withValues(alpha: 0.10)
-                : const Color(0xFF7C3AED).withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
+                ? const Color(0xFF22C55E).withValues(alpha: 0.12)
+                : const Color(0xFF7C3AED).withValues(alpha: 0.07),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Header: Icon badge + Title + Speaker
-          Row(
-            children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: isYes ? const Color(0xFFF0FDF4) : const Color(0xFFFAF5FF),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: isYes ? const Color(0xFFBBF7D0) : const Color(0xFFDDD6FE),
-                    width: 1.2,
-                  ),
-                ),
-                alignment: Alignment.center,
-                child: Text(icon, style: const TextStyle(fontSize: 22)),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: Stack(
+          children: [
+            // Bottom-right purple corner sprig (exact same floral motif as the assessment cards below)
+            Positioned(
+              right: 2,
+              bottom: 2,
+              child: Opacity(
+                opacity: 0.70,
+                child: _buildPurpleCornerSprig(isLeft: false),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 15.5,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF1E1B4B),
-                    letterSpacing: 0.1,
-                  ),
-                ),
-              ),
-              InkWell(
-                onTap: () => _speak(speakText),
-                borderRadius: BorderRadius.circular(99),
-                child: Container(
-                  padding: const EdgeInsets.all(7),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFAF5FF),
-                    shape: BoxShape.circle,
-                    border: Border.all(color: const Color(0xFFDDD6FE), width: 1.1),
-                  ),
-                  child: const Icon(LucideIcons.volume2, size: 16, color: Color(0xFF7C3AED)),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 11),
-
-          // Action Buttons: ඔව් / තවම නැහැ
-          Row(
-            children: [
-              // Yes Button
-              Expanded(
-                child: InkWell(
-                  onTap: onYes,
-                  borderRadius: BorderRadius.circular(99),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 8.5),
-                    decoration: BoxDecoration(
-                      gradient: isYes
-                          ? const LinearGradient(
-                              colors: [Color(0xFF15803D), Color(0xFF16A34A)],
-                            )
-                          : const LinearGradient(
-                              colors: [Color(0xFF16A34A), Color(0xFF22C55E)],
-                            ),
-                      borderRadius: BorderRadius.circular(99),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF16A34A).withValues(alpha: isYes ? 0.38 : 0.22),
-                          blurRadius: 6,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    alignment: Alignment.center,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(LucideIcons.check, size: 15, color: Colors.white),
-                        const SizedBox(width: 5),
-                        Text(
-                          isYes ? 'කළා ✓' : 'ඔව්',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0.2,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-
-              // Not yet Button
-              Expanded(
-                child: InkWell(
-                  onTap: onNo,
-                  borderRadius: BorderRadius.circular(99),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 8.5),
-                    decoration: BoxDecoration(
-                      color: isNo ? const Color(0xFFFEF2F2) : Colors.white,
-                      borderRadius: BorderRadius.circular(99),
-                      border: Border.all(
-                        color: isNo ? const Color(0xFFEF4444) : const Color(0xFFCBD5E1),
-                        width: isNo ? 1.5 : 1.2,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.02),
-                          blurRadius: 4,
-                          offset: const Offset(0, 1),
-                        ),
-                      ],
-                    ),
-                    alignment: Alignment.center,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          LucideIcons.clock,
-                          size: 13,
-                          color: isNo ? const Color(0xFFEF4444) : const Color(0xFF64748B),
-                        ),
-                        const SizedBox(width: 5),
-                        Text(
-                          'තවම නැහැ',
-                          style: TextStyle(
-                            color: isNo ? const Color(0xFFEF4444) : const Color(0xFF475569),
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Bottom Hydration Reminder
-  Widget _buildHydrationReminderPill() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.95),
-        borderRadius: BorderRadius.circular(99),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text('🔔', style: TextStyle(fontSize: 16)),
-          const SizedBox(width: 8),
-          InkWell(
-            onTap: () => _speak('ජලය ප්‍රමාණවත් ලෙස පානය කිරීමට අමතක නොකරන්න.'),
-            child: const Row(
-              children: [
-                Text(
-                  'ජලය ප්‍රමාණවත් ලෙස පානය කිරීමට අමතක නොකරන්න. 💧',
-                  style: TextStyle(
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF1E293B),
-                  ),
-                ),
-                SizedBox(width: 8),
-                Icon(LucideIcons.volume2, size: 16, color: Color(0xFF7E22CE)),
-              ],
             ),
-          ),
-          const SizedBox(width: 12),
-          InkWell(
-            onTap: () => setState(() => _showHydrationReminder = false),
-            child: const Icon(LucideIcons.x, size: 16, color: Color(0xFF94A3B8)),
-          ),
-        ],
+
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Top Row: Squircle Badge + Title/Subtitle Column + Speaker Button
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      // Squircle Badge
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: isYes ? const Color(0xFFDCFCE7) : const Color(0xFFF3E8FF),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: isYes ? const Color(0xFF86EFAC) : const Color(0xFFD8B4FE),
+                            width: 1.5,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: (isYes ? const Color(0xFF16A34A) : const Color(0xFF7E22CE))
+                                  .withValues(alpha: 0.16),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(icon, style: const TextStyle(fontSize: 24)),
+                      ),
+                      const SizedBox(width: 12),
+
+                      // Title & Caring Subtitle
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              title,
+                              style: const TextStyle(
+                                fontSize: 16.5,
+                                fontWeight: FontWeight.w900,
+                                color: Color(0xFF1E1B4B),
+                                letterSpacing: 0.1,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              subtitle,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF6B7280),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+
+                      // Speaker Button
+                      InkWell(
+                        onTap: () => _speak('$title $subtitle'),
+                        borderRadius: BorderRadius.circular(99),
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFAF5FF),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: const Color(0xFFDDD6FE), width: 1.2),
+                          ),
+                          child: const Icon(LucideIcons.volume2, size: 16, color: Color(0xFF7C3AED)),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Action Buttons Row (Elder-friendly, pill-shaped, crisp & distinct)
+                  Row(
+                    children: [
+                      // Yes Button
+                      Expanded(
+                        child: InkWell(
+                          onTap: onYes,
+                          borderRadius: BorderRadius.circular(99),
+                          child: Container(
+                            height: 42,
+                            decoration: BoxDecoration(
+                              gradient: isYes
+                                  ? const LinearGradient(
+                                      colors: [Color(0xFF15803D), Color(0xFF16A34A)],
+                                    )
+                                  : const LinearGradient(
+                                      colors: [Color(0xFF16A34A), Color(0xFF22C55E)],
+                                    ),
+                              borderRadius: BorderRadius.circular(99),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF16A34A).withValues(alpha: isYes ? 0.38 : 0.24),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            alignment: Alignment.center,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(LucideIcons.check, size: 17, color: Colors.white),
+                                const SizedBox(width: 6),
+                                Text(
+                                  isYes ? 'ඔව්, ගත්තා ✓' : 'ඔව්, ගත්තා',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14.5,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 0.2,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+
+                      // Not Yet Button
+                      Expanded(
+                        child: InkWell(
+                          onTap: onNo,
+                          borderRadius: BorderRadius.circular(99),
+                          child: Container(
+                            height: 42,
+                            decoration: BoxDecoration(
+                              color: isNo ? const Color(0xFFFEF2F2) : const Color(0xFFF8FAFC),
+                              borderRadius: BorderRadius.circular(99),
+                              border: Border.all(
+                                color: isNo ? const Color(0xFFEF4444) : const Color(0xFFCBD5E1),
+                                width: isNo ? 1.6 : 1.3,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.03),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            alignment: Alignment.center,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  LucideIcons.clock,
+                                  size: 15,
+                                  color: isNo ? const Color(0xFFEF4444) : const Color(0xFF64748B),
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'තවම නැහැ',
+                                  style: TextStyle(
+                                    color: isNo ? const Color(0xFFEF4444) : const Color(0xFF475569),
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
