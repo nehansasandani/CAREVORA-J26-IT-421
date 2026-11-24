@@ -398,11 +398,11 @@ class _ElderInteractiveHomePageState
                   width: 68,
                   height: 68,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFDCFCE7),
+                    color: const Color(0xFFF3E8FF),
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF16A34A).withValues(alpha: 0.22),
+                        color: const Color(0xFF7E22CE).withValues(alpha: 0.22),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
@@ -420,7 +420,7 @@ class _ElderInteractiveHomePageState
                   style: const TextStyle(
                     fontSize: 18.5,
                     fontWeight: FontWeight.w800,
-                    color: Color(0xFF15803D),
+                    color: Color(0xFF581C87),
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -509,7 +509,7 @@ class _ElderInteractiveHomePageState
                       child: ElevatedButton(
                         onPressed: () => Navigator.of(ctx).pop(),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF16A34A),
+                          backgroundColor: const Color(0xFF7C3AED),
                           padding: const EdgeInsets.symmetric(vertical: 11),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                           elevation: 3,
@@ -717,21 +717,21 @@ class _ElderInteractiveHomePageState
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 3.5),
         decoration: BoxDecoration(
-          color: const Color(0xFFF0FDF4),
+          color: const Color(0xFFFAF5FF),
           borderRadius: BorderRadius.circular(99),
-          border: Border.all(color: const Color(0xFFBBF7D0), width: 1.1),
+          border: Border.all(color: const Color(0xFFDDD6FE), width: 1.1),
         ),
         child: const Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('✅', style: TextStyle(fontSize: 15)),
+            Text('✨', style: TextStyle(fontSize: 14)),
             SizedBox(width: 5),
             Text(
               'සැසිය සම්පූර්ණයි',
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w800,
-                color: Color(0xFF15803D),
+                color: Color(0xFF6D28D9),
               ),
             ),
           ],
@@ -1454,14 +1454,14 @@ class _ElderInteractiveHomePageState
         borderRadius: BorderRadius.circular(22),
         border: Border.all(
           color: isYes
-              ? const Color(0xFF86EFAC)
+              ? const Color(0xFFC084FC)
               : (isNo ? const Color(0xFFFECACA) : const Color(0xFFE9D5FF)),
           width: 1.8,
         ),
         boxShadow: [
           BoxShadow(
             color: isYes
-                ? const Color(0xFF22C55E).withValues(alpha: 0.12)
+                ? const Color(0xFF7C3AED).withValues(alpha: 0.14)
                 : const Color(0xFF7C3AED).withValues(alpha: 0.07),
             blurRadius: 14,
             offset: const Offset(0, 4),
@@ -1497,16 +1497,15 @@ class _ElderInteractiveHomePageState
                         width: 48,
                         height: 48,
                         decoration: BoxDecoration(
-                          color: isYes ? const Color(0xFFDCFCE7) : const Color(0xFFF3E8FF),
+                          color: isYes ? const Color(0xFFF3E8FF) : const Color(0xFFFAF5FF),
                           borderRadius: BorderRadius.circular(14),
                           border: Border.all(
-                            color: isYes ? const Color(0xFF86EFAC) : const Color(0xFFD8B4FE),
+                            color: isYes ? const Color(0xFFC084FC) : const Color(0xFFD8B4FE),
                             width: 1.5,
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: (isYes ? const Color(0xFF16A34A) : const Color(0xFF7E22CE))
-                                  .withValues(alpha: 0.16),
+                              color: const Color(0xFF7E22CE).withValues(alpha: isYes ? 0.20 : 0.12),
                               blurRadius: 6,
                               offset: const Offset(0, 2),
                             ),
@@ -1567,7 +1566,7 @@ class _ElderInteractiveHomePageState
                   // Action Buttons Row (Elder-friendly, pill-shaped, crisp & distinct)
                   Row(
                     children: [
-                      // Yes Button
+                      // Yes Button (Royal Purple Palette)
                       Expanded(
                         child: InkWell(
                           onTap: onYes,
@@ -1577,15 +1576,15 @@ class _ElderInteractiveHomePageState
                             decoration: BoxDecoration(
                               gradient: isYes
                                   ? const LinearGradient(
-                                      colors: [Color(0xFF15803D), Color(0xFF16A34A)],
+                                      colors: [Color(0xFF581C87), Color(0xFF7C3AED)],
                                     )
                                   : const LinearGradient(
-                                      colors: [Color(0xFF16A34A), Color(0xFF22C55E)],
+                                      colors: [Color(0xFF6D28D9), Color(0xFF8B5CF6)],
                                     ),
                               borderRadius: BorderRadius.circular(99),
                               boxShadow: [
                                 BoxShadow(
-                                  color: const Color(0xFF16A34A).withValues(alpha: isYes ? 0.38 : 0.24),
+                                  color: const Color(0xFF7C3AED).withValues(alpha: isYes ? 0.38 : 0.26),
                                   blurRadius: 8,
                                   offset: const Offset(0, 3),
                                 ),
@@ -1621,10 +1620,10 @@ class _ElderInteractiveHomePageState
                           child: Container(
                             height: 42,
                             decoration: BoxDecoration(
-                              color: isNo ? const Color(0xFFFEF2F2) : const Color(0xFFF8FAFC),
+                              color: isNo ? const Color(0xFFFEF2F2) : const Color(0xFFFAF5FF),
                               borderRadius: BorderRadius.circular(99),
                               border: Border.all(
-                                color: isNo ? const Color(0xFFEF4444) : const Color(0xFFCBD5E1),
+                                color: isNo ? const Color(0xFFEF4444) : const Color(0xFFD8B4FE),
                                 width: isNo ? 1.6 : 1.3,
                               ),
                               boxShadow: [
@@ -1642,13 +1641,13 @@ class _ElderInteractiveHomePageState
                                 Icon(
                                   LucideIcons.clock,
                                   size: 15,
-                                  color: isNo ? const Color(0xFFEF4444) : const Color(0xFF64748B),
+                                  color: isNo ? const Color(0xFFEF4444) : const Color(0xFF7C3AED),
                                 ),
                                 const SizedBox(width: 6),
                                 Text(
                                   'තවම නැහැ',
                                   style: TextStyle(
-                                    color: isNo ? const Color(0xFFEF4444) : const Color(0xFF475569),
+                                    color: isNo ? const Color(0xFFEF4444) : const Color(0xFF581C87),
                                     fontSize: 14,
                                     fontWeight: FontWeight.w700,
                                   ),
@@ -1748,7 +1747,7 @@ class _ElderInteractiveHomePageState
                 isDone: emotionalDone,
                 child: _buildTopAssessmentCard(
                   backgroundColor: Colors.white,
-                  borderColor: emotionalDone ? const Color(0xFF86EFAC) : const Color(0xFFE9D5FF),
+                  borderColor: emotionalDone ? const Color(0xFFC084FC) : const Color(0xFFE9D5FF),
                   iconBorderColor: const Color(0xFFC084FC),
                   badgeIcon: '🧠',
                   title: 'මානසික ක්‍රියාකාරකම්',
@@ -1769,7 +1768,7 @@ class _ElderInteractiveHomePageState
                       ? 'සම්පූර්ණයි ($nextSlotTime ට) ⏰'
                       : '$slotAction ක්‍රියාකාරකම කරන්න',
                   buttonGradient: emotionalDone
-                      ? const [Color(0xFF16A34A), Color(0xFF22C55E)]
+                      ? const [Color(0xFF6D28D9), Color(0xFF8B5CF6)]
                       : const [Color(0xFF4C1D95), Color(0xFF6B21A8)],
                   isEmotionalCard: true,
                   bottomDecoration: null,
@@ -1798,7 +1797,7 @@ class _ElderInteractiveHomePageState
                 isDone: memoryDone,
                 child: _buildTopAssessmentCard(
                   backgroundColor: Colors.white,
-                  borderColor: memoryDone ? const Color(0xFF86EFAC) : const Color(0xFFE9D5FF),
+                  borderColor: memoryDone ? const Color(0xFFC084FC) : const Color(0xFFE9D5FF),
                   iconBorderColor: const Color(0xFFC084FC),
                   badgeIcon: '🧩',
                   title: 'මනස පරීක්ෂණ ක්‍රියාකාරකම්',
@@ -1819,7 +1818,7 @@ class _ElderInteractiveHomePageState
                       ? 'සම්පූර්ණයි ($nextSlotTime ට) ⏰'
                       : '$slotAction ක්‍රීඩාව කරන්න',
                   buttonGradient: memoryDone
-                      ? const [Color(0xFF16A34A), Color(0xFF22C55E)]
+                      ? const [Color(0xFF6D28D9), Color(0xFF8B5CF6)]
                       : const [Color(0xFF4C1D95), Color(0xFF6B21A8)],
                   isEmotionalCard: false,
                   bottomDecoration: null,
