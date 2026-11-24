@@ -833,7 +833,11 @@ class _ElderInteractiveHomePageState
               children: [
                 // 2. Hero Purple Interactive Greeting Banner
                 _buildInteractiveHeroBanner(elderDisplayName, dayPeriod, authState.avatarUrl),
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
+
+                // 2.1 Daily Routine Cards (Placed below the Welcome Banner)
+                _buildDailyRoutineSection(dayPeriod),
+                const SizedBox(height: 22),
 
                 // 3. Quick Access Title & Large Action Cards
                 _buildQuickAccessSection(context, isSinhala),
@@ -941,113 +945,29 @@ class _ElderInteractiveHomePageState
   Widget _buildInteractiveHeroBanner(String displayName, DayPeriod period, String? avatarUrl) {
     String greetingTitle;
     String greetingSubtitle;
-    String mascotBubble;
-    String mascotSpeech;
-
-    String card1Icon;
-    String card1Title;
-    String card1Speak;
-    String card1YesFeedback;
-    String card1NoFeedback;
-
-    String card2Icon;
-    String card2Title;
-    String card2Speak;
-    String card2YesFeedback;
-    String card2NoFeedback;
 
     switch (period) {
       case DayPeriod.morning:
         greetingTitle = 'සුබ උදෑසනක්, $displayName! 👋';
         greetingSubtitle = 'ප්‍රීතිමත්, සුවබර උදෑසනක්! 💕';
-        mascotBubble = 'අද උදයේ\nමූලික පුරුදු\nකරගත්තාද? 💜';
-        mascotSpeech = 'නෆියා ඔබෙන් අසනවා: අද උදයේ මූලික පුරුදු කරගත්තාද?';
-
-        card1Icon = '☕';
-        card1Title = 'ඔබ අද\nතේ බිව්වද?';
-        card1Speak = 'ඔබ අද තේ බිව්වද?';
-        card1YesFeedback = 'ඔබ තේ පානය කර තිබීම සතුටක්!';
-        card1NoFeedback = 'ඔබ තවම තේ බීලා නැත්නම්, මම රැකබලා ගන්නාට දැන්වුවා ඔබට උණුසුම් තේ එකක් ගෙන එන්න.';
-
-        card2Icon = '🚿';
-        card2Title = 'මුහුණ\nහෝදාගත්තාද?';
-        card2Speak = 'මුහුණ හෝදාගත්තාද?';
-        card2YesFeedback = 'ඉතා විශිෂ්ටයි! ඔබ ප්‍රබෝධමත්ව අද දවස සතුටින් ගත කිරීමට සූදානම්.';
-        card2NoFeedback = 'අපි මුහුණ සෝදා ප්‍රබෝධමත් වෙමු. ඔබට උදව් අවශ්‍ය නම් රැකබලා ගන්නා දැනුවත් කර ඇත.';
         break;
 
       case DayPeriod.afternoon:
         greetingTitle = 'සුබ දහවලක්, $displayName! 👋';
         greetingSubtitle = 'ප්‍රබෝධමත්, සුවදායක දහවලක්! 💕';
-        mascotBubble = 'අද දහවල්\nසුවපහසු විවේකය\nලබාගත්තාද? 💜';
-        mascotSpeech = 'නෆියා ඔබෙන් අසනවා: අද දහවල් සුවපහසු විවේකය ලබාගත්තාද?';
-
-        card1Icon = '🍲';
-        card1Title = 'දිවා ආහාරය\nගත්තාද?';
-        card1Speak = 'දිවා ආහාරය ගත්තාද?';
-        card1YesFeedback = 'ඔබ දිවා ආහාරය ගෙන තිබීම සතුටක්!';
-        card1NoFeedback = 'ඔබ තවම දිවා ආහාරය ගෙන නැත්නම්, ඔබට උදව් කිරීමට රැකබලා ගන්නා දැනුවත් කර ඇත.';
-
-        card2Icon = '🛋️';
-        card2Title = 'කෙටි විවේකයක්\nගත්තාද?';
-        card2Speak = 'කෙටි විවේකයක් ගත්තාද?';
-        card2YesFeedback = 'ඉතා විශිෂ්ටයි! කෙටි විවේකයක් ගැනීමෙන් ඔබේ මනසට සහ සිරුරට නව ප්‍රබෝධයක් ලැබේ.';
-        card2NoFeedback = 'සුවදායක කෙටි විවේකයක් ලබා ගැනීමට සහායක කණ්ඩායම දැනුවත් කර ඇත.';
         break;
 
       case DayPeriod.evening:
         // 4:00 PM to 6:59 PM (Evening / සවස / සන්ධ්‍යාව)
         greetingTitle = 'සුබ සන්ධ්‍යාවක්, $displayName! 👋';
         greetingSubtitle = 'සන්සුන්, ප්‍රීතිමත් සන්ධ්‍යාවක්! 💕';
-        mascotBubble = 'අද සවස\nනැවුම් සුවය\nවින්දාද? 💜';
-        mascotSpeech = 'නෆියා ඔබෙන් අසනවා: අද සවස නැවුම් සුවය වින්දාද?';
-
-        card1Icon = '☕';
-        card1Title = 'සවස තේ පැන්\nපානය කළාද?';
-        card1Speak = 'සවස තේ පැන් පානය කළාද?';
-        card1YesFeedback = 'සවස උණුසුම් තේ පැන් පානය කර තිබීම සතුටක්!';
-        card1NoFeedback = 'ඔබ තවම සවස තේ බීලා නැත්නම්, රැකබලා ගන්නා ඔබ වෙත පැමිණෙනු ඇත.';
-
-        card2Icon = '🌿';
-        card2Title = 'නැවුම් සුළං\nසුවය වින්දාද?';
-        card2Speak = 'නැවුම් සුළං සුවය වින්දාද?';
-        card2YesFeedback = 'නැවුම් සවස සුළං සුවය විඳීම ඔබේ මනස සන්සුන් කරයි!';
-        card2NoFeedback = 'සවස නැවුම් සුළං සුවය විඳීමට ඔබට උපකාර කිරීමට රැකබලා ගන්නා පැමිණෙනු ඇත.';
         break;
 
       case DayPeriod.night:
         // 7:00 PM onwards (Night / රාත්‍රිය)
         greetingTitle = 'සුබ රාත්‍රියක්, $displayName! 👋';
         greetingSubtitle = 'සුවබර, සැනසිලිදායක රාත්‍රියක්! 💕';
-        mascotBubble = 'අද රාත්‍රී\nසුව නින්දකට\nසූදානම්ද? 💜';
-        mascotSpeech = 'නෆියා ඔබෙන් අසනවා: අද රාත්‍රී සුව නින්දකට සූදානම්ද?';
-
-        card1Icon = '💊';
-        card1Title = 'රාත්‍රී ආහාර හා\nඖෂධ ගත්තාද?';
-        card1Speak = 'රාත්‍රී ආහාර හා ඖෂධ ගත්තාද?';
-        card1YesFeedback = 'ඉතා විශිෂ්ටයි! රාත්‍රී ආහාර සහ ඖෂධ නියමිත වේලාවට ලබා ගැනීම නීරෝගී බවට ඉතා වැදගත්.';
-        card1NoFeedback = 'ඔබ තවම රාත්‍රී ආහාර හෝ ඖෂධ ගෙන නැත්නම්, ඔබට උදව් කිරීමට රැකබලා ගන්නා දැනුවත් කළා.';
-
-        card2Icon = '🛏️';
-        card2Title = 'සුව නින්දකට\nසූදානම්ද?';
-        card2Speak = 'සුව නින්දකට සූදානම්ද?';
-        card2YesFeedback = 'සුවබර, සැනසිලිදායක නින්දක් සහ මිහිරි සිහින ඔබට ප්‍රාර්ථනා කරනවා!';
-        card2NoFeedback = 'සුව නින්දකට සූදානම් වීමට ඔබට උපකාර කිරීමට රැකබලා ගන්නා දැනුවත් කර ඇත.';
         break;
-    }
-
-    // Dynamic Mascot Reminder based on 3 Daily Assessment Slots
-    final currentSlot = _getCurrentAssessmentSlot(_now);
-    final currentSlotName = _getSlotNameSi(currentSlot);
-    final emotionalSlotDone = _isSlotDone('emotional', currentSlot);
-    final memorySlotDone = _isSlotDone('memory', currentSlot);
-
-    if (!emotionalSlotDone) {
-      mascotBubble = 'අද $currentSlotName\nසුවතා කතාබහ\nකරමුද? 💜';
-      mascotSpeech = 'නෆියා ඔබෙන් අසනවා: අද $currentSlotName මානසික සුවතා කතාබහ කරමුද?';
-    } else if (!memorySlotDone) {
-      mascotBubble = 'අද $currentSlotName\nමතක ක්‍රීඩා\nකරමුද? 🧩';
-      mascotSpeech = 'නෆියා ඔබෙන් අසනවා: අද $currentSlotName මතක පරීක්ෂාව සහ විනෝද ක්‍රීඩා කරමුද?';
     }
 
     return Container(
@@ -1114,67 +1034,15 @@ class _ElderInteractiveHomePageState
 
             // Main Banner Content
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      final isWide = constraints.maxWidth >= 1020;
-                      if (isWide) {
-                        return Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            // Left: Elder Photo & Dynamic Period Greeting
-                            Expanded(
-                              flex: 11,
-                              child: _buildBannerLeftGreeting(greetingTitle, greetingSubtitle, avatarUrl),
-                            ),
-                            const SizedBox(width: 20),
-
-                            // Right: Routine Cards
-                            Expanded(
-                              flex: 14,
-                              child: _buildBannerRightRoutineCards(
-                                card1Icon: card1Icon,
-                                card1Title: card1Title,
-                                card1Speak: card1Speak,
-                                card1YesFeedback: card1YesFeedback,
-                                card1NoFeedback: card1NoFeedback,
-                                card2Icon: card2Icon,
-                                card2Title: card2Title,
-                                card2Speak: card2Speak,
-                                card2YesFeedback: card2YesFeedback,
-                                card2NoFeedback: card2NoFeedback,
-                              ),
-                            ),
-                          ],
-                        );
-                      } else {
-                        return Column(
-                          children: [
-                            _buildBannerLeftGreeting(greetingTitle, greetingSubtitle, avatarUrl),
-                            const SizedBox(height: 14),
-                            _buildBannerRightRoutineCards(
-                              card1Icon: card1Icon,
-                              card1Title: card1Title,
-                              card1Speak: card1Speak,
-                              card1YesFeedback: card1YesFeedback,
-                              card1NoFeedback: card1NoFeedback,
-                              card2Icon: card2Icon,
-                              card2Title: card2Title,
-                              card2Speak: card2Speak,
-                              card2YesFeedback: card2YesFeedback,
-                              card2NoFeedback: card2NoFeedback,
-                            ),
-                          ],
-                        );
-                      }
-                    },
-                  ),
+                  _buildBannerLeftGreeting(greetingTitle, greetingSubtitle, avatarUrl),
 
                   // Bottom Hydration Reminder Pill
                   if (_showHydrationReminder) ...[
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 12),
                     _buildHydrationReminderPill(),
                   ],
                 ],
@@ -1277,145 +1145,145 @@ class _ElderInteractiveHomePageState
     );
   }
 
-  // Center mascot & dynamic speech bubble
-  Widget _buildBannerCenterMascot(String bubbleText, String speakText) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        // Robot mascot with breathing animation
-        AnimatedBuilder(
-          animation: _pulseController,
-          builder: (context, child) {
-            final dy = math.sin(_pulseController.value * math.pi) * 4.0;
-            return Transform.translate(
-              offset: Offset(0, dy),
-              child: Image.asset(
-                'assets/images/clean_robot_transparent.png',
-                width: 68,
-                height: 68,
-                fit: BoxFit.contain,
-                errorBuilder: (_, __, ___) => Image.asset(
-                  'assets/images/elder_robot_mascot.png',
-                  width: 68,
-                  height: 68,
-                  fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) => const Icon(LucideIcons.bot, size: 50, color: Colors.white),
-                ),
-              ),
-            );
-          },
-        ),
-        const SizedBox(width: 8),
+  // =========================================================================
+  // 2.1 DAILY ROUTINE QUESTION CARDS (Placed beautifully below Welcome Banner)
+  // =========================================================================
+  Widget _buildDailyRoutineSection(DayPeriod period) {
+    String card1Icon;
+    String card1Title;
+    String card1Speak;
+    String card1YesFeedback;
+    String card1NoFeedback;
 
-        // Speech bubble
-        Flexible(
-          child: InkWell(
-            onTap: () => _speak(speakText),
-            borderRadius: BorderRadius.circular(16),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.15),
-                    blurRadius: 8,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Flexible(
-                    child: Text(
-                      bubbleText,
-                      style: const TextStyle(
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF6B21A8),
-                        height: 1.25,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  const Icon(LucideIcons.volume2, size: 16, color: Color(0xFF7E22CE)),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
+    String card2Icon;
+    String card2Title;
+    String card2Speak;
+    String card2YesFeedback;
+    String card2NoFeedback;
+
+    switch (period) {
+      case DayPeriod.morning:
+        card1Icon = '☕';
+        card1Title = 'ඔබ අද තේ බිව්වද?';
+        card1Speak = 'ඔබ අද තේ බිව්වද?';
+        card1YesFeedback = 'ඔබ තේ පානය කර තිබීම සතුටක්!';
+        card1NoFeedback = 'ඔබ තවම තේ බීලා නැත්නම්, මම රැකබලා ගන්නාට දැන්වුවා ඔබට උණුසුම් තේ එකක් ගෙන එන්න.';
+
+        card2Icon = '🚿';
+        card2Title = 'මුහුණ හෝදාගත්තාද?';
+        card2Speak = 'මුහුණ හෝදාගත්තාද?';
+        card2YesFeedback = 'ඉතා විශිෂ්ටයි! ඔබ ප්‍රබෝධමත්ව අද දවස සතුටින් ගත කිරීමට සූදානම්.';
+        card2NoFeedback = 'අපි මුහුණ සෝදා ප්‍රබෝධමත් වෙමු. ඔබට උදව් අවශ්‍ය නම් රැකබලා ගන්නා දැනුවත් කර ඇත.';
+        break;
+
+      case DayPeriod.afternoon:
+        card1Icon = '🍲';
+        card1Title = 'දිවා ආහාරය ගත්තාද?';
+        card1Speak = 'දිවා ආහාරය ගත්තාද?';
+        card1YesFeedback = 'ඔබ දිවා ආහාරය ගෙන තිබීම සතුටක්!';
+        card1NoFeedback = 'ඔබ තවම දිවා ආහාරය ගෙන නැත්නම්, ඔබට උදව් කිරීමට රැකබලා ගන්නා දැනුවත් කර ඇත.';
+
+        card2Icon = '🛋️';
+        card2Title = 'කෙටි විවේකයක් ගත්තාද?';
+        card2Speak = 'කෙටි විවේකයක් ගත්තාද?';
+        card2YesFeedback = 'ඉතා විශිෂ්ටයි! කෙටි විවේකයක් ගැනීමෙන් ඔබේ මනසට සහ සිරුරට නව ප්‍රබෝධයක් ලැබේ.';
+        card2NoFeedback = 'සුවදායක කෙටි විවේකයක් ලබා ගැනීමට සහායක කණ්ඩායම දැනුවත් කර ඇත.';
+        break;
+
+      case DayPeriod.evening:
+        card1Icon = '☕';
+        card1Title = 'සවස තේ පැන් පානය කළාද?';
+        card1Speak = 'සවස තේ පැන් පානය කළාද?';
+        card1YesFeedback = 'සවස උණුසුම් තේ පැන් පානය කර තිබීම සතුටක්!';
+        card1NoFeedback = 'ඔබ තවම සවස තේ බීලා නැත්නම්, රැකබලා ගන්නා ඔබ වෙත පැමිණෙනු ඇත.';
+
+        card2Icon = '🌿';
+        card2Title = 'නැවුම් සුළං සුවය වින්දාද?';
+        card2Speak = 'නැවුම් සුළං සුවය වින්දාද?';
+        card2YesFeedback = 'නැවුම් සවස සුළං සුවය විඳීම ඔබේ මනස සන්සුන් කරයි!';
+        card2NoFeedback = 'සවස නැවුම් සුළං සුවය විඳීමට ඔබට උපකාර කිරීමට රැකබලා ගන්නා පැමිණෙනු ඇත.';
+        break;
+
+      case DayPeriod.night:
+        card1Icon = '💊';
+        card1Title = 'රාත්‍රී ආහාර හා ඖෂධ ගත්තාද?';
+        card1Speak = 'රාත්‍රී ආහාර හා ඖෂධ ගත්තාද?';
+        card1YesFeedback = 'ඉතා විශිෂ්ටයි! රාත්‍රී ආහාර සහ ඖෂධ නියමිත වේලාවට ලබා ගැනීම නීරෝගී බවට ඉතා වැදගත්.';
+        card1NoFeedback = 'ඔබ තවම රාත්‍රී ආහාර හෝ ඖෂධ ගෙන නැත්නම්, ඔබට උදව් කිරීමට රැකබලා ගන්නා දැනුවත් කළා.';
+
+        card2Icon = '🛏️';
+        card2Title = 'සුව නින්දකට සූදානම්ද?';
+        card2Speak = 'සුව නින්දකට සූදානම්ද?';
+        card2YesFeedback = 'සුවබර, සැනසිලිදායක නින්දක් සහ මිහිරි සිහින ඔබට ප්‍රාර්ථනා කරනවා!';
+        card2NoFeedback = 'සුව නින්දකට සූදානම් වීමට ඔබට උපකාර කිරීමට රැකබලා ගන්නා දැනුවත් කර ඇත.';
+        break;
+    }
+
+    final card1 = _buildSingleRoutineCard(
+      icon: card1Icon,
+      title: card1Title,
+      speakText: card1Speak,
+      isYes: _routine1AnsweredYes,
+      isNo: _routine1AnsweredNo,
+      onYes: () {
+        setState(() {
+          _routine1AnsweredYes = true;
+          _routine1AnsweredNo = false;
+        });
+        _speak(card1YesFeedback);
+      },
+      onNo: () {
+        setState(() {
+          _routine1AnsweredYes = false;
+          _routine1AnsweredNo = true;
+        });
+        _speak(card1NoFeedback);
+      },
     );
-  }
 
-  // Right side: Routine Question Cards
-  Widget _buildBannerRightRoutineCards({
-    required String card1Icon,
-    required String card1Title,
-    required String card1Speak,
-    required String card1YesFeedback,
-    required String card1NoFeedback,
-    required String card2Icon,
-    required String card2Title,
-    required String card2Speak,
-    required String card2YesFeedback,
-    required String card2NoFeedback,
-  }) {
-    return Row(
-      children: [
-        // Card 1
-        Expanded(
-          child: _buildSingleRoutineCard(
-            icon: card1Icon,
-            title: card1Title,
-            speakText: card1Speak,
-            isYes: _routine1AnsweredYes,
-            isNo: _routine1AnsweredNo,
-            onYes: () {
-              setState(() {
-                _routine1AnsweredYes = true;
-                _routine1AnsweredNo = false;
-              });
-              _speak(card1YesFeedback);
-            },
-            onNo: () {
-              setState(() {
-                _routine1AnsweredYes = false;
-                _routine1AnsweredNo = true;
-              });
-              _speak(card1NoFeedback);
-            },
-          ),
-        ),
-        const SizedBox(width: 10),
+    final card2 = _buildSingleRoutineCard(
+      icon: card2Icon,
+      title: card2Title,
+      speakText: card2Speak,
+      isYes: _routine2AnsweredYes,
+      isNo: _routine2AnsweredNo,
+      onYes: () {
+        setState(() {
+          _routine2AnsweredYes = true;
+          _routine2AnsweredNo = false;
+        });
+        _speak(card2YesFeedback);
+      },
+      onNo: () {
+        setState(() {
+          _routine2AnsweredYes = false;
+          _routine2AnsweredNo = true;
+        });
+        _speak(card2NoFeedback);
+      },
+    );
 
-        // Card 2
-        Expanded(
-          child: _buildSingleRoutineCard(
-            icon: card2Icon,
-            title: card2Title,
-            speakText: card2Speak,
-            isYes: _routine2AnsweredYes,
-            isNo: _routine2AnsweredNo,
-            onYes: () {
-              setState(() {
-                _routine2AnsweredYes = true;
-                _routine2AnsweredNo = false;
-              });
-              _speak(card2YesFeedback);
-            },
-            onNo: () {
-              setState(() {
-                _routine2AnsweredYes = false;
-                _routine2AnsweredNo = true;
-              });
-              _speak(card2NoFeedback);
-            },
-          ),
-        ),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWide = constraints.maxWidth >= 720;
+        if (isWide) {
+          return Row(
+            children: [
+              Expanded(child: card1),
+              const SizedBox(width: 16),
+              Expanded(child: card2),
+            ],
+          );
+        } else {
+          return Column(
+            children: [
+              card1,
+              const SizedBox(height: 12),
+              card2,
+            ],
+          );
+        }
+      },
     );
   }
 
@@ -1429,13 +1297,21 @@ class _ElderInteractiveHomePageState
     required VoidCallback onNo,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: isYes
+              ? const Color(0xFF86EFAC)
+              : (isNo ? const Color(0xFFFECACA) : const Color(0xFFE9D5FF)),
+          width: 1.6,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.10),
+            color: isYes
+                ? const Color(0xFF22C55E).withValues(alpha: 0.10)
+                : const Color(0xFF7C3AED).withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
@@ -1444,32 +1320,51 @@ class _ElderInteractiveHomePageState
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Header: Icon + Title + Speaker
+          // Header: Icon badge + Title + Speaker
           Row(
             children: [
-              Text(icon, style: const TextStyle(fontSize: 24)),
-              const SizedBox(width: 8),
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: isYes ? const Color(0xFFF0FDF4) : const Color(0xFFFAF5FF),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isYes ? const Color(0xFFBBF7D0) : const Color(0xFFDDD6FE),
+                    width: 1.2,
+                  ),
+                ),
+                alignment: Alignment.center,
+                child: Text(icon, style: const TextStyle(fontSize: 22)),
+              ),
+              const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   title,
                   style: const TextStyle(
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF1E293B),
-                    height: 1.2,
+                    fontSize: 15.5,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF1E1B4B),
+                    letterSpacing: 0.1,
                   ),
                 ),
               ),
               InkWell(
                 onTap: () => _speak(speakText),
-                child: const Padding(
-                  padding: EdgeInsets.all(3.0),
-                  child: Icon(LucideIcons.volume2, size: 16, color: Color(0xFF7E22CE)),
+                borderRadius: BorderRadius.circular(99),
+                child: Container(
+                  padding: const EdgeInsets.all(7),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFAF5FF),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: const Color(0xFFDDD6FE), width: 1.1),
+                  ),
+                  child: const Icon(LucideIcons.volume2, size: 16, color: Color(0xFF7C3AED)),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 11),
 
           // Action Buttons: ඔව් / තවම නැහැ
           Row(
@@ -1480,32 +1375,37 @@ class _ElderInteractiveHomePageState
                   onTap: onYes,
                   borderRadius: BorderRadius.circular(99),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 7),
+                    padding: const EdgeInsets.symmetric(vertical: 8.5),
                     decoration: BoxDecoration(
-                      color: isYes ? const Color(0xFF16A34A) : const Color(0xFF22C55E),
+                      gradient: isYes
+                          ? const LinearGradient(
+                              colors: [Color(0xFF15803D), Color(0xFF16A34A)],
+                            )
+                          : const LinearGradient(
+                              colors: [Color(0xFF16A34A), Color(0xFF22C55E)],
+                            ),
                       borderRadius: BorderRadius.circular(99),
-                      boxShadow: isYes
-                          ? [
-                              BoxShadow(
-                                color: const Color(0xFF16A34A).withValues(alpha: 0.4),
-                                blurRadius: 6,
-                                offset: const Offset(0, 2),
-                              )
-                            ]
-                          : null,
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF16A34A).withValues(alpha: isYes ? 0.38 : 0.22),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
                     ),
                     alignment: Alignment.center,
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(LucideIcons.check, size: 13, color: Colors.white),
-                        const SizedBox(width: 4),
+                        const Icon(LucideIcons.check, size: 15, color: Colors.white),
+                        const SizedBox(width: 5),
                         Text(
-                          isYes ? 'කළා' : 'ඔව්',
+                          isYes ? 'කළා ✓' : 'ඔව්',
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.2,
                           ),
                         ),
                       ],
@@ -1513,7 +1413,7 @@ class _ElderInteractiveHomePageState
                   ),
                 ),
               ),
-              const SizedBox(width: 5),
+              const SizedBox(width: 10),
 
               // Not yet Button
               Expanded(
@@ -1521,14 +1421,21 @@ class _ElderInteractiveHomePageState
                   onTap: onNo,
                   borderRadius: BorderRadius.circular(99),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 7),
+                    padding: const EdgeInsets.symmetric(vertical: 8.5),
                     decoration: BoxDecoration(
-                      color: isNo ? const Color(0xFFF1F5F9) : Colors.white,
+                      color: isNo ? const Color(0xFFFEF2F2) : Colors.white,
                       borderRadius: BorderRadius.circular(99),
                       border: Border.all(
-                        color: isNo ? const Color(0xFFEF4444) : const Color(0xFFE2E8F0),
-                        width: isNo ? 1.5 : 1.0,
+                        color: isNo ? const Color(0xFFEF4444) : const Color(0xFFCBD5E1),
+                        width: isNo ? 1.5 : 1.2,
                       ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.02),
+                          blurRadius: 4,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
                     ),
                     alignment: Alignment.center,
                     child: Row(
@@ -1536,15 +1443,15 @@ class _ElderInteractiveHomePageState
                       children: [
                         Icon(
                           LucideIcons.clock,
-                          size: 12,
+                          size: 13,
                           color: isNo ? const Color(0xFFEF4444) : const Color(0xFF64748B),
                         ),
-                        const SizedBox(width: 4),
+                        const SizedBox(width: 5),
                         Text(
                           'තවම නැහැ',
                           style: TextStyle(
                             color: isNo ? const Color(0xFFEF4444) : const Color(0xFF475569),
-                            fontSize: 12.5,
+                            fontSize: 13,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
