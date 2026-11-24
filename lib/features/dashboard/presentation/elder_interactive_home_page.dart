@@ -1622,7 +1622,7 @@ class _ElderInteractiveHomePageState
 
         LayoutBuilder(
           builder: (context, constraints) {
-            final cards = [
+            final assessmentCards = [
               // Card 1: මානසික සුවතා කතාබහ (Rose Theme with Smiling Grandma & Blossom Trim)
               _wrapWithFloatingReminder(
                 isDone: emotionalDone,
@@ -1716,8 +1716,26 @@ class _ElderInteractiveHomePageState
                   },
                 ),
               ),
+            ];
 
-              // Card 3: සන්සුන් සංගීතය සහ විවේක සුවය (Emerald Mint Theme with Park Landscape)
+            final leisureCards = [
+              // Leisure Card 1: ආගමික වතාවත් සහ සිත සුවපත් කිරීම (Warm Sacred Gold Theme)
+              _buildQuickCard(
+                backgroundColor: const Color(0xFFFFFBEB),
+                borderColor: const Color(0xFFFDE68A),
+                badgeIcon: '🪷',
+                topRightIllustration: _buildSpiritualLotusLampIllustration(),
+                title: 'ආගමික වතාවත්\nසහ සිත සුවපත් කිරීම',
+                description: 'පිරිත් ශ්‍රවණය, දිනපතා ගාථා සජ්ඣායනා, භාවනා සහ ආගමික වතාවත් සඳහා යොමු වන්න.',
+                buttonText: '🪷 වතාවත් අරඹන්න ▶',
+                buttonGradient: const [Color(0xFFD97706), Color(0xFFF59E0B)],
+                bottomDecoration: _buildTempleLotusPondLandscape(),
+                onTap: () {
+                  _showSpiritualModal(context);
+                },
+              ),
+
+              // Leisure Card 2: සන්සුන් සංගීතය සහ විවේක සුවය (Emerald Mint Theme with Park Landscape)
               _buildQuickCard(
                 backgroundColor: const Color(0xFFF0FDF4),
                 borderColor: const Color(0xFFBBF7D0),
@@ -1734,7 +1752,56 @@ class _ElderInteractiveHomePageState
                 },
               ),
 
-              // Card 4: උපකාර ඉල්ලීම (Sky Blue Theme with Caregiver Avatar & Meadow Landscape)
+              // Leisure Card 3: නිදහසේ කියවන්න (Warm Parchment Theme with Library Landscape)
+              _buildQuickCard(
+                backgroundColor: const Color(0xFFFFF7ED),
+                borderColor: const Color(0xFFFED7AA),
+                badgeIcon: '📖',
+                topRightIllustration: _buildReadingBooksIllustration(),
+                title: 'නිදහසේ කියවන්න\nපොත්පත් සහ රසකතා',
+                description: 'දිනපතා පුවත් සිරස්තල, ආදර්ශවත් කතාන්දර, ධර්ම කරුණු සහ රසවත් පොත් කියවන්න.',
+                buttonText: '📖 කියවීම අරඹන්න ▶',
+                buttonGradient: const [Color(0xFFEA580C), Color(0xFFF97316)],
+                bottomDecoration: _buildCosyLibraryLandscape(),
+                onTap: () {
+                  _showReadingLibraryModal(context);
+                },
+              ),
+
+              // Leisure Card 4: විනෝද ක්‍රීඩා සහ සතුටු මතකය (Royal Lilac Theme with Playful Meadow)
+              _buildQuickCard(
+                backgroundColor: const Color(0xFFFAF5FF),
+                borderColor: const Color(0xFFE9D5FF),
+                badgeIcon: '🎲',
+                topRightIllustration: _buildFunGamesIllustration(),
+                title: 'විනෝද ක්‍රීඩා\nසහ සතුටු මතකය',
+                description: 'මනස ප්‍රබෝධමත් කරවන සරල ප්‍රහේලිකා, පින්තූර ගැලපීම් සහ විනෝදාත්මක ක්‍රීඩා.',
+                buttonText: '🎲 ක්‍රීඩා කරමු ▶',
+                buttonGradient: const [Color(0xFF7C3AED), Color(0xFF9333EA)],
+                bottomDecoration: _buildPlayfulMeadowLandscape(),
+                onTap: () {
+                  _speak('මනස ප්‍රබෝධමත් කරවන විනෝද ක්‍රීඩා පිටුවට යමු.');
+                  context.go('/dashboard/memory-games');
+                },
+              ),
+
+              // Leisure Card 5: ආදරණීය සම්බන්ධතා (Warm Rose Theme with Rose Garden Landscape)
+              _buildQuickCard(
+                backgroundColor: const Color(0xFFFFF1F2),
+                borderColor: const Color(0xFFFECDD3),
+                badgeIcon: '👨‍👩‍👧',
+                topRightIllustration: _buildFamilyLoveIllustration(),
+                title: 'ආදරණීය සම්බන්ධතා\n(පවුලේ අය හා මිතුරන්)',
+                description: 'ඔබේ දරුවන්, මුණුබුරන් සහ හිතවතුන් සමඟ ආදරයෙන් කතාබහ කර සතුට බෙදාගන්න.',
+                buttonText: '💌 ඇමතුමක් ගන්න ▶',
+                buttonGradient: const [Color(0xFFE11D48), Color(0xFFF43F5E)],
+                bottomDecoration: _buildRoseGardenLandscape(),
+                onTap: () {
+                  _showFamilyContactModal(context);
+                },
+              ),
+
+              // Leisure Card 6: උපකාර ඉල්ලීම (Sky Blue Theme with Caregiver Avatar & Meadow Landscape)
               _buildQuickCard(
                 backgroundColor: const Color(0xFFF0F9FF),
                 borderColor: const Color(0xFFBAE6FD),
@@ -1759,13 +1826,13 @@ class _ElderInteractiveHomePageState
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Row 1 (Top): මානසික සුවතා කතාබහ & මනස පරීක්ෂණ සහ විනෝද ක්‍රීඩා
+                  // Row 1 (Top Assessment Cards): මානසික සුවතා කතාබහ & මනස පරීක්ෂණ සහ විනෝද ක්‍රීඩා
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(child: cards[0]),
+                      Expanded(child: assessmentCards[0]),
                       SizedBox(width: cardSpacing),
-                      Expanded(child: cards[1]),
+                      Expanded(child: assessmentCards[1]),
                     ],
                   ),
                   SizedBox(height: rowSpacing + 8),
@@ -1774,13 +1841,35 @@ class _ElderInteractiveHomePageState
                   _buildLeisureSectionHeader(isSinhala),
                   const SizedBox(height: 16),
 
-                  // Row 2 (Bottom): සන්සුන් සංගීතය සහ විවේක සුවය & උපකාර ඉල්ලීම
+                  // Leisure Row 1: ආගමික වතාවත් & සන්සුන් සංගීතය
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(child: cards[2]),
+                      Expanded(child: leisureCards[0]),
                       SizedBox(width: cardSpacing),
-                      Expanded(child: cards[3]),
+                      Expanded(child: leisureCards[1]),
+                    ],
+                  ),
+                  SizedBox(height: rowSpacing),
+
+                  // Leisure Row 2: නිදහසේ කියවන්න & විනෝද ක්‍රීඩා
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(child: leisureCards[2]),
+                      SizedBox(width: cardSpacing),
+                      Expanded(child: leisureCards[3]),
+                    ],
+                  ),
+                  SizedBox(height: rowSpacing),
+
+                  // Leisure Row 3: ආදරණීය සම්බන්ධතා & උපකාර ඉල්ලීම
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(child: leisureCards[4]),
+                      SizedBox(width: cardSpacing),
+                      Expanded(child: leisureCards[5]),
                     ],
                   ),
                 ],
@@ -1791,22 +1880,18 @@ class _ElderInteractiveHomePageState
                 children: [
                   Padding(
                     padding: const EdgeInsets.only(bottom: 20),
-                    child: cards[0],
+                    child: assessmentCards[0],
                   ),
                   Padding(
                     padding: const EdgeInsets.only(bottom: 24),
-                    child: cards[1],
+                    child: assessmentCards[1],
                   ),
                   _buildLeisureSectionHeader(isSinhala),
                   const SizedBox(height: 16),
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 20),
-                    child: cards[2],
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 20),
-                    child: cards[3],
-                  ),
+                  ...leisureCards.map((c) => Padding(
+                        padding: const EdgeInsets.only(bottom: 20),
+                        child: c,
+                      )),
                 ],
               );
             }
@@ -2752,6 +2837,951 @@ class _ElderInteractiveHomePageState
             child: Text('🌲', style: TextStyle(fontSize: 36)),
           ),
         ],
+      ),
+    );
+  }
+
+
+  // =========================================================================
+  // LEISURE SECTION CARDS: ILLUSTRATIONS, SCENERY LANDSCAPES & MODALS
+  // =========================================================================
+
+  // 1. Spiritual Lotus & Oil Lamp Illustration
+  Widget _buildSpiritualLotusLampIllustration() {
+    return SizedBox(
+      width: 90,
+      height: 82,
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.center,
+        children: [
+          Container(
+            width: 76,
+            height: 76,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: [
+                  const Color(0xFFF59E0B).withValues(alpha: 0.35),
+                  const Color(0xFFFEF3C7).withValues(alpha: 0.05),
+                ],
+              ),
+            ),
+          ),
+          Container(
+            width: 58,
+            height: 58,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFD97706).withValues(alpha: 0.22),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            alignment: Alignment.center,
+            child: const Text('🪷', style: TextStyle(fontSize: 32)),
+          ),
+          const Positioned(
+            top: -2,
+            left: 2,
+            child: Text('🪔', style: TextStyle(fontSize: 18)),
+          ),
+          const Positioned(
+            top: 2,
+            right: 2,
+            child: Text('✨', style: TextStyle(fontSize: 18)),
+          ),
+          const Positioned(
+            bottom: -2,
+            right: 8,
+            child: Text('🙏', style: TextStyle(fontSize: 16)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 1. Temple Stupa & Lotus Pond Landscape Trim
+  Widget _buildTempleLotusPondLandscape() {
+    return Container(
+      height: 125,
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(24),
+          bottomRight: Radius.circular(24),
+        ),
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Color(0xFFFEF9C3),
+            Color(0xFFFDE68A),
+            Color(0xFFFBBF24),
+            Color(0xFFD97706),
+          ],
+        ),
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            left: 24,
+            top: 10,
+            child: Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFFFFFBEB),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFF59E0B).withValues(alpha: 0.7),
+                    blurRadius: 18,
+                    spreadRadius: 6,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const Positioned(
+            right: 28,
+            top: 12,
+            child: Text('🛕', style: TextStyle(fontSize: 26)),
+          ),
+          Positioned(
+            left: -20,
+            right: -20,
+            bottom: -25,
+            child: Container(
+              height: 85,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF59E0B).withValues(alpha: 0.9),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(160),
+                  topRight: Radius.circular(160),
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            left: -10,
+            right: -10,
+            bottom: -35,
+            child: Container(
+              height: 80,
+              decoration: const BoxDecoration(
+                color: Color(0xFFB45309),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(180),
+                  topRight: Radius.circular(180),
+                ),
+              ),
+            ),
+          ),
+          const Positioned(
+            left: 18,
+            bottom: 30,
+            child: Text('🪷', style: TextStyle(fontSize: 22)),
+          ),
+          const Positioned(
+            left: 48,
+            bottom: 26,
+            child: Text('🪷', style: TextStyle(fontSize: 18)),
+          ),
+          const Positioned(
+            right: 32,
+            bottom: 28,
+            child: Text('🪔', style: TextStyle(fontSize: 20)),
+          ),
+          const Positioned(
+            right: 68,
+            bottom: 30,
+            child: Text('✨', style: TextStyle(fontSize: 16)),
+          ),
+          Positioned(
+            left: 14,
+            bottom: 8,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+              decoration: BoxDecoration(
+                color: const Color(0xFF78350F).withValues(alpha: 0.85),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('🪷', style: TextStyle(fontSize: 11)),
+                  SizedBox(width: 4),
+                  Text(
+                    'සෙත් ශාන්තිය හා ආශිර්වාදය',
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 1. Spiritual Observances Modal Sheet
+  void _showSpiritualModal(BuildContext context) {
+    _speak('ආගමික වතාවත් සහ සිත සුවපත් කිරීම සඳහා ඔබව සාදරයෙන් පිළිගන්නවා.');
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Text('🪷', style: TextStyle(fontSize: 26)),
+                SizedBox(width: 10),
+                Text(
+                  'ආගමික වතාවත් සහ සිත සුවපත් කිරීම',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Color(0xFF1E1B4B)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'සිත සන්සුන් කරවන මිහිරි පිරිත් ශ්‍රවණය සහ ආශිර්වාදාත්මක වතාවත්:',
+              style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(Icons.auto_awesome, color: Color(0xFFD97706), size: 24),
+              title: const Text('මහා පිරිත සහ සෙත් පිරිත් ශ්‍රවණය', style: TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Maha Piritha & Seth Pirith Chanting'),
+              trailing: const Icon(Icons.play_circle_fill_rounded, color: Color(0xFFD97706), size: 30),
+              onTap: () {
+                Navigator.pop(ctx);
+                _speak('මහා පිරිත සහ සෙත් පිරිත් ශ්‍රවණය ආරම්භ කළා. සිත සන්සුන්ව අසන්න.');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.wb_sunny_rounded, color: Color(0xFFD97706), size: 24),
+              title: const Text('දිනපතා බුද්ධ වන්දනා සහ ගාථා සජ්ඣායනය', style: TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Daily Vandana & Devotional Stanzas'),
+              trailing: const Icon(Icons.play_circle_fill_rounded, color: Color(0xFFD97706), size: 30),
+              onTap: () {
+                Navigator.pop(ctx);
+                _speak('දිනපතා බුද්ධ වන්දනාව ආරම්භ කරමු. නමෝ තස්ස භගවතෝ අරහතෝ සම්මා සම්බුද්ධස්ස.');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.favorite_rounded, color: Color(0xFFEA580C), size: 24),
+              title: const Text('මෛත්‍රී භාවනාව (සිත නිවන කෙටි භාවනාව)', style: TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Guided Loving-Kindness Meditation'),
+              trailing: const Icon(Icons.play_circle_fill_rounded, color: Color(0xFFEA580C), size: 30),
+              onTap: () {
+                Navigator.pop(ctx);
+                _speak('මෛත්‍රී භාවනාව: මම සුවපත් වෙම්වා, නිදුක් වෙම්වා, නීරෝගී වෙම්වා. සියලු සත්වයෝ සුවපත් වෙත්වා.');
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // 3. Reading Books & Glasses Illustration
+  Widget _buildReadingBooksIllustration() {
+    return SizedBox(
+      width: 90,
+      height: 82,
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.center,
+        children: [
+          Container(
+            width: 76,
+            height: 76,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: [
+                  const Color(0xFFFB923C).withValues(alpha: 0.35),
+                  const Color(0xFFFFF7ED).withValues(alpha: 0.05),
+                ],
+              ),
+            ),
+          ),
+          Container(
+            width: 58,
+            height: 58,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFEA580C).withValues(alpha: 0.22),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            alignment: Alignment.center,
+            child: const Text('📖', style: TextStyle(fontSize: 32)),
+          ),
+          const Positioned(
+            top: -2,
+            left: 2,
+            child: Text('👓', style: TextStyle(fontSize: 18)),
+          ),
+          const Positioned(
+            top: 2,
+            right: 0,
+            child: Text('📜', style: TextStyle(fontSize: 18)),
+          ),
+          const Positioned(
+            bottom: -2,
+            right: 6,
+            child: Text('✨', style: TextStyle(fontSize: 16)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 3. Cosy Reading Gazebo & Autumn Trees Landscape Trim
+  Widget _buildCosyLibraryLandscape() {
+    return Container(
+      height: 125,
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(24),
+          bottomRight: Radius.circular(24),
+        ),
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Color(0xFFFFF7ED),
+            Color(0xFFFED7AA),
+            Color(0xFFFB923C),
+            Color(0xFFEA580C),
+          ],
+        ),
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            left: 24,
+            top: 10,
+            child: Container(
+              width: 30,
+              height: 30,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFFFFFBEB),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFF97316).withValues(alpha: 0.6),
+                    blurRadius: 16,
+                    spreadRadius: 4,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const Positioned(
+            right: 28,
+            top: 12,
+            child: Text('🌳', style: TextStyle(fontSize: 26)),
+          ),
+          Positioned(
+            left: -20,
+            right: -20,
+            bottom: -25,
+            child: Container(
+              height: 85,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF97316).withValues(alpha: 0.85),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(160),
+                  topRight: Radius.circular(160),
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            left: -10,
+            right: -10,
+            bottom: -35,
+            child: Container(
+              height: 80,
+              decoration: const BoxDecoration(
+                color: Color(0xFFC2410C),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(180),
+                  topRight: Radius.circular(180),
+                ),
+              ),
+            ),
+          ),
+          const Positioned(
+            left: 20,
+            bottom: 30,
+            child: Text('🪑', style: TextStyle(fontSize: 20)),
+          ),
+          const Positioned(
+            left: 48,
+            bottom: 28,
+            child: Text('📚', style: TextStyle(fontSize: 20)),
+          ),
+          const Positioned(
+            right: 36,
+            bottom: 30,
+            child: Text('🦋', style: TextStyle(fontSize: 18)),
+          ),
+          Positioned(
+            left: 14,
+            bottom: 8,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+              decoration: BoxDecoration(
+                color: const Color(0xFF7C2D12).withValues(alpha: 0.85),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('📖', style: TextStyle(fontSize: 11)),
+                  SizedBox(width: 4),
+                  Text(
+                    'දිනපතා රසකතා හා පුවත්',
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 3. Reading Library Modal Sheet
+  void _showReadingLibraryModal(BuildContext context) {
+    _speak('නිදහසේ කියවන්න: පොත්පත්, පුවත්පත් සහ රසකතා සඳහා ඔබව සාදරයෙන් පිළිගන්නවා.');
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Text('📖', style: TextStyle(fontSize: 26)),
+                SizedBox(width: 10),
+                Text(
+                  'නිදහසේ කියවන්න (පොත්පත් සහ රසකතා)',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Color(0xFF1E1B4B)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'ඔබ වෙනුවෙන් සැකසූ රසවත් කතාන්දර, පුවත් සහ සෞඛ්‍ය උපදෙස්:',
+              style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(Icons.newspaper_rounded, color: Color(0xFFEA580C), size: 24),
+              title: const Text('අද දවසේ ප්‍රධාන පුවත් සිරස්තල', style: TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Today\'s Inspiring News & Updates'),
+              trailing: const Icon(Icons.menu_book_rounded, color: Color(0xFFEA580C), size: 26),
+              onTap: () {
+                Navigator.pop(ctx);
+                _speak('අද දවසේ ප්‍රධාන පුවත්: ලක්දිව පුරා කාලගුණය යහපත් අතර, ජ්‍යෙෂ්ඨ පුරවැසියන් සඳහා ප්‍රජා සත්කාරක වැඩසටහන් සාර්ථකව ක්‍රියාත්මක වේ.');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.menu_book_rounded, color: Color(0xFFEA580C), size: 24),
+              title: const Text('ආදර්ශවත් ජාතක කතා සහ සදාචාරාත්මක කෙටිකතා', style: TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Moral Stories & Nostalgic Tales'),
+              trailing: const Icon(Icons.menu_book_rounded, color: Color(0xFFEA580C), size: 26),
+              onTap: () {
+                Navigator.pop(ctx);
+                _speak('වණ්ණුපථ ජාතකය: උත්සාහය හා නොසැලෙන වීර්යය තුළින් ඕනෑම දුෂ්කරතාවයක් ජයගත හැකි අයුරු මෙම කතාවෙන් පැහැදිලි කෙරේ.');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.health_and_safety_rounded, color: Color(0xFF16A34A), size: 24),
+              title: const Text('නිරෝගී දිවියකට සුවදායී සෞඛ්‍ය උපදෙස්', style: TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Senior Wellness & Nutrition Tips'),
+              trailing: const Icon(Icons.menu_book_rounded, color: Color(0xFF16A34A), size: 26),
+              onTap: () {
+                Navigator.pop(ctx);
+                _speak('සුවදායී උපදෙස: දිනපතා ප්‍රමාණවත් පරිදි ජලය පානය කරන්න. උදෑසන සුළු වේලාවක් මෘදු හිරු එළියට නිරාවරණය වීම අස්ථි ශක්තිමත් කරයි.');
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // 4. Fun Games Illustration
+  Widget _buildFunGamesIllustration() {
+    return SizedBox(
+      width: 90,
+      height: 82,
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.center,
+        children: [
+          Container(
+            width: 76,
+            height: 76,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: [
+                  const Color(0xFFA855F7).withValues(alpha: 0.35),
+                  const Color(0xFFFAF5FF).withValues(alpha: 0.05),
+                ],
+              ),
+            ),
+          ),
+          Container(
+            width: 58,
+            height: 58,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF7C3AED).withValues(alpha: 0.22),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            alignment: Alignment.center,
+            child: const Text('🎲', style: TextStyle(fontSize: 32)),
+          ),
+          const Positioned(
+            top: -2,
+            left: 2,
+            child: Text('🧩', style: TextStyle(fontSize: 18)),
+          ),
+          const Positioned(
+            top: 2,
+            right: 0,
+            child: Text('⭐', style: TextStyle(fontSize: 18)),
+          ),
+          const Positioned(
+            bottom: -2,
+            right: 6,
+            child: Text('🎉', style: TextStyle(fontSize: 16)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 4. Playful Meadow Landscape Trim
+  Widget _buildPlayfulMeadowLandscape() {
+    return Container(
+      height: 125,
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(24),
+          bottomRight: Radius.circular(24),
+        ),
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Color(0xFFFAF5FF),
+            Color(0xFFE9D5FF),
+            Color(0xFFA855F7),
+            Color(0xFF7E22CE),
+          ],
+        ),
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            left: 24,
+            top: 10,
+            child: Container(
+              width: 30,
+              height: 30,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFFFFFBEB),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFC084FC).withValues(alpha: 0.6),
+                    blurRadius: 16,
+                    spreadRadius: 4,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const Positioned(
+            right: 24,
+            top: 8,
+            child: Text('🎈', style: TextStyle(fontSize: 24)),
+          ),
+          Positioned(
+            left: -20,
+            right: -20,
+            bottom: -25,
+            child: Container(
+              height: 85,
+              decoration: BoxDecoration(
+                color: const Color(0xFF9333EA).withValues(alpha: 0.85),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(160),
+                  topRight: Radius.circular(160),
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            left: -10,
+            right: -10,
+            bottom: -35,
+            child: Container(
+              height: 80,
+              decoration: const BoxDecoration(
+                color: Color(0xFF6B21A8),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(180),
+                  topRight: Radius.circular(180),
+                ),
+              ),
+            ),
+          ),
+          const Positioned(
+            left: 20,
+            bottom: 30,
+            child: Text('🏆', style: TextStyle(fontSize: 20)),
+          ),
+          const Positioned(
+            left: 50,
+            bottom: 28,
+            child: Text('🎯', style: TextStyle(fontSize: 19)),
+          ),
+          const Positioned(
+            right: 32,
+            bottom: 30,
+            child: Text('✨', style: TextStyle(fontSize: 18)),
+          ),
+          Positioned(
+            left: 14,
+            bottom: 8,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+              decoration: BoxDecoration(
+                color: const Color(0xFF581C87).withValues(alpha: 0.85),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('🎲', style: TextStyle(fontSize: 11)),
+                  SizedBox(width: 4),
+                  Text(
+                    'මනස ප්‍රබෝධමත් ක්‍රීඩා',
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 5. Family Love & Connections Illustration
+  Widget _buildFamilyLoveIllustration() {
+    return SizedBox(
+      width: 90,
+      height: 82,
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.center,
+        children: [
+          Container(
+            width: 76,
+            height: 76,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: [
+                  const Color(0xFFFB7185).withValues(alpha: 0.35),
+                  const Color(0xFFFFF1F2).withValues(alpha: 0.05),
+                ],
+              ),
+            ),
+          ),
+          Container(
+            width: 58,
+            height: 58,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFE11D48).withValues(alpha: 0.22),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            alignment: Alignment.center,
+            child: const Text('👨‍👩‍👧', style: TextStyle(fontSize: 30)),
+          ),
+          const Positioned(
+            top: -2,
+            left: 2,
+            child: Text('💖', style: TextStyle(fontSize: 18)),
+          ),
+          const Positioned(
+            top: 2,
+            right: 0,
+            child: Text('📲', style: TextStyle(fontSize: 18)),
+          ),
+          const Positioned(
+            bottom: -2,
+            right: 6,
+            child: Text('💕', style: TextStyle(fontSize: 16)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 5. Rose Garden & Family Cottage Landscape Trim
+  Widget _buildRoseGardenLandscape() {
+    return Container(
+      height: 125,
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(24),
+          bottomRight: Radius.circular(24),
+        ),
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Color(0xFFFFF1F2),
+            Color(0xFFFECDD3),
+            Color(0xFFFB7185),
+            Color(0xFFE11D48),
+          ],
+        ),
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            left: 24,
+            top: 10,
+            child: Container(
+              width: 30,
+              height: 30,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFFFFFBEB),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFF43F5E).withValues(alpha: 0.6),
+                    blurRadius: 16,
+                    spreadRadius: 4,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const Positioned(
+            right: 24,
+            top: 10,
+            child: Text('🏡', style: TextStyle(fontSize: 24)),
+          ),
+          Positioned(
+            left: -20,
+            right: -20,
+            bottom: -25,
+            child: Container(
+              height: 85,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF43F5E).withValues(alpha: 0.85),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(160),
+                  topRight: Radius.circular(160),
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            left: -10,
+            right: -10,
+            bottom: -35,
+            child: Container(
+              height: 80,
+              decoration: const BoxDecoration(
+                color: Color(0xFFBE123C),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(180),
+                  topRight: Radius.circular(180),
+                ),
+              ),
+            ),
+          ),
+          const Positioned(
+            left: 18,
+            bottom: 30,
+            child: Text('🌹', style: TextStyle(fontSize: 20)),
+          ),
+          const Positioned(
+            left: 48,
+            bottom: 28,
+            child: Text('🌸', style: TextStyle(fontSize: 18)),
+          ),
+          const Positioned(
+            right: 32,
+            bottom: 30,
+            child: Text('💖', style: TextStyle(fontSize: 18)),
+          ),
+          Positioned(
+            left: 14,
+            bottom: 8,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+              decoration: BoxDecoration(
+                color: const Color(0xFF881337).withValues(alpha: 0.85),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('👨‍👩‍👧', style: TextStyle(fontSize: 11)),
+                  SizedBox(width: 4),
+                  Text(
+                    'පවුලේ ආදරණීය ඇමතුම්',
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 5. Family Contact Modal Sheet
+  void _showFamilyContactModal(BuildContext context) {
+    _speak('ආදරණීය සම්බන්ධතා: ඔබේ පවුලේ අය සහ හිතවතුන් සමඟ පහසුවෙන් සම්බන්ධ වන්න.');
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Text('👨‍👩‍👧', style: TextStyle(fontSize: 26)),
+                SizedBox(width: 10),
+                Text(
+                  'ආදරණීය සම්බන්ධතා (පවුලේ ඇමතුම්)',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Color(0xFF1E1B4B)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'ඔබේ ආදරණීයයන් හා සතුටින් කතාබහ කිරීමට කෙටිමඟ:',
+              style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const CircleAvatar(
+                backgroundColor: Color(0xFFFFE4E6),
+                child: Text('👨', style: TextStyle(fontSize: 20)),
+              ),
+              title: const Text('පුතා (සුමිත් පෙරේරා)', style: TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('📞 077 123 4567 • නිවසේ ඇමතුම'),
+              trailing: const Icon(Icons.phone_rounded, color: Color(0xFFE11D48), size: 26),
+              onTap: () {
+                Navigator.pop(ctx);
+                _speak('සුමිත් පුතා වෙත දුරකථන ඇමතුම සම්බන්ධ කරමින් පවතී.');
+              },
+            ),
+            ListTile(
+              leading: const CircleAvatar(
+                backgroundColor: Color(0xFFFFE4E6),
+                child: Text('👩', style: TextStyle(fontSize: 20)),
+              ),
+              title: const Text('දියණිය (නදීෂා පෙරේරා)', style: TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('📹 වීඩියෝ ඇමතුම • ලබාගත හැක'),
+              trailing: const Icon(Icons.videocam_rounded, color: Color(0xFFE11D48), size: 26),
+              onTap: () {
+                Navigator.pop(ctx);
+                _speak('නදීෂා දුව වෙත වීඩියෝ ඇමතුම සම්බන්ධ කරමින් පවතී.');
+              },
+            ),
+            ListTile(
+              leading: const CircleAvatar(
+                backgroundColor: Color(0xFFFFE4E6),
+                child: Text('👦', style: TextStyle(fontSize: 20)),
+              ),
+              title: const Text('මුණුබුරා (කවීෂ)', style: TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('💬 ආදරණීය සුභපැතුම් පණිවිඩය'),
+              trailing: const Icon(Icons.chat_bubble_rounded, color: Color(0xFFE11D48), size: 24),
+              onTap: () {
+                Navigator.pop(ctx);
+                _speak('කවීෂ මුණුබුරාට "ආයුබෝවන් ආදරණීය පුතේ" කියා පණිවිඩයක් යැව්වා.');
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
