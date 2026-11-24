@@ -1613,91 +1613,97 @@ class _ElderInteractiveHomePageState
           builder: (context, constraints) {
             final cards = [
               // Card 1: මානසික සුවතා කතාබහ (Rose Theme with Smiling Grandma & Blossom Trim)
-              _buildTopAssessmentCard(
-                backgroundColor: const Color(0xFFFFF0F5), // soft lavender blush / rose
-                borderColor: emotionalDone ? const Color(0xFF86EFAC) : const Color(0xFFFECDD3),
-                iconBorderColor: const Color(0xFFF472B6),
-                badgeIcon: '💓',
-                title: 'මානසික සුවතා කතාබහ',
-                description: 'ඔබගේ හැඟීම්, මානසික තත්වය සහ සෞඛ්‍ය සුවතාවය පිළිබඳ සරල ප්‍රශ්න කිහිපයකට පිළිතුරු දෙන්න.',
-                statusBadgeWidget: _buildSlotStatusBadge(
-                  isCurrentDone: emotionalDone,
-                  currentSlotName: currentSlotName,
-                  activeColor: const Color(0xFF7E22CE),
+              _wrapWithFloatingReminder(
+                isDone: emotionalDone,
+                child: _buildTopAssessmentCard(
+                  backgroundColor: const Color(0xFFFFF0F5), // soft lavender blush / rose
+                  borderColor: emotionalDone ? const Color(0xFF86EFAC) : const Color(0xFFFECDD3),
+                  iconBorderColor: const Color(0xFFF472B6),
+                  badgeIcon: '💓',
+                  title: 'මානසික සුවතා කතාබහ',
+                  description: 'ඔබගේ හැඟීම්, මානසික තත්වය සහ සෞඛ්‍ය සුවතාවය පිළිබඳ සරල ප්‍රශ්න කිහිපයකට පිළිතුරු දෙන්න.',
+                  statusBadgeWidget: _buildSlotStatusBadge(
+                    isCurrentDone: emotionalDone,
+                    currentSlotName: currentSlotName,
+                    activeColor: const Color(0xFF7E22CE),
+                  ),
+                  sessionTrackerWidget: _buildDailySessionTracker(
+                    activity: 'emotional',
+                    currentSlot: currentSlot,
+                    activeThemeColor: const Color(0xFF7E22CE),
+                  ),
+                  topRightIllustration: _buildGrandmaIllustrationExact(),
+                  buttonText: emotionalDone ? 'සම්පූර්ණයි ($nextSlotTime ට) ⏰' : 'අදම සම්පූර්ණ කරන්න',
+                  buttonGradient: emotionalDone
+                      ? const [Color(0xFF16A34A), Color(0xFF22C55E)]
+                      : const [Color(0xFFF43F5E), Color(0xFFF472B6)],
+                  isEmotionalCard: true,
+                  bottomDecoration: _buildCard1HibiscusBlossomTrim(),
+                  onTap: () {
+                    if (emotionalDone) {
+                      _showSessionAlreadyCompletedDialog(
+                        context: context,
+                        activityTitle: 'මානසික සුවතා කතාබහ',
+                        activityKey: 'emotional',
+                        slot: currentSlot,
+                        onContinueAnyway: () {
+                          context.go('/dashboard/emotional');
+                        },
+                      );
+                    } else {
+                      _markSessionCompleted('emotional', currentSlot);
+                      _speak('මානසික සුවතා කතාබහ වෙත ඔබව සාදරයෙන් පිළිගන්නවා.');
+                      context.go('/dashboard/emotional');
+                    }
+                  },
                 ),
-                sessionTrackerWidget: _buildDailySessionTracker(
-                  activity: 'emotional',
-                  currentSlot: currentSlot,
-                  activeThemeColor: const Color(0xFF7E22CE),
-                ),
-                topRightIllustration: _buildGrandmaIllustrationExact(),
-                buttonText: emotionalDone ? 'සම්පූර්ණයි ($nextSlotTime ට) ⏰' : 'අදම සම්පූර්ණ කරන්න',
-                buttonGradient: emotionalDone
-                    ? const [Color(0xFF16A34A), Color(0xFF22C55E)]
-                    : const [Color(0xFFF43F5E), Color(0xFFF472B6)],
-                isEmotionalCard: true,
-                bottomDecoration: _buildCard1HibiscusBlossomTrim(),
-                onTap: () {
-                  if (emotionalDone) {
-                    _showSessionAlreadyCompletedDialog(
-                      context: context,
-                      activityTitle: 'මානසික සුවතා කතාබහ',
-                      activityKey: 'emotional',
-                      slot: currentSlot,
-                      onContinueAnyway: () {
-                        context.go('/dashboard/emotional');
-                      },
-                    );
-                  } else {
-                    _markSessionCompleted('emotional', currentSlot);
-                    _speak('මානසික සුවතා කතාබහ වෙත ඔබව සාදරයෙන් පිළිගන්නවා.');
-                    context.go('/dashboard/emotional');
-                  }
-                },
               ),
 
               // Card 2: මනස පරීක්ෂණ සහ විනෝද ක්‍රීඩා (Warm Gold Theme with Crossword & Lightbulb)
-              _buildTopAssessmentCard(
-                backgroundColor: const Color(0xFFFFFBEB), // warm butter/cream
-                borderColor: memoryDone ? const Color(0xFF86EFAC) : const Color(0xFFFDE68A),
-                iconBorderColor: const Color(0xFF22C55E),
-                badgeIcon: '🧩',
-                title: 'මනස පරීක්ෂණ සහ විනෝද ක්‍රීඩා',
-                description: 'ඔබගේ මතකය වර්ධනය කරගන්න සහ මනස සතුටු කරගන්න විනෝද ක්‍රීඩා කරන්න.',
-                statusBadgeWidget: _buildSlotStatusBadge(
-                  isCurrentDone: memoryDone,
-                  currentSlotName: currentSlotName,
-                  activeColor: const Color(0xFFD97706),
+              _wrapWithFloatingReminder(
+                isDone: memoryDone,
+                child: _buildTopAssessmentCard(
+                  backgroundColor: const Color(0xFFFFFBEB), // warm butter/cream
+                  borderColor: memoryDone ? const Color(0xFF86EFAC) : const Color(0xFFFDE68A),
+                  iconBorderColor: const Color(0xFF22C55E),
+                  badgeIcon: '🧩',
+                  title: 'මනස පරීක්ෂණ සහ විනෝද ක්‍රීඩා',
+                  description: 'ඔබගේ මතකය වර්ධනය කරගන්න සහ මනස සතුටු කරගන්න විනෝද ක්‍රීඩා කරන්න.',
+                  statusBadgeWidget: _buildSlotStatusBadge(
+                    isCurrentDone: memoryDone,
+                    currentSlotName: currentSlotName,
+                    activeColor: const Color(0xFFD97706),
+                  ),
+                  sessionTrackerWidget: _buildDailySessionTracker(
+                    activity: 'memory',
+                    currentSlot: currentSlot,
+                    activeThemeColor: const Color(0xFFD97706),
+                  ),
+                  topRightIllustration: _buildCrosswordLightbulbIllustrationExact(),
+                  buttonText: memoryDone ? 'සම්පූර්ණයි ($nextSlotTime ට) ⏰' : 'ක්‍රීඩා කරන්න',
+                  buttonGradient: memoryDone
+                      ? const [Color(0xFF16A34A), Color(0xFF22C55E)]
+                      : const [Color(0xFFD97706), Color(0xFFF59E0B)],
+                  isEmotionalCard: false,
+                  bottomDecoration: _buildCard2GoldenAmberTrim(),
+                  onTap: () {
+                    if (memoryDone) {
+                      _showSessionAlreadyCompletedDialog(
+                        context: context,
+                        activityTitle: 'මනස පරීක්ෂණ සහ විනෝද ක්‍රීඩා',
+                        activityKey: 'memory',
+                        slot: currentSlot,
+                        onContinueAnyway: () {
+                          context.go('/dashboard/memory-games');
+                        },
+                      );
+                    } else {
+                      _markSessionCompleted('memory', currentSlot);
+                      _speak('මනස පරීක්ෂණ සහ විනෝද ක්‍රීඩා පිටුවට යමු.');
+                      context.go('/dashboard/memory-games');
+                    }
+                  },
                 ),
-                sessionTrackerWidget: _buildDailySessionTracker(
-                  activity: 'memory',
-                  currentSlot: currentSlot,
-                  activeThemeColor: const Color(0xFFD97706),
-                ),
-                topRightIllustration: _buildCrosswordLightbulbIllustrationExact(),
-                buttonText: memoryDone ? 'සම්පූර්ණයි ($nextSlotTime ට) ⏰' : 'ක්‍රීඩා කරන්න',
-                buttonGradient: memoryDone
-                    ? const [Color(0xFF16A34A), Color(0xFF22C55E)]
-                    : const [Color(0xFFD97706), Color(0xFFF59E0B)],
-                isEmotionalCard: false,
-                bottomDecoration: _buildCard2GoldenAmberTrim(),
-                onTap: () {
-                  if (memoryDone) {
-                    _showSessionAlreadyCompletedDialog(
-                      context: context,
-                      activityTitle: 'මනස පරීක්ෂණ සහ විනෝද ක්‍රීඩා',
-                      activityKey: 'memory',
-                      slot: currentSlot,
-                      onContinueAnyway: () {
-                        context.go('/dashboard/memory-games');
-                      },
-                    );
-                  } else {
-                    _markSessionCompleted('memory', currentSlot);
-                    _speak('මනස පරීක්ෂණ සහ විනෝද ක්‍රීඩා පිටුවට යමු.');
-                    context.go('/dashboard/memory-games');
-                  }
-                },
               ),
 
               // Card 3: සන්සුන් සංගීතය සහ විවේක සුවය (Emerald Mint Theme with Park Landscape)
@@ -1776,6 +1782,35 @@ class _ElderInteractiveHomePageState
           },
         ),
       ],
+    );
+  }
+
+  // =========================================================================
+  // GENTLE UP-AND-DOWN FLOATING REMINDER FOR INCOMPLETE ASSESSMENT CARDS
+  // =========================================================================
+  Widget _wrapWithFloatingReminder({
+    required Widget child,
+    required bool isDone,
+  }) {
+    if (isDone) {
+      // Completed cards rest calmly at normal position
+      return child;
+    }
+
+    return AnimatedBuilder(
+      animation: _floatingController,
+      builder: (context, _) {
+        final progress = CurvedAnimation(
+          parent: _floatingController,
+          curve: Curves.easeInOutSine,
+        ).value;
+        // Smoothly floats up and down by 6.0 pixels to catch the elder's eye and remind them
+        final offsetY = -6.0 * progress;
+        return Transform.translate(
+          offset: Offset(0, offsetY),
+          child: child,
+        );
+      },
     );
   }
 
