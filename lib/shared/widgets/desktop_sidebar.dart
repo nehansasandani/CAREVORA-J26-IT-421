@@ -9,7 +9,6 @@ import '../../core/localization/app_strings.dart';
 import '../../core/localization/sinhala_name_transliterator.dart';
 import '../../features/auth/application/auth_controller.dart';
 import 'carevora_avatar.dart';
-import 'carevora_logo.dart';
 
 class DesktopSidebar extends ConsumerWidget {
   final String currentRoute;
@@ -93,12 +92,6 @@ class DesktopSidebar extends ConsumerWidget {
                     icon: LucideIcons.activity,
                     label: strings.isSinhala ? 'සෞඛ්‍ය තොරතුරු' : strings.metabolicHealth,
                     route: '/dashboard/metabolic',
-                  ),
-                  _buildNavItem(
-                    context,
-                    icon: LucideIcons.barChart3,
-                    label: strings.isSinhala ? 'ප්‍රගතිය සහ වාර්තා' : strings.reportsAndAnalytics,
-                    route: '/dashboard/reports',
                   ),
                   _buildNavItem(
                     context,
@@ -240,21 +233,20 @@ class DesktopSidebar extends ConsumerWidget {
                         child: Row(
                           children: [
                             Container(
-                              width: 38,
-                              height: 38,
+                              padding: const EdgeInsets.all(2),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFEDE9FE),
                                 shape: BoxShape.circle,
-                                border: Border.all(color: const Color(0xFFDDD6FE), width: 1.5),
-                              ),
-                              alignment: Alignment.center,
-                              child: Text(
-                                initials,
-                                style: const TextStyle(
-                                  color: Color(0xFF6D28D9),
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w900,
+                                border: Border.all(
+                                  color: const Color(0xFFDDD6FE),
+                                  width: 1.5,
                                 ),
+                              ),
+                              child: CarevoraAvatar(
+                                avatarUrl: authState.avatarUrl,
+                                radius: 19,
+                                initials: initials,
+                                backgroundColor: const Color(0xFFEDE9FE),
+                                foregroundColor: const Color(0xFF6D28D9),
                               ),
                             ),
                             const SizedBox(width: 10),
@@ -353,12 +345,18 @@ class DesktopSidebar extends ConsumerWidget {
     );
   }
 
-  // Brand Header with Carevora Heart Logo & Top Corner Leaves
+  // Brand Header with Official Transparent Carevora Logo & Top Corner Leaves
   Widget _buildBrandHeader(bool isCollapsed) {
     if (isCollapsed) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 12),
-        child: CarevoraLogo(variant: LogoVariant.iconOnly, size: 36),
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Image.asset(
+          'assets/images/carevora_logo_official.png',
+          width: 44,
+          height: 36,
+          fit: BoxFit.contain,
+          filterQuality: FilterQuality.high,
+        ),
       );
     }
 
@@ -380,43 +378,33 @@ class DesktopSidebar extends ConsumerWidget {
         ),
 
         Padding(
-          padding: const EdgeInsets.only(top: 14, bottom: 10),
+          padding: const EdgeInsets.fromLTRB(10, 12, 10, 10),
           child: Column(
             children: [
-              // Carevora Heart Icon Badge
+              // Official Transparent Carevora Logo blended seamlessly onto the soft lavender sidebar
               Container(
-                width: 48,
-                height: 48,
+                width: 82,
+                height: 64,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  gradient: const RadialGradient(
+                  gradient: RadialGradient(
                     colors: [
-                      Color(0xFFEDE9FE),
-                      Color(0xFFFAF5FF),
+                      const Color(0xFFEDE9FE).withValues(alpha: 0.72),
+                      const Color(0xFFFAF7FF).withValues(alpha: 0.0),
                     ],
+                    stops: const [0.0, 1.0],
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF7C3AED).withValues(alpha: 0.15),
-                      blurRadius: 10,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
                 ),
                 alignment: Alignment.center,
-                child: const Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Icon(LucideIcons.heart, color: Color(0xFF7C3AED), size: 28),
-                    Positioned(
-                      top: 7,
-                      right: 5,
-                      child: Text('🍃', style: TextStyle(fontSize: 10)),
-                    ),
-                  ],
+                child: Image.asset(
+                  'assets/images/carevora_logo_official.png',
+                  width: 72,
+                  height: 60,
+                  fit: BoxFit.contain,
+                  filterQuality: FilterQuality.high,
                 ),
               ),
-              const SizedBox(height: 5),
+              const SizedBox(height: 4),
 
               // CAREVORA brand text
               const Text(

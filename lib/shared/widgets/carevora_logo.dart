@@ -70,12 +70,45 @@ class CarevoraLogo extends StatelessWidget {
   }
 
   Widget _buildIcon() {
-    return SizedBox(
-      width: size,
+    final logoImage = Image.asset(
+      'assets/images/carevora_logo_official.png',
+      width: size * 1.18,
       height: size,
-      child: CustomPaint(
-        painter: _CarevoraLogoPainter(),
-      ),
+      fit: BoxFit.contain,
+      filterQuality: FilterQuality.high,
+    );
+
+    if (isDark) {
+      final badgeSize = size * 1.24;
+      return Container(
+        width: badgeSize,
+        height: badgeSize,
+        padding: EdgeInsets.all(size * 0.14),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: const RadialGradient(
+            colors: [
+              Color(0xFFFFFFFF),
+              Color(0xFFF3EEFF),
+            ],
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFA78BFA).withValues(alpha: 0.34),
+              blurRadius: size * 0.38,
+              spreadRadius: 1,
+            ),
+          ],
+        ),
+        alignment: Alignment.center,
+        child: logoImage,
+      );
+    }
+
+    return SizedBox(
+      width: size * 1.18,
+      height: size,
+      child: Center(child: logoImage),
     );
   }
 
@@ -88,59 +121,4 @@ class CarevoraLogo extends StatelessWidget {
       ),
     );
   }
-}
-
-class _CarevoraLogoPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final w = size.width;
-    final h = size.height;
-
-    // Outer Heart / Cupping Hand shape
-    final heartPaint = Paint()
-      ..color = AppColors.primary
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = w * 0.12
-      ..strokeCap = StrokeCap.round;
-
-    final heartPath = Path();
-    heartPath.moveTo(w * 0.5, h * 0.88);
-    heartPath.cubicTo(w * 0.1, h * 0.65, w * 0.05, h * 0.3, w * 0.32, h * 0.22);
-    heartPath.cubicTo(w * 0.44, h * 0.18, w * 0.5, h * 0.32, w * 0.5, h * 0.38);
-    heartPath.cubicTo(w * 0.5, h * 0.32, w * 0.56, h * 0.18, w * 0.68, h * 0.22);
-    heartPath.cubicTo(w * 0.95, h * 0.3, w * 0.9, h * 0.65, w * 0.5, h * 0.88);
-    canvas.drawPath(heartPath, heartPaint);
-
-    // Inner Adult Figure (Purple)
-    final adultPaint = Paint()
-      ..color = AppColors.primaryDeep
-      ..style = PaintingStyle.fill;
-    canvas.drawCircle(Offset(w * 0.44, h * 0.45), w * 0.12, adultPaint);
-
-    // Inner Small Child / Senior Figure (Pink)
-    final pinkPaint = Paint()
-      ..color = AppColors.accentPink
-      ..style = PaintingStyle.fill;
-    canvas.drawCircle(Offset(w * 0.58, h * 0.52), w * 0.09, pinkPaint);
-
-    // Botanical Leaves at top-right
-    final leafPaint = Paint()
-      ..color = AppColors.leafGreen
-      ..style = PaintingStyle.fill;
-
-    final leafPath = Path();
-    leafPath.moveTo(w * 0.72, h * 0.16);
-    leafPath.quadraticBezierTo(w * 0.85, h * 0.05, w * 0.92, h * 0.15);
-    leafPath.quadraticBezierTo(w * 0.82, h * 0.24, w * 0.72, h * 0.16);
-    canvas.drawPath(leafPath, leafPaint);
-
-    final leafPath2 = Path();
-    leafPath2.moveTo(w * 0.82, h * 0.22);
-    leafPath2.quadraticBezierTo(w * 0.95, h * 0.18, w * 0.96, h * 0.3);
-    leafPath2.quadraticBezierTo(w * 0.86, h * 0.32, w * 0.82, h * 0.22);
-    canvas.drawPath(leafPath2, leafPaint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
