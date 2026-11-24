@@ -2086,51 +2086,53 @@ class _ElderInteractiveHomePageState
                   sessionTrackerWidget,
                   const SizedBox(height: 14),
 
-                  // Full-Width Action Button
-                  InkWell(
-                    onTap: onTap,
-                    borderRadius: BorderRadius.circular(99),
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 12.5),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(colors: buttonGradient),
-                        borderRadius: BorderRadius.circular(99),
-                        boxShadow: [
-                          BoxShadow(
-                            color: buttonGradient.first.withValues(alpha: 0.38),
-                            blurRadius: 10,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          if (isEmotionalCard)
-                            const Icon(LucideIcons.clipboardCheck, color: Colors.white, size: 20)
-                          else
-                            Container(
-                              padding: const EdgeInsets.all(3),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.25),
-                                shape: BoxShape.circle,
+                  // Compact, beautifully centered Action Pill Button (reduced length)
+                  Center(
+                    child: InkWell(
+                      onTap: onTap,
+                      borderRadius: BorderRadius.circular(99),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 11),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(colors: buttonGradient),
+                          borderRadius: BorderRadius.circular(99),
+                          boxShadow: [
+                            BoxShadow(
+                              color: buttonGradient.first.withValues(alpha: 0.38),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            if (isEmotionalCard)
+                              const Icon(LucideIcons.clipboardCheck, color: Colors.white, size: 19)
+                            else
+                              Container(
+                                padding: const EdgeInsets.all(2.5),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.25),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(LucideIcons.gamepad2, color: Colors.white, size: 16),
                               ),
-                              child: const Icon(LucideIcons.gamepad2, color: Colors.white, size: 17),
+                            const SizedBox(width: 8),
+                            Text(
+                              buttonText,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.2,
+                              ),
                             ),
-                          const SizedBox(width: 8),
-                          Text(
-                            buttonText,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 0.2,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          const Icon(LucideIcons.arrowRight, color: Colors.white, size: 18),
-                        ],
+                            const SizedBox(width: 6),
+                            const Icon(LucideIcons.arrowRight, color: Colors.white, size: 17),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -2909,41 +2911,43 @@ class _ElderInteractiveHomePageState
                   ),
                   const SizedBox(height: 10),
 
-                  // Action Pill Button
-                  InkWell(
-                    onTap: onTap,
-                    borderRadius: BorderRadius.circular(99),
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(colors: buttonGradient),
-                        borderRadius: BorderRadius.circular(99),
-                        boxShadow: [
-                          BoxShadow(
-                            color: buttonGradient.first.withValues(alpha: 0.35),
-                            blurRadius: 8,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          buttonIcon,
-                          const SizedBox(width: 6),
-                          Text(
-                            buttonText,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 0.2,
+                  // Action Pill Button (centered with reduced length)
+                  Center(
+                    child: InkWell(
+                      onTap: onTap,
+                      borderRadius: BorderRadius.circular(99),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 9.5),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(colors: buttonGradient),
+                          borderRadius: BorderRadius.circular(99),
+                          boxShadow: [
+                            BoxShadow(
+                              color: buttonGradient.first.withValues(alpha: 0.35),
+                              blurRadius: 7,
+                              offset: const Offset(0, 3),
                             ),
-                          ),
-                          const SizedBox(width: 4),
-                          const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 15),
-                        ],
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            buttonIcon,
+                            const SizedBox(width: 6),
+                            Text(
+                              buttonText,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.2,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 15),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -3573,32 +3577,41 @@ class _ElderInteractiveHomePageState
                     ),
                   ),
                   const SizedBox(height: 14),
-                  InkWell(
-                    onTap: onTap,
-                    borderRadius: BorderRadius.circular(99),
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 13),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(colors: buttonGradient),
-                        borderRadius: BorderRadius.circular(99),
-                        boxShadow: [
-                          BoxShadow(
-                            color: buttonGradient.first.withValues(alpha: 0.40),
-                            blurRadius: 10,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        buttonText,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 15.5,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.2,
+                  // Compact centered Action Button
+                  Center(
+                    child: InkWell(
+                      onTap: onTap,
+                      borderRadius: BorderRadius.circular(99),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 10.5),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(colors: buttonGradient),
+                          borderRadius: BorderRadius.circular(99),
+                          boxShadow: [
+                            BoxShadow(
+                              color: buttonGradient.first.withValues(alpha: 0.40),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              buttonText,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 14.5,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.2,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 16),
+                          ],
                         ),
                       ),
                     ),
