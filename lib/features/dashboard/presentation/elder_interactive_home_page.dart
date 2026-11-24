@@ -4853,3 +4853,221 @@ class _GrandmaAvatarPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
+
+// =========================================================================
+// CUSTOM PAINTERS FOR LEISURE MOCKUP ILLUSTRATIONS
+// =========================================================================
+
+class _GrandmaReadingPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cx = size.width * 0.48;
+    final cy = size.height * 0.45;
+
+    // Armchair back
+    final chairPaint = Paint()..color = const Color(0xFFFBBF24);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(cx + 4, cy + 4), width: 44, height: 58), const Radius.circular(16)),
+      chairPaint,
+    );
+
+    // Body / Purple blouse
+    final bodyPaint = Paint()..color = const Color(0xFF7C3AED);
+    final bodyPath = Path()
+      ..moveTo(cx - 20, size.height)
+      ..quadraticBezierTo(cx - 22, cy + 12, cx - 12, cy + 8)
+      ..lineTo(cx + 12, cy + 8)
+      ..quadraticBezierTo(cx + 22, cy + 12, cx + 20, size.height)
+      ..close();
+    canvas.drawPath(bodyPath, bodyPaint);
+
+    // Head / Face
+    final skinPaint = Paint()..color = const Color(0xFFFFE0BD);
+    canvas.drawCircle(Offset(cx, cy - 8), 16, skinPaint);
+
+    // Rosy cheeks
+    final blushPaint = Paint()..color = const Color(0xFFFDA4AF).withValues(alpha: 0.6);
+    canvas.drawCircle(Offset(cx - 8, cy - 5), 3.5, blushPaint);
+    canvas.drawCircle(Offset(cx + 8, cy - 5), 3.5, blushPaint);
+
+    // Hair (Silver bun)
+    final hairPaint = Paint()..color = const Color(0xFFE2E8F0);
+    canvas.drawArc(Rect.fromCircle(center: Offset(cx, cy - 9), radius: 17), 3.14, 3.14, true, hairPaint);
+    canvas.drawCircle(Offset(cx, cy - 25), 8, hairPaint);
+
+    // Glasses
+    final glassesPaint = Paint()
+      ..color = const Color(0xFF1E293B)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.3;
+    canvas.drawCircle(Offset(cx - 6, cy - 8), 4.5, glassesPaint);
+    canvas.drawCircle(Offset(cx + 6, cy - 8), 4.5, glassesPaint);
+    canvas.drawLine(Offset(cx - 1.5, cy - 8), Offset(cx + 1.5, cy - 8), glassesPaint);
+
+    // Smile
+    final smilePaint = Paint()
+      ..color = const Color(0xFFBE123C)
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = 1.4;
+    canvas.drawArc(Rect.fromCircle(center: Offset(cx, cy - 2), radius: 4), 0.2, 2.7, false, smilePaint);
+
+    // Open Red Book in hands
+    final bookCover = Paint()..color = const Color(0xFFDC2626);
+    final bookPages = Paint()..color = Colors.white;
+    // Left page
+    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(cx - 16, cy + 16, 15, 18), const Radius.circular(2)), bookCover);
+    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(cx - 15, cy + 17, 13, 16), const Radius.circular(1.5)), bookPages);
+    // Right page
+    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(cx + 1, cy + 16, 15, 18), const Radius.circular(2)), bookCover);
+    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(cx + 2, cy + 17, 13, 16), const Radius.circular(1.5)), bookPages);
+
+    // Hands holding book
+    canvas.drawCircle(Offset(cx - 15, cy + 24), 3.5, skinPaint);
+    canvas.drawCircle(Offset(cx + 15, cy + 24), 3.5, skinPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _GrandmaPaintingPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cx = size.width * 0.42;
+    final cy = size.height * 0.42;
+
+    // Body / Purple blouse
+    final bodyPaint = Paint()..color = const Color(0xFF7C3AED);
+    final bodyPath = Path()
+      ..moveTo(cx - 18, size.height)
+      ..quadraticBezierTo(cx - 20, cy + 12, cx - 10, cy + 8)
+      ..lineTo(cx + 10, cy + 8)
+      ..quadraticBezierTo(cx + 20, cy + 12, cx + 18, size.height)
+      ..close();
+    canvas.drawPath(bodyPath, bodyPaint);
+
+    // Head / Face
+    final skinPaint = Paint()..color = const Color(0xFFFFE0BD);
+    canvas.drawCircle(Offset(cx, cy - 8), 16, skinPaint);
+
+    // Rosy cheeks
+    final blushPaint = Paint()..color = const Color(0xFFFDA4AF).withValues(alpha: 0.6);
+    canvas.drawCircle(Offset(cx - 8, cy - 5), 3.5, blushPaint);
+    canvas.drawCircle(Offset(cx + 8, cy - 5), 3.5, blushPaint);
+
+    // Hair (Silver bun)
+    final hairPaint = Paint()..color = const Color(0xFFE2E8F0);
+    canvas.drawArc(Rect.fromCircle(center: Offset(cx, cy - 9), radius: 17), 3.14, 3.14, true, hairPaint);
+    canvas.drawCircle(Offset(cx, cy - 25), 8, hairPaint);
+
+    // Glasses
+    final glassesPaint = Paint()
+      ..color = const Color(0xFF1E293B)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.3;
+    canvas.drawCircle(Offset(cx - 6, cy - 8), 4.5, glassesPaint);
+    canvas.drawCircle(Offset(cx + 6, cy - 8), 4.5, glassesPaint);
+    canvas.drawLine(Offset(cx - 1.5, cy - 8), Offset(cx + 1.5, cy - 8), glassesPaint);
+
+    // Smile
+    final smilePaint = Paint()
+      ..color = const Color(0xFFBE123C)
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = 1.4;
+    canvas.drawArc(Rect.fromCircle(center: Offset(cx, cy - 2), radius: 4), 0.2, 2.7, false, smilePaint);
+
+    // Right arm holding paintbrush extended towards easel
+    final armPaint = Paint()
+      ..color = const Color(0xFF7C3AED)
+      ..strokeWidth = 6
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(Offset(cx + 8, cy + 14), Offset(cx + 28, cy + 22), armPaint);
+
+    // Hand & Paintbrush
+    canvas.drawCircle(Offset(cx + 28, cy + 22), 4, skinPaint);
+    final brushPaint = Paint()
+      ..color = const Color(0xFFB45309)
+      ..strokeWidth = 2.5
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(Offset(cx + 26, cy + 24), Offset(cx + 42, cy + 16), brushPaint);
+    final brushTip = Paint()..color = const Color(0xFF9333EA);
+    canvas.drawCircle(Offset(cx + 43, cy + 15), 2.5, brushTip);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _ElderListeningMusicPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cx = size.width * 0.48;
+    final cy = size.height * 0.44;
+
+    // Body / Purple shirt
+    final bodyPaint = Paint()..color = const Color(0xFF6B21A8);
+    final bodyPath = Path()
+      ..moveTo(cx - 20, size.height)
+      ..quadraticBezierTo(cx - 22, cy + 12, cx - 12, cy + 8)
+      ..lineTo(cx + 12, cy + 8)
+      ..quadraticBezierTo(cx + 22, cy + 12, cx + 20, size.height)
+      ..close();
+    canvas.drawPath(bodyPath, bodyPaint);
+
+    // Head / Face
+    final skinPaint = Paint()..color = const Color(0xFFFFE0BD);
+    canvas.drawCircle(Offset(cx, cy - 6), 17, skinPaint);
+
+    // Rosy cheeks
+    final blushPaint = Paint()..color = const Color(0xFFFDA4AF).withValues(alpha: 0.6);
+    canvas.drawCircle(Offset(cx - 9, cy - 3), 4, blushPaint);
+    canvas.drawCircle(Offset(cx + 9, cy - 3), 4, blushPaint);
+
+    // Silver hair
+    final hairPaint = Paint()..color = const Color(0xFFE2E8F0);
+    canvas.drawArc(Rect.fromCircle(center: Offset(cx, cy - 8), radius: 18), 3.14, 3.14, true, hairPaint);
+
+    // Closed smiling eyes in pure musical bliss (peaceful crescents)
+    final eyePaint = Paint()
+      ..color = const Color(0xFF1E293B)
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = 1.6;
+    canvas.drawArc(Rect.fromCircle(center: Offset(cx - 6, cy - 6), radius: 4), 3.4, 2.5, false, eyePaint);
+    canvas.drawArc(Rect.fromCircle(center: Offset(cx + 6, cy - 6), radius: 4), 3.4, 2.5, false, eyePaint);
+
+    // Glasses frames
+    final glassesPaint = Paint()
+      ..color = const Color(0xFF334155)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.3;
+    canvas.drawCircle(Offset(cx - 6, cy - 6), 5.5, glassesPaint);
+    canvas.drawCircle(Offset(cx + 6, cy - 6), 5.5, glassesPaint);
+    canvas.drawLine(Offset(cx - 0.5, cy - 6), Offset(cx + 0.5, cy - 6), glassesPaint);
+
+    // Peaceful Smile
+    final smilePaint = Paint()
+      ..color = const Color(0xFFBE123C)
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = 1.6;
+    canvas.drawArc(Rect.fromCircle(center: Offset(cx, cy), radius: 5), 0.2, 2.7, false, smilePaint);
+
+    // Big Modern Over-Ear Headphones
+    final hpHeadband = Paint()
+      ..color = const Color(0xFF1E293B)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4.2;
+    canvas.drawArc(Rect.fromCircle(center: Offset(cx, cy - 7), radius: 21), 3.14, 3.14, false, hpHeadband);
+
+    // Ear cushions
+    final earCushion = Paint()..color = const Color(0xFF0F172A);
+    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(cx - 24, cy - 13, 7, 16), const Radius.circular(3)), earCushion);
+    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(cx + 17, cy - 13, 7, 16), const Radius.circular(3)), earCushion);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
