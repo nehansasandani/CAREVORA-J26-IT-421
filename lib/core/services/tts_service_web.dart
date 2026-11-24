@@ -94,6 +94,26 @@ class WebTtsService implements TtsService {
     'ඔබේ ඇමතුම සහායක කණ්ඩායමට යොමු කළා. සුළු මොහොතකින් පැමිණෙනු ඇත.': 'home_call_help.mp3',
     'සන්සුන් සංගීතය වාදනය ආරම්භ කළා.': 'home_music_start.mp3',
     'ස්වභාවික කුරුළු නාදය සහ දිය දහරාව වාදනය ආරම්භ කළා.': 'home_nature_start.mp3',
+    // Remember the Sequence Game Native Sinhala Clips
+    'අනුපිළිවෙල මතක ක්‍රීඩාව ක්‍රීඩා කරන ආකාරය. පළමුව, පියවර එක සිට අවසානය දක්වා පෙන්වන පාට සහ අංක පිළිවෙල හොඳින් මතක තබාගන්න. දෙවනුව, මතකයි ආරම්භ කරමු ඔබා, ඒ පිළිවෙලටම පහළ ඇති පාට අංක බොත්තම් ඔබන්න. තෙවනුව, මට්ටම් තුනම සම්පූර්ණ කර ජය ගන්න. අමතක වුණොත් නැවත බලන්න ඔබන්න.': 'seq_howto.mp3',
+    'පාට සහ අංක පිළිවෙල හොඳින් බලා මතක තබාගන්න. සූදානම් වූ පසු ආරම්භ කරමු ඔබන්න.': 'seq_watch.mp3',
+    'දැන් ඔබේ වාරයයි! කලින් දුටු පිළිවෙලටම පාට අංක බොත්තම් ඔබන්න.': 'seq_turn.mp3',
+    'හරිම විශිෂ්ටයි! ඔබ පිළිවෙල හරියටම මතක තබා ගත්තා! අපි ඊළඟ මට්ටමට යමු.': 'seq_level_clear.mp3',
+    'විශිෂ්ට ජයග්‍රහණයක්! ඔබ අනුපිළිවෙල මතක ක්‍රීඩාවේ මට්ටම් තුනම සාර්ථකව අවසන් කළා! ඔබේ මතක ශක්තිය හරිම අපූරුයි!': 'seq_grand_win.mp3',
+    'හොඳ උත්සාහයක්! කලබල වෙන්න එපා. අපි පිළිවෙල නැවත බලා ආයෙත් උත්සාහ කරමු.': 'seq_retry.mp3',
+    // Find the Matching Pairs Game Native Sinhala Clips
+    'ගැළපෙන යුගල සෙවීමේ ක්‍රීඩාවට සාදරයෙන් පිළිගනිමු! ඕනෑම කාඩ්පත් දෙකක් ඔබා ගැළපෙන යුගල සොයාගන්න. කලබල වෙන්න එපා, නිදහසේ සෙල්ලම් කරන්න.': 'pairs_start.mp3',
+    'හරිම හොඳයි! ඔබ ගැළපෙන යුගලයක් සොයා ගත්තා!': 'pairs_match.mp3',
+    'හොඳ උත්සාහයක්! ඒ කාඩ්පත් මතක තබාගෙන ආයෙත් උත්සාහ කරමු.': 'pairs_mismatch.mp3',
+    'හොඳයි, දිගටම උත්සාහ කරමු!': 'pairs_encourage_1.mp3',
+    'කලබල වෙන්න එපා, නිදහසේ බලමු!': 'pairs_encourage_2.mp3',
+    'දැන් හරිම ළඟයි, ආයෙත් බලමු!': 'pairs_encourage_3.mp3',
+    'හරිම විශිෂ්ටයි! ඔබ ගැළපෙන යුගල හයම සාර්ථකව සොයා ගත්තා! ඔබේ මතක ශක්තිය හරිම අපූරුයි!': 'pairs_complete.mp3',
+    // Remember the Items Game Native Sinhala Clips
+    'මෙහි පෙන්වන හුරුපුරුදු භාණ්ඩ හතර හොඳින් බලා මතක තබාගන්න. සූදානම් වූ පසු පහළ බොත්තම ඔබන්න.': 'items_study.mp3',
+    'දැන් ඔබ කලින් දුටු භාණ්ඩ හතර තෝරා, පිළිතුරු පරීක්ෂා කරන්න ඔබන්න.': 'items_select.mp3',
+    'හරිම විශිෂ්ටයි! ඔබ භාණ්ඩ හතරම නිවැරදිව මතක තබා ගත්තා!': 'items_perfect.mp3',
+    'හොඳ උත්සාහයක්! ඉතා හොඳ මතක පුහුණුවක්. කැමති නම් ආයෙත් උත්සාහ කරමු!': 'items_goodtry.mp3',
   };
 
   static String? _matchSinhalaAudioFile(String rawText) {
@@ -139,6 +159,23 @@ class WebTtsService implements TtsService {
     if (text.contains('ඔබේ ඇමතුම සහායක කණ්ඩායමට යොමු කළා')) return 'home_call_help.mp3';
     if (text.contains('සන්සුන් සංගීතය වාදනය ආරම්භ කළා')) return 'home_music_start.mp3';
     if (text.contains('ස්වභාවික කුරුළු නාදය සහ දිය දහරාව')) return 'home_nature_start.mp3';
+    if (text.contains('අනුපිළිවෙල මතක ක්‍රීඩාව ක්‍රීඩා කරන ආකාරය')) return 'seq_howto.mp3';
+    if (text.contains('පාට සහ අංක පිළිවෙල හොඳින් බලා මතක තබාගන්න')) return 'seq_watch.mp3';
+    if (text.contains('කලින් දුටු පිළිවෙලටම පාට අංක බොත්තම් ඔබන්න')) return 'seq_turn.mp3';
+    if (text.contains('ඔබ පිළිවෙල හරියටම මතක තබා ගත්තා')) return 'seq_level_clear.mp3';
+    if (text.contains('අනුපිළිවෙල මතක ක්‍රීඩාවේ මට්ටම් තුනම')) return 'seq_grand_win.mp3';
+    if (text.contains('අපි පිළිවෙල නැවත බලා ආයෙත් උත්සාහ කරමු')) return 'seq_retry.mp3';
+    if (text.contains('ගැළපෙන යුගල සෙවීමේ ක්‍රීඩාවට සාදරයෙන්')) return 'pairs_start.mp3';
+    if (text.contains('ඔබ ගැළපෙන යුගලයක් සොයා ගත්තා')) return 'pairs_match.mp3';
+    if (text.contains('ඒ කාඩ්පත් මතක තබාගෙන ආයෙත් උත්සාහ කරමු')) return 'pairs_mismatch.mp3';
+    if (text.contains('දිගටම උත්සාහ කරමු')) return 'pairs_encourage_1.mp3';
+    if (text.contains('කලබල වෙන්න එපා, නිදහසේ බලමු')) return 'pairs_encourage_2.mp3';
+    if (text.contains('දැන් හරිම ළඟයි, ආයෙත් බලමු')) return 'pairs_encourage_3.mp3';
+    if (text.contains('ඔබ ගැළපෙන යුගල හයම සාර්ථකව සොයා ගත්තා')) return 'pairs_complete.mp3';
+    if (text.contains('හුරුපුරුදු භාණ්ඩ හතර හොඳින් බලා මතක තබාගන්න')) return 'items_study.mp3';
+    if (text.contains('ඔබ කලින් දුටු භාණ්ඩ හතර තෝරා')) return 'items_select.mp3';
+    if (text.contains('ඔබ භාණ්ඩ හතරම නිවැරදිව මතක තබා ගත්තා')) return 'items_perfect.mp3';
+    if (text.contains('ඉතා හොඳ මතක පුහුණුවක්')) return 'items_goodtry.mp3';
 
     for (final entry in _sinhalaAudioFiles.entries) {
       if (text.contains(entry.key)) {
