@@ -37,7 +37,7 @@ class DashboardShell extends ConsumerWidget {
       builder: (ctx, elderBellButton) => Scaffold(
         backgroundColor: AppColors.dashboardBg,
         drawer: Drawer(
-          backgroundColor: AppColors.card,
+          backgroundColor: const Color(0xFF6D28D9),
           child: SafeArea(
             child: DesktopSidebar(currentRoute: location, isCollapsed: false),
           ),
