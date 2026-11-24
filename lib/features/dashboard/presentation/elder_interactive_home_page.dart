@@ -714,8 +714,19 @@ class _ElderInteractiveHomePageState
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('🔔', style: TextStyle(fontSize: 14)),
-            const SizedBox(width: 6),
+            // Swinging animated bell to catch elder's eye and remind them
+            AnimatedBuilder(
+              animation: _floatingController,
+              builder: (context, _) {
+                final angle = math.sin(_floatingController.value * 4 * math.pi) * 0.28;
+                return Transform.rotate(
+                  angle: angle,
+                  alignment: Alignment.topCenter,
+                  child: const Text('🔔', style: TextStyle(fontSize: 19)),
+                );
+              },
+            ),
+            const SizedBox(width: 7),
             Text(
               'අද $currentSlotName සැසිය තවම කර නැත!',
               style: const TextStyle(
