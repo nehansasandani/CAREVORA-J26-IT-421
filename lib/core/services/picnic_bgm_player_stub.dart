@@ -19,9 +19,9 @@ class PicnicBgmPlayer {
     if (muted) _isPlaying = false;
   }
 
-  void playTapChime() {}
+  void playTapChime({double volume = 0.80}) {}
 
-  void playVictoryChime() {}
+  void playVictoryChime({double volume = 0.88}) {}
 
   void dispose() {
     _isPlaying = false;

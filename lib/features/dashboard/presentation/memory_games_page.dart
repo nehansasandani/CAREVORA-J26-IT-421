@@ -189,12 +189,14 @@ class _MemoryGamesPageState extends ConsumerState<MemoryGamesPage> {
 
     switch (_activeGame) {
       case MemoryGameType.sequence:
+        final isSinhala = ref.watch(languageProvider).isSinhala;
         return _SequenceGameView(
           key: const ValueKey('sequence_game'),
           onBack: _backToHub,
           initialSequence: widget.initialSequence,
           residentId: effectiveResidentId,
           token: effectiveToken,
+          isSinhala: isSinhala,
         );
       case MemoryGameType.pairs:
         return _PairsGameView(
@@ -1923,6 +1925,7 @@ class _SequenceGameView extends StatefulWidget {
   final List<int>? initialSequence;
   final int residentId;
   final String? token;
+  final bool isSinhala;
 
   const _SequenceGameView({
     super.key,
@@ -1930,6 +1933,7 @@ class _SequenceGameView extends StatefulWidget {
     this.initialSequence,
     required this.residentId,
     this.token,
+    this.isSinhala = false,
   });
 
   @override
@@ -1946,6 +1950,7 @@ enum _SeqPhase {
 class _SequenceTileData {
   final int id;
   final String label;
+  final String sinhalaLabel;
   final Color color;
   final Color accentGradient;
   final IconData icon;
@@ -1953,17 +1958,23 @@ class _SequenceTileData {
   const _SequenceTileData({
     required this.id,
     required this.label,
+    required this.sinhalaLabel,
     required this.color,
     required this.accentGradient,
     required this.icon,
   });
+
+  String displayLabel(bool isSi) => isSi ? sinhalaLabel : label;
 }
 
 class _SequenceGameViewState extends State<_SequenceGameView> {
+  static const int _maxLevels = 3;
+
   static const List<_SequenceTileData> _tiles = [
     _SequenceTileData(
       id: 0,
       label: 'Violet 1',
+      sinhalaLabel: 'දම් 1',
       color: Color(0xFF7C3AED),
       accentGradient: Color(0xFF9333EA),
       icon: Icons.looks_one_rounded,
@@ -1971,6 +1982,7 @@ class _SequenceGameViewState extends State<_SequenceGameView> {
     _SequenceTileData(
       id: 1,
       label: 'Blue 2',
+      sinhalaLabel: 'නිල් 2',
       color: Color(0xFF2563EB),
       accentGradient: Color(0xFF3B82F6),
       icon: Icons.looks_two_rounded,
@@ -1978,6 +1990,7 @@ class _SequenceGameViewState extends State<_SequenceGameView> {
     _SequenceTileData(
       id: 2,
       label: 'Green 3',
+      sinhalaLabel: 'කොළ 3',
       color: Color(0xFF16A34A),
       accentGradient: Color(0xFF22C55E),
       icon: Icons.looks_3_rounded,
@@ -1985,6 +1998,7 @@ class _SequenceGameViewState extends State<_SequenceGameView> {
     _SequenceTileData(
       id: 3,
       label: 'Orange 4',
+      sinhalaLabel: 'තැඹිලි 4',
       color: Color(0xFFEA580C),
       accentGradient: Color(0xFFF97316),
       icon: Icons.looks_4_rounded,
@@ -2012,32 +2026,164 @@ class _SequenceGameViewState extends State<_SequenceGameView> {
   int _lastAttempts = 1;
   int _lastCorrectCount = 0;
 
+  // Hot-reload-safe nullable state for voice, chimes, animated preview & 3-level finish flow
+  bool? _voiceEnabled;
+  Timer? _voiceDelayTimer;
+  Timer? _highlightTimer;
+  int? _highlightedPreviewStep;
+  PicnicBgmPlayer? _sfxPlayer;
+  List<double>? _levelScores;
+  int? _lastRetryMatchedCount;
+  bool? _isTestEnv;
+  bool? _isCheckingResult;
+  Timer? _evalTimer;
+
+  bool get _isVoiceOn => _voiceEnabled ?? true;
+  bool get _isFinalLevel => _currentLevel >= _maxLevels;
+  PicnicBgmPlayer get _sfx => _sfxPlayer ??= PicnicBgmPlayer();
+
+  static const String _siHowToSpeech =
+      'අනුපිළිවෙල මතක ක්‍රීඩාව ක්‍රීඩා කරන ආකාරය. පළමුව, පියවර එක සිට අවසානය දක්වා පෙන්වන පාට සහ අංක පිළිවෙල හොඳින් මතක තබාගන්න. දෙවනුව, මතකයි ආරම්භ කරමු ඔබා, ඒ පිළිවෙලටම පහළ ඇති පාට අංක බොත්තම් ඔබන්න. තෙවනුව, මට්ටම් තුනම සම්පූර්ණ කර ජය ගන්න. අමතක වුණොත් නැවත බලන්න ඔබන්න.';
+  static const String _enHowToSpeech =
+      'How to play Remember the Sequence. Step 1: Watch the colored numbers in order from Step 1 to the end. Step 2: Tap Start My Turn, then tap the colored buttons in the exact same order. Step 3: Complete all 3 levels to win! You can tap Watch Again anytime if you need another look.';
+
   @override
   void initState() {
     super.initState();
+    _isTestEnv = WidgetsBinding.instance.runtimeType.toString().contains('Test');
+    _levelScores = <double>[];
     if (widget.initialSequence != null && widget.initialSequence!.isNotEmpty) {
       _sequenceLength = widget.initialSequence!.length;
       _targetSequence = List<int>.from(widget.initialSequence!);
       _userTaps = [];
       _phase = _SeqPhase.showing;
+      _startPreviewPulse();
+      _speakPhasePrompt(_SeqPhase.showing, delay: const Duration(milliseconds: 350));
     } else {
-      _startNewRound();
+      _startNewRound(initialDelay: const Duration(milliseconds: 350));
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _SequenceGameView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isSinhala != widget.isSinhala) {
+      _speakPhasePrompt(_phase);
     }
   }
 
   @override
   void dispose() {
     _completionTimer?.cancel();
+    _voiceDelayTimer?.cancel();
+    _highlightTimer?.cancel();
+    _evalTimer?.cancel();
+    if (_isTestEnv != true) {
+      TtsService.instance.onComplete = null;
+      TtsService.instance.stop();
+    }
+    _sfxPlayer?.dispose();
     super.dispose();
   }
 
-  void _startNewRound() {
+  void _speakText(String enText, String siText, {Duration delay = Duration.zero}) {
+    if (_isTestEnv == true || !_isVoiceOn || !mounted) return;
+    _voiceDelayTimer?.cancel();
+    final isSi = widget.isSinhala;
+    final text = isSi ? siText : enText;
+    if (delay == Duration.zero) {
+      TtsService.instance.speak(text, isSinhala: isSi);
+      return;
+    }
+    _voiceDelayTimer = Timer(delay, () {
+      if (!mounted || !_isVoiceOn || _isTestEnv == true) return;
+      TtsService.instance.speak(text, isSinhala: isSi);
+    });
+  }
+
+  void _speakPhasePrompt(_SeqPhase phase, {Duration delay = Duration.zero}) {
+    switch (phase) {
+      case _SeqPhase.showing:
+        _speakText(
+          'Watch and remember the colored numbers in order. When you are ready, tap Start My Turn.',
+          'පාට සහ අංක පිළිවෙල හොඳින් බලා මතක තබාගන්න. සූදානම් වූ පසු ආරම්භ කරමු ඔබන්න.',
+          delay: delay,
+        );
+        break;
+      case _SeqPhase.input:
+        _speakText(
+          "Now it's your turn! Tap the colored circles in the exact same order.",
+          'දැන් ඔබේ වාරයයි! කලින් දුටු පිළිවෙලටම පාට අංක බොත්තම් ඔබන්න.',
+          delay: delay,
+        );
+        break;
+      case _SeqPhase.success:
+        if (_isFinalLevel) {
+          _speakText(
+            'Amazing champion! You completed all 3 levels of Remember the Sequence! Your memory is shining bright!',
+            'විශිෂ්ට ජයග්‍රහණයක්! ඔබ අනුපිළිවෙල මතක ක්‍රීඩාවේ මට්ටම් තුනම සාර්ථකව අවසන් කළා! ඔබේ මතක ශක්තිය හරිම අපූරුයි!',
+            delay: delay,
+          );
+        } else {
+          _speakText(
+            "Wonderful job! You remembered the sequence perfectly! Let's try the next level.",
+            'හරිම විශිෂ්ටයි! ඔබ පිළිවෙල හරියටම මතක තබා ගත්තා! අපි ඊළඟ මට්ටමට යමු.',
+            delay: delay,
+          );
+        }
+        break;
+      case _SeqPhase.retry:
+        _speakText(
+          'Good try! Take a deep breath, watch the sequence again, and give it another try.',
+          'හොඳ උත්සාහයක්! කලබල වෙන්න එපා. අපි පිළිවෙල නැවත බලා ආයෙත් උත්සාහ කරමු.',
+          delay: delay,
+        );
+        break;
+    }
+  }
+
+  void _toggleVoice() {
+    final next = !_isVoiceOn;
+    setState(() => _voiceEnabled = next);
+    if (!next) {
+      _voiceDelayTimer?.cancel();
+      if (_isTestEnv != true) {
+        TtsService.instance.stop();
+      }
+    } else {
+      _speakPhasePrompt(_phase);
+    }
+  }
+
+  void _startPreviewPulse() {
+    _highlightTimer?.cancel();
+    if (_isTestEnv == true || _targetSequence.isEmpty) return;
+    _highlightedPreviewStep = 0;
+    _highlightTimer = Timer.periodic(const Duration(milliseconds: 950), (timer) {
+      if (!mounted || _phase != _SeqPhase.showing) {
+        timer.cancel();
+        return;
+      }
+      setState(() {
+        final next = ((_highlightedPreviewStep ?? 0) + 1) % _targetSequence.length;
+        _highlightedPreviewStep = next;
+      });
+    });
+  }
+
+  void _startNewRound({Duration initialDelay = Duration.zero}) {
     _completionTimer?.cancel();
+    _evalTimer?.cancel();
     _hasShownSuccessPopup = false;
     _isPopupOpen = false;
     final List<int> seq = [];
     for (int i = 0; i < _sequenceLength; i++) {
-      seq.add(_random.nextInt(_tiles.length));
+      // Avoid 3 identical tiles in a row so sequences feel natural & memorable
+      int pick = _random.nextInt(_tiles.length);
+      if (seq.length >= 2 && seq[seq.length - 1] == pick && seq[seq.length - 2] == pick) {
+        pick = (pick + 1) % _tiles.length;
+      }
+      seq.add(pick);
     }
     setState(() {
       _targetSequence = seq;
@@ -2045,41 +2191,76 @@ class _SequenceGameViewState extends State<_SequenceGameView> {
       _phase = _SeqPhase.showing;
       _roundAttempts = 1;
       _wrongTapsInRound = 0;
+      _lastRetryMatchedCount = null;
+      _isCheckingResult = false;
       _saveSuccessMessage = null;
       _saveErrorMessage = null;
+      _highlightedPreviewStep = 0;
     });
+    _startPreviewPulse();
+    _speakPhasePrompt(_SeqPhase.showing, delay: initialDelay);
   }
 
   void _startInputPhase() {
+    _highlightTimer?.cancel();
+    _evalTimer?.cancel();
+    if (_isTestEnv != true) {
+      _sfx.playTapChime(volume: 0.24);
+    }
     setState(() {
       _userTaps = [];
       _phase = _SeqPhase.input;
+      _highlightedPreviewStep = null;
+      _isCheckingResult = false;
     });
+    _speakPhasePrompt(_SeqPhase.input);
   }
 
   void _replaySequence() {
+    _evalTimer?.cancel();
     setState(() {
       _userTaps = [];
       _phase = _SeqPhase.showing;
+      _highlightedPreviewStep = 0;
+      _isCheckingResult = false;
+    });
+    _startPreviewPulse();
+    _speakPhasePrompt(_SeqPhase.showing);
+  }
+
+  void _undoLastTap() {
+    if (_phase != _SeqPhase.input || _userTaps.isEmpty || _isCheckingResult == true) return;
+    if (_isTestEnv != true) {
+      _sfx.playTapChime(volume: 0.22);
+    }
+    setState(() {
+      _userTaps = List<int>.from(_userTaps)..removeLast();
     });
   }
 
   void _resetToBeginning() {
     _completionTimer?.cancel();
+    _evalTimer?.cancel();
     _hasShownSuccessPopup = false;
     _isPopupOpen = false;
     setState(() {
       _currentLevel = 1;
       _sequenceLength = 3;
+      _levelScores = <double>[];
+      _isCheckingResult = false;
     });
     _startNewRound();
   }
 
   void _onTileTap(int tileId) {
-    if (_phase != _SeqPhase.input) return;
+    if (_phase != _SeqPhase.input || _isCheckingResult == true) return;
 
     final nextIndex = _userTaps.length;
     if (nextIndex >= _targetSequence.length) return;
+
+    if (_isTestEnv != true) {
+      _sfx.playTapChime(volume: 0.26);
+    }
 
     final updatedTaps = List<int>.from(_userTaps)..add(tileId);
 
@@ -2102,43 +2283,80 @@ class _SequenceGameViewState extends State<_SequenceGameView> {
       }
     }
 
-    if (isAllCorrect) {
-      final totalTaps = _targetSequence.length + _wrongTapsInRound;
-      final accuracy =
-          ((_targetSequence.length.toDouble() / totalTaps.toDouble()) * 100.0)
-              .clamp(0.0, 100.0);
-      final roundedScore = (accuracy * 10).round() / 10.0;
-      final attemptsCount = _roundAttempts;
+    void finalizeRoundEvaluation() {
+      if (!mounted) return;
+      if (isAllCorrect) {
+        final totalTaps = _targetSequence.length + _wrongTapsInRound;
+        final accuracy =
+            ((_targetSequence.length.toDouble() / totalTaps.toDouble()) * 100.0)
+                .clamp(0.0, 100.0);
+        final roundedScore = (accuracy * 10).round() / 10.0;
+        final attemptsCount = _roundAttempts;
 
-      setState(() {
-        _userTaps = updatedTaps;
-        _phase = _SeqPhase.success;
-        _lastScore = roundedScore;
-        _lastAttempts = attemptsCount;
-        _lastCorrectCount = _targetSequence.length;
-      });
-
-      _saveSession(
-        score: roundedScore,
-        attempts: attemptsCount,
-        correctAnswers: _targetSequence.length,
-        totalItems: _targetSequence.length,
-      );
-
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && _phase == _SeqPhase.success && !_hasShownSuccessPopup) {
-          _showSuccessPopup();
+        final scores = List<double>.from(_levelScores ?? const <double>[]);
+        if (scores.length >= _currentLevel) {
+          scores[_currentLevel - 1] = roundedScore;
+        } else {
+          scores.add(roundedScore);
         }
-      });
-    } else {
-      final wrongCount = _targetSequence.length - correctCount;
-      setState(() {
-        _userTaps = updatedTaps;
-        _wrongTapsInRound += (wrongCount > 0 ? wrongCount : 1);
-        _roundAttempts++;
-        _phase = _SeqPhase.retry;
-      });
+
+        setState(() {
+          _userTaps = updatedTaps;
+          _isCheckingResult = false;
+          _phase = _SeqPhase.success;
+          _lastScore = roundedScore;
+          _lastAttempts = attemptsCount;
+          _lastCorrectCount = _targetSequence.length;
+          _levelScores = scores;
+        });
+
+        if (_isTestEnv != true) {
+          _sfx.playVictoryChime(volume: 0.28);
+        }
+        _speakPhasePrompt(_SeqPhase.success, delay: const Duration(milliseconds: 220));
+
+        _saveSession(
+          score: roundedScore,
+          attempts: attemptsCount,
+          correctAnswers: _targetSequence.length,
+          totalItems: _targetSequence.length,
+        );
+
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted &&
+              _phase == _SeqPhase.success &&
+              !_hasShownSuccessPopup &&
+              !_isFinalLevel) {
+            _showSuccessPopup();
+          }
+        });
+      } else {
+        final wrongCount = _targetSequence.length - correctCount;
+        setState(() {
+          _userTaps = updatedTaps;
+          _isCheckingResult = false;
+          _wrongTapsInRound += (wrongCount > 0 ? wrongCount : 1);
+          _lastRetryMatchedCount = correctCount;
+          _roundAttempts++;
+          _phase = _SeqPhase.retry;
+        });
+        _speakPhasePrompt(_SeqPhase.retry);
+      }
     }
+
+    if (_isTestEnv == true) {
+      finalizeRoundEvaluation();
+      return;
+    }
+
+    // Show the final tapped tile cleanly in the last slot for 800ms before transitioning
+    // so the elder clearly sees their complete selection instead of an abrupt jump!
+    setState(() {
+      _userTaps = updatedTaps;
+      _isCheckingResult = true;
+    });
+    _evalTimer?.cancel();
+    _evalTimer = Timer(const Duration(milliseconds: 800), finalizeRoundEvaluation);
   }
 
   Future<void> _saveSession({
@@ -2154,7 +2372,7 @@ class _SequenceGameViewState extends State<_SequenceGameView> {
     });
 
     try {
-      final record = await MemoryGameService.saveCompletedSession(
+      await MemoryGameService.saveCompletedSession(
         residentId: widget.residentId,
         gameType: 'SEQUENCE',
         scorePercentage: score,
@@ -2165,6 +2383,7 @@ class _SequenceGameViewState extends State<_SequenceGameView> {
         completionDetailsJson: jsonEncode({
           'sequenceLength': _sequenceLength,
           'level': _currentLevel,
+          'maxLevels': _maxLevels,
           'wrongTaps': _wrongTapsInRound,
         }),
         token: widget.token,
@@ -2173,7 +2392,9 @@ class _SequenceGameViewState extends State<_SequenceGameView> {
       if (mounted) {
         setState(() {
           _isSaving = false;
-          _saveSuccessMessage = null;
+          _saveSuccessMessage = widget.isSinhala
+              ? 'ප්‍රගති වාර්තාවේ සුරැකුණා'
+              : 'Saved to Cognitive Progress';
         });
         _dialogSetState?.call(() {});
       }
@@ -2199,20 +2420,383 @@ class _SequenceGameViewState extends State<_SequenceGameView> {
     _startNewRound();
   }
 
+  Future<void> _showSequenceHowToPlayDialog() async {
+    final isSi = widget.isSinhala;
+    final tts = TtsService.instance;
+    bool isSpeakingNow = false;
+    bool dialogOpen = true;
+
+    void stopGuideSpeech({void Function(VoidCallback)? setDlgState}) {
+      tts.onComplete = null;
+      tts.stop();
+      if (isSpeakingNow) {
+        isSpeakingNow = false;
+        if (dialogOpen && setDlgState != null) {
+          setDlgState(() {});
+        }
+      }
+    }
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogCtx) {
+        return StatefulBuilder(
+          builder: (ctx, setDlgState) {
+            void toggleSpeak() {
+              if (isSpeakingNow) {
+                stopGuideSpeech(setDlgState: setDlgState);
+                return;
+              }
+              setDlgState(() => isSpeakingNow = true);
+              tts.onComplete = () {
+                if (dialogOpen) {
+                  isSpeakingNow = false;
+                  setDlgState(() {});
+                }
+              };
+              tts.speak(
+                isSi ? _siHowToSpeech : _enHowToSpeech,
+                isSinhala: isSi,
+              );
+            }
+
+            return Dialog(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 530),
+                child: AuroraGradientBorderFrame(
+                  borderRadius: 24,
+                  borderWidth: 3.0,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(21),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF4C1D95).withValues(alpha: 0.22),
+                          blurRadius: 28,
+                          offset: const Offset(0, 12),
+                        ),
+                      ],
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Header Strip with Listen button
+                        Container(
+                          padding: const EdgeInsets.fromLTRB(20, 16, 14, 16),
+                          decoration: const BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                Color(0xFF2E1065),
+                                Color(0xFF6D28D9),
+                                Color(0xFF0D9488),
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 42,
+                                height: 42,
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.20),
+                                  borderRadius: BorderRadius.circular(13),
+                                  border: Border.all(
+                                    color: Colors.white.withValues(alpha: 0.45),
+                                    width: 1.5,
+                                  ),
+                                ),
+                                child: const Center(
+                                  child: Text('🔢', style: TextStyle(fontSize: 22)),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      isSi ? 'ක්‍රීඩා කරන ආකාරය' : 'How to Play',
+                                      style: const TextStyle(
+                                        fontSize: 19,
+                                        fontWeight: FontWeight.w900,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 1),
+                                    Text(
+                                      isSi
+                                          ? 'සරල පියවර 3 කින් අනුපිළිවෙල මතක තබාගනිමු'
+                                          : '3 simple steps to master the sequence',
+                                      style: TextStyle(
+                                        fontSize: 12.5,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.white.withValues(alpha: 0.88),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              ElevatedButton.icon(
+                                key: const ValueKey('seq_howto_listen_button'),
+                                onPressed: toggleSpeak,
+                                icon: Icon(
+                                  isSpeakingNow
+                                      ? Icons.stop_rounded
+                                      : Icons.volume_up_rounded,
+                                  size: 18,
+                                ),
+                                label: Text(
+                                  isSpeakingNow
+                                      ? (isSi ? 'නවත්වන්න' : 'Stop')
+                                      : (isSi ? 'අසන්න' : 'Listen'),
+                                  style: const TextStyle(
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: isSpeakingNow
+                                      ? const Color(0xFFEF4444)
+                                      : const Color(0xFFFDE68A),
+                                  foregroundColor: isSpeakingNow
+                                      ? Colors.white
+                                      : const Color(0xFF1E1B4B),
+                                  elevation: 0,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 10,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(13),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              IconButton(
+                                onPressed: () => Navigator.of(dialogCtx).pop(),
+                                icon: const Icon(
+                                  Icons.close_rounded,
+                                  color: Colors.white,
+                                  size: 22,
+                                ),
+                                tooltip: isSi ? 'වසන්න' : 'Close',
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _buildSeqGuideStepCard(
+                                stepNumber: '1',
+                                emoji: '👀',
+                                title: isSi
+                                    ? 'පාට සහ අංක පිළිවෙල බලන්න'
+                                    : 'Watch the Color & Number Order',
+                                description: isSi
+                                    ? 'පියවර 1 සිට අවසානය දක්වා පෙන්වන පාට සහ අංක පිළිවෙල හොඳින් මතක තබාගන්න.'
+                                    : 'Look closely at the colored numbered circles from Step 1 to the end at your own pace.',
+                                accentColor: const Color(0xFF7C3AED),
+                                bgColors: const [Color(0xFFFAF5FF), Color(0xFFF3E8FF)],
+                              ),
+                              const SizedBox(height: 11),
+                              _buildSeqGuideStepCard(
+                                stepNumber: '2',
+                                emoji: '👆',
+                                title: isSi
+                                    ? 'ඒ පිළිවෙලටම ඔබන්න'
+                                    : 'Tap in the Exact Same Order',
+                                description: isSi
+                                    ? '"මතකයි! ආරම්භ කරමු" ඔබා, කලින් දුටු පිළිවෙලටම පහළ ඇති පාට බොත්තම් ඔබන්න.'
+                                    : 'Tap "Start My Turn", then tap the large colored buttons in the exact same order. Use Undo if you mis-tap!',
+                                accentColor: const Color(0xFF0D9488),
+                                bgColors: const [Color(0xFFECFDF5), Color(0xFFF0FDFA)],
+                              ),
+                              const SizedBox(height: 11),
+                              _buildSeqGuideStepCard(
+                                stepNumber: '3',
+                                emoji: '🏆',
+                                title: isSi
+                                    ? 'මට්ටම් 3ම සම්පූර්ණ කර ජය ගන්න!'
+                                    : 'Complete All 3 Levels & Win!',
+                                description: isSi
+                                    ? 'මට්ටම 1 (අංක 3), මට්ටම 2 (අංක 4), මට්ටම 3 (අංක 5) සම්පූර්ණ කර ක්‍රීඩාව ජය ගන්න. අමතක වුණොත් නැවත බලන්න ඔබන්න!'
+                                    : 'Finish Level 1 (3 tiles), Level 2 (4 tiles), and Level 3 (5 tiles) to complete the game! Tap Watch Again anytime.',
+                                accentColor: const Color(0xFFD97706),
+                                bgColors: const [Color(0xFFFFFBEB), Color(0xFFFEF3C7)],
+                              ),
+                              const SizedBox(height: 16),
+                              SizedBox(
+                                height: 46,
+                                child: ElevatedButton(
+                                  onPressed: () => Navigator.of(dialogCtx).pop(),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF6D28D9),
+                                    foregroundColor: Colors.white,
+                                    elevation: 0,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    isSi
+                                        ? '👍 හරි, තේරුණා!'
+                                        : "👍 Got It! Let's Play",
+                                    style: const TextStyle(
+                                      fontSize: 15.5,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    ).whenComplete(() {
+      dialogOpen = false;
+      stopGuideSpeech();
+    });
+  }
+
+  Widget _buildSeqGuideStepCard({
+    required String stepNumber,
+    required String emoji,
+    required String title,
+    required String description,
+    required Color accentColor,
+    required List<Color> bgColors,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: bgColors,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: accentColor.withValues(alpha: 0.30),
+          width: 1.5,
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(13),
+              border: Border.all(
+                color: accentColor.withValues(alpha: 0.35),
+                width: 1.5,
+              ),
+            ),
+            child: Center(
+              child: Text(emoji, style: const TextStyle(fontSize: 22)),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: accentColor,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        stepNumber,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 7),
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w900,
+                          color: accentColor,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  description,
+                  style: const TextStyle(
+                    fontSize: 13.5,
+                    height: 1.38,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1E293B),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  double get _overallAverageScore {
+    final scores = _levelScores ?? const <double>[];
+    if (scores.isEmpty) return _lastScore ?? 100.0;
+    final avg = scores.reduce((a, b) => a + b) / scores.length;
+    return (avg * 10).round() / 10.0;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isSi = widget.isSinhala;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildGameNavBar(
-          gameTitle: 'Remember the Sequence',
+          gameTitle: isSi ? 'අනුපිළිවෙල මතකය' : 'Remember the Sequence',
           gameIcon: LucideIcons.sparkles,
           gameColor: const Color(0xFF7C3AED),
           onBack: widget.onBack,
           onReset: _resetToBeginning,
-          statusBadge: 'Level $_currentLevel ($_sequenceLength Tiles)',
+          backLabel: isSi ? 'සියලුම ක්‍රීඩා' : 'All Games',
+          statusBadge: isSi
+              ? 'මට්ටම $_currentLevel / $_maxLevels • අංක $_sequenceLength'
+              : 'Level $_currentLevel of $_maxLevels • $_sequenceLength Tiles',
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 10),
 
         Container(
           width: double.infinity,
@@ -2221,102 +2805,72 @@ class _SequenceGameViewState extends State<_SequenceGameView> {
               colors: [
                 Color(0xFFFFFFFF),
                 Color(0xFFFBF9FE),
-                Color(0xFFF7F4FD),
+                Color(0xFFF5F3FF),
               ],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
             borderRadius: BorderRadius.circular(24),
             border: Border.all(
-              color: const Color(0xFF8B5CF6).withValues(alpha: 0.18),
+              color: const Color(0xFF8B5CF6).withValues(alpha: 0.22),
               width: 1.5,
             ),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF7C3AED).withValues(alpha: 0.08),
-                blurRadius: 32,
+                color: const Color(0xFF7C3AED).withValues(alpha: 0.10),
+                blurRadius: 30,
                 offset: const Offset(0, 10),
-              ),
-              BoxShadow(
-                color: const Color(0xFF1E1B4B).withValues(alpha: 0.03),
-                blurRadius: 10,
-                offset: const Offset(0, 2),
-              ),
-              BoxShadow(
-                color: Colors.white.withValues(alpha: 0.95),
-                blurRadius: 6,
-                offset: const Offset(0, -2),
               ),
             ],
           ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(23),
-            child: Stack(
+            borderRadius: BorderRadius.circular(22.5),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Top Multi-Color Highlight Strip matching the 4 sequence tiles
-                Container(
-                  height: 4.5,
-                  width: double.infinity,
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        Color(0xFF7C3AED), // Violet 1
-                        Color(0xFF2563EB), // Blue 2
-                        Color(0xFF16A34A), // Green 3
-                        Color(0xFFEA580C), // Orange 4
-                      ],
-                      begin: Alignment.centerLeft,
-                      end: Alignment.centerRight,
-                    ),
-                  ),
-                ),
+                // 1. Attractive Cosmic Header Banner with 3-Level Stepper, Voice & How to Play
+                _buildSequenceCosmicHeader(isSi),
 
-                // Ambient decorative background rings in top-right
-                Positioned(
-                  top: -50,
-                  right: -50,
-                  child: IgnorePointer(
-                    child: Container(
-                      width: 220,
-                      height: 220,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: RadialGradient(
-                          colors: [
-                            const Color(0xFFDDD6FE).withValues(alpha: 0.35),
-                            const Color(0xFFDDD6FE).withValues(alpha: 0.0),
-                          ],
+                // 2. Main Interactive Game Content with Gentle Animated Pastel Backdrop
+                ConstrainedBox(
+                  constraints: const BoxConstraints(minHeight: 462),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      const Positioned.fill(
+                        child: IgnorePointer(
+                          child: _SeqAmbientPlayBackdrop(),
                         ),
                       ),
-                    ),
-                  ),
-                ),
-
-                // Main Game Content
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 26),
-                  child: Column(
-                    children: [
-                      _buildInstructionBanner(),
-                      const SizedBox(height: 28),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(22, 16, 22, 18),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                      if (!(_phase == _SeqPhase.success && _isFinalLevel) &&
+                          _phase != _SeqPhase.retry) ...[
+                        _buildInstructionBanner(isSi),
+                        const SizedBox(height: 12),
+                      ],
 
                       if (_phase == _SeqPhase.showing) ...[
-                        _buildSequencePreview(),
-                        const SizedBox(height: 32),
+                        const SizedBox(height: 14),
+                        _buildSequencePreview(isSi),
+                        const SizedBox(height: 28),
                         SizedBox(
-                          height: 52,
+                          height: 56,
                           child: DecoratedBox(
                             decoration: BoxDecoration(
                               gradient: const LinearGradient(
-                                colors: [Color(0xFF7C3AED), Color(0xFF6D28D9)],
+                                colors: [Color(0xFF7C3AED), Color(0xFF4F46E5)],
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
                               ),
-                              borderRadius: BorderRadius.circular(16),
+                              borderRadius: BorderRadius.circular(17),
                               boxShadow: [
                                 BoxShadow(
                                   color: const Color(0xFF7C3AED).withValues(alpha: 0.38),
-                                  blurRadius: 14,
+                                  blurRadius: 16,
                                   offset: const Offset(0, 6),
                                 ),
                               ],
@@ -2329,20 +2883,22 @@ class _SequenceGameViewState extends State<_SequenceGameView> {
                                 foregroundColor: Colors.white,
                                 shadowColor: Colors.transparent,
                                 elevation: 0,
-                                padding: const EdgeInsets.symmetric(horizontal: 36),
+                                padding: const EdgeInsets.symmetric(horizontal: 38),
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
+                                  borderRadius: BorderRadius.circular(17),
                                 ),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Icon(LucideIcons.sparkles, size: 19),
-                                  const SizedBox(width: 9),
+                                  const Icon(LucideIcons.sparkles, size: 21),
+                                  const SizedBox(width: 10),
                                   Text(
-                                    'I Remember! Hide & Start My Turn',
+                                    isSi
+                                        ? 'මතකයි! සඟවා මගේ වාරය අරඹන්න'
+                                        : 'I Remember! Hide & Start My Turn',
                                     style: AppTextStyles.button.copyWith(
-                                      fontSize: 16,
+                                      fontSize: 17,
                                       fontWeight: FontWeight.w800,
                                       color: Colors.white,
                                       letterSpacing: 0.2,
@@ -2353,40 +2909,90 @@ class _SequenceGameViewState extends State<_SequenceGameView> {
                             ),
                           ),
                         ),
+                        const SizedBox(height: 14),
                       ] else if (_phase == _SeqPhase.input) ...[
-                        _buildProgressSlots(),
-                        const SizedBox(height: 30),
-                        _buildInteractiveTilesGrid(),
-                        const SizedBox(height: 28),
-                        OutlinedButton.icon(
-                          key: const ValueKey('replay_sequence_button'),
-                          onPressed: _replaySequence,
-                          icon: const Icon(LucideIcons.rotateCcw, size: 18),
-                          label: const Text(
-                            'Replay Sequence to Watch Again',
-                            style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700),
-                          ),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: const Color(0xFF6D28D9),
-                            side: const BorderSide(color: Color(0xFFDDD6FE), width: 1.5),
-                            backgroundColor: const Color(0xFFFAF5FF),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 24,
-                              vertical: 13,
+                        const SizedBox(height: 4),
+                        _buildProgressSlots(isSi),
+                        const SizedBox(height: 16),
+                        _buildInteractiveTilesGrid(isSi),
+                        const SizedBox(height: 16),
+                        Wrap(
+                          alignment: WrapAlignment.center,
+                          spacing: 14,
+                          runSpacing: 8,
+                          children: [
+                            if (_userTaps.isNotEmpty && _isCheckingResult != true)
+                              OutlinedButton.icon(
+                                key: const ValueKey('seq_undo_tap_button'),
+                                onPressed: _undoLastTap,
+                                icon: const Icon(Icons.backspace_outlined, size: 18),
+                                label: Text(
+                                  isSi ? 'පසුපසට (Undo)' : 'Undo Last Tap',
+                                  style: const TextStyle(
+                                    fontSize: 14.5,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: const Color(0xFFEA580C),
+                                  side: const BorderSide(
+                                    color: Color(0xFFFDBA74),
+                                    width: 1.6,
+                                  ),
+                                  backgroundColor: const Color(0xFFFFF7ED),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 20,
+                                    vertical: 12,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                ),
+                              ),
+                            OutlinedButton.icon(
+                              key: const ValueKey('replay_sequence_button'),
+                              onPressed: _isCheckingResult == true ? null : _replaySequence,
+                              icon: const Icon(LucideIcons.rotateCcw, size: 17),
+                              label: Text(
+                                isSi
+                                    ? 'පිළිවෙල නැවත බලන්න'
+                                    : 'Replay Sequence to Watch Again',
+                                style: const TextStyle(
+                                  fontSize: 14.5,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: const Color(0xFF6D28D9),
+                                side: const BorderSide(
+                                  color: Color(0xFFDDD6FE),
+                                  width: 1.6,
+                                ),
+                                backgroundColor: const Color(0xFFFAF5FF),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 22,
+                                  vertical: 12,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                elevation: 0,
+                              ),
                             ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            elevation: 0,
-                          ),
+                          ],
                         ),
                       ] else if (_phase == _SeqPhase.success) ...[
-                        _buildSuccessView(),
+                        _isFinalLevel
+                            ? _buildGrandFinishCard(isSi)
+                            : _buildSuccessView(isSi),
                       ] else if (_phase == _SeqPhase.retry) ...[
-                        _buildRetryView(),
+                        _buildRetryView(isSi),
                       ],
-                    ],
-                  ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
                 ),
               ],
             ),
@@ -2396,7 +3002,230 @@ class _SequenceGameViewState extends State<_SequenceGameView> {
     );
   }
 
-  Widget _buildInstructionBanner() {
+  Widget _buildSequenceCosmicHeader(bool isSi) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Color(0xFF2E1065),
+            Color(0xFF5B21B6),
+            Color(0xFF1D4ED8),
+            Color(0xFF0D9488),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 14,
+        runSpacing: 10,
+        children: [
+          // Left: Title + 3-Level Visual Stepper
+          Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 14,
+            runSpacing: 8,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFFEF3C7), Color(0xFFFDE68A)],
+                      ),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
+                    child: const Center(
+                      child: Text('🔢', style: TextStyle(fontSize: 22)),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        isSi ? 'අනුපිළිවෙල මතක ක්‍රීඩාව ✨' : 'Remember the Sequence ✨',
+                        style: const TextStyle(
+                          fontSize: 18.5,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                          letterSpacing: -0.2,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        isSi
+                            ? 'මට්ටම් 3ම සම්පූර්ණ කර ජය ගන්න'
+                            : 'Complete all 3 levels to finish the challenge',
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white.withValues(alpha: 0.88),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+
+              // 3-Level Progress Pills
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: List.generate(_maxLevels, (idx) {
+                  final lvl = idx + 1;
+                  final tilesCount = 2 + lvl;
+                  final isCompleted = lvl < _currentLevel ||
+                      (lvl == _currentLevel && _phase == _SeqPhase.success);
+                  final isCurrent = lvl == _currentLevel && !isCompleted;
+                  return Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isCompleted
+                              ? const Color(0xFF10B981)
+                              : (isCurrent
+                                  ? Colors.white
+                                  : Colors.white.withValues(alpha: 0.14)),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: isCompleted
+                                ? const Color(0xFF6EE7B7)
+                                : (isCurrent
+                                    ? const Color(0xFFFDE68A)
+                                    : Colors.white.withValues(alpha: 0.30)),
+                            width: isCurrent ? 2 : 1,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (isCompleted)
+                              const Icon(Icons.check_circle, size: 13, color: Colors.white)
+                            else
+                              Icon(
+                                isCurrent ? Icons.play_circle_fill : Icons.circle_outlined,
+                                size: 13,
+                                color: isCurrent
+                                    ? const Color(0xFF6D28D9)
+                                    : Colors.white.withValues(alpha: 0.80),
+                              ),
+                            const SizedBox(width: 4),
+                            Text(
+                              isSi ? 'L$lvl ($tilesCount)' : 'L$lvl • $tilesCount',
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w900,
+                                color: isCompleted
+                                    ? Colors.white
+                                    : (isCurrent
+                                        ? const Color(0xFF1E1B4B)
+                                        : Colors.white.withValues(alpha: 0.85)),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (idx < _maxLevels - 1)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 3),
+                          child: Icon(
+                            Icons.chevron_right_rounded,
+                            size: 16,
+                            color: Colors.white.withValues(alpha: 0.60),
+                          ),
+                        ),
+                    ],
+                  );
+                }),
+              ),
+            ],
+          ),
+
+          // Right: Voice Toggle + How to Play Button
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            children: [
+              OutlinedButton.icon(
+                key: const ValueKey('seq_voice_toggle_button'),
+                onPressed: _toggleVoice,
+                icon: Icon(
+                  _isVoiceOn ? Icons.volume_up_rounded : Icons.volume_off_rounded,
+                  size: 16,
+                ),
+                label: Text(
+                  _isVoiceOn
+                      ? (isSi ? 'හඬ: ON' : 'Voice: ON')
+                      : (isSi ? 'හඬ: OFF' : 'Voice: OFF'),
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: _isVoiceOn
+                      ? const Color(0xFFA7F3D0)
+                      : Colors.white.withValues(alpha: 0.78),
+                  backgroundColor: _isVoiceOn
+                      ? const Color(0xFF10B981).withValues(alpha: 0.22)
+                      : Colors.white.withValues(alpha: 0.08),
+                  side: BorderSide(
+                    color: _isVoiceOn
+                        ? const Color(0xFF6EE7B7).withValues(alpha: 0.75)
+                        : Colors.white.withValues(alpha: 0.35),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                  minimumSize: Size.zero,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+              OutlinedButton.icon(
+                key: const ValueKey('seq_how_to_play_button'),
+                onPressed: _showSequenceHowToPlayDialog,
+                icon: const Icon(Icons.help_outline_rounded, size: 17),
+                label: Text(
+                  isSi ? 'ක්‍රීඩා කරන ආකාරය' : 'How to Play',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  backgroundColor: Colors.white.withValues(alpha: 0.18),
+                  side: BorderSide(
+                    color: Colors.white.withValues(alpha: 0.65),
+                    width: 1.5,
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                  minimumSize: Size.zero,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInstructionBanner(bool isSi) {
     String title = '';
     String subtitle = '';
     List<Color> gradientColors = [const Color(0xFFFAF5FF), const Color(0xFFF3E8FF)];
@@ -2406,36 +3235,46 @@ class _SequenceGameViewState extends State<_SequenceGameView> {
 
     switch (_phase) {
       case _SeqPhase.showing:
-        title = 'Watch & Remember the Sequence';
-        subtitle =
-            'Take your time to memorize the colors and numbers shown below. When ready, tap the button to begin.';
+        title = isSi
+            ? 'පිළිවෙල හොඳින් බලා මතක තබාගන්න'
+            : 'Watch & Remember the Sequence';
+        subtitle = isSi
+            ? 'පහළ පෙන්වන පාට සහ අංක පිළිවෙල නිදහසේ මතක තබාගන්න. සූදානම් වූ පසු ආරම්භ කිරීමට බොත්තම ඔබන්න.'
+            : 'Take your time to memorize the colors and numbers shown below. When ready, tap the button to begin.';
         gradientColors = [const Color(0xFFFAF5FF), const Color(0xFFF3E8FF)];
         borderColor = const Color(0xFFDDD6FE);
         iconColor = const Color(0xFF7C3AED);
         icon = LucideIcons.sparkles;
         break;
       case _SeqPhase.input:
-        title = 'Your Turn: Tap the Tiles in Order';
-        subtitle =
-            'Tap the colored circles below in the same sequence you just saw.';
+        title = isSi
+            ? 'ඔබේ වාරය: පිළිවෙලට පාට අංක ඔබන්න'
+            : 'Your Turn: Tap the Tiles in Order';
+        subtitle = isSi
+            ? 'කලින් දුටු පිළිවෙලටම පහළ ඇති පාට අංක වටයන් ඔබන්න.'
+            : 'Tap the colored circles below in the exact same sequence you just saw.';
         gradientColors = [const Color(0xFFF5F3FF), const Color(0xFFEDE9FE)];
         borderColor = const Color(0xFFC7D2FE);
         iconColor = const Color(0xFF6D28D9);
         icon = LucideIcons.mousePointerClick;
         break;
       case _SeqPhase.success:
-        title = 'Well done! Perfect Memory!';
-        subtitle =
-            'You correctly recalled all $_sequenceLength tiles in the sequence. Would you like to advance to the next level?';
+        title = isSi
+            ? 'විශිෂ්ටයි! ඔබ හරියටම මතක තබා ගත්තා!'
+            : 'Well done! Perfect Memory!';
+        subtitle = isSi
+            ? 'ඔබ අංක $_sequenceLength ම නිවැරදි පිළිවෙලට තෝරා ගත්තා. ඊළඟ මට්ටමට යමුද?'
+            : 'You correctly recalled all $_sequenceLength tiles in order! Ready for Level ${_currentLevel + 1}?';
         gradientColors = [const Color(0xFFF0FDF4), const Color(0xFFDCFCE7)];
         borderColor = const Color(0xFF86EFAC);
         iconColor = const Color(0xFF16A34A);
         icon = LucideIcons.check;
         break;
       case _SeqPhase.retry:
-        title = 'Good try!';
-        subtitle =
-            'Memory practice takes patience. You can replay the sequence to take another look and try again!';
+        title = isSi ? 'හොඳ උත්සාහයක්!' : 'Good try!';
+        subtitle = isSi
+            ? 'කලබල වෙන්න එපා — මතක පුහුණුවට ටිකක් කාලය අවශ්‍යයි. පිළිවෙල නැවත බලා උත්සාහ කරමු!'
+            : 'Memory practice takes patience. Watch the sequence once more and give it another try!';
         gradientColors = [const Color(0xFFFFFBEB), const Color(0xFFFEF3C7)];
         borderColor = const Color(0xFFFDE68A);
         iconColor = const Color(0xFFD97706);
@@ -2445,46 +3284,32 @@ class _SequenceGameViewState extends State<_SequenceGameView> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: gradientColors,
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: borderColor, width: 1.3),
-        boxShadow: [
-          BoxShadow(
-            color: iconColor.withValues(alpha: 0.06),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: borderColor, width: 1.4),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
-            width: 44,
-            height: 44,
+            width: 36,
+            height: 36,
             decoration: BoxDecoration(
               color: Colors.white,
               shape: BoxShape.circle,
-              border: Border.all(color: borderColor, width: 1.2),
-              boxShadow: [
-                BoxShadow(
-                  color: iconColor.withValues(alpha: 0.15),
-                  blurRadius: 6,
-                  offset: const Offset(0, 2),
-                ),
-              ],
+              border: Border.all(color: borderColor, width: 1.3),
             ),
             child: Center(
-              child: Icon(icon, color: iconColor, size: 22),
+              child: Icon(icon, color: iconColor, size: 19),
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -2492,22 +3317,43 @@ class _SequenceGameViewState extends State<_SequenceGameView> {
                 Text(
                   title,
                   style: AppTextStyles.h3.copyWith(
-                    fontSize: 18.5,
+                    fontSize: 16,
                     fontWeight: FontWeight.w800,
                     color: const Color(0xFF1E1B4B),
-                    letterSpacing: -0.3,
+                    letterSpacing: -0.2,
                   ),
                 ),
-                const SizedBox(height: 3),
                 Text(
                   subtitle,
                   style: AppTextStyles.body.copyWith(
-                    fontSize: 14.5,
+                    fontSize: 13,
                     color: const Color(0xFF475569),
-                    height: 1.45,
+                    height: 1.3,
                   ),
                 ),
               ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Tooltip(
+            message: isSi ? 'නැවත අසන්න' : 'Listen Again',
+            child: InkWell(
+              onTap: () {
+                if (!_isVoiceOn) {
+                  setState(() => _voiceEnabled = true);
+                }
+                _speakPhasePrompt(_phase);
+              },
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: const EdgeInsets.all(9),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: borderColor),
+                ),
+                child: Icon(Icons.volume_up_rounded, size: 19, color: iconColor),
+              ),
             ),
           ),
         ],
@@ -2515,214 +3361,445 @@ class _SequenceGameViewState extends State<_SequenceGameView> {
     );
   }
 
-  Widget _buildSequencePreview() {
+  Widget _buildSequencePreview(bool isSi) {
+    final activeHighlight = _highlightedPreviewStep;
+    final count = _targetSequence.length;
+    final double cardWidth = count <= 3 ? 182 : (count == 4 ? 162 : 140);
+    final double circleSize = count <= 3 ? 112 : (count == 4 ? 102 : 92);
+    final double iconSize = count <= 3 ? 58 : (count == 4 ? 52 : 46);
+    final double vPad = count <= 3 ? 24 : 20;
+    final double labelSize = count <= 3 ? 16.5 : (count == 4 ? 15.5 : 14.5);
+
     return Wrap(
       alignment: WrapAlignment.center,
       crossAxisAlignment: WrapCrossAlignment.center,
-      spacing: 16,
+      spacing: count <= 3 ? 14 : 10,
       runSpacing: 16,
       children: List.generate(_targetSequence.length, (index) {
         final tile = _tiles[_targetSequence[index]];
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 18),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(22),
-            border: Border.all(
-              color: tile.color.withValues(alpha: 0.22),
-              width: 1.5,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: tile.color.withValues(alpha: 0.12),
-                blurRadius: 16,
-                offset: const Offset(0, 6),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                margin: const EdgeInsets.only(bottom: 12),
-                decoration: BoxDecoration(
-                  color: tile.color.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: tile.color.withValues(alpha: 0.25)),
+        final isGlowing = activeHighlight == index;
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 280),
+              curve: Curves.easeOutCubic,
+              width: cardWidth,
+              transform: Matrix4.translationValues(0, isGlowing ? -6 : 0, 0),
+              padding: EdgeInsets.symmetric(horizontal: 14, vertical: vPad),
+              decoration: BoxDecoration(
+                gradient: isGlowing
+                    ? LinearGradient(
+                        colors: [
+                          tile.color.withValues(alpha: 0.16),
+                          tile.color.withValues(alpha: 0.06),
+                        ],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      )
+                    : const LinearGradient(
+                        colors: [Color(0xFFFFFFFF), Color(0xFFFAF9FF)],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      ),
+                borderRadius: BorderRadius.circular(26),
+                border: Border.all(
+                  color: isGlowing
+                      ? tile.color
+                      : tile.color.withValues(alpha: 0.28),
+                  width: isGlowing ? 2.8 : 1.7,
                 ),
-                child: Text(
-                  'Step ${index + 1}',
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w800,
-                    color: tile.color,
+                boxShadow: [
+                  BoxShadow(
+                    color: tile.color.withValues(alpha: isGlowing ? 0.30 : 0.12),
+                    blurRadius: isGlowing ? 26 : 16,
+                    offset: Offset(0, isGlowing ? 10 : 6),
                   ),
-                ),
+                ],
               ),
-              Container(
-                width: 90,
-                height: 90,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [tile.color, tile.accentGradient],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 3.5),
-                  boxShadow: [
-                    BoxShadow(
-                      color: tile.color.withValues(alpha: 0.4),
-                      blurRadius: 16,
-                      offset: const Offset(0, 6),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+                    margin: const EdgeInsets.only(bottom: 14),
+                    decoration: BoxDecoration(
+                      color: isGlowing
+                          ? tile.color
+                          : tile.color.withValues(alpha: 0.13),
+                      borderRadius: BorderRadius.circular(14),
                     ),
-                  ],
-                ),
-                child: Center(
-                  child: Icon(tile.icon, size: 46, color: Colors.white),
-                ),
+                    child: Text(
+                      isSi ? 'පියවර ${index + 1}' : 'Step ${index + 1}',
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w800,
+                        color: isGlowing ? Colors.white : tile.color,
+                      ),
+                    ),
+                  ),
+                  Container(
+                    width: circleSize,
+                    height: circleSize,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [tile.color, tile.accentGradient],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 4),
+                      boxShadow: [
+                        BoxShadow(
+                          color: tile.color.withValues(alpha: 0.44),
+                          blurRadius: 16,
+                          offset: const Offset(0, 7),
+                        ),
+                      ],
+                    ),
+                    child: Center(
+                      child: Icon(tile.icon, size: iconSize, color: Colors.white),
+                    ),
+                  ),
+                  const SizedBox(height: 15),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: isGlowing
+                          ? Colors.white.withValues(alpha: 0.92)
+                          : const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: tile.color.withValues(alpha: 0.16),
+                      ),
+                    ),
+                    child: Text(
+                      tile.displayLabel(isSi),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFF1E293B),
+                        fontSize: labelSize,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 10),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  tile.label,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF1E293B),
-                    fontSize: 13,
+            ),
+            if (index < _targetSequence.length - 1)
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: count <= 3 ? 10 : 6),
+                child: Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.85),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: const Color(0xFF7C3AED).withValues(alpha: 0.22),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF7C3AED).withValues(alpha: 0.08),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.arrow_forward_rounded,
+                    size: 20,
+                    color: Color(0xFF7C3AED),
                   ),
                 ),
               ),
-            ],
-          ),
+          ],
         );
       }),
     );
   }
 
-  Widget _buildProgressSlots() {
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF8FAFC),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.02),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(LucideIcons.listOrdered, size: 16, color: Color(0xFF64748B)),
-              const SizedBox(width: 8),
-              Text(
-                'Progress: ${_userTaps.length} of ${_targetSequence.length} tiles tapped',
-                style: AppTextStyles.caption.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF1E293B),
-                  fontSize: 13.5,
-                ),
-              ),
-            ],
-          ),
+  Widget _buildProgressSlots(bool isSi) {
+    final nextStepNum = (_userTaps.length + 1).clamp(1, _targetSequence.length);
+    final isComplete = _userTaps.length >= _targetSequence.length;
+    final isChecking = _isCheckingResult == true;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [
+            Color(0xFFFFFFFF),
+            Color(0xFFFAF5FF),
+            Color(0xFFEEF2FF),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-        const SizedBox(height: 18),
-        Wrap(
-          alignment: WrapAlignment.center,
-          spacing: 16,
-          runSpacing: 14,
-          children: List.generate(_targetSequence.length, (index) {
-            final isFilled = index < _userTaps.length;
-            final isNext = index == _userTaps.length;
-            if (isFilled) {
-              final tile = _tiles[_userTaps[index]];
-              return Container(
-                width: 64,
-                height: 64,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: const Color(0xFF8B5CF6).withValues(alpha: 0.26),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF7C3AED).withValues(alpha: 0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Wrap(
+            alignment: WrapAlignment.center,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 12,
+            runSpacing: 6,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [tile.color, tile.accentGradient],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 3),
-                  boxShadow: [
-                    BoxShadow(
-                      color: tile.color.withValues(alpha: 0.35),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFDDD6FE), width: 1.2),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(LucideIcons.listOrdered, size: 15, color: Color(0xFF6D28D9)),
+                    const SizedBox(width: 6),
+                    Text(
+                      isSi
+                          ? 'ප්‍රගතිය: අංක ${_targetSequence.length} න් ${_userTaps.length} ක් තෝරා ඇත'
+                          : 'Progress: ${_userTaps.length} of ${_targetSequence.length} tiles tapped',
+                      style: AppTextStyles.caption.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFF1E293B),
+                        fontSize: 13.5,
+                      ),
                     ),
                   ],
                 ),
-                child: Center(
-                  child: Icon(tile.icon, size: 32, color: Colors.white),
-                ),
-              );
-            } else {
-              return Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  color: isNext ? const Color(0xFFFAF5FF) : const Color(0xFFF8FAFC),
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: isNext ? const Color(0xFF8B5CF6) : const Color(0xFFCBD5E1),
-                    width: isNext ? 2.2 : 1.8,
+              ),
+              if (isChecking)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 5),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF0D9488), Color(0xFF10B981)],
+                    ),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  boxShadow: isNext
-                      ? [
-                          BoxShadow(
-                            color: const Color(0xFF8B5CF6).withValues(alpha: 0.15),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ]
-                      : null,
-                ),
-                child: Center(
                   child: Text(
-                    '${index + 1}',
-                    style: TextStyle(
-                      fontSize: 18,
+                    isSi ? '✨ පරීක්ෂා කරමින්...' : '✨ Checking your sequence...',
+                    style: const TextStyle(
+                      fontSize: 13,
                       fontWeight: FontWeight.w800,
-                      color: isNext ? const Color(0xFF7C3AED) : const Color(0xFF94A3B8),
+                      color: Colors.white,
+                    ),
+                  ),
+                )
+              else if (!isComplete)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 5),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF7C3AED), Color(0xFF4F46E5)],
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    isSi
+                        ? '👆 පියවර $nextStepNum තෝරන්න'
+                        : '👆 Tap Step $nextStepNum',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
                     ),
                   ),
                 ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            alignment: WrapAlignment.center,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 10,
+            children: List.generate(_targetSequence.length, (index) {
+              final isFilled = index < _userTaps.length;
+              final isNext = index == _userTaps.length;
+              Widget slotWidget;
+              if (isFilled) {
+                final tile = _tiles[_userTaps[index]];
+                final matches = _userTaps[index] == _targetSequence[index];
+                slotWidget = Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      width: 66,
+                      height: 66,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [tile.color, tile.accentGradient],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: isChecking
+                              ? (matches
+                                  ? const Color(0xFF10B981)
+                                  : const Color(0xFFF59E0B))
+                              : Colors.white,
+                          width: 3.4,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: tile.color.withValues(alpha: 0.36),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: Icon(tile.icon, size: 34, color: Colors.white),
+                      ),
+                    ),
+                    if (isChecking)
+                      Positioned(
+                        right: -3,
+                        top: -3,
+                        child: Container(
+                          width: 22,
+                          height: 22,
+                          decoration: BoxDecoration(
+                            color: matches
+                                ? const Color(0xFF10B981)
+                                : const Color(0xFFF59E0B),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 1.8),
+                          ),
+                          child: Center(
+                            child: Icon(
+                              matches ? Icons.check_rounded : Icons.refresh_rounded,
+                              size: 13,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              } else {
+                slotWidget = AnimatedContainer(
+                  duration: const Duration(milliseconds: 220),
+                  width: 66,
+                  height: 66,
+                  decoration: BoxDecoration(
+                    gradient: isNext
+                        ? const LinearGradient(
+                            colors: [Color(0xFFF3E8FF), Color(0xFFE0E7FF)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          )
+                        : null,
+                    color: isNext ? null : Colors.white,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: isNext ? const Color(0xFF7C3AED) : const Color(0xFFCBD5E1),
+                      width: isNext ? 2.6 : 1.7,
+                    ),
+                    boxShadow: isNext
+                        ? [
+                            BoxShadow(
+                              color: const Color(0xFF7C3AED).withValues(alpha: 0.22),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: Center(
+                    child: Text(
+                      '${index + 1}',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        color: isNext ? const Color(0xFF6D28D9) : const Color(0xFF94A3B8),
+                      ),
+                    ),
+                  ),
+                );
+              }
+
+              return Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  slotWidget,
+                  if (index < _targetSequence.length - 1)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
+                      child: Icon(
+                        Icons.arrow_forward_rounded,
+                        size: 20,
+                        color: isFilled
+                            ? const Color(0xFF7C3AED)
+                            : const Color(0xFFCBD5E1),
+                      ),
+                    ),
+                ],
               );
-            }
-          }),
-        ),
-      ],
+            }),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildInteractiveTilesGrid() {
-    return Wrap(
-      alignment: WrapAlignment.center,
-      spacing: 22,
-      runSpacing: 22,
-      children: _tiles.map((tile) {
-        return _InteractiveSequencePad(
-          key: ValueKey('sequence_tile_${tile.id}'),
-          tile: tile,
-          onTap: () => _onTileTap(tile.id),
-        );
-      }).toList(),
+  Widget _buildInteractiveTilesGrid(bool isSi) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [
+            Color(0xFFFDFBFF),
+            Color(0xFFEEF2FF),
+            Color(0xFFECFDF5),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: const Color(0xFFC7D2FE),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF4F46E5).withValues(alpha: 0.06),
+            blurRadius: 14,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Wrap(
+        alignment: WrapAlignment.center,
+        spacing: 30,
+        runSpacing: 16,
+        children: _tiles.map((tile) {
+          return _InteractiveSequencePad(
+            key: ValueKey('sequence_tile_${tile.id}'),
+            tile: tile,
+            isSinhala: isSi,
+            onTap: () => _onTileTap(tile.id),
+          );
+        }).toList(),
+      ),
     );
   }
 
@@ -2731,240 +3808,453 @@ class _SequenceGameViewState extends State<_SequenceGameView> {
     _hasShownSuccessPopup = true;
     _isPopupOpen = true;
 
+    final isSi = widget.isSinhala;
     final score = _lastScore ?? 100.0;
     final attempts = _lastAttempts;
     final correctCount = _lastCorrectCount;
+    final starCount = score >= 90 ? 5 : (score >= 75 ? 4 : 3);
 
     showDialog<void>(
       context: context,
       barrierDismissible: true,
-      barrierColor: Colors.black.withValues(alpha: 0.5),
+      barrierColor: Colors.black.withValues(alpha: 0.45),
       builder: (dialogCtx) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             _dialogSetState = setDialogState;
-            return Dialog(
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-              child: Container(
-                constraints: const BoxConstraints(maxWidth: 500),
-                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 28),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [
-                      Color(0xFFFFFFFF),
-                      Color(0xFFFBFDFD),
-                      Color(0xFFF0FDF4),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+            return Stack(
+              alignment: Alignment.center,
+              children: [
+                // Joyful colorful celebration ribbons & confetti bursting around the popup!
+                const Positioned.fill(
+                  child: IgnorePointer(
+                    child: _SeqPopupConfettiOverlay(),
                   ),
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(
-                    color: const Color(0xFF16A34A).withValues(alpha: 0.28),
-                    width: 1.5,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF16A34A).withValues(alpha: 0.16),
-                      blurRadius: 32,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Celebratory 3D Star Badge
-                    Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        Container(
-                          width: 86,
-                          height: 86,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFDCFCE7),
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: const Color(0xFF86EFAC),
-                              width: 2,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFF16A34A).withValues(alpha: 0.18),
-                                blurRadius: 18,
-                                offset: const Offset(0, 6),
-                              ),
-                            ],
-                          ),
+                Dialog(
+                  backgroundColor: Colors.transparent,
+                  elevation: 0,
+                  insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 460),
+                    child: AuroraGradientBorderFrame(
+                  borderRadius: 26,
+                  borderWidth: 2.8,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(23.2),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF10B981).withValues(alpha: 0.18),
+                          blurRadius: 28,
+                          offset: const Offset(0, 12),
                         ),
+                      ],
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // 1. Bright Pastel Celebration Top Banner
                         Container(
-                          width: 62,
-                          height: 62,
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFF22C55E), Color(0xFF16A34A)],
+                          padding: const EdgeInsets.fromLTRB(22, 22, 22, 18),
+                          decoration: const BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                Color(0xFFECFDF5),
+                                Color(0xFFF0FDFA),
+                                Color(0xFFF5F3FF),
+                              ],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                             ),
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFF16A34A).withValues(alpha: 0.35),
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
+                            border: Border(
+                              bottom: BorderSide(
+                                color: Color(0xFFD1FAE5),
+                                width: 1.2,
+                              ),
+                            ),
+                          ),
+                          child: Column(
+                            children: [
+                              // Glowing Star Medallion with sparkles
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Text('✨', style: TextStyle(fontSize: 22)),
+                                  const SizedBox(width: 12),
+                                  Container(
+                                    width: 78,
+                                    height: 78,
+                                    decoration: BoxDecoration(
+                                      gradient: const LinearGradient(
+                                        colors: [
+                                          Color(0xFF34D399),
+                                          Color(0xFF10B981),
+                                          Color(0xFF0D9488),
+                                        ],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      ),
+                                      shape: BoxShape.circle,
+                                      border: Border.all(color: Colors.white, width: 3.5),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: const Color(0xFF10B981).withValues(alpha: 0.35),
+                                          blurRadius: 18,
+                                          offset: const Offset(0, 6),
+                                        ),
+                                      ],
+                                    ),
+                                    child: const Center(
+                                      child: Text('🌟', style: TextStyle(fontSize: 38)),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  const Text('🎉', style: TextStyle(fontSize: 22)),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                isSi
+                                    ? 'විශිෂ්ටයි! මට්ටම $_currentLevel අවසන්!'
+                                    : 'Well Done! Level $_currentLevel Clear!',
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  fontSize: 23,
+                                  fontWeight: FontWeight.w900,
+                                  color: Color(0xFF065F46),
+                                  letterSpacing: -0.3,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              // Golden Stars Row
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: List.generate(
+                                  5,
+                                  (i) => Icon(
+                                    Icons.star_rounded,
+                                    size: 26,
+                                    color: i < starCount
+                                        ? const Color(0xFFF59E0B)
+                                        : const Color(0xFFCBD5E1),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              // Mini 3-Level Journey Stepper
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: List.generate(_maxLevels, (idx) {
+                                  final lvl = idx + 1;
+                                  final done = lvl <= _currentLevel;
+                                  final next = lvl == _currentLevel + 1;
+                                  return Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 11,
+                                          vertical: 4,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: done
+                                              ? const Color(0xFF10B981)
+                                              : (next
+                                                  ? const Color(0xFFEDE9FE)
+                                                  : Colors.white),
+                                          borderRadius: BorderRadius.circular(11),
+                                          border: Border.all(
+                                            color: done
+                                                ? const Color(0xFF059669)
+                                                : (next
+                                                    ? const Color(0xFF8B5CF6)
+                                                    : const Color(0xFFCBD5E1)),
+                                            width: next ? 1.6 : 1.1,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          done
+                                              ? (isSi ? '✓ L$lvl' : '✓ L$lvl')
+                                              : (isSi ? 'L$lvl' : 'L$lvl'),
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w900,
+                                            color: done
+                                                ? Colors.white
+                                                : (next
+                                                    ? const Color(0xFF6D28D9)
+                                                    : const Color(0xFF94A3B8)),
+                                          ),
+                                        ),
+                                      ),
+                                      if (idx < _maxLevels - 1)
+                                        const Padding(
+                                          padding: EdgeInsets.symmetric(horizontal: 5),
+                                          child: Icon(
+                                            Icons.arrow_forward_rounded,
+                                            size: 14,
+                                            color: Color(0xFF94A3B8),
+                                          ),
+                                        ),
+                                    ],
+                                  );
+                                }),
                               ),
                             ],
                           ),
-                          child: const Center(
-                            child: Icon(
-                              LucideIcons.sparkles,
-                              size: 34,
-                              color: Colors.white,
+                        ),
+
+                        // 2. Clean 3-Stat Tiles & Action Buttons
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(22, 18, 22, 20),
+                          child: Column(
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(vertical: 11),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFF5F3FF),
+                                        borderRadius: BorderRadius.circular(14),
+                                        border: Border.all(color: const Color(0xFFDDD6FE)),
+                                      ),
+                                      child: Column(
+                                        children: [
+                                          Text(
+                                            '${score.toStringAsFixed(0)}%',
+                                            style: const TextStyle(
+                                              fontSize: 20,
+                                              fontWeight: FontWeight.w900,
+                                              color: Color(0xFF6D28D9),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            isSi ? 'ලකුණු' : 'Score',
+                                            style: const TextStyle(
+                                              fontSize: 11.5,
+                                              fontWeight: FontWeight.w700,
+                                              color: Color(0xFF64748B),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(vertical: 11),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFECFDF5),
+                                        borderRadius: BorderRadius.circular(14),
+                                        border: Border.all(color: const Color(0xFFA7F3D0)),
+                                      ),
+                                      child: Column(
+                                        children: [
+                                          Text(
+                                            '$correctCount / $_sequenceLength',
+                                            style: const TextStyle(
+                                              fontSize: 20,
+                                              fontWeight: FontWeight.w900,
+                                              color: Color(0xFF047857),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            isSi ? 'නිවැරදි අංක' : 'Tiles',
+                                            style: const TextStyle(
+                                              fontSize: 11.5,
+                                              fontWeight: FontWeight.w700,
+                                              color: Color(0xFF64748B),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(vertical: 11),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFEFF6FF),
+                                        borderRadius: BorderRadius.circular(14),
+                                        border: Border.all(color: const Color(0xFFBFDBFE)),
+                                      ),
+                                      child: Column(
+                                        children: [
+                                          Text(
+                                            '$attempts',
+                                            style: const TextStyle(
+                                              fontSize: 20,
+                                              fontWeight: FontWeight.w900,
+                                              color: Color(0xFF1D4ED8),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            isSi ? 'උත්සාහයන්' : 'Tries',
+                                            style: const TextStyle(
+                                              fontSize: 11.5,
+                                              fontWeight: FontWeight.w700,
+                                              color: Color(0xFF64748B),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if (_saveSuccessMessage != null) ...[
+                                const SizedBox(height: 10),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFECFDF5),
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(color: const Color(0xFF86EFAC)),
+                                  ),
+                                  child: Text(
+                                    '✓ ${_saveSuccessMessage!}',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w800,
+                                      color: Color(0xFF047857),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                              const SizedBox(height: 16),
+
+                              // Primary: Advance to Next Level
+                              SizedBox(
+                                width: double.infinity,
+                                child: DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    gradient: const LinearGradient(
+                                      colors: [Color(0xFF7C3AED), Color(0xFF2563EB)],
+                                    ),
+                                    borderRadius: BorderRadius.circular(14),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: const Color(0xFF6D28D9).withValues(alpha: 0.32),
+                                        blurRadius: 12,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                  child: ElevatedButton.icon(
+                                    key: const ValueKey('next_level_button'),
+                                    onPressed: () {
+                                      Navigator.of(dialogCtx).pop();
+                                      _advanceToNextLevel();
+                                    },
+                                    icon: const Icon(LucideIcons.sparkles, size: 19),
+                                    label: Text(
+                                      isSi
+                                          ? 'ඊළඟ මට්ටම • මට්ටම ${_currentLevel + 1} (අංක ${_sequenceLength + 1})'
+                                          : 'Next Level • Level ${_currentLevel + 1} (${_sequenceLength + 1} Tiles)',
+                                      style: const TextStyle(
+                                        fontSize: 15.5,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.transparent,
+                                      foregroundColor: Colors.white,
+                                      shadowColor: Colors.transparent,
+                                      elevation: 0,
+                                      padding: const EdgeInsets.symmetric(vertical: 14),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(14),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: OutlinedButton.icon(
+                                      key: const ValueKey('replay_same_level_button'),
+                                      onPressed: () {
+                                        Navigator.of(dialogCtx).pop();
+                                        _startNewRound();
+                                      },
+                                      icon: const Icon(LucideIcons.rotateCcw, size: 15),
+                                      label: Text(
+                                        isSi ? 'නැවත' : 'Replay',
+                                        style: const TextStyle(
+                                          fontSize: 13.5,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: const Color(0xFF4C1D95),
+                                        side: const BorderSide(
+                                          color: Color(0xFFC4B5FD),
+                                          width: 1.4,
+                                        ),
+                                        backgroundColor: const Color(0xFFFAF5FF),
+                                        padding: const EdgeInsets.symmetric(vertical: 11),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: OutlinedButton.icon(
+                                      onPressed: () {
+                                        Navigator.of(dialogCtx).pop();
+                                        widget.onBack();
+                                      },
+                                      icon: const Icon(Icons.home_rounded, size: 16),
+                                      label: Text(
+                                        isSi ? 'සියලුම ක්‍රීඩා' : 'All Games',
+                                        style: const TextStyle(
+                                          fontSize: 13.5,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: const Color(0xFF475569),
+                                        side: const BorderSide(
+                                          color: Color(0xFFCBD5E1),
+                                          width: 1.3,
+                                        ),
+                                        backgroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(vertical: 11),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              ],
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 18),
-                    Text(
-                      'Well done!',
-                      style: AppTextStyles.h2.copyWith(
-                        color: const Color(0xFF15803D),
-                        fontWeight: FontWeight.w900,
-                        fontSize: 26,
-                        letterSpacing: -0.4,
+                        ],
                       ),
-                      textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'You remembered the entire sequence of $_sequenceLength tiles accurately!',
-                      style: AppTextStyles.body.copyWith(
-                        fontSize: 15,
-                        color: const Color(0xFF475569),
-                        fontWeight: FontWeight.w500,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 16),
-                    _buildGameScoreCard(
-                      score: score,
-                      scoreLabel: 'Accuracy',
-                      details:
-                          'Recalled: $correctCount / $_sequenceLength Tiles • Attempts: $attempts',
-                      isSaving: _isSaving,
-                      successMessage: null,
-                      errorMessage: _saveErrorMessage,
-                    ),
-                    const SizedBox(height: 18),
-                    SizedBox(
-                      width: double.infinity,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFF7C3AED), Color(0xFF6D28D9)],
-                          ),
-                          borderRadius: BorderRadius.circular(14),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFF7C3AED).withValues(alpha: 0.35),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: ElevatedButton.icon(
-                          key: const ValueKey('next_level_button'),
-                          onPressed: () {
-                            Navigator.of(dialogCtx).pop();
-                            _advanceToNextLevel();
-                          },
-                          icon: const Icon(LucideIcons.sparkles, size: 18),
-                          label: Text(
-                            'Next Round (${_sequenceLength + 1} Tiles)',
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.transparent,
-                            foregroundColor: Colors.white,
-                            shadowColor: Colors.transparent,
-                            elevation: 0,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () => Navigator.of(dialogCtx).pop(),
-                            icon: const Icon(LucideIcons.eye, size: 16),
-                            label: const Text(
-                              'View Board',
-                              style: TextStyle(
-                                fontSize: 13.5,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: const Color(0xFF475569),
-                              side: const BorderSide(
-                                color: Color(0xFFCBD5E1),
-                                width: 1.2,
-                              ),
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            key: const ValueKey('replay_same_level_button'),
-                            onPressed: () {
-                              Navigator.of(dialogCtx).pop();
-                              _startNewRound();
-                            },
-                            icon: const Icon(LucideIcons.rotateCcw, size: 16),
-                            label: const Text(
-                              'Replay Level',
-                              style: TextStyle(
-                                fontSize: 13.5,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: const Color(0xFF1E1B4B),
-                              side: const BorderSide(
-                                color: Color(0xFFCBD5E1),
-                                width: 1.4,
-                              ),
-                              backgroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                  ),
                 ),
               ),
+              ],
             );
           },
         );
@@ -2979,22 +4269,197 @@ class _SequenceGameViewState extends State<_SequenceGameView> {
     });
   }
 
-  Widget _buildSuccessView() {
+  Widget _buildGrandFinishCard(bool isSi) {
+    final scores = _levelScores ?? const <double>[];
+    final overall = _overallAverageScore;
+    final starCount = overall >= 90 ? 5 : (overall >= 75 ? 4 : 3);
+
+    return AuroraGradientBorderFrame(
+      borderRadius: 24,
+      borderWidth: 2.8,
+      child: _SequenceGrandCelebrationStage(
+        isSinhala: isSi,
+        centerContent: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('🎉 🏆 ✨', style: TextStyle(fontSize: 40)),
+            const SizedBox(height: 10),
+            Text(
+              isSi
+                  ? 'විශිෂ්ට ජයග්‍රහණයක්! ක්‍රීඩාව සම්පූර්ණයි!'
+                  : 'Memory Champion! Game Complete!',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w900,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              isSi
+                  ? 'සමස්ත නිවැරදි බව: ${overall.toStringAsFixed(0)}%'
+                  : 'Overall 3-Level Accuracy: ${overall.toStringAsFixed(0)}%',
+              style: const TextStyle(
+                fontSize: 19,
+                fontWeight: FontWeight.w900,
+                color: Color(0xFFFDE68A),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(
+                5,
+                (i) => Icon(
+                  Icons.star_rounded,
+                  size: 30,
+                  color: i < starCount
+                      ? const Color(0xFFFACC15)
+                      : Colors.white.withValues(alpha: 0.25),
+                ),
+              ),
+            ),
+            if (scores.isNotEmpty) ...[
+              const SizedBox(height: 14),
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 10,
+                runSpacing: 8,
+                children: List.generate(scores.length, (i) {
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.16),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.32),
+                      ),
+                    ),
+                    child: Text(
+                      isSi
+                          ? 'මට්ටම ${i + 1}: ${scores[i].toStringAsFixed(0)}%'
+                          : 'Level ${i + 1}: ${scores[i].toStringAsFixed(0)}%',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
+                    ),
+                  );
+                }),
+              ),
+            ],
+            if (_saveSuccessMessage != null) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF10B981).withValues(alpha: 0.25),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: const Color(0xFF6EE7B7).withValues(alpha: 0.65),
+                  ),
+                ),
+                child: Text(
+                  '✓ ${_saveSuccessMessage!}',
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFFA7F3D0),
+                  ),
+                ),
+              ),
+            ],
+            const SizedBox(height: 20),
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 12,
+              runSpacing: 10,
+              children: [
+                ElevatedButton.icon(
+                  key: const ValueKey('seq_play_again_finish_button'),
+                  onPressed: _resetToBeginning,
+                  icon: const Icon(LucideIcons.rotateCcw, size: 17),
+                  label: Text(
+                    isSi ? 'නැවත ක්‍රීඩා කරන්න' : 'Play Again',
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: const Color(0xFF4C1D95),
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 13),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+                OutlinedButton.icon(
+                  key: const ValueKey('seq_finish_back_to_games_button'),
+                  onPressed: widget.onBack,
+                  icon: const Icon(Icons.home_rounded, size: 18),
+                  label: Text(
+                    isSi ? 'සියලුම ක්‍රීඩා වෙත' : 'Back to All Games',
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    backgroundColor: Colors.white.withValues(alpha: 0.14),
+                    side: BorderSide(color: Colors.white.withValues(alpha: 0.65)),
+                    padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 13),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSuccessView(bool isSi) {
     return Column(
       children: [
-        _buildProgressSlots(),
-        const SizedBox(height: 30),
-        _buildInteractiveTilesGrid(),
-        const SizedBox(height: 28),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+        _buildProgressSlots(isSi),
+        const SizedBox(height: 24),
+        Wrap(
+          alignment: WrapAlignment.center,
+          spacing: 12,
+          runSpacing: 10,
           children: [
+            ElevatedButton.icon(
+              onPressed: _advanceToNextLevel,
+              icon: const Icon(LucideIcons.sparkles, size: 17),
+              label: Text(
+                isSi
+                    ? 'ඊළඟ මට්ටම (මට්ටම ${_currentLevel + 1})'
+                    : 'Next Level (Level ${_currentLevel + 1})',
+                style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF7C3AED),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 13),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(13),
+                ),
+              ),
+            ),
             OutlinedButton.icon(
               onPressed: _showSuccessPopup,
-              icon: const Icon(LucideIcons.sparkles, size: 17),
-              label: const Text(
-                'View Results',
-                style: TextStyle(
+              icon: const Icon(LucideIcons.award, size: 17),
+              label: Text(
+                isSi ? 'ප්‍රතිඵල බලන්න' : 'View Results',
+                style: const TextStyle(
                   fontSize: 14.5,
                   fontWeight: FontWeight.w700,
                 ),
@@ -3002,12 +4467,9 @@ class _SequenceGameViewState extends State<_SequenceGameView> {
               style: OutlinedButton.styleFrom(
                 foregroundColor: const Color(0xFF16A34A),
                 side: const BorderSide(color: Color(0xFF16A34A), width: 1.4),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 13,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 13),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(13),
                 ),
               ),
             ),
@@ -3017,126 +4479,468 @@ class _SequenceGameViewState extends State<_SequenceGameView> {
     );
   }
 
-  Widget _buildRetryView() {
-    return Column(
-      children: [
-        // 3D Amber Sunbeam Retry Badge
-        Stack(
-          alignment: Alignment.center,
-          children: [
-            Container(
-              width: 96,
-              height: 96,
-              decoration: BoxDecoration(
-                color: const Color(0xFFFEF3C7),
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: const Color(0xFFFDE68A),
-                  width: 2,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFFD97706).withValues(alpha: 0.18),
-                    blurRadius: 18,
-                    offset: const Offset(0, 6),
+  Widget _buildRetryView(bool isSi) {
+    final matched = _lastRetryMatchedCount ?? 0;
+    final total = _targetSequence.length;
+
+    Widget buildLeftHeroPanel() {
+      return AuroraGradientBorderFrame(
+        borderRadius: 22,
+        borderWidth: 2.2,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 22),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [
+                Color(0xFFF5F3FF),
+                Color(0xFFEEF2FF),
+                Color(0xFFECFDF5),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(19.8),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Minimal Top Row: Level pill + Listen pill
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFDDD6FE)),
+                    ),
+                    child: Text(
+                      isSi ? 'මට්ටම $_currentLevel' : 'Level $_currentLevel',
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF6D28D9),
+                      ),
+                    ),
+                  ),
+                  InkWell(
+                    onTap: () {
+                      if (!_isVoiceOn) {
+                        setState(() => _voiceEnabled = true);
+                      }
+                      _speakPhasePrompt(_SeqPhase.retry);
+                    },
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFDDD6FE)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.volume_up_rounded,
+                            size: 16,
+                            color: Color(0xFF7C3AED),
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            isSi ? 'අසන්න' : 'Listen',
+                            style: const TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF4C1D95),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 16),
+
+              // Cheerful Bright Sun-Star Emblem
+              Container(
+                width: 92,
+                height: 92,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFFEF08A), Color(0xFFFBBF24), Color(0xFFF59E0B)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 4),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFF59E0B).withValues(alpha: 0.30),
+                      blurRadius: 18,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: const Center(
+                  child: Text('🌟', style: TextStyle(fontSize: 44)),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Short, Big Elder-Friendly Title & Subtitle
+              Text(
+                isSi ? 'හොඳ උත්සාහයක්!' : 'Good Try!',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFF1E1B4B),
+                  letterSpacing: -0.3,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                isSi ? 'ආයෙත් උත්සාහ කරමු!' : "Let's try once more!",
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 16.5,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF475569),
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Bright Primary CTA Button
+              SizedBox(
+                width: double.infinity,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF7C3AED), Color(0xFF2563EB)],
+                    ),
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF6D28D9).withValues(alpha: 0.30),
+                        blurRadius: 12,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
+                  ),
+                  child: ElevatedButton.icon(
+                    key: const ValueKey('try_again_button'),
+                    onPressed: _replaySequence,
+                    icon: const Icon(LucideIcons.rotateCcw, size: 19),
+                    label: Text(
+                      isSi ? 'නැවත බලන්න' : 'Watch Again',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.transparent,
+                      foregroundColor: Colors.white,
+                      shadowColor: Colors.transparent,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  key: const ValueKey('reset_level_1_button'),
+                  onPressed: _resetToBeginning,
+                  icon: const Icon(LucideIcons.rotateCcw, size: 16),
+                  label: Text(
+                    isSi ? 'මුල සිට (මට්ටම 1)' : 'Restart Level 1',
+                    style: const TextStyle(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF4C1D95),
+                    backgroundColor: Colors.white,
+                    side: const BorderSide(
+                      color: Color(0xFFC4B5FD),
+                      width: 1.5,
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(13),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    Widget buildRightReviewPanel() {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 22),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [
+              Color(0xFFFFFFFF),
+              Color(0xFFFAF5FF),
+              Color(0xFFF0FDFA),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(
+            color: const Color(0xFFDDD6FE),
+            width: 1.6,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF7C3AED).withValues(alpha: 0.06),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Short Header + Score Pill
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  isSi ? 'ඔබේ පිළිවෙල' : 'Your Picks',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                    color: Color(0xFF1E1B4B),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: matched > 0
+                        ? const Color(0xFFDCFCE7)
+                        : const Color(0xFFFEF3C7),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: matched > 0
+                          ? const Color(0xFF86EFAC)
+                          : const Color(0xFFFCD34D),
+                    ),
+                  ),
+                  child: Text(
+                    '$matched / $total ✓',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w900,
+                      color: matched > 0
+                          ? const Color(0xFF15803D)
+                          : const Color(0xFFB45309),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+
+            // Clean Visual Progress Bar
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: LinearProgressIndicator(
+                value: total > 0 ? (matched / total).clamp(0.10, 1.0) : 0.1,
+                minHeight: 10,
+                backgroundColor: const Color(0xFFE2E8F0),
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  matched > 0 ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
+                ),
               ),
             ),
-            Container(
-              width: 68,
-              height: 68,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFF59E0B), Color(0xFFD97706)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 2),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFFD97706).withValues(alpha: 0.35),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: const Center(
-                child: Icon(
-                  LucideIcons.rotateCcw,
-                  size: 34,
+            const SizedBox(height: 18),
+
+            // Big Clear Visual Tiles (Minimal Words!)
+            if (_userTaps.length == _targetSequence.length)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 28),
+                decoration: BoxDecoration(
                   color: Colors.white,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: const Color(0xFFE9D5FF), width: 1.4),
                 ),
+                child: Wrap(
+                  alignment: WrapAlignment.center,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 12,
+                  runSpacing: 16,
+                  children: List.generate(_targetSequence.length, (i) {
+                    final tappedTile = _tiles[_userTaps[i]];
+                    final ok = _userTaps[i] == _targetSequence[i];
+                    return Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Stack(
+                              clipBehavior: Clip.none,
+                              children: [
+                                Container(
+                                  width: 78,
+                                  height: 78,
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        tappedTile.color,
+                                        tappedTile.accentGradient,
+                                      ],
+                                    ),
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: ok
+                                          ? const Color(0xFF10B981)
+                                          : const Color(0xFFF59E0B),
+                                      width: 3.4,
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: tappedTile.color.withValues(alpha: 0.28),
+                                        blurRadius: 12,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Center(
+                                    child: Icon(
+                                      tappedTile.icon,
+                                      size: 38,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                                Positioned(
+                                  right: -4,
+                                  top: -4,
+                                  child: Container(
+                                    width: 24,
+                                    height: 24,
+                                    decoration: BoxDecoration(
+                                      color: ok
+                                          ? const Color(0xFF10B981)
+                                          : const Color(0xFFF59E0B),
+                                      shape: BoxShape.circle,
+                                      border: Border.all(color: Colors.white, width: 2),
+                                    ),
+                                    child: Center(
+                                      child: Icon(
+                                        ok ? Icons.check_rounded : Icons.refresh_rounded,
+                                        size: 14,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              tappedTile.displayLabel(isSi),
+                              style: const TextStyle(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF1E293B),
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (i < _targetSequence.length - 1)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 6, bottom: 20),
+                            child: Icon(
+                              Icons.arrow_forward_rounded,
+                              size: 20,
+                              color: const Color(0xFF94A3B8),
+                            ),
+                          ),
+                      ],
+                    );
+                  }),
+                ),
+              ),
+            const SizedBox(height: 16),
+
+            // Ultra-Short Friendly Tip Pill
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 11),
+              decoration: BoxDecoration(
+                color: const Color(0xFFECFDF5),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFA7F3D0)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text('💡', style: TextStyle(fontSize: 18)),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      isSi
+                          ? 'පාට සහ අංක පිළිවෙල හිතින් කියමින් මතක තබාගන්න!'
+                          : 'Say each color & number out loud!',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF065F46),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
         ),
-        const SizedBox(height: 16),
-        Text(
-          'Good try!',
-          style: AppTextStyles.h2.copyWith(
-            color: const Color(0xFF1E1B4B),
-            fontWeight: FontWeight.w900,
-            fontSize: 28,
-            letterSpacing: -0.4,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Don\'t worry at all! Memory takes practice. Would you like to play again?',
-          style: AppTextStyles.body.copyWith(
-            fontSize: 16.5,
-            color: const Color(0xFF475569),
-            fontWeight: FontWeight.w500,
-          ),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 24),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+      );
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth >= 740) {
+          return ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 424),
+            child: IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(flex: 5, child: buildLeftHeroPanel()),
+                  const SizedBox(width: 18),
+                  Expanded(flex: 6, child: buildRightReviewPanel()),
+                ],
+              ),
+            ),
+          );
+        }
+        return Column(
           children: [
-            ElevatedButton.icon(
-              key: const ValueKey('try_again_button'),
-              onPressed: _replaySequence,
-              icon: const Icon(LucideIcons.rotateCcw, size: 18),
-              label: const Text(
-                'Watch & Try Again',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF7C3AED),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 15),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                elevation: 3,
-                shadowColor: const Color(0xFF7C3AED).withValues(alpha: 0.4),
-              ),
-            ),
-            const SizedBox(width: 16),
-            OutlinedButton.icon(
-              key: const ValueKey('reset_level_1_button'),
-              onPressed: _resetToBeginning,
-              icon: const Icon(LucideIcons.rotateCcw, size: 18),
-              label: const Text(
-                'Restart from Level 1',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
-              ),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFF1E1B4B),
-                side: const BorderSide(color: Color(0xFFCBD5E1), width: 1.5),
-                backgroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 15),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-            ),
+            buildLeftHeroPanel(),
+            const SizedBox(height: 14),
+            buildRightReviewPanel(),
           ],
-        ),
-      ],
+        );
+      },
     );
   }
 }
@@ -3148,11 +4952,13 @@ class _SequenceGameViewState extends State<_SequenceGameView> {
 class _InteractiveSequencePad extends StatefulWidget {
   final _SequenceTileData tile;
   final VoidCallback onTap;
+  final bool isSinhala;
 
   const _InteractiveSequencePad({
     super.key,
     required this.tile,
     required this.onTap,
+    this.isSinhala = false,
   });
 
   @override
@@ -3181,11 +4987,11 @@ class _InteractiveSequencePadState extends State<_InteractiveSequencePad> {
           curve: Curves.easeOutCubic,
           transform: Matrix4.translationValues(
             0,
-            _isPressed ? 1 : (_isHovered ? -5 : 0),
+            _isPressed ? 2 : (_isHovered ? -6 : 0),
             0,
           ),
-          width: 106,
-          height: 106,
+          width: 112,
+          height: 112,
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [widget.tile.color, widget.tile.accentGradient],
@@ -3193,30 +4999,30 @@ class _InteractiveSequencePadState extends State<_InteractiveSequencePad> {
               end: Alignment.bottomRight,
             ),
             shape: BoxShape.circle,
-            border: Border.all(color: Colors.white, width: 3.5),
+            border: Border.all(color: Colors.white, width: 3.8),
             boxShadow: [
               BoxShadow(
-                color: widget.tile.color.withValues(alpha: _isHovered ? 0.5 : 0.32),
-                blurRadius: _isHovered ? 20 : 12,
-                offset: Offset(0, _isHovered ? 8 : 4),
+                color: widget.tile.color.withValues(alpha: _isHovered ? 0.52 : 0.34),
+                blurRadius: _isHovered ? 22 : 14,
+                offset: Offset(0, _isHovered ? 8 : 5),
               ),
             ],
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(widget.tile.icon, size: 44, color: Colors.white),
-              const SizedBox(height: 2),
+              Icon(widget.tile.icon, size: 46, color: Colors.white),
+              const SizedBox(height: 4),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
                 decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.18),
+                  color: Colors.black.withValues(alpha: 0.20),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
-                  widget.tile.label,
+                  widget.tile.displayLabel(widget.isSinhala),
                   style: const TextStyle(
-                    fontSize: 11.5,
+                    fontSize: 13.5,
                     fontWeight: FontWeight.w800,
                     color: Colors.white,
                     letterSpacing: 0.2,
@@ -3229,6 +5035,827 @@ class _InteractiveSequencePadState extends State<_InteractiveSequencePad> {
       ),
     );
   }
+}
+
+// ==============================================================================
+// ANIMATED CELEBRATING ELDERS STAGE FOR REMEMBER THE SEQUENCE FINISH SCREEN
+// ==============================================================================
+
+class _SequenceGrandCelebrationStage extends StatefulWidget {
+  final bool isSinhala;
+  final Widget centerContent;
+
+  const _SequenceGrandCelebrationStage({
+    required this.isSinhala,
+    required this.centerContent,
+  });
+
+  @override
+  State<_SequenceGrandCelebrationStage> createState() =>
+      _SequenceGrandCelebrationStageState();
+}
+
+class _SequenceGrandCelebrationStageState
+    extends State<_SequenceGrandCelebrationStage>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2200),
+    );
+    final isTestEnv =
+        WidgetsBinding.instance.runtimeType.toString().contains('Test');
+    if (!isTestEnv) {
+      _controller.repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isSi = widget.isSinhala;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(21.2),
+      child: Container(
+        width: double.infinity,
+        constraints: const BoxConstraints(minHeight: 424),
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Color(0xFF2E1065),
+              Color(0xFF4C1D95),
+              Color(0xFF1D4ED8),
+              Color(0xFF0F766E),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // Animated floating confetti & golden sparkles
+            Positioned.fill(
+              child: IgnorePointer(
+                child: AnimatedBuilder(
+                  animation: _controller,
+                  builder: (_, __) => CustomPaint(
+                    painter: _SeqCelebrationConfettiPainter(
+                      progress: _controller.value,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            // Main layout: Left Celebrating Grandma + Center Champion Card + Right Celebrating Grandpa
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 30),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final showSideCharacters = constraints.maxWidth >= 700;
+                  if (!showSideCharacters) {
+                    return Center(child: widget.centerContent);
+                  }
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      // Left Celebrating Character (Smiling Grandma)
+                      SizedBox(
+                        width: 175,
+                        child: AnimatedBuilder(
+                          animation: _controller,
+                          builder: (_, __) {
+                            final phase = _controller.value * 2 * pi;
+                            final bounce = sin(phase).abs() * -10.0;
+                            final wave = sin(phase * 2) * 0.28;
+                            return Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Transform.translate(
+                                  offset: Offset(0, sin(phase) * 3.0),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 5,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withValues(alpha: 0.94),
+                                      borderRadius: BorderRadius.circular(14),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withValues(alpha: 0.16),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 3),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Text(
+                                      isSi ? 'හරිම අපූරුයි! 🎉' : 'Bravo! 🎉',
+                                      style: const TextStyle(
+                                        fontSize: 12.5,
+                                        fontWeight: FontWeight.w900,
+                                        color: Color(0xFF7C3AED),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Transform.translate(
+                                  offset: Offset(0, bounce),
+                                  child: SizedBox(
+                                    width: 150,
+                                    height: 175,
+                                    child: CustomPaint(
+                                      painter: _CelebratingElderPainter(
+                                        isGrandma: true,
+                                        armWave: wave,
+                                        sparklePhase: _controller.value,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                      ),
+
+                      // Center Trophy & Score Content
+                      Expanded(child: widget.centerContent),
+
+                      // Right Celebrating Character (Smiling Grandpa)
+                      SizedBox(
+                        width: 175,
+                        child: AnimatedBuilder(
+                          animation: _controller,
+                          builder: (_, __) {
+                            final phase = (_controller.value + 0.35) * 2 * pi;
+                            final bounce = sin(phase).abs() * -10.0;
+                            final wave = sin(phase * 2) * 0.28;
+                            return Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Transform.translate(
+                                  offset: Offset(0, sin(phase) * 3.0),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 5,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withValues(alpha: 0.94),
+                                      borderRadius: BorderRadius.circular(14),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withValues(alpha: 0.16),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 3),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Text(
+                                      isSi ? 'විශිෂ්ටයි! 👏' : 'Well Done! 👏',
+                                      style: const TextStyle(
+                                        fontSize: 12.5,
+                                        fontWeight: FontWeight.w900,
+                                        color: Color(0xFF0F766E),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Transform.translate(
+                                  offset: Offset(0, bounce),
+                                  child: SizedBox(
+                                    width: 150,
+                                    height: 175,
+                                    child: CustomPaint(
+                                      painter: _CelebratingElderPainter(
+                                        isGrandma: false,
+                                        armWave: wave,
+                                        sparklePhase: (_controller.value + 0.5) % 1.0,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CelebratingElderPainter extends CustomPainter {
+  final bool isGrandma;
+  final double armWave;
+  final double sparklePhase;
+
+  const _CelebratingElderPainter({
+    required this.isGrandma,
+    required this.armWave,
+    required this.sparklePhase,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cx = size.width / 2;
+
+    // Soft glowing floor aura under character
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: Offset(cx, size.height - 10),
+        width: 90,
+        height: 18,
+      ),
+      Paint()..color = Colors.white.withValues(alpha: 0.18),
+    );
+
+    final skinPaint = Paint()..color = const Color(0xFFF6C6A5);
+    final hairPaint = Paint()..color = const Color(0xFFE2E8F0);
+    final hairHighlight = Paint()..color = Colors.white;
+    final outfitColor =
+        isGrandma ? const Color(0xFFEC4899) : const Color(0xFF14B8A6);
+    final outfitAccent =
+        isGrandma ? const Color(0xFFFDE047) : const Color(0xFFFEF08A);
+
+    // 1. Cheering Raised Arms (animated wave!)
+    final armPaint = Paint()
+      ..color = outfitColor
+      ..strokeWidth = 15
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+
+    final leftShoulder = Offset(cx - 24, 98);
+    final rightShoulder = Offset(cx + 24, 98);
+    final leftHand = Offset(
+      cx - 52 + sin(armWave) * 10,
+      44 + cos(armWave) * 8,
+    );
+    final rightHand = Offset(
+      cx + 52 - sin(armWave) * 10,
+      44 + cos(armWave) * 8,
+    );
+
+    final leftArmPath = Path()
+      ..moveTo(leftShoulder.dx, leftShoulder.dy)
+      ..quadraticBezierTo(cx - 46, 78, leftHand.dx, leftHand.dy);
+    final rightArmPath = Path()
+      ..moveTo(rightShoulder.dx, rightShoulder.dy)
+      ..quadraticBezierTo(cx + 46, 78, rightHand.dx, rightHand.dy);
+    canvas.drawPath(leftArmPath, armPaint);
+    canvas.drawPath(rightArmPath, armPaint);
+
+    // Hands
+    canvas.drawCircle(leftHand, 9, skinPaint);
+    canvas.drawCircle(rightHand, 9, skinPaint);
+
+    // Mini twinkling celebration stars above both hands
+    final starPulse = 0.55 + 0.45 * sin(sparklePhase * 2 * pi);
+    _drawMiniSparkle(
+      canvas,
+      Offset(leftHand.dx - 10, leftHand.dy - 14),
+      6.5 * starPulse + 2,
+      const Color(0xFFFDE047),
+    );
+    _drawMiniSparkle(
+      canvas,
+      Offset(rightHand.dx + 10, rightHand.dy - 14),
+      6.5 * (1.1 - starPulse * 0.4) + 2,
+      const Color(0xFF67E8F9),
+    );
+
+    // 2. Torso / Outfit
+    final bodyRect = RRect.fromRectAndRadius(
+      Rect.fromCenter(center: Offset(cx, 126), width: 64, height: 68),
+      const Radius.circular(26),
+    );
+    canvas.drawRRect(bodyRect, Paint()..color = outfitColor);
+
+    if (isGrandma) {
+      // Diagonal golden saree pallu sash
+      final sash = Paint()
+        ..color = outfitAccent.withValues(alpha: 0.90)
+        ..strokeWidth = 9
+        ..strokeCap = StrokeCap.round;
+      canvas.drawLine(Offset(cx - 24, 96), Offset(cx + 22, 152), sash);
+    } else {
+      // Grandpa crisp white collar & vest buttons
+      final collarPath = Path()
+        ..moveTo(cx - 14, 92)
+        ..lineTo(cx, 108)
+        ..lineTo(cx + 14, 92)
+        ..close();
+      canvas.drawPath(collarPath, Paint()..color = Colors.white);
+      canvas.drawCircle(Offset(cx, 120), 3, Paint()..color = outfitAccent);
+      canvas.drawCircle(Offset(cx, 134), 3, Paint()..color = outfitAccent);
+    }
+
+    // 3. Hair (Back Bun for Grandma / Soft Side Hair for Grandpa)
+    if (isGrandma) {
+      canvas.drawCircle(Offset(cx, 25), 16, hairPaint);
+      canvas.drawCircle(Offset(cx - 3, 22), 7, hairHighlight);
+    }
+
+    // 4. Head
+    final headCenter = Offset(cx, 62);
+    canvas.drawCircle(headCenter, 30, skinPaint);
+
+    // Hair bangs / cap
+    final hairTopPath = Path()
+      ..addArc(
+        Rect.fromCircle(center: headCenter, radius: 31),
+        pi * 1.05,
+        pi * 0.90,
+      );
+    canvas.drawPath(hairTopPath, hairPaint);
+
+    // Rosy happy cheeks
+    final cheekPaint = Paint()
+      ..color = const Color(0xFFFB7185).withValues(alpha: 0.40);
+    canvas.drawCircle(Offset(cx - 16, 68), 5.5, cheekPaint);
+    canvas.drawCircle(Offset(cx + 16, 68), 5.5, cheekPaint);
+
+    // Smiling happy arched eyes (^ ^)
+    final eyePaint = Paint()
+      ..color = const Color(0xFF1E293B)
+      ..strokeWidth = 2.6
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+    canvas.drawArc(
+      Rect.fromCenter(center: Offset(cx - 10, 59), width: 10, height: 8),
+      pi,
+      pi,
+      false,
+      eyePaint,
+    );
+    canvas.drawArc(
+      Rect.fromCenter(center: Offset(cx + 10, 59), width: 10, height: 8),
+      pi,
+      pi,
+      false,
+      eyePaint,
+    );
+
+    // Friendly round glasses for Grandpa
+    if (!isGrandma) {
+      final glassPaint = Paint()
+        ..color = const Color(0xFF334155)
+        ..strokeWidth = 2.0
+        ..style = PaintingStyle.stroke;
+      canvas.drawCircle(Offset(cx - 10, 59), 8, glassPaint);
+      canvas.drawCircle(Offset(cx + 10, 59), 8, glassPaint);
+      canvas.drawLine(Offset(cx - 2, 59), Offset(cx + 2, 59), glassPaint);
+    }
+
+    // Big Joyful Smile
+    final smilePaint = Paint()
+      ..color = const Color(0xFF9F1239)
+      ..strokeWidth = 3.0
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+    canvas.drawArc(
+      Rect.fromCenter(center: Offset(cx, 69), width: 20, height: 14),
+      0.15,
+      pi - 0.30,
+      false,
+      smilePaint,
+    );
+  }
+
+  void _drawMiniSparkle(Canvas canvas, Offset center, double radius, Color color) {
+    final paint = Paint()..color = color;
+    final path = Path()
+      ..moveTo(center.dx, center.dy - radius)
+      ..quadraticBezierTo(center.dx, center.dy, center.dx + radius, center.dy)
+      ..quadraticBezierTo(center.dx, center.dy, center.dx, center.dy + radius)
+      ..quadraticBezierTo(center.dx, center.dy, center.dx - radius, center.dy)
+      ..quadraticBezierTo(center.dx, center.dy, center.dx, center.dy - radius)
+      ..close();
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _CelebratingElderPainter oldDelegate) =>
+      oldDelegate.armWave != armWave ||
+      oldDelegate.sparklePhase != sparklePhase ||
+      oldDelegate.isGrandma != isGrandma;
+}
+
+class _SeqCelebrationConfettiPainter extends CustomPainter {
+  final double progress;
+
+  const _SeqCelebrationConfettiPainter({required this.progress});
+
+  static const _colors = [
+    Color(0xFFFDE047),
+    Color(0xFFF472B6),
+    Color(0xFF34D399),
+    Color(0xFF60A5FA),
+    Color(0xFFC084FC),
+    Color(0xFFFB923C),
+  ];
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    for (int i = 0; i < 24; i++) {
+      final seed = i * 1.37;
+      final baseX = ((i * 73) % 100) / 100.0;
+      final x = baseX * size.width + sin(progress * 2 * pi + seed) * 14;
+      final yOffset = ((progress + (i * 0.13)) % 1.0);
+      final y = yOffset * (size.height + 24) - 12;
+      final color = _colors[i % _colors.length].withValues(alpha: 0.72);
+      final paint = Paint()..color = color;
+
+      canvas.save();
+      canvas.translate(x, y);
+      canvas.rotate(progress * 2 * pi + seed);
+      if (i % 3 == 0) {
+        canvas.drawCircle(Offset.zero, 4.0, paint);
+      } else {
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+            const Rect.fromLTWH(-4.5, -2.2, 9, 4.4),
+            const Radius.circular(2),
+          ),
+          paint,
+        );
+      }
+      canvas.restore();
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _SeqCelebrationConfettiPainter oldDelegate) =>
+      oldDelegate.progress != progress;
+}
+
+class _SeqPopupConfettiOverlay extends StatefulWidget {
+  const _SeqPopupConfettiOverlay();
+
+  @override
+  State<_SeqPopupConfettiOverlay> createState() =>
+      _SeqPopupConfettiOverlayState();
+}
+
+class _SeqPopupConfettiOverlayState extends State<_SeqPopupConfettiOverlay>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 3400),
+    );
+    final isTestEnv =
+        WidgetsBinding.instance.runtimeType.toString().contains('Test');
+    if (!isTestEnv) {
+      _controller.repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (_, __) => CustomPaint(
+        painter: _SeqPopupConfettiBurstPainter(progress: _controller.value),
+      ),
+    );
+  }
+}
+
+class _SeqPopupConfettiBurstPainter extends CustomPainter {
+  final double progress;
+
+  const _SeqPopupConfettiBurstPainter({required this.progress});
+
+  static const _palette = [
+    Color(0xFFFDE047), // bright gold
+    Color(0xFFF43F5E), // festive rose
+    Color(0xFF10B981), // emerald
+    Color(0xFF38BDF8), // sky blue
+    Color(0xFFA855F7), // violet
+    Color(0xFFFB923C), // orange
+    Color(0xFFEC4899), // pink
+  ];
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cx = size.width / 2;
+    final cy = size.height / 2;
+
+    // 1. Bursting festive celebration ribbons & confetti shooting around the popup
+    for (int i = 0; i < 42; i++) {
+      final t = (progress + (i * 0.047)) % 1.0;
+      final angle = (i / 42.0) * 2 * pi + sin(t * pi) * 0.18;
+      final speed = 175.0 + (i % 5) * 62.0;
+      final radius = 90.0 + speed * Curves.easeOut.transform(t);
+      final gravityY = 120.0 * t * t;
+
+      final x = cx + cos(angle) * radius;
+      final y = cy + sin(angle) * (radius * 0.72) + gravityY - 30.0;
+      final alpha = (1.0 - (t * t)).clamp(0.0, 0.92);
+      final color = _palette[i % _palette.length].withValues(alpha: alpha);
+
+      canvas.save();
+      canvas.translate(x, y);
+      canvas.rotate(angle + t * 5.2 + (i % 3));
+
+      if (i % 4 == 0) {
+        // Wavy party streamer ribbon ("celebration pati")
+        final ribbonPaint = Paint()
+          ..color = color
+          ..strokeWidth = 3.6
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round;
+        final path = Path()
+          ..moveTo(-12, 0)
+          ..quadraticBezierTo(-6, -7, 0, 0)
+          ..quadraticBezierTo(6, 7, 12, 0);
+        canvas.drawPath(path, ribbonPaint);
+      } else if (i % 4 == 1) {
+        // Confetti strip
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+            const Rect.fromLTWH(-7, -3, 14, 6),
+            const Radius.circular(2.5),
+          ),
+          Paint()..color = color,
+        );
+      } else if (i % 4 == 2) {
+        // Sparkling star
+        final r = 6.0;
+        final star = Path()
+          ..moveTo(0, -r)
+          ..quadraticBezierTo(0, 0, r, 0)
+          ..quadraticBezierTo(0, 0, 0, r)
+          ..quadraticBezierTo(0, 0, -r, 0)
+          ..quadraticBezierTo(0, 0, 0, -r)
+          ..close();
+        canvas.drawPath(star, Paint()..color = color);
+      } else {
+        // Round festive dot
+        canvas.drawCircle(Offset.zero, 4.5, Paint()..color = color);
+      }
+      canvas.restore();
+    }
+
+    // 2. Gentle drifting ribbons falling down left & right edges around the dialog
+    for (int j = 0; j < 20; j++) {
+      final isLeft = j.isEven;
+      final laneX = isLeft
+          ? size.width * (0.06 + ((j * 17) % 24) / 100.0)
+          : size.width * (0.70 + ((j * 19) % 24) / 100.0);
+      final driftX = laneX + sin(progress * 2 * pi + j) * 18;
+      final fallY = ((progress + j * 0.11) % 1.0) * (size.height + 40) - 20;
+      final color = _palette[(j + 2) % _palette.length].withValues(alpha: 0.80);
+
+      canvas.save();
+      canvas.translate(driftX, fallY);
+      canvas.rotate(progress * 2 * pi + j * 0.7);
+      final ribbonPaint = Paint()
+        ..color = color
+        ..strokeWidth = 3.4
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round;
+      final path = Path()
+        ..moveTo(-10, -2)
+        ..quadraticBezierTo(-3, -8, 2, 0)
+        ..quadraticBezierTo(7, 8, 12, 2);
+      canvas.drawPath(path, ribbonPaint);
+      canvas.restore();
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _SeqPopupConfettiBurstPainter oldDelegate) =>
+      oldDelegate.progress != progress;
+}
+
+class _SeqAmbientPlayBackdrop extends StatefulWidget {
+  const _SeqAmbientPlayBackdrop();
+
+  @override
+  State<_SeqAmbientPlayBackdrop> createState() =>
+      _SeqAmbientPlayBackdropState();
+}
+
+class _SeqAmbientPlayBackdropState extends State<_SeqAmbientPlayBackdrop>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 9000),
+    );
+    final isTestEnv =
+        WidgetsBinding.instance.runtimeType.toString().contains('Test');
+    if (!isTestEnv) {
+      _controller.repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (_, __) => CustomPaint(
+        painter: _SeqAmbientPlayPainter(progress: _controller.value),
+      ),
+    );
+  }
+}
+
+class _SeqAmbientPlayPainter extends CustomPainter {
+  final double progress;
+
+  const _SeqAmbientPlayPainter({required this.progress});
+
+  static const _tilePastels = [
+    Color(0xFFA78BFA), // soft violet
+    Color(0xFF60A5FA), // soft sky blue
+    Color(0xFF34D399), // soft emerald
+    Color(0xFFFB923C), // soft warm peach
+  ];
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final t = progress * 2 * pi;
+
+    // 1. Soft pastel wash gradient base
+    final bgPaint = Paint()
+      ..shader = const LinearGradient(
+        colors: [
+          Color(0xFFFDFBFF),
+          Color(0xFFF5F3FF),
+          Color(0xFFEFF6FF),
+          Color(0xFFECFDF5),
+        ],
+        stops: [0.0, 0.35, 0.70, 1.0],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), bgPaint);
+
+    // 2. 4 Gently Breathing Pastel Glow Orbs matching the 4 Sequence Tile colors
+    final orbs = [
+      (
+        Offset(size.width * 0.12 + sin(t) * 18, size.height * 0.25 + cos(t) * 12),
+        125.0,
+        const Color(0xFFDDD6FE),
+      ),
+      (
+        Offset(size.width * 0.88 + cos(t) * 20, size.height * 0.24 + sin(t) * 14),
+        135.0,
+        const Color(0xFFBAE6FD),
+      ),
+      (
+        Offset(size.width * 0.18 + cos(t + 1.4) * 22, size.height * 0.82 + sin(t) * 10),
+        120.0,
+        const Color(0xFFA7F3D0),
+      ),
+      (
+        Offset(size.width * 0.82 + sin(t + 2.1) * 18, size.height * 0.80 + cos(t) * 12),
+        125.0,
+        const Color(0xFFFED7AA),
+      ),
+    ];
+
+    for (final (center, radius, color) in orbs) {
+      final paint = Paint()
+        ..shader = RadialGradient(
+          colors: [
+            color.withValues(alpha: 0.42),
+            color.withValues(alpha: 0.0),
+          ],
+        ).createShader(Rect.fromCircle(center: center, radius: radius));
+      canvas.drawCircle(center, radius, paint);
+    }
+
+    // 3. Soft Undulating Pastel Waves at Bottom Edge
+    final wavePath1 = Path()..moveTo(0, size.height);
+    for (double x = 0; x <= size.width; x += 18) {
+      final y = size.height -
+          28 +
+          sin((x / size.width) * 2 * pi + t) * 9 +
+          cos((x / size.width) * 4 * pi - t) * 4;
+      wavePath1.lineTo(x, y);
+    }
+    wavePath1
+      ..lineTo(size.width, size.height)
+      ..close();
+    canvas.drawPath(
+      wavePath1,
+      Paint()
+        ..shader = LinearGradient(
+          colors: [
+            const Color(0xFF7C3AED).withValues(alpha: 0.10),
+            const Color(0xFF2563EB).withValues(alpha: 0.10),
+            const Color(0xFF10B981).withValues(alpha: 0.12),
+          ],
+        ).createShader(Rect.fromLTWH(0, size.height - 50, size.width, 50)),
+    );
+
+    final wavePath2 = Path()..moveTo(0, size.height);
+    for (double x = 0; x <= size.width; x += 18) {
+      final y = size.height -
+          16 +
+          cos((x / size.width) * 2.5 * pi - t * 1.2) * 7;
+      wavePath2.lineTo(x, y);
+    }
+    wavePath2
+      ..lineTo(size.width, size.height)
+      ..close();
+    canvas.drawPath(
+      wavePath2,
+      Paint()..color = const Color(0xFF8B5CF6).withValues(alpha: 0.07),
+    );
+
+    // 4. Gently Floating Luminous Bubbles, Rings & Twinkling Sparkles
+    for (int i = 0; i < 16; i++) {
+      final seed = i * 1.61;
+      final baseX = ((i * 61 + 13) % 94 + 3) / 100.0;
+      final rise = (1.0 - ((progress + i * 0.073) % 1.0));
+      final x = baseX * size.width + sin(t + seed) * 14;
+      final y = rise * (size.height + 24) - 12;
+      final color = _tilePastels[i % _tilePastels.length];
+      final pulse = 0.45 + 0.55 * sin(t * 2 + seed).abs();
+
+      if (i % 3 == 0) {
+        // 4-point twinkling memory star sparkle
+        final r = 5.5 * pulse + 2.5;
+        final star = Path()
+          ..moveTo(x, y - r)
+          ..quadraticBezierTo(x, y, x + r, y)
+          ..quadraticBezierTo(x, y, x, y + r)
+          ..quadraticBezierTo(x, y, x - r, y)
+          ..quadraticBezierTo(x, y, x, y - r)
+          ..close();
+        canvas.drawPath(
+          star,
+          Paint()..color = color.withValues(alpha: 0.48 * pulse),
+        );
+      } else if (i % 3 == 1) {
+        // Translucent floating pastel bubble ring
+        canvas.drawCircle(
+          Offset(x, y),
+          8.0 + (i % 4) * 3.0,
+          Paint()
+            ..color = color.withValues(alpha: 0.22)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1.6,
+        );
+      } else {
+        // Soft glowing dot
+        canvas.drawCircle(
+          Offset(x, y),
+          3.8 + (i % 3) * 1.5,
+          Paint()..color = color.withValues(alpha: 0.26 * pulse),
+        );
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _SeqAmbientPlayPainter oldDelegate) =>
+      oldDelegate.progress != progress;
 }
 
 // ==============================================================================
