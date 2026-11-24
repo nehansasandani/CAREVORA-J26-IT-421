@@ -96,12 +96,6 @@ class DesktopSidebar extends ConsumerWidget {
                   ),
                   _buildNavItem(
                     context,
-                    icon: LucideIcons.barChart3,
-                    label: strings.isSinhala ? 'ප්‍රගතිය සහ වාර්තා' : strings.reportsAndAnalytics,
-                    route: '/dashboard/reports',
-                  ),
-                  _buildNavItem(
-                    context,
                     icon: LucideIcons.gamepad2,
                     label: strings.isSinhala ? 'මතක ක්‍රීඩා' : strings.memoryGames,
                     route: '/dashboard/memory-games',
@@ -240,21 +234,20 @@ class DesktopSidebar extends ConsumerWidget {
                         child: Row(
                           children: [
                             Container(
-                              width: 38,
-                              height: 38,
+                              padding: const EdgeInsets.all(2),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFEDE9FE),
                                 shape: BoxShape.circle,
-                                border: Border.all(color: const Color(0xFFDDD6FE), width: 1.5),
-                              ),
-                              alignment: Alignment.center,
-                              child: Text(
-                                initials,
-                                style: const TextStyle(
-                                  color: Color(0xFF6D28D9),
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w900,
+                                border: Border.all(
+                                  color: const Color(0xFFDDD6FE),
+                                  width: 1.5,
                                 ),
+                              ),
+                              child: CarevoraAvatar(
+                                avatarUrl: authState.avatarUrl,
+                                radius: 19,
+                                initials: initials,
+                                backgroundColor: const Color(0xFFEDE9FE),
+                                foregroundColor: const Color(0xFF6D28D9),
                               ),
                             ),
                             const SizedBox(width: 10),

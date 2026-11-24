@@ -8,6 +8,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/config/app_config.dart';
 import '../../../../core/localization/sinhala_name_transliterator.dart';
+import '../../../../core/services/app_settings_controller.dart';
 import '../../../../core/theme/app_colors.dart';
 
 /// Elder-only live game invite notification controller & overlay host.
@@ -129,7 +130,21 @@ class _ElderInviteNotificationHostState
   }
 
   Future<void> _pollPendingInvites() async {
-    if (!mounted || _isDeactivated || !widget.enabled) return;
+    if (!mounted ||
+        _isDeactivated ||
+        !widget.enabled ||
+        !AppSettingsController.gameInvitePopupsEnabledLive) {
+      if (_pendingInvites.isNotEmpty &&
+          !AppSettingsController.gameInvitePopupsEnabledLive &&
+          mounted) {
+        setState(() {
+          _pendingInvites = [];
+          _activeAcceptedToast = null;
+          _liveGameStartedPrompt = null;
+        });
+      }
+      return;
+    }
     final myNameLower = (widget.elderName ?? '').trim().toLowerCase();
     if (myNameLower.isEmpty) return;
 
