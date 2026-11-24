@@ -199,11 +199,13 @@ class _MemoryGamesPageState extends ConsumerState<MemoryGamesPage> {
           isSinhala: isSinhala,
         );
       case MemoryGameType.pairs:
+        final isSinhala = ref.watch(languageProvider).isSinhala;
         return _PairsGameView(
           key: const ValueKey('pairs_game'),
           onBack: _backToHub,
           residentId: effectiveResidentId,
           token: effectiveToken,
+          isSinhala: isSinhala,
         );
       case MemoryGameType.items:
         return _ItemsGameView(
@@ -5866,12 +5868,14 @@ class _PairsGameView extends StatefulWidget {
   final VoidCallback onBack;
   final int residentId;
   final String? token;
+  final bool isSinhala;
 
   const _PairsGameView({
     super.key,
     required this.onBack,
     required this.residentId,
     this.token,
+    this.isSinhala = false,
   });
 
   @override
@@ -5959,20 +5963,106 @@ class _PairsGameViewState extends State<_PairsGameView> {
   double? _lastScore;
   int _lastTurns = 0;
 
+  // Nullable for Hot-Reload safety
+  bool? _voiceEnabled;
+  Timer? _voiceIntroTimer;
+  PicnicBgmPlayer? _sfxPlayer;
+  int? _consecutiveMismatches;
+  int? _encourageIdx;
+  PicnicBgmPlayer get _sfx => _sfxPlayer ??= PicnicBgmPlayer();
+  bool get _isVoiceOn => _voiceEnabled ?? true;
+
+  bool get _isWidgetTest =>
+      WidgetsBinding.instance.runtimeType.toString().contains('Test');
+
+  void _speakPairsVoice(String enText, String siText) {
+    if (!mounted || !_isVoiceOn || _isWidgetTest) return;
+    final text = widget.isSinhala ? siText : enText;
+    TtsService.instance.speak(text, isSinhala: widget.isSinhala);
+  }
+
+  void _speakStartPrompt() {
+    _speakPairsVoice(
+      'Welcome to Find the Matching Pairs! Tap any two cards to discover matching pairs. Take your time, there is no rush.',
+      'ගැළපෙන යුගල සෙවීමේ ක්‍රීඩාවට සාදරයෙන් පිළිගනිමු! ඕනෑම කාඩ්පත් දෙකක් ඔබා ගැළපෙන යුගල සොයාගන්න. කලබල වෙන්න එපා, නිදහසේ සෙල්ලම් කරන්න.',
+    );
+  }
+
+  void _speakMatchPrompt() {
+    _speakPairsVoice(
+      'Wonderful! You found a matching pair!',
+      'හරිම හොඳයි! ඔබ ගැළපෙන යුගලයක් සොයා ගත්තා!',
+    );
+  }
+
+  void _speakGentleEncouragementIfNeeded() {
+    final streak = (_consecutiveMismatches ?? 0) + 1;
+    _consecutiveMismatches = streak;
+    // Stay calm & quiet on ordinary mismatches; only give a brief varied nudge every 3 consecutive misses
+    if (streak % 3 != 0) return;
+
+    const enLines = [
+      'Keep going, you are doing great!',
+      'Almost there, take your time!',
+      'You are getting closer!',
+    ];
+    const siLines = [
+      'හොඳයි, දිගටම උත්සාහ කරමු!',
+      'කලබල වෙන්න එපා, නිදහසේ බලමු!',
+      'දැන් හරිම ළඟයි, ආයෙත් බලමු!',
+    ];
+    final idx = (_encourageIdx ?? 0) % enLines.length;
+    _encourageIdx = idx + 1;
+    _speakPairsVoice(enLines[idx], siLines[idx]);
+  }
+
+  void _speakCompletePrompt() {
+    _speakPairsVoice(
+      'Fantastic matching! You found all six pairs with wonderful memory and focus!',
+      'හරිම විශිෂ්ටයි! ඔබ ගැළපෙන යුගල හයම සාර්ථකව සොයා ගත්තා! ඔබේ මතක ශක්තිය හරිම අපූරුයි!',
+    );
+  }
+
+  void _scheduleStartVoice() {
+    _voiceIntroTimer?.cancel();
+    if (_isWidgetTest || !_isVoiceOn) return;
+    _voiceIntroTimer = Timer(const Duration(milliseconds: 360), () {
+      if (mounted && _isVoiceOn) {
+        _speakStartPrompt();
+      }
+    });
+  }
+
   @override
   void initState() {
     super.initState();
-    _startNewGame();
+    _startNewGame(speakIntro: true);
+  }
+
+  @override
+  void didUpdateWidget(covariant _PairsGameView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isSinhala != widget.isSinhala && _isVoiceOn) {
+      if (_pairsFound == _symbols.length) {
+        _speakCompletePrompt();
+      } else {
+        _speakStartPrompt();
+      }
+    }
   }
 
   @override
   void dispose() {
     _flipBackTimer?.cancel();
     _completionTimer?.cancel();
+    _voiceIntroTimer?.cancel();
+    if (!_isWidgetTest) {
+      TtsService.instance.stop();
+    }
     super.dispose();
   }
 
-  void _startNewGame() {
+  void _startNewGame({bool speakIntro = true}) {
     _flipBackTimer?.cancel();
     _completionTimer?.cancel();
     final List<_CardModel> list = [];
@@ -5993,13 +6083,22 @@ class _PairsGameViewState extends State<_PairsGameView> {
       _saveSuccessMessage = null;
       _saveErrorMessage = null;
       _hasShownCompletionPopup = false;
+      _consecutiveMismatches = 0;
     });
+
+    if (speakIntro) {
+      _scheduleStartVoice();
+    }
   }
 
   void _onCardTap(int index) {
     if (_isProcessing) return;
     if (_cards[index].isMatched) return;
     if (_flippedIndices.contains(index)) return;
+
+    if (_isVoiceOn && !_isWidgetTest) {
+      _sfx.playTapChime(volume: 0.24);
+    }
 
     if (_flippedIndices.isEmpty) {
       setState(() {
@@ -6031,6 +6130,7 @@ class _PairsGameViewState extends State<_PairsGameView> {
           secondCard.isMatched = true;
           _pairsFound = updatedPairsFound;
           _flippedIndices.clear();
+          _consecutiveMismatches = 0;
           if (isCompleted) {
             _lastScore = roundedScore;
             _lastTurns = turns;
@@ -6038,6 +6138,10 @@ class _PairsGameViewState extends State<_PairsGameView> {
         });
 
         if (isCompleted) {
+          if (_isVoiceOn && !_isWidgetTest) {
+            _sfx.playVictoryChime(volume: 0.28);
+          }
+          _speakCompletePrompt();
           _saveSession(
             score: roundedScore,
             attempts: turns,
@@ -6050,9 +6154,15 @@ class _PairsGameViewState extends State<_PairsGameView> {
               _showCompletionDialog();
             }
           });
+        } else {
+          if (_isVoiceOn && !_isWidgetTest) {
+            _sfx.playTapChime(volume: 0.30);
+          }
+          _speakMatchPrompt();
         }
       } else {
-        // MISMATCH: allow elder plenty of time to view both cards
+        // MISMATCH: keep ordinary misses calm & quiet; only nudge gently every 3 consecutive misses
+        _speakGentleEncouragementIfNeeded();
         _isProcessing = true;
         _flipBackTimer = Timer(const Duration(milliseconds: 1200), () {
           if (mounted) {
@@ -6119,209 +6229,421 @@ class _PairsGameViewState extends State<_PairsGameView> {
     final score = _lastScore ?? 100.0;
     final turns = _lastTurns;
     final totalPairs = _symbols.length;
+    final isSi = widget.isSinhala;
+    final starCount = score >= 85 ? 5 : (score >= 60 ? 4 : 3);
 
     showDialog<void>(
       context: context,
       barrierDismissible: true,
-      barrierColor: Colors.black.withValues(alpha: 0.5),
+      barrierColor: const Color(0xFF0F172A).withValues(alpha: 0.42),
       builder: (dialogCtx) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             _dialogSetState = setDialogState;
-            return Dialog(
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-              child: Container(
-                constraints: const BoxConstraints(maxWidth: 480),
-                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 28),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [
-                      Color(0xFFFFFFFF),
-                      Color(0xFFFBFDFD),
-                      Color(0xFFF0FDF4),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+            return Stack(
+              children: [
+                // Full-screen animated celebration streamers, ribbons & confetti bursting around popup
+                const Positioned.fill(
+                  child: IgnorePointer(
+                    child: _SeqPopupConfettiOverlay(),
                   ),
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(
-                    color: const Color(0xFF0D9488).withValues(alpha: 0.28),
-                    width: 1.5,
+                ),
+                Dialog(
+                  backgroundColor: Colors.transparent,
+                  elevation: 0,
+                  insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 460),
+                    child: AuroraGradientBorderFrame(
+                      borderRadius: 28,
+                      borderWidth: 2.8,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(25.2),
+                        child: Container(
+                          color: Colors.white,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // 1. Bright Pastel Emerald-Mint-Sky Celebration Header
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.fromLTRB(24, 22, 24, 18),
+                                decoration: const BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      Color(0xFFECFDF5),
+                                      Color(0xFFE0F2FE),
+                                      Color(0xFFF5F3FF),
+                                    ],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                ),
+                                child: Column(
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        const Text('✨', style: TextStyle(fontSize: 23)),
+                                        const SizedBox(width: 12),
+                                        Container(
+                                          width: 78,
+                                          height: 78,
+                                          decoration: BoxDecoration(
+                                            gradient: const LinearGradient(
+                                              colors: [
+                                                Color(0xFF14B8A6),
+                                                Color(0xFF0D9488),
+                                                Color(0xFF0284C7),
+                                              ],
+                                              begin: Alignment.topLeft,
+                                              end: Alignment.bottomRight,
+                                            ),
+                                            shape: BoxShape.circle,
+                                            border: Border.all(
+                                              color: Colors.white,
+                                              width: 4,
+                                            ),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: const Color(0xFF0D9488)
+                                                    .withValues(alpha: 0.34),
+                                                blurRadius: 18,
+                                                offset: const Offset(0, 6),
+                                              ),
+                                            ],
+                                          ),
+                                          child: const Center(
+                                            child: Icon(
+                                              Icons.emoji_events_rounded,
+                                              size: 40,
+                                              color: Color(0xFFFEF08A),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        const Text('🎉', style: TextStyle(fontSize: 23)),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      isSi
+                                          ? 'විශිෂ්ටයි! සියල්ල ගැළපුණා!'
+                                          : 'Fantastic Matching!',
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.w900,
+                                        color: Color(0xFF134E4A),
+                                        letterSpacing: -0.3,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: List.generate(
+                                        5,
+                                        (i) => Icon(
+                                          Icons.star_rounded,
+                                          size: 26,
+                                          color: i < starCount
+                                              ? const Color(0xFFF59E0B)
+                                              : const Color(0xFFCBD5E1),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    // Cheerful Mini Row of All 6 Matched Symbols
+                                    Wrap(
+                                      alignment: WrapAlignment.center,
+                                      spacing: 8,
+                                      runSpacing: 6,
+                                      children: _symbols.map((sym) {
+                                        return Container(
+                                          width: 34,
+                                          height: 34,
+                                          decoration: BoxDecoration(
+                                            color: Colors.white,
+                                            shape: BoxShape.circle,
+                                            border: Border.all(
+                                              color: sym.color.withValues(alpha: 0.35),
+                                              width: 1.5,
+                                            ),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: sym.color.withValues(alpha: 0.14),
+                                                blurRadius: 6,
+                                                offset: const Offset(0, 2),
+                                              ),
+                                            ],
+                                          ),
+                                          child: Center(
+                                            child: Icon(
+                                              sym.icon,
+                                              size: 18,
+                                              color: sym.color,
+                                            ),
+                                          ),
+                                        );
+                                      }).toList(),
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                              // 2. Clean 3-Stat Tiles & Elder-Friendly Action Buttons
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(22, 16, 22, 20),
+                                child: Column(
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 12,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFF5F3FF),
+                                              borderRadius: BorderRadius.circular(15),
+                                              border: Border.all(
+                                                color: const Color(0xFFDDD6FE),
+                                              ),
+                                            ),
+                                            child: Column(
+                                              children: [
+                                                Text(
+                                                  '${score.toStringAsFixed(0)}%',
+                                                  style: const TextStyle(
+                                                    fontSize: 21,
+                                                    fontWeight: FontWeight.w900,
+                                                    color: Color(0xFF6D28D9),
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 2),
+                                                Text(
+                                                  isSi ? 'ලකුණු' : 'Score',
+                                                  style: const TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w700,
+                                                    color: Color(0xFF64748B),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 12,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFECFDF5),
+                                              borderRadius: BorderRadius.circular(15),
+                                              border: Border.all(
+                                                color: const Color(0xFFA7F3D0),
+                                              ),
+                                            ),
+                                            child: Column(
+                                              children: [
+                                                Text(
+                                                  '$totalPairs / $totalPairs',
+                                                  style: const TextStyle(
+                                                    fontSize: 21,
+                                                    fontWeight: FontWeight.w900,
+                                                    color: Color(0xFF047857),
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 2),
+                                                Text(
+                                                  isSi ? 'යුගල' : 'Pairs',
+                                                  style: const TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w700,
+                                                    color: Color(0xFF64748B),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 12,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFEFF6FF),
+                                              borderRadius: BorderRadius.circular(15),
+                                              border: Border.all(
+                                                color: const Color(0xFFBFDBFE),
+                                              ),
+                                            ),
+                                            child: Column(
+                                              children: [
+                                                Text(
+                                                  '$turns',
+                                                  style: const TextStyle(
+                                                    fontSize: 21,
+                                                    fontWeight: FontWeight.w900,
+                                                    color: Color(0xFF1D4ED8),
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 2),
+                                                Text(
+                                                  isSi ? 'වාර ගණන' : 'Turns',
+                                                  style: const TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w700,
+                                                    color: Color(0xFF64748B),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 16),
+
+                                    // Primary CTA: Play Again
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: DecoratedBox(
+                                        decoration: BoxDecoration(
+                                          gradient: const LinearGradient(
+                                            colors: [
+                                              Color(0xFF0D9488),
+                                              Color(0xFF0284C7),
+                                            ],
+                                          ),
+                                          borderRadius: BorderRadius.circular(15),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: const Color(0xFF0D9488)
+                                                  .withValues(alpha: 0.34),
+                                              blurRadius: 12,
+                                              offset: const Offset(0, 5),
+                                            ),
+                                          ],
+                                        ),
+                                        child: ElevatedButton.icon(
+                                          key: const ValueKey(
+                                            'dialog_play_pairs_again_button',
+                                          ),
+                                          onPressed: () {
+                                            Navigator.of(dialogCtx).pop();
+                                            _startNewGame();
+                                          },
+                                          icon: const Icon(
+                                            LucideIcons.rotateCcw,
+                                            size: 19,
+                                          ),
+                                          label: Text(
+                                            isSi ? 'නැවත ක්‍රීඩා කරන්න' : 'Play Again',
+                                            style: const TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w900,
+                                            ),
+                                          ),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.transparent,
+                                            foregroundColor: Colors.white,
+                                            shadowColor: Colors.transparent,
+                                            elevation: 0,
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 14,
+                                            ),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(15),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 10),
+
+                                    // Secondary Row: View Board + All Games
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: OutlinedButton.icon(
+                                            onPressed: () =>
+                                                Navigator.of(dialogCtx).pop(),
+                                            icon: const Icon(LucideIcons.eye, size: 15),
+                                            label: Text(
+                                              isSi ? 'පුවරුව' : 'View Board',
+                                              style: const TextStyle(
+                                                fontSize: 13.5,
+                                                fontWeight: FontWeight.w800,
+                                              ),
+                                            ),
+                                            style: OutlinedButton.styleFrom(
+                                              foregroundColor: const Color(0xFF0F766E),
+                                              side: const BorderSide(
+                                                color: Color(0xFF99F6E4),
+                                                width: 1.5,
+                                              ),
+                                              backgroundColor: const Color(0xFFF0FDFA),
+                                              padding: const EdgeInsets.symmetric(
+                                                vertical: 11,
+                                              ),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(12),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: OutlinedButton.icon(
+                                            onPressed: () {
+                                              Navigator.of(dialogCtx).pop();
+                                              widget.onBack();
+                                            },
+                                            icon: const Icon(
+                                              Icons.home_rounded,
+                                              size: 16,
+                                            ),
+                                            label: Text(
+                                              isSi ? 'සියලුම ක්‍රීඩා' : 'All Games',
+                                              style: const TextStyle(
+                                                fontSize: 13.5,
+                                                fontWeight: FontWeight.w800,
+                                              ),
+                                            ),
+                                            style: OutlinedButton.styleFrom(
+                                              foregroundColor: const Color(0xFF475569),
+                                              side: const BorderSide(
+                                                color: Color(0xFFCBD5E1),
+                                                width: 1.3,
+                                              ),
+                                              backgroundColor: Colors.white,
+                                              padding: const EdgeInsets.symmetric(
+                                                vertical: 11,
+                                              ),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(12),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF0D9488).withValues(alpha: 0.16),
-                      blurRadius: 32,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Celebratory 3D Trophy Badge
-                    Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        Container(
-                          width: 86,
-                          height: 86,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFCCFBF1),
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: const Color(0xFF99F6E4),
-                              width: 2,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFF0D9488).withValues(alpha: 0.2),
-                                blurRadius: 18,
-                                offset: const Offset(0, 6),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Container(
-                          width: 62,
-                          height: 62,
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFF14B8A6), Color(0xFF0D9488)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFF0D9488).withValues(alpha: 0.35),
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: const Center(
-                            child: Icon(
-                              Icons.emoji_events_rounded,
-                              size: 34,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 18),
-                    Text(
-                      'Fantastic Matching!',
-                      style: AppTextStyles.h2.copyWith(
-                        color: const Color(0xFF134E4A),
-                        fontWeight: FontWeight.w900,
-                        fontSize: 24,
-                        letterSpacing: -0.4,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'You matched all 6 card pairs with great memory and focus! Here are your results:',
-                      style: AppTextStyles.body.copyWith(
-                        fontSize: 14.5,
-                        color: const Color(0xFF475569),
-                        fontWeight: FontWeight.w500,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 16),
-                    _buildGameScoreCard(
-                      score: score,
-                      scoreLabel: 'Matching Performance',
-                      details:
-                          'Pairs Found: $totalPairs / $totalPairs • Turns Taken: $turns',
-                      isSaving: _isSaving,
-                      successMessage: null,
-                      errorMessage: _saveErrorMessage,
-                    ),
-                    const SizedBox(height: 18),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        OutlinedButton.icon(
-                          onPressed: () => Navigator.of(dialogCtx).pop(),
-                          icon: const Icon(LucideIcons.eye, size: 16),
-                          label: const Text(
-                            'View Board',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: const Color(0xFF475569),
-                            side: const BorderSide(
-                              color: Color(0xFFCBD5E1),
-                              width: 1.2,
-                            ),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 18,
-                              vertical: 13,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        DecoratedBox(
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFF0D9488), Color(0xFF14B8A6)],
-                            ),
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFF0D9488).withValues(alpha: 0.35),
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: ElevatedButton.icon(
-                            key: const ValueKey('dialog_play_pairs_again_button'),
-                            onPressed: () {
-                              Navigator.of(dialogCtx).pop();
-                              _startNewGame();
-                            },
-                            icon: const Icon(LucideIcons.rotateCcw, size: 17),
-                            label: const Text(
-                              'Play Again',
-                              style: TextStyle(
-                                fontSize: 14.5,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.transparent,
-                              foregroundColor: Colors.white,
-                              shadowColor: Colors.transparent,
-                              elevation: 0,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 22,
-                                vertical: 13,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
+              ],
             );
           },
         );
@@ -6346,354 +6668,955 @@ class _PairsGameViewState extends State<_PairsGameView> {
           onReset: _startNewGame,
           statusBadge: 'Pairs Found: $_pairsFound / ${_symbols.length}',
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 12),
 
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 26),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppColors.border, width: 1.5),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: const Color(0xFF0D9488).withValues(alpha: 0.24),
+              width: 1.6,
+            ),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF0D9488).withValues(alpha: 0.05),
-                blurRadius: 18,
-                offset: const Offset(0, 6),
+                color: const Color(0xFF0D9488).withValues(alpha: 0.11),
+                blurRadius: 28,
+                offset: const Offset(0, 10),
               ),
             ],
           ),
-          child: Column(
-            children: [
-              // Instruction Banner
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                decoration: BoxDecoration(
-                  color: isGameCompleted
-                      ? AppColors.riskLowBg
-                      : const Color(0xFFF0FDFA),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: isGameCompleted
-                        ? AppColors.riskLow.withValues(alpha: 0.35)
-                        : const Color(0xFF0D9488).withValues(alpha: 0.25),
-                    width: 1.2,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(22.5),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // 1. Attractive Emerald-Teal-Ocean Header Banner with Live Pair Progress
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Color(0xFF115E59),
+                        Color(0xFF0D9488),
+                        Color(0xFF0284C7),
+                        Color(0xFF4F46E5),
+                      ],
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                    ),
                   ),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: (isGameCompleted
-                                    ? AppColors.riskLow
-                                    : const Color(0xFF0D9488))
-                                .withValues(alpha: 0.16),
-                            blurRadius: 8,
-                          ),
-                        ],
-                      ),
-                      child: Icon(
-                        isGameCompleted
-                            ? LucideIcons.sparkles
-                            : LucideIcons.puzzle,
-                        color: isGameCompleted
-                            ? AppColors.riskLow
-                            : const Color(0xFF0D9488),
-                        size: 24,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Wrap(
+                    alignment: WrapAlignment.spaceBetween,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 12,
+                    runSpacing: 8,
+                    children: [
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(
-                            isGameCompleted
-                                ? 'Well done! You found all the matching pairs!'
-                                : 'Tap any two cards to discover matching pairs.',
-                            style: AppTextStyles.h4.copyWith(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.navy,
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.95),
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.14),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: Center(
+                              child: Icon(
+                                isGameCompleted
+                                    ? LucideIcons.trophy
+                                    : LucideIcons.puzzle,
+                                color: const Color(0xFF0D9488),
+                                size: 22,
+                              ),
                             ),
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            isGameCompleted
-                                ? 'Fantastic work! Would you like to play again?'
-                                : 'Take your time. There are no timers or rush.',
-                            style: AppTextStyles.body.copyWith(
-                              fontSize: 13.5,
-                              color: AppColors.body,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 28),
-
-              // Cards Grid
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final crossAxisCount = constraints.maxWidth > 700 ? 4 : 3;
-                  return GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: _cards.length,
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: crossAxisCount,
-                      crossAxisSpacing: 16,
-                      mainAxisSpacing: 16,
-                      childAspectRatio: 1.1,
-                    ),
-                    itemBuilder: (context, index) {
-                      final card = _cards[index];
-                      final isFlipped =
-                          card.isMatched || _flippedIndices.contains(index);
-
-                      return InkWell(
-                        key: ValueKey('pair_card_$index'),
-                        onTap: () => _onCardTap(index),
-                        borderRadius: BorderRadius.circular(16),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 250),
-                          curve: Curves.easeInOut,
-                          decoration: BoxDecoration(
-                            color: isFlipped
-                                ? (card.isMatched
-                                    ? AppColors.riskLowBg
-                                    : Colors.white)
-                                : const Color(0xFFF5F3FF),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: isFlipped
-                                  ? (card.isMatched
-                                      ? AppColors.riskLow
-                                      : card.symbol.color)
-                                  : const Color(0xFFDDD6FE),
-                              width: isFlipped ? 2.5 : 1.5,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: isFlipped
-                                    ? (card.isMatched
-                                        ? AppColors.riskLow.withValues(alpha: 0.15)
-                                        : card.symbol.color.withValues(alpha: 0.15))
-                                    : AppColors.primary.withValues(alpha: 0.04),
-                                blurRadius: isFlipped ? 10 : 5,
-                                offset: const Offset(0, 3),
+                          const SizedBox(width: 12),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                isGameCompleted
+                                    ? 'Well done! All Pairs Matched! 🎉'
+                                    : 'Find the Matching Pairs ✨',
+                                style: const TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w900,
+                                  color: Colors.white,
+                                  letterSpacing: -0.2,
+                                ),
+                              ),
+                              Text(
+                                isGameCompleted
+                                    ? 'Fantastic memory and focus!'
+                                    : 'Tap any two cards to discover matching pairs — no rush!',
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white.withValues(alpha: 0.88),
+                                ),
                               ),
                             ],
                           ),
-                          child: isFlipped
-                              ? Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      card.symbol.icon,
-                                      size: 38,
-                                      color: card.symbol.color,
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Text(
-                                      card.symbol.label,
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w700,
-                                        color: card.isMatched
-                                            ? AppColors.riskLow
-                                            : AppColors.navy,
-                                      ),
-                                    ),
-                                    if (card.isMatched) ...[
-                                      const SizedBox(height: 3),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 7,
-                                          vertical: 2,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius: BorderRadius.circular(6),
-                                        ),
-                                        child: const Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(
-                                              LucideIcons.check,
-                                              size: 12,
-                                              color: AppColors.riskLow,
-                                            ),
-                                            SizedBox(width: 4),
-                                            Text(
-                                              'Matched',
-                                              style: TextStyle(
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.w700,
-                                                color: AppColors.riskLow,
+                        ],
+                      ),
+
+                      // Live 6-Pair Glowing Progress Dots + Turns Pill
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.16),
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.35),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                ...List.generate(_symbols.length, (i) {
+                                  final done = i < _pairsFound;
+                                  return AnimatedContainer(
+                                    duration: const Duration(milliseconds: 260),
+                                    margin: const EdgeInsets.symmetric(horizontal: 2.5),
+                                    width: done ? 16 : 10,
+                                    height: 10,
+                                    decoration: BoxDecoration(
+                                      color: done
+                                          ? const Color(0xFF6EE7B7)
+                                          : Colors.white.withValues(alpha: 0.34),
+                                      borderRadius: BorderRadius.circular(6),
+                                      boxShadow: done
+                                          ? [
+                                              BoxShadow(
+                                                color: const Color(0xFF6EE7B7)
+                                                    .withValues(alpha: 0.65),
+                                                blurRadius: 6,
                                               ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ],
-                                )
-                              : Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Container(
-                                      width: 44,
-                                      height: 44,
-                                      decoration: BoxDecoration(
-                                        color: Colors.white,
-                                        shape: BoxShape.circle,
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: AppColors.primary
-                                                .withValues(alpha: 0.12),
-                                            blurRadius: 6,
-                                          ),
-                                        ],
-                                      ),
-                                      child: const Center(
-                                        child: Icon(
-                                          LucideIcons.sparkles,
-                                          size: 22,
-                                          color: AppColors.primary,
-                                        ),
-                                      ),
+                                            ]
+                                          : null,
                                     ),
-                                    const SizedBox(height: 6),
-                                    Text(
-                                      'Tap Card',
-                                      style: AppTextStyles.caption.copyWith(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w700,
-                                        color: AppColors.primary,
-                                      ),
-                                    ),
-                                  ],
+                                  );
+                                }),
+                                const SizedBox(width: 8),
+                                Text(
+                                  '$_pairsFound / ${_symbols.length}',
+                                  style: const TextStyle(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w900,
+                                    color: Colors.white,
+                                  ),
                                 ),
-                        ),
-                      );
-                    },
-                  );
-                },
-              ),
-
-              const SizedBox(height: 28),
-
-              if (isGameCompleted) ...[
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    OutlinedButton.icon(
-                      onPressed: _showCompletionDialog,
-                      icon: const Icon(LucideIcons.sparkles, size: 17),
-                      label: const Text(
-                        'View Results',
-                        style: TextStyle(
-                          fontSize: 14.5,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFF0D9488),
-                        side: const BorderSide(
-                          color: Color(0xFF0D9488),
-                          width: 1.4,
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 22,
-                          vertical: 13,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF0D9488), Color(0xFF14B8A6)],
-                        ),
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF0D9488).withValues(alpha: 0.35),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.18),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.38),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  LucideIcons.sparkles,
+                                  size: 13.5,
+                                  color: Color(0xFFFDE68A),
+                                ),
+                                const SizedBox(width: 5),
+                                Text(
+                                  'Turns: $_turnsTaken',
+                                  style: const TextStyle(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          InkWell(
+                            key: const ValueKey('pairs_voice_toggle_button'),
+                            onTap: () {
+                              final next = !_isVoiceOn;
+                              setState(() => _voiceEnabled = next);
+                              if (!next) {
+                                TtsService.instance.stop();
+                              } else if (isGameCompleted) {
+                                _speakCompletePrompt();
+                              } else {
+                                _speakStartPrompt();
+                              }
+                            },
+                            borderRadius: BorderRadius.circular(16),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 11,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: _isVoiceOn
+                                    ? Colors.white.withValues(alpha: 0.20)
+                                    : Colors.black.withValues(alpha: 0.22),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: Colors.white.withValues(
+                                    alpha: _isVoiceOn ? 0.45 : 0.25,
+                                  ),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    _isVoiceOn
+                                        ? Icons.volume_up_rounded
+                                        : Icons.volume_off_rounded,
+                                    size: 15,
+                                    color: Colors.white,
+                                  ),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    widget.isSinhala
+                                        ? (_isVoiceOn ? 'හඬ: ON' : 'හඬ: OFF')
+                                        : (_isVoiceOn ? 'Voice: ON' : 'Voice: OFF'),
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Tooltip(
+                            message: widget.isSinhala ? 'නැවත අසන්න' : 'Listen Again',
+                            child: InkWell(
+                              key: const ValueKey('pairs_listen_again_button'),
+                              onTap: () {
+                                if (!_isVoiceOn) {
+                                  setState(() => _voiceEnabled = true);
+                                }
+                                if (isGameCompleted) {
+                                  _speakCompletePrompt();
+                                } else {
+                                  _speakStartPrompt();
+                                }
+                              },
+                              borderRadius: BorderRadius.circular(14),
+                              child: Container(
+                                padding: const EdgeInsets.all(6.5),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.20),
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                    color: Colors.white.withValues(alpha: 0.45),
+                                  ),
+                                ),
+                                child: const Icon(
+                                  Icons.record_voice_over_rounded,
+                                  size: 15,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
                           ),
                         ],
                       ),
-                      child: ElevatedButton.icon(
-                        key: const ValueKey('play_pairs_again_button'),
-                        onPressed: _startNewGame,
-                        icon: const Icon(LucideIcons.rotateCcw, size: 18),
-                        label: const Text(
-                          'Play Again with Fresh Cards',
-                          style: TextStyle(
-                            fontSize: 14.5,
-                            fontWeight: FontWeight.w700,
+                    ],
+                  ),
+                ),
+
+                // 2. Animated Pastel Background + Interactive Cards Grid
+                Stack(
+                  children: [
+                    const Positioned.fill(
+                      child: IgnorePointer(
+                        child: _PairsAmbientPlayBackdrop(),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(22, 16, 22, 16),
+                      child: Column(
+                        children: [
+                          // Cards Grid (Zero-scroll balanced height for desktop & tablet)
+                          LayoutBuilder(
+                            builder: (context, constraints) {
+                              final crossAxisCount =
+                                  constraints.maxWidth > 650 ? 4 : 3;
+                              final double cardExtent =
+                                  crossAxisCount == 4 ? 118 : 98;
+                              return GridView.builder(
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                itemCount: _cards.length,
+                                gridDelegate:
+                                    SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: crossAxisCount,
+                                  crossAxisSpacing: 15,
+                                  mainAxisSpacing: 13,
+                                  mainAxisExtent: cardExtent,
+                                ),
+                                itemBuilder: (context, index) {
+                                  final card = _cards[index];
+                                  final isFlipped = card.isMatched ||
+                                      _flippedIndices.contains(index);
+                                  return _PairsInteractiveCard(
+                                    key: ValueKey('pair_card_$index'),
+                                    card: card,
+                                    isFlipped: isFlipped,
+                                    index: index,
+                                    onTap: () => _onCardTap(index),
+                                  );
+                                },
+                              );
+                            },
                           ),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.transparent,
-                          foregroundColor: Colors.white,
-                          shadowColor: Colors.transparent,
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 24,
-                            vertical: 13,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
+
+                          const SizedBox(height: 14),
+
+                          if (isGameCompleted) ...[
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                OutlinedButton.icon(
+                                  onPressed: _showCompletionDialog,
+                                  icon: const Icon(LucideIcons.sparkles, size: 17),
+                                  label: const Text(
+                                    'View Results',
+                                    style: TextStyle(
+                                      fontSize: 14.5,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: const Color(0xFF0F766E),
+                                    backgroundColor:
+                                        Colors.white.withValues(alpha: 0.92),
+                                    side: const BorderSide(
+                                      color: Color(0xFF0D9488),
+                                      width: 1.5,
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 22,
+                                      vertical: 12,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(13),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 14),
+                                DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    gradient: const LinearGradient(
+                                      colors: [
+                                        Color(0xFF0D9488),
+                                        Color(0xFF0284C7),
+                                      ],
+                                    ),
+                                    borderRadius: BorderRadius.circular(13),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: const Color(0xFF0D9488)
+                                            .withValues(alpha: 0.34),
+                                        blurRadius: 12,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                  child: ElevatedButton.icon(
+                                    key: const ValueKey('play_pairs_again_button'),
+                                    onPressed: _startNewGame,
+                                    icon: const Icon(LucideIcons.rotateCcw, size: 18),
+                                    label: const Text(
+                                      'Play Again with Fresh Cards',
+                                      style: TextStyle(
+                                        fontSize: 14.5,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.transparent,
+                                      foregroundColor: Colors.white,
+                                      shadowColor: Colors.transparent,
+                                      elevation: 0,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 24,
+                                        vertical: 12,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(13),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ] else ...[
+                            OutlinedButton.icon(
+                              key: const ValueKey('restart_pairs_button'),
+                              onPressed: _startNewGame,
+                              icon: const Icon(LucideIcons.rotateCcw, size: 17),
+                              label: const Text(
+                                'Shuffle & Restart Game',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: const Color(0xFF0F766E),
+                                backgroundColor:
+                                    Colors.white.withValues(alpha: 0.90),
+                                side: const BorderSide(
+                                  color: Color(0xFF99F6E4),
+                                  width: 1.6,
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 22,
+                                  vertical: 11,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(13),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
                   ],
                 ),
-              ] else ...[
-                OutlinedButton.icon(
-                  key: const ValueKey('restart_pairs_button'),
-                  onPressed: _startNewGame,
-                  icon: const Icon(LucideIcons.rotateCcw, size: 18),
-                  label: const Text(
-                    'Shuffle & Restart Game',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.navy,
-                    side: const BorderSide(color: AppColors.border),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 22,
-                      vertical: 12,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
               ],
-            ],
+            ),
           ),
         ),
       ],
     );
   }
+}
+
+class _PairsInteractiveCard extends StatefulWidget {
+  final _CardModel card;
+  final bool isFlipped;
+  final int index;
+  final VoidCallback onTap;
+
+  const _PairsInteractiveCard({
+    super.key,
+    required this.card,
+    required this.isFlipped,
+    required this.index,
+    required this.onTap,
+  });
+
+  @override
+  State<_PairsInteractiveCard> createState() => _PairsInteractiveCardState();
+}
+
+class _PairsInteractiveCardState extends State<_PairsInteractiveCard> {
+  bool _hovered = false;
+  bool _pressed = false;
+
+  static const _hiddenAccents = [
+    (Color(0xFF0D9488), Color(0xFF0284C7)),
+    (Color(0xFF7C3AED), Color(0xFF4F46E5)),
+    (Color(0xFF0EA5E9), Color(0xFF0D9488)),
+    (Color(0xFF6366F1), Color(0xFF0284C7)),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final card = widget.card;
+    final isFlipped = widget.isFlipped;
+    final isMatched = card.isMatched;
+    final (accentA, accentB) =
+        _hiddenAccents[widget.index % _hiddenAccents.length];
+
+    return MouseRegion(
+      cursor: isMatched ? SystemMouseCursors.basic : SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() {
+        _hovered = false;
+        _pressed = false;
+      }),
+      child: GestureDetector(
+        onTapDown: (_) => setState(() => _pressed = true),
+        onTapUp: (_) => setState(() => _pressed = false),
+        onTapCancel: () => setState(() => _pressed = false),
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          transform: Matrix4.translationValues(
+            0,
+            _pressed ? 1.5 : (!isMatched && _hovered ? -4.5 : 0),
+            0,
+          ),
+          decoration: BoxDecoration(
+            gradient: isFlipped
+                ? (isMatched
+                    ? const LinearGradient(
+                        colors: [Color(0xFFECFDF5), Color(0xFFD1FAE5)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      )
+                    : LinearGradient(
+                        colors: [
+                          Colors.white,
+                          card.symbol.color.withValues(alpha: 0.06),
+                        ],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      ))
+                : LinearGradient(
+                    colors: _hovered
+                        ? const [
+                            Color(0xFFFFFFFF),
+                            Color(0xFFECFEFF),
+                            Color(0xFFEEF2FF),
+                          ]
+                        : const [
+                            Color(0xFFFFFFFF),
+                            Color(0xFFF0FDFA),
+                            Color(0xFFF5F3FF),
+                          ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: isFlipped
+                  ? (isMatched ? const Color(0xFF10B981) : card.symbol.color)
+                  : (_hovered
+                      ? accentA.withValues(alpha: 0.65)
+                      : const Color(0xFF99F6E4)),
+              width: isFlipped ? 2.4 : (_hovered ? 2.0 : 1.5),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: isFlipped
+                    ? (isMatched
+                        ? const Color(0xFF10B981).withValues(alpha: 0.20)
+                        : card.symbol.color.withValues(alpha: 0.22))
+                    : accentA.withValues(alpha: _hovered ? 0.18 : 0.08),
+                blurRadius: _hovered || isFlipped ? 16 : 9,
+                offset: Offset(0, _hovered || isFlipped ? 6 : 3),
+              ),
+            ],
+          ),
+          child: Stack(
+            children: [
+              // Subtle decorative corner sparkles on unflipped cards
+              if (!isFlipped) ...[
+                Positioned(
+                  top: 8,
+                  left: 10,
+                  child: Icon(
+                    Icons.auto_awesome_rounded,
+                    size: 12,
+                    color: accentA.withValues(alpha: 0.30),
+                  ),
+                ),
+                Positioned(
+                  bottom: 8,
+                  right: 10,
+                  child: Icon(
+                    Icons.auto_awesome_rounded,
+                    size: 12,
+                    color: accentB.withValues(alpha: 0.28),
+                  ),
+                ),
+              ],
+
+              // Matched glowing checkmark corner badge
+              if (isMatched)
+                Positioned(
+                  top: 7,
+                  right: 7,
+                  child: Container(
+                    width: 22,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF10B981), Color(0xFF059669)],
+                      ),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 1.8),
+                    ),
+                    child: const Center(
+                      child: Icon(
+                        Icons.check_rounded,
+                        size: 13,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+
+              // Main Card Face Content
+              Center(
+                child: isFlipped
+                    ? Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 52,
+                            height: 52,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  card.symbol.color.withValues(alpha: 0.18),
+                                  card.symbol.color.withValues(alpha: 0.08),
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: card.symbol.color.withValues(alpha: 0.35),
+                                width: 1.5,
+                              ),
+                            ),
+                            child: Center(
+                              child: Icon(
+                                card.symbol.icon,
+                                size: 30,
+                                color: card.symbol.color,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            card.symbol.label,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w800,
+                              color: isMatched
+                                  ? const Color(0xFF065F46)
+                                  : const Color(0xFF1E293B),
+                            ),
+                          ),
+                          if (isMatched) ...[
+                            const SizedBox(height: 2),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 1.5,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.92),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Text(
+                                '✓ Matched',
+                                style: TextStyle(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: Color(0xFF059669),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      )
+                    : Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [accentA, accentB],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 2.5),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: accentA.withValues(alpha: 0.32),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: const Center(
+                              child: Icon(
+                                LucideIcons.sparkles,
+                                size: 22,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 7),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 2.5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.88),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: accentA.withValues(alpha: 0.22),
+                              ),
+                            ),
+                            child: Text(
+                              'Tap Card',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                                color: accentA,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PairsAmbientPlayBackdrop extends StatefulWidget {
+  const _PairsAmbientPlayBackdrop();
+
+  @override
+  State<_PairsAmbientPlayBackdrop> createState() =>
+      _PairsAmbientPlayBackdropState();
+}
+
+class _PairsAmbientPlayBackdropState extends State<_PairsAmbientPlayBackdrop>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 9500),
+    );
+    final isTestEnv =
+        WidgetsBinding.instance.runtimeType.toString().contains('Test');
+    if (!isTestEnv) {
+      _controller.repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (_, __) => CustomPaint(
+        painter: _PairsAmbientPlayPainter(progress: _controller.value),
+      ),
+    );
+  }
+}
+
+class _PairsAmbientPlayPainter extends CustomPainter {
+  final double progress;
+
+  const _PairsAmbientPlayPainter({required this.progress});
+
+  static const _pastels = [
+    Color(0xFF14B8A6), // soft teal
+    Color(0xFF38BDF8), // soft sky
+    Color(0xFFA78BFA), // soft violet
+    Color(0xFFFBBF24), // soft gold
+    Color(0xFFF472B6), // soft rose
+  ];
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final t = progress * 2 * pi;
+
+    // 1. Fresh Mint-Sky-Lavender Pastel Wash Base
+    final bgPaint = Paint()
+      ..shader = const LinearGradient(
+        colors: [
+          Color(0xFFF7FEFC),
+          Color(0xFFECFEFF),
+          Color(0xFFF5F3FF),
+          Color(0xFFECFDF5),
+        ],
+        stops: [0.0, 0.34, 0.68, 1.0],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), bgPaint);
+
+    // 2. 4 Gently Breathing Pastel Glow Orbs
+    final orbs = [
+      (
+        Offset(size.width * 0.10 + sin(t) * 20, size.height * 0.22 + cos(t) * 14),
+        135.0,
+        const Color(0xFF99F6E4),
+      ),
+      (
+        Offset(size.width * 0.90 + cos(t) * 20, size.height * 0.20 + sin(t) * 14),
+        140.0,
+        const Color(0xFFBAE6FD),
+      ),
+      (
+        Offset(size.width * 0.16 + cos(t + 1.5) * 22, size.height * 0.84 + sin(t) * 12),
+        130.0,
+        const Color(0xFFDDD6FE),
+      ),
+      (
+        Offset(size.width * 0.84 + sin(t + 2.2) * 18, size.height * 0.82 + cos(t) * 12),
+        130.0,
+        const Color(0xFFFDE68A),
+      ),
+    ];
+
+    for (final (center, radius, color) in orbs) {
+      final paint = Paint()
+        ..shader = RadialGradient(
+          colors: [
+            color.withValues(alpha: 0.44),
+            color.withValues(alpha: 0.0),
+          ],
+        ).createShader(Rect.fromCircle(center: center, radius: radius));
+      canvas.drawCircle(center, radius, paint);
+    }
+
+    // 3. Soft Flowing Teal-Sky Waves along the Bottom Edge
+    final wave1 = Path()..moveTo(0, size.height);
+    for (double x = 0; x <= size.width; x += 18) {
+      final y = size.height -
+          26 +
+          sin((x / size.width) * 2 * pi + t) * 8 +
+          cos((x / size.width) * 4 * pi - t) * 4;
+      wave1.lineTo(x, y);
+    }
+    wave1
+      ..lineTo(size.width, size.height)
+      ..close();
+    canvas.drawPath(
+      wave1,
+      Paint()
+        ..shader = LinearGradient(
+          colors: [
+            const Color(0xFF0D9488).withValues(alpha: 0.12),
+            const Color(0xFF0284C7).withValues(alpha: 0.10),
+            const Color(0xFF7C3AED).withValues(alpha: 0.10),
+          ],
+        ).createShader(Rect.fromLTWH(0, size.height - 48, size.width, 48)),
+    );
+
+    final wave2 = Path()..moveTo(0, size.height);
+    for (double x = 0; x <= size.width; x += 18) {
+      final y = size.height -
+          14 +
+          cos((x / size.width) * 2.5 * pi - t * 1.2) * 6;
+      wave2.lineTo(x, y);
+    }
+    wave2
+      ..lineTo(size.width, size.height)
+      ..close();
+    canvas.drawPath(
+      wave2,
+      Paint()..color = const Color(0xFF14B8A6).withValues(alpha: 0.08),
+    );
+
+    // 4. Floating Pastel Sparkles, Soft Diamonds & Glowing Bubbles
+    for (int i = 0; i < 18; i++) {
+      final seed = i * 1.53;
+      final baseX = ((i * 59 + 11) % 94 + 3) / 100.0;
+      final rise = (1.0 - ((progress + i * 0.067) % 1.0));
+      final x = baseX * size.width + sin(t + seed) * 14;
+      final y = rise * (size.height + 24) - 12;
+      final color = _pastels[i % _pastels.length];
+      final pulse = 0.45 + 0.55 * sin(t * 2 + seed).abs();
+
+      if (i % 3 == 0) {
+        // 4-point twinkling star sparkle
+        final r = 5.5 * pulse + 2.5;
+        final star = Path()
+          ..moveTo(x, y - r)
+          ..quadraticBezierTo(x, y, x + r, y)
+          ..quadraticBezierTo(x, y, x, y + r)
+          ..quadraticBezierTo(x, y, x - r, y)
+          ..quadraticBezierTo(x, y, x, y - r)
+          ..close();
+        canvas.drawPath(
+          star,
+          Paint()..color = color.withValues(alpha: 0.50 * pulse),
+        );
+      } else if (i % 3 == 1) {
+        // Gently rotating pastel card-diamond motif
+        canvas.save();
+        canvas.translate(x, y);
+        canvas.rotate(sin(t + seed) * 0.5 + pi / 4);
+        final d = 6.5 + (i % 3) * 2.2;
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+            Rect.fromCenter(center: Offset.zero, width: d, height: d),
+            const Radius.circular(2.2),
+          ),
+          Paint()
+            ..color = color.withValues(alpha: 0.24)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1.6,
+        );
+        canvas.restore();
+      } else {
+        // Luminous floating pastel bubble ring
+        canvas.drawCircle(
+          Offset(x, y),
+          7.0 + (i % 4) * 2.8,
+          Paint()
+            ..color = color.withValues(alpha: 0.22)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1.5,
+        );
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _PairsAmbientPlayPainter oldDelegate) =>
+      oldDelegate.progress != progress;
 }
 
 // ==============================================================================

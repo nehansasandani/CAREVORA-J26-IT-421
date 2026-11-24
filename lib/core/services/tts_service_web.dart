@@ -101,6 +101,14 @@ class WebTtsService implements TtsService {
     'හරිම විශිෂ්ටයි! ඔබ පිළිවෙල හරියටම මතක තබා ගත්තා! අපි ඊළඟ මට්ටමට යමු.': 'seq_level_clear.mp3',
     'විශිෂ්ට ජයග්‍රහණයක්! ඔබ අනුපිළිවෙල මතක ක්‍රීඩාවේ මට්ටම් තුනම සාර්ථකව අවසන් කළා! ඔබේ මතක ශක්තිය හරිම අපූරුයි!': 'seq_grand_win.mp3',
     'හොඳ උත්සාහයක්! කලබල වෙන්න එපා. අපි පිළිවෙල නැවත බලා ආයෙත් උත්සාහ කරමු.': 'seq_retry.mp3',
+    // Find the Matching Pairs Game Native Sinhala Clips
+    'ගැළපෙන යුගල සෙවීමේ ක්‍රීඩාවට සාදරයෙන් පිළිගනිමු! ඕනෑම කාඩ්පත් දෙකක් ඔබා ගැළපෙන යුගල සොයාගන්න. කලබල වෙන්න එපා, නිදහසේ සෙල්ලම් කරන්න.': 'pairs_start.mp3',
+    'හරිම හොඳයි! ඔබ ගැළපෙන යුගලයක් සොයා ගත්තා!': 'pairs_match.mp3',
+    'හොඳ උත්සාහයක්! ඒ කාඩ්පත් මතක තබාගෙන ආයෙත් උත්සාහ කරමු.': 'pairs_mismatch.mp3',
+    'හොඳයි, දිගටම උත්සාහ කරමු!': 'pairs_encourage_1.mp3',
+    'කලබල වෙන්න එපා, නිදහසේ බලමු!': 'pairs_encourage_2.mp3',
+    'දැන් හරිම ළඟයි, ආයෙත් බලමු!': 'pairs_encourage_3.mp3',
+    'හරිම විශිෂ්ටයි! ඔබ ගැළපෙන යුගල හයම සාර්ථකව සොයා ගත්තා! ඔබේ මතක ශක්තිය හරිම අපූරුයි!': 'pairs_complete.mp3',
   };
 
   static String? _matchSinhalaAudioFile(String rawText) {
@@ -152,6 +160,13 @@ class WebTtsService implements TtsService {
     if (text.contains('ඔබ පිළිවෙල හරියටම මතක තබා ගත්තා')) return 'seq_level_clear.mp3';
     if (text.contains('අනුපිළිවෙල මතක ක්‍රීඩාවේ මට්ටම් තුනම')) return 'seq_grand_win.mp3';
     if (text.contains('අපි පිළිවෙල නැවත බලා ආයෙත් උත්සාහ කරමු')) return 'seq_retry.mp3';
+    if (text.contains('ගැළපෙන යුගල සෙවීමේ ක්‍රීඩාවට සාදරයෙන්')) return 'pairs_start.mp3';
+    if (text.contains('ඔබ ගැළපෙන යුගලයක් සොයා ගත්තා')) return 'pairs_match.mp3';
+    if (text.contains('ඒ කාඩ්පත් මතක තබාගෙන ආයෙත් උත්සාහ කරමු')) return 'pairs_mismatch.mp3';
+    if (text.contains('දිගටම උත්සාහ කරමු')) return 'pairs_encourage_1.mp3';
+    if (text.contains('කලබල වෙන්න එපා, නිදහසේ බලමු')) return 'pairs_encourage_2.mp3';
+    if (text.contains('දැන් හරිම ළඟයි, ආයෙත් බලමු')) return 'pairs_encourage_3.mp3';
+    if (text.contains('ඔබ ගැළපෙන යුගල හයම සාර්ථකව සොයා ගත්තා')) return 'pairs_complete.mp3';
 
     for (final entry in _sinhalaAudioFiles.entries) {
       if (text.contains(entry.key)) {
