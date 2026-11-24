@@ -678,6 +678,7 @@ class _ElderInteractiveHomePageState
     required bool isCurrentDone,
     required String currentSlotName,
     required Color activeColor,
+    String? customNotDoneText,
   }) {
     if (isCurrentDone) {
       return Container(
@@ -728,7 +729,7 @@ class _ElderInteractiveHomePageState
             ),
             const SizedBox(width: 8),
             Text(
-              'අද $currentSlotName සැසිය තවම කර නැත!',
+              customNotDoneText ?? 'අද $currentSlotName සැසිය තවම කර නැත!',
               style: const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w800,
@@ -749,7 +750,7 @@ class _ElderInteractiveHomePageState
     final dayPeriod = _getCurrentDayPeriod(_now);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: const Color(0xFFFAF7FD),
       body: Stack(
         children: [
           // 1. Scrollable main dashboard content
@@ -1619,20 +1620,21 @@ class _ElderInteractiveHomePageState
         LayoutBuilder(
           builder: (context, constraints) {
             final assessmentCards = [
-              // Card 1: මානසික සුවතා කතාබහ (Rose Theme with Smiling Grandma & Blossom Trim)
+              // Card 1: මානසික සුවතා කාලය (Unified Royal Purple Theme)
               _wrapWithFloatingReminder(
                 isDone: emotionalDone,
                 child: _buildTopAssessmentCard(
-                  backgroundColor: const Color(0xFFFFF0F5), // soft lavender blush / rose
-                  borderColor: emotionalDone ? const Color(0xFF86EFAC) : const Color(0xFFFECDD3),
-                  iconBorderColor: const Color(0xFFF472B6),
+                  backgroundColor: Colors.white,
+                  borderColor: emotionalDone ? const Color(0xFF86EFAC) : const Color(0xFFE9D5FF),
+                  iconBorderColor: const Color(0xFF8B5CF6),
                   badgeIcon: '💓',
-                  title: 'මානසික සුවතා කතාබහ',
+                  title: 'මානසික සුවතා කාලය',
                   description: 'ඔබගේ හැඟීම්, මානසික තත්වය සහ සෞඛ්‍ය සුවතාවය පිළිබඳ සරල ප්‍රශ්න කිහිපයකට පිළිතුරු දෙන්න.',
                   statusBadgeWidget: _buildSlotStatusBadge(
                     isCurrentDone: emotionalDone,
                     currentSlotName: currentSlotName,
                     activeColor: const Color(0xFF7E22CE),
+                    customNotDoneText: 'අද මානසික ඇගයීම සම්පූර්ණ කරන්න!',
                   ),
                   sessionTrackerWidget: _buildDailySessionTracker(
                     activity: 'emotional',
@@ -1640,17 +1642,17 @@ class _ElderInteractiveHomePageState
                     activeThemeColor: const Color(0xFF7E22CE),
                   ),
                   topRightIllustration: _buildGrandmaIllustrationExact(),
-                  buttonText: emotionalDone ? 'සම්පූර්ණයි ($nextSlotTime ට) ⏰' : 'අදම සම්පූර්ණ කරන්න',
+                  buttonText: emotionalDone ? 'සම්පූර්ණයි ($nextSlotTime ට) ⏰' : 'අදම සම්පූර්ණ කරන්න ➔',
                   buttonGradient: emotionalDone
                       ? const [Color(0xFF16A34A), Color(0xFF22C55E)]
-                      : const [Color(0xFFF43F5E), Color(0xFFF472B6)],
+                      : const [Color(0xFF6B21A8), Color(0xFF7C3AED)],
                   isEmotionalCard: true,
                   bottomDecoration: _buildCard1HibiscusBlossomTrim(),
                   onTap: () {
                     if (emotionalDone) {
                       _showSessionAlreadyCompletedDialog(
                         context: context,
-                        activityTitle: 'මානසික සුවතා කතාබහ',
+                        activityTitle: 'මානසික සුවතා කාලය',
                         activityKey: 'emotional',
                         slot: currentSlot,
                         onContinueAnyway: () {
@@ -1659,20 +1661,20 @@ class _ElderInteractiveHomePageState
                       );
                     } else {
                       _markSessionCompleted('emotional', currentSlot);
-                      _speak('මානසික සුවතා කතාබහ වෙත ඔබව සාදරයෙන් පිළිගන්නවා.');
+                      _speak('මානසික සුවතා කාලය වෙත ඔබව සාදරයෙන් පිළිගන්නවා.');
                       context.go('/dashboard/emotional');
                     }
                   },
                 ),
               ),
 
-              // Card 2: මනස පරීක්ෂණ සහ විනෝද ක්‍රීඩා (Warm Gold Theme with Crossword & Lightbulb)
+              // Card 2: මනස පරීක්ෂණ සහ විනෝද ක්‍රීඩා (Unified Royal Purple Theme)
               _wrapWithFloatingReminder(
                 isDone: memoryDone,
                 child: _buildTopAssessmentCard(
-                  backgroundColor: const Color(0xFFFFFBEB), // warm butter/cream
-                  borderColor: memoryDone ? const Color(0xFF86EFAC) : const Color(0xFFFDE68A),
-                  iconBorderColor: const Color(0xFF22C55E),
+                  backgroundColor: Colors.white,
+                  borderColor: memoryDone ? const Color(0xFF86EFAC) : const Color(0xFFE9D5FF),
+                  iconBorderColor: const Color(0xFF8B5CF6),
                   badgeIcon: '🧩',
                   title: 'මනස පරීක්ෂණ සහ විනෝද ක්‍රීඩා',
                   description: 'ඔබගේ මතකය වර්ධනය කරගන්න සහ මනස සතුටු කරගන්න විනෝද ක්‍රීඩා කරන්න.',
@@ -1680,6 +1682,7 @@ class _ElderInteractiveHomePageState
                     isCurrentDone: memoryDone,
                     currentSlotName: currentSlotName,
                     activeColor: const Color(0xFFD97706),
+                    customNotDoneText: 'අද ක්‍රීඩා ක්‍රියාකාරකම් කරන්න!',
                   ),
                   sessionTrackerWidget: _buildDailySessionTracker(
                     activity: 'memory',
@@ -1687,12 +1690,12 @@ class _ElderInteractiveHomePageState
                     activeThemeColor: const Color(0xFFD97706),
                   ),
                   topRightIllustration: _buildCrosswordLightbulbIllustrationExact(),
-                  buttonText: memoryDone ? 'සම්පූර්ණයි ($nextSlotTime ට) ⏰' : 'ක්‍රීඩා කරන්න',
+                  buttonText: memoryDone ? 'සම්පූර්ණයි ($nextSlotTime ට) ⏰' : 'ක්‍රීඩා කරන්න ➔',
                   buttonGradient: memoryDone
                       ? const [Color(0xFF16A34A), Color(0xFF22C55E)]
-                      : const [Color(0xFFD97706), Color(0xFFF59E0B)],
+                      : const [Color(0xFF6B21A8), Color(0xFF7C3AED)],
                   isEmotionalCard: false,
-                  bottomDecoration: _buildCard2GoldenAmberTrim(),
+                  bottomDecoration: _buildCard1HibiscusBlossomTrim(),
                   onTap: () {
                     if (memoryDone) {
                       _showSessionAlreadyCompletedDialog(
@@ -1715,56 +1718,56 @@ class _ElderInteractiveHomePageState
             ];
 
             final leisureCards = [
-              // Card 1: පොත් කියවීම (Reading Books - Soft Lavender Theme)
+              // Card 1: පොත් කියවීම (Reading Books - White Card with Royal Purple Button)
               _buildMockupLeisureCard(
-                backgroundColor: const Color(0xFFFAF5FF),
+                backgroundColor: Colors.white,
                 borderColor: const Color(0xFFE9D5FF),
                 badgeIcon: const Icon(Icons.menu_book_rounded, color: Color(0xFF7C3AED), size: 21),
                 title: 'පොත් කියවීම',
-                titleColor: const Color(0xFF4C1D95),
+                titleColor: const Color(0xFF3B0764),
                 description: 'ඔබ කැමති කතා, නවකතා සහ උපදේශනා පොත් කියවමින් දැනුම සහ සතුට වැඩි කරගන්න.',
                 illustration: _buildGrandmaReadingBookIllustration(),
                 buttonText: 'පොත් කියවන්න',
                 buttonIcon: const Icon(Icons.menu_book_rounded, color: Colors.white, size: 16),
-                buttonGradient: const [Color(0xFF7C3AED), Color(0xFF9333EA)],
+                buttonGradient: const [Color(0xFF6B21A8), Color(0xFF7C3AED)],
                 bottomTrim: _buildLavenderBlossomTrim(),
                 onTap: () {
                   _showReadingLibraryModal(context);
                 },
               ),
 
-              // Card 2: නිර්මාණාත්මක ක්‍රියාකාරකම් (Creative Activities - Soft Warm Amber Theme)
+              // Card 2: නිර්මාණාත්මක ක්‍රියාකාරකම් (Creative Activities - White Card with Royal Purple Button)
               _buildMockupLeisureCard(
-                backgroundColor: const Color(0xFFFFFBEB),
-                borderColor: const Color(0xFFFDE68A),
+                backgroundColor: Colors.white,
+                borderColor: const Color(0xFFE9D5FF),
                 badgeIcon: const Text('🎨', style: TextStyle(fontSize: 20)),
                 title: 'නිර්මාණාත්මක ක්‍රියාකාරකම්',
-                titleColor: const Color(0xFF78350F),
+                titleColor: const Color(0xFF3B0764),
                 description: 'චිත්‍ර ඇඳීම, මල් වගාව හෝ අත්කම් නිර්මාණයේ නිරතව සතුටක් ලබාගන්න.',
                 illustration: _buildGrandmaPaintingArtIllustration(),
                 buttonText: 'නිර්මාණය කරන්න',
                 buttonIcon: const Text('🎨', style: TextStyle(fontSize: 15)),
-                buttonGradient: const [Color(0xFFD97706), Color(0xFFF59E0B)],
-                bottomTrim: _buildGoldenFloraTrim(),
+                buttonGradient: const [Color(0xFF6B21A8), Color(0xFF7C3AED)],
+                bottomTrim: _buildLavenderBlossomTrim(),
                 onTap: () {
                   _showCreativeActivitiesModal(context);
                 },
               ),
 
-              // Card 3: සංගීතය සහ විවේකය (Music & Relaxation - Soft Sky Blue Theme)
+              // Card 3: සංගීතය සහ විවේකය (Music & Relaxation - White Card with Royal Purple Button)
               _buildMockupLeisureCard(
-                backgroundColor: const Color(0xFFF0F9FF),
-                borderColor: const Color(0xFFBAE6FD),
-                badgeIcon: const Icon(Icons.headphones_rounded, color: Color(0xFF0284C7), size: 21),
+                backgroundColor: Colors.white,
+                borderColor: const Color(0xFFE9D5FF),
+                badgeIcon: const Icon(Icons.headphones_rounded, color: Color(0xFF7C3AED), size: 21),
                 title: 'සංගීතය සහ විවේකය',
-                titleColor: const Color(0xFF075985),
+                titleColor: const Color(0xFF3B0764),
                 topTrailingWidget: const Text('🎵', style: TextStyle(fontSize: 18)),
                 description: 'සංගීතය අසමින් සිත නිදහස් කරගන්න හා විවේක ගන්න.',
                 illustration: _buildElderListeningMusicIllustration(),
                 buttonText: 'සංගීතය අසන්න',
                 buttonIcon: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 18),
-                buttonGradient: const [Color(0xFF0284C7), Color(0xFF38BDF8)],
-                bottomTrim: _buildSkyBlueFloraTrim(),
+                buttonGradient: const [Color(0xFF6B21A8), Color(0xFF7C3AED)],
+                bottomTrim: _buildLavenderBlossomTrim(),
                 onTap: () {
                   _speak('සන්සුන් සංගීතය සහ ස්වභාවික ශබ්ද ඔබ වෙනුවෙන් වාදනය කරමු.');
                   _showMusicPlayerModal(context);
@@ -2335,9 +2338,9 @@ class _ElderInteractiveHomePageState
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            Color(0xFFFFF0F5), // exact Card 1 background (lavender blush)
-            Color(0xFFFFF1F2), // soft pastel rose
-            Color(0xFFFECDD3), // Card 1 soft border color
+            Color(0xFFFAF5FF),
+            Color(0xFFF3E8FF),
+            Color(0xFFE9D5FF),
           ],
         ),
       ),
