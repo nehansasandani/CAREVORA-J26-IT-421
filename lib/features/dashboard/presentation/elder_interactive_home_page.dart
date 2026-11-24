@@ -1757,6 +1757,7 @@ class _ElderInteractiveHomePageState
 
             if (isWide) {
               return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Row 1 (Top): මානසික සුවතා කතාබහ & මනස පරීක්ෂණ සහ විනෝද ක්‍රීඩා
                   Row(
@@ -1767,7 +1768,11 @@ class _ElderInteractiveHomePageState
                       Expanded(child: cards[1]),
                     ],
                   ),
-                  SizedBox(height: rowSpacing),
+                  SizedBox(height: rowSpacing + 8),
+
+                  // Section Heading: අද නිදහසේ කාලය ගත කරන්න කැමතිද?
+                  _buildLeisureSectionHeader(isSinhala),
+                  const SizedBox(height: 16),
 
                   // Row 2 (Bottom): සන්සුන් සංගීතය සහ විවේක සුවය & උපකාර ඉල්ලීම
                   Row(
@@ -1782,15 +1787,93 @@ class _ElderInteractiveHomePageState
               );
             } else {
               return Column(
-                children: cards
-                    .map((c) => Padding(
-                          padding: const EdgeInsets.only(bottom: 20),
-                          child: c,
-                        ))
-                    .toList(),
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 20),
+                    child: cards[0],
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 24),
+                    child: cards[1],
+                  ),
+                  _buildLeisureSectionHeader(isSinhala),
+                  const SizedBox(height: 16),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 20),
+                    child: cards[2],
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 20),
+                    child: cards[3],
+                  ),
+                ],
               );
             }
           },
+        ),
+      ],
+    );
+  }
+
+  // =========================================================================
+  // LEISURE & RELAXATION SECTION HEADER ("අද නිදහසේ කාලය ගත කරන්න කැමතිද?")
+  // =========================================================================
+  Widget _buildLeisureSectionHeader(bool isSinhala) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Wrap(
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 10,
+          runSpacing: 6,
+          children: [
+            Text(
+              isSinhala
+                  ? 'අද නිදහසේ කාලය ගත කරන්න කැමතිද?'
+                  : 'Would you like to relax today?',
+              style: const TextStyle(
+                fontSize: 21,
+                fontWeight: FontWeight.w900,
+                color: Color(0xFF1E1B4B),
+                letterSpacing: 0.1,
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFFDCFCE7),
+                borderRadius: BorderRadius.circular(99),
+                border: Border.all(color: const Color(0xFFBBF7D0)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('🌿', style: TextStyle(fontSize: 13)),
+                  const SizedBox(width: 4),
+                  Text(
+                    isSinhala ? 'විවේකය හා විනෝදය' : 'Leisure & Wellness',
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF15803D),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 5),
+        Text(
+          isSinhala
+              ? 'සිත සන්සුන් කරවන මිහිරි සංගීතයට සවන් දෙන්න හෝ ඕනෑම මොහොතක සත්කාරක සහය ලබා ගන්න.'
+              : 'Listen to soothing music to relax your mind or reach out for caregiver support anytime.',
+          style: const TextStyle(
+            fontSize: 13.5,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF64748B),
+          ),
         ),
       ],
     );
