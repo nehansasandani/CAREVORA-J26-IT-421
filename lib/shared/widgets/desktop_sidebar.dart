@@ -252,7 +252,7 @@ class DesktopSidebar extends ConsumerWidget {
                                 initials,
                                 style: const TextStyle(
                                   color: Color(0xFF6D28D9),
-                                  fontSize: 14.5,
+                                  fontSize: 13,
                                   fontWeight: FontWeight.w900,
                                 ),
                               ),
@@ -266,8 +266,8 @@ class DesktopSidebar extends ConsumerWidget {
                                   Text(
                                     displayUserName,
                                     style: const TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w900,
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.w800,
                                       color: Color(0xFF1E1B4B),
                                     ),
                                     maxLines: 1,
@@ -276,7 +276,7 @@ class DesktopSidebar extends ConsumerWidget {
                                   Text(
                                     roleName,
                                     style: const TextStyle(
-                                      fontSize: 11.5,
+                                      fontSize: 10.5,
                                       fontWeight: FontWeight.w700,
                                       color: Color(0xFF7C3AED),
                                     ),
@@ -286,7 +286,7 @@ class DesktopSidebar extends ConsumerWidget {
                                         ? elderHomeName
                                         : 'Serene Valley Senior Living',
                                     style: const TextStyle(
-                                      fontSize: 9.5,
+                                      fontSize: 9.0,
                                       fontWeight: FontWeight.w500,
                                       color: Color(0xFF64748B),
                                     ),
@@ -336,7 +336,7 @@ class DesktopSidebar extends ConsumerWidget {
                               Text(
                                 strings.isSinhala ? 'ඉවත්වන්න' : strings.logOut,
                                 style: const TextStyle(
-                                  fontSize: 14,
+                                  fontSize: 12.5,
                                   fontWeight: FontWeight.w800,
                                   color: Color(0xFFDC2626),
                                 ),
@@ -423,10 +423,10 @@ class DesktopSidebar extends ConsumerWidget {
                 'CAREVORA',
                 style: TextStyle(
                   fontFamily: 'Serif',
-                  fontSize: 19,
+                  fontSize: 17,
                   fontWeight: FontWeight.w900,
                   color: Color(0xFF1E1B4B),
-                  letterSpacing: 3.5,
+                  letterSpacing: 2.8,
                 ),
               ),
               const SizedBox(height: 1),
@@ -436,7 +436,7 @@ class DesktopSidebar extends ConsumerWidget {
                 'Compassionate Care, Smarter Tomorrow',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 10,
+                  fontSize: 9.0,
                   fontWeight: FontWeight.w600,
                   color: Color(0xFF64748B),
                   letterSpacing: 0.1,
@@ -573,8 +573,8 @@ class DesktopSidebar extends ConsumerWidget {
         borderRadius: BorderRadius.circular(24),
         child: Container(
           padding: EdgeInsets.symmetric(
-            horizontal: isCollapsed ? 10 : 14,
-            vertical: isCollapsed ? 10 : 9.5,
+            horizontal: isCollapsed ? 10 : 13,
+            vertical: isCollapsed ? 10 : 8.5,
           ),
           decoration: BoxDecoration(
             gradient: isActive
@@ -604,19 +604,19 @@ class DesktopSidebar extends ConsumerWidget {
             children: [
               Icon(
                 icon,
-                size: 20,
+                size: 19,
                 color: isActive ? Colors.white : effectiveIconColor,
               ),
               if (!isCollapsed) ...[
-                const SizedBox(width: 12),
+                const SizedBox(width: 11),
                 Expanded(
                   child: Text(
                     label,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: isActive ? FontWeight.w900 : FontWeight.w800,
+                      fontSize: 12.5,
+                      fontWeight: isActive ? FontWeight.w800 : FontWeight.w700,
                       color: isActive ? Colors.white : const Color(0xFF1E1B4B),
                       letterSpacing: 0.1,
                     ),
@@ -632,7 +632,7 @@ class DesktopSidebar extends ConsumerWidget {
                     child: Text(
                       badge,
                       style: TextStyle(
-                        fontSize: 10,
+                        fontSize: 9.5,
                         fontWeight: FontWeight.bold,
                         color: isActive ? const Color(0xFF7C3AED) : Colors.white,
                       ),

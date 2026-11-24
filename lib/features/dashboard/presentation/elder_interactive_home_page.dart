@@ -37,6 +37,17 @@ String _getSlotNameSi(DailyAssessmentSlot slot) {
   }
 }
 
+String _getSlotActionName(DailyAssessmentSlot slot) {
+  switch (slot) {
+    case DailyAssessmentSlot.morning:
+      return 'උදෑසන';
+    case DailyAssessmentSlot.afternoon:
+      return 'දනවල්';
+    case DailyAssessmentSlot.night:
+      return 'රාත්‍රී';
+  }
+}
+
 String _getSlotIcon(DailyAssessmentSlot slot) {
   switch (slot) {
     case DailyAssessmentSlot.morning:
@@ -89,10 +100,12 @@ class _ElderInteractiveHomePageState
   DateTime _now = DateTime.now();
 
   // Routine check state
-  bool _routine1AnsweredYes = false;
+  bool _routine1AnsweredYes = true;
   bool _routine1AnsweredNo = false;
-  bool _routine2AnsweredYes = false;
+  bool _routine2AnsweredYes = true;
   bool _routine2AnsweredNo = false;
+  bool _routineWaterAnsweredYes = false;
+  bool _routineWaterAnsweredNo = false;
   bool _showHydrationReminder = true;
   bool _isPlayingVoice = false;
   bool _hasSpokenInitialGreeting = false;
@@ -387,11 +400,11 @@ class _ElderInteractiveHomePageState
                   width: 68,
                   height: 68,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFDCFCE7),
+                    color: const Color(0xFFF3E8FF),
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF16A34A).withValues(alpha: 0.22),
+                        color: const Color(0xFF7E22CE).withValues(alpha: 0.22),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
@@ -409,7 +422,7 @@ class _ElderInteractiveHomePageState
                   style: const TextStyle(
                     fontSize: 18.5,
                     fontWeight: FontWeight.w800,
-                    color: Color(0xFF15803D),
+                    color: Color(0xFF581C87),
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -498,7 +511,7 @@ class _ElderInteractiveHomePageState
                       child: ElevatedButton(
                         onPressed: () => Navigator.of(ctx).pop(),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF16A34A),
+                          backgroundColor: const Color(0xFF7C3AED),
                           padding: const EdgeInsets.symmetric(vertical: 11),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                           elevation: 3,
@@ -532,145 +545,167 @@ class _ElderInteractiveHomePageState
     final morningDone = _isSlotDone(activity, DailyAssessmentSlot.morning);
     final afternoonDone = _isSlotDone(activity, DailyAssessmentSlot.afternoon);
     final nightDone = _isSlotDone(activity, DailyAssessmentSlot.night);
-    final doneCount = _getDoneCount(activity);
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.95),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.black.withValues(alpha: 0.08)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Header row: Slot counter
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'දෛනික සැසි (3/දින):',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w900,
-                  color: Color(0xFF3B0764),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
-                decoration: BoxDecoration(
-                  color: doneCount == 3 ? const Color(0xFFDCFCE7) : activeThemeColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(99),
-                ),
-                child: Text(
-                  '$doneCount / 3 සම්පූර්ණයි',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w900,
-                    color: doneCount == 3 ? const Color(0xFF15803D) : activeThemeColor,
-                  ),
-                ),
-              ),
-            ],
+    return Row(
+      children: [
+        // 1. උදෑසන
+        Expanded(
+          child: _buildMockupSlotCard(
+            label: 'උදෑසන',
+            timeRange: '(6.00 – 10.00)',
+            iconWidget: const Text('🌅', style: TextStyle(fontSize: 22)),
+            isDone: morningDone,
+            isCurrent: currentSlot == DailyAssessmentSlot.morning,
+            slotType: DailyAssessmentSlot.morning,
+            activeColor: const Color(0xFF9333EA),
           ),
-          const SizedBox(height: 8),
+        ),
+        const SizedBox(width: 6),
 
-          // 3 Slot Pills Row
-          Row(
-            children: [
-              Expanded(
-                child: _buildSlotPill(
-                  label: 'උදෑසන',
-                  icon: '🌅',
-                  isDone: morningDone,
-                  isCurrent: currentSlot == DailyAssessmentSlot.morning,
-                  activeThemeColor: activeThemeColor,
-                ),
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: _buildSlotPill(
-                  label: 'දහවල',
-                  icon: '☀️',
-                  isDone: afternoonDone,
-                  isCurrent: currentSlot == DailyAssessmentSlot.afternoon,
-                  activeThemeColor: activeThemeColor,
-                ),
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: _buildSlotPill(
-                  label: 'රාත්‍රිය',
-                  icon: '🌙',
-                  isDone: nightDone,
-                  isCurrent: currentSlot == DailyAssessmentSlot.night,
-                  activeThemeColor: activeThemeColor,
-                ),
-              ),
-            ],
+        // 2. දහවල්
+        Expanded(
+          child: _buildMockupSlotCard(
+            label: 'දහවල්',
+            timeRange: '(10.00 – 4.00)',
+            iconWidget: const Text('☀️', style: TextStyle(fontSize: 22)),
+            isDone: afternoonDone,
+            isCurrent: currentSlot == DailyAssessmentSlot.afternoon,
+            slotType: DailyAssessmentSlot.afternoon,
+            activeColor: const Color(0xFF9333EA),
           ),
-        ],
-      ),
+        ),
+        const SizedBox(width: 6),
+
+        // 3. රාත්‍රී
+        Expanded(
+          child: _buildMockupSlotCard(
+            label: 'රාත්‍රී',
+            timeRange: '(4.00 – 9.00)',
+            iconWidget: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('🌙', style: TextStyle(fontSize: 18)),
+                Text('⭐', style: TextStyle(fontSize: 11)),
+              ],
+            ),
+            isDone: nightDone,
+            isCurrent: currentSlot == DailyAssessmentSlot.night,
+            slotType: DailyAssessmentSlot.night,
+            activeColor: const Color(0xFF9333EA),
+          ),
+        ),
+      ],
     );
   }
 
-  Widget _buildSlotPill({
+  Widget _buildMockupSlotCard({
     required String label,
-    required String icon,
+    required String timeRange,
+    required Widget iconWidget,
     required bool isDone,
     required bool isCurrent,
-    required Color activeThemeColor,
+    required DailyAssessmentSlot slotType,
+    required Color activeColor,
   }) {
     Color bg;
     Color borderColor;
-    Color textColor;
-    String statusSymbol;
+    double borderWidth;
 
-    if (isDone) {
-      bg = const Color(0xFFDCFCE7);
-      borderColor = const Color(0xFF86EFAC);
-      textColor = const Color(0xFF15803D);
-      statusSymbol = '✓';
-    } else if (isCurrent) {
-      bg = activeThemeColor.withValues(alpha: 0.14);
-      borderColor = activeThemeColor.withValues(alpha: 0.55);
-      textColor = activeThemeColor;
-      // In Card 1 (emotional purple), show hourglass with purple border as in mockup; in Card 2 (amber), show bell
-      statusSymbol = activeThemeColor == const Color(0xFF7E22CE) ? '⏳' : '🔔';
+    if (isCurrent && !isDone) {
+      bg = const Color(0xFFFAF5FF); // soft lavender-purple tint
+      borderColor = const Color(0xFF9333EA); // vibrant royal purple highlight
+      borderWidth = 1.8;
+    } else if (isDone) {
+      bg = const Color(0xFFF0FDF4); // soft green tint
+      borderColor = const Color(0xFF86EFAC); // soft green border
+      borderWidth = 1.4;
+    } else if (slotType == DailyAssessmentSlot.morning) {
+      bg = const Color(0xFFFFFDF5); // warm cream
+      borderColor = const Color(0xFFFCD34D); // warm golden amber border (matching mockup)
+      borderWidth = 1.4;
     } else {
-      bg = const Color(0xFFF8FAFC);
-      borderColor = const Color(0xFFE2E8F0);
-      textColor = const Color(0xFF94A3B8);
-      statusSymbol = '⏳';
+      bg = const Color(0xFFFAFAFA); // soft clean light grey
+      borderColor = const Color(0xFFE9D5FF); // soft lavender border
+      borderWidth = 1.1;
     }
 
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: borderColor, width: isCurrent && !isDone ? 1.8 : 1.2),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            '$icon $statusSymbol',
-            style: const TextStyle(fontSize: 15),
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 2),
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: borderColor, width: borderWidth),
+            boxShadow: isCurrent && !isDone
+                ? [
+                    BoxShadow(
+                      color: const Color(0xFF7E22CE).withValues(alpha: 0.16),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : null,
           ),
-          const SizedBox(height: 3),
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w800,
-              color: textColor,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              iconWidget,
+              const SizedBox(height: 3),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w900,
+                  color: isCurrent && !isDone ? const Color(0xFF581C87) : const Color(0xFF3B0764),
+                  letterSpacing: 0.1,
+                ),
+              ),
+              const SizedBox(height: 1),
+              Text(
+                timeRange,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: isCurrent && !isDone ? const Color(0xFF6B21A8) : const Color(0xFF475569),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // Floating Green Checkmark Badge if done or active current slot (matching mockup)
+        if (isDone || isCurrent)
+          Positioned(
+            top: -5,
+            right: -5,
+            child: Container(
+              width: 20,
+              height: 20,
+              decoration: BoxDecoration(
+                color: const Color(0xFF22C55E),
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 1.8),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF22C55E).withValues(alpha: 0.35),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              alignment: Alignment.center,
+              child: const Icon(Icons.check_rounded, color: Colors.white, size: 13),
             ),
           ),
-        ],
-      ),
+      ],
     );
   }
 
@@ -682,23 +717,23 @@ class _ElderInteractiveHomePageState
   }) {
     if (isCurrentDone) {
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 3.5),
         decoration: BoxDecoration(
-          color: const Color(0xFFF0FDF4),
+          color: const Color(0xFFFAF5FF),
           borderRadius: BorderRadius.circular(99),
-          border: Border.all(color: const Color(0xFFBBF7D0), width: 1.2),
+          border: Border.all(color: const Color(0xFFDDD6FE), width: 1.1),
         ),
-        child: Row(
+        child: const Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('✅', style: TextStyle(fontSize: 20)),
-            const SizedBox(width: 8),
+            Text('✨', style: TextStyle(fontSize: 14)),
+            SizedBox(width: 5),
             Text(
-              '$currentSlotName සැසිය සම්පූර්ණයි',
-              style: const TextStyle(
-                fontSize: 14,
+              'සැසිය සම්පූර්ණයි',
+              style: TextStyle(
+                fontSize: 13,
                 fontWeight: FontWeight.w800,
-                color: Color(0xFF15803D),
+                color: Color(0xFF6D28D9),
               ),
             ),
           ],
@@ -706,11 +741,11 @@ class _ElderInteractiveHomePageState
       );
     } else {
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 3.5),
         decoration: BoxDecoration(
-          color: const Color(0xFFFEF2F2),
+          color: const Color(0xFFFEF3C7), // warm soft cream (matching mockup)
           borderRadius: BorderRadius.circular(99),
-          border: Border.all(color: const Color(0xFFFECACA), width: 1.2),
+          border: Border.all(color: const Color(0xFFFDE68A), width: 1.1),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -723,23 +758,62 @@ class _ElderInteractiveHomePageState
                 return Transform.rotate(
                   angle: angle,
                   alignment: Alignment.topCenter,
-                  child: const Text('🔔', style: TextStyle(fontSize: 25)),
+                  child: const Text('🔔', style: TextStyle(fontSize: 16)),
                 );
               },
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 5),
             Text(
-              customNotDoneText ?? 'අද $currentSlotName සැසිය තවම කර නැත!',
+              customNotDoneText ?? 'දැන් සිදු කරන්න',
               style: const TextStyle(
-                fontSize: 14,
+                fontSize: 13,
                 fontWeight: FontWeight.w800,
-                color: Color(0xFFDC2626),
+                color: Color(0xFF3B0764), // deep purple text
               ),
             ),
           ],
         ),
       );
     }
+  }
+
+  // Compact Lavender Blossom Trim (Matching Carevora's Royal Purple aesthetic)
+  Widget _buildLavenderBlossomTrimCompact() {
+    return Container(
+      height: 22,
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        color: Color(0xFFF5F3FF),
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(22),
+          bottomRight: Radius.circular(22),
+        ),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      child: const Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              Text('🌸', style: TextStyle(fontSize: 12)),
+              SizedBox(width: 3),
+              Text('💜', style: TextStyle(fontSize: 11)),
+              SizedBox(width: 3),
+              Text('🌿', style: TextStyle(fontSize: 12)),
+            ],
+          ),
+          Row(
+            children: [
+              Text('🌿', style: TextStyle(fontSize: 12)),
+              SizedBox(width: 3),
+              Text('💜', style: TextStyle(fontSize: 11)),
+              SizedBox(width: 3),
+              Text('🌸', style: TextStyle(fontSize: 12)),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -761,7 +835,11 @@ class _ElderInteractiveHomePageState
               children: [
                 // 2. Hero Purple Interactive Greeting Banner
                 _buildInteractiveHeroBanner(elderDisplayName, dayPeriod, authState.avatarUrl),
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
+
+                // 2.1 Daily Routine Cards (Placed below the Welcome Banner)
+                _buildDailyRoutineSection(dayPeriod),
+                const SizedBox(height: 22),
 
                 // 3. Quick Access Title & Large Action Cards
                 _buildQuickAccessSection(context, isSinhala),
@@ -866,116 +944,32 @@ class _ElderInteractiveHomePageState
   // =========================================================================
   // 2. HERO PURPLE INTERACTIVE GREETING BANNER
   // =========================================================================
+  String _formatElderHonorific(String name) {
+    if (name.contains('මහත්මිය') || name.contains('මහතා')) return name;
+    return '$name මහත්මිය';
+  }
+
   Widget _buildInteractiveHeroBanner(String displayName, DayPeriod period, String? avatarUrl) {
     String greetingTitle;
-    String greetingSubtitle;
-    String mascotBubble;
-    String mascotSpeech;
-
-    String card1Icon;
-    String card1Title;
-    String card1Speak;
-    String card1YesFeedback;
-    String card1NoFeedback;
-
-    String card2Icon;
-    String card2Title;
-    String card2Speak;
-    String card2YesFeedback;
-    String card2NoFeedback;
+    const greetingSubtitle = 'අදත් ඔබගේ ක්‍රියාකාරකම් සම්පූර්ණ කරමු. ♡';
+    final honorificName = _formatElderHonorific(displayName);
 
     switch (period) {
       case DayPeriod.morning:
-        greetingTitle = 'සුබ උදෑසනක්, $displayName! 👋';
-        greetingSubtitle = 'ප්‍රීතිමත්, සුවබර උදෑසනක්! 💕';
-        mascotBubble = 'අද උදයේ\nමූලික පුරුදු\nකරගත්තාද? 💜';
-        mascotSpeech = 'නෆියා ඔබෙන් අසනවා: අද උදයේ මූලික පුරුදු කරගත්තාද?';
-
-        card1Icon = '☕';
-        card1Title = 'ඔබ අද\nතේ බිව්වද?';
-        card1Speak = 'ඔබ අද තේ බිව්වද?';
-        card1YesFeedback = 'ඔබ තේ පානය කර තිබීම සතුටක්!';
-        card1NoFeedback = 'ඔබ තවම තේ බීලා නැත්නම්, මම රැකබලා ගන්නාට දැන්වුවා ඔබට උණුසුම් තේ එකක් ගෙන එන්න.';
-
-        card2Icon = '🚿';
-        card2Title = 'මුහුණ\nහෝදාගත්තාද?';
-        card2Speak = 'මුහුණ හෝදාගත්තාද?';
-        card2YesFeedback = 'ඉතා විශිෂ්ටයි! ඔබ ප්‍රබෝධමත්ව අද දවස සතුටින් ගත කිරීමට සූදානම්.';
-        card2NoFeedback = 'අපි මුහුණ සෝදා ප්‍රබෝධමත් වෙමු. ඔබට උදව් අවශ්‍ය නම් රැකබලා ගන්නා දැනුවත් කර ඇත.';
+        greetingTitle = 'සුබ උදෑසනක්,\n$honorificName! 👋';
         break;
 
       case DayPeriod.afternoon:
-        greetingTitle = 'සුබ දහවලක්, $displayName! 👋';
-        greetingSubtitle = 'ප්‍රබෝධමත්, සුවදායක දහවලක්! 💕';
-        mascotBubble = 'අද දහවල්\nසුවපහසු විවේකය\nලබාගත්තාද? 💜';
-        mascotSpeech = 'නෆියා ඔබෙන් අසනවා: අද දහවල් සුවපහසු විවේකය ලබාගත්තාද?';
-
-        card1Icon = '🍲';
-        card1Title = 'දිවා ආහාරය\nගත්තාද?';
-        card1Speak = 'දිවා ආහාරය ගත්තාද?';
-        card1YesFeedback = 'ඔබ දිවා ආහාරය ගෙන තිබීම සතුටක්!';
-        card1NoFeedback = 'ඔබ තවම දිවා ආහාරය ගෙන නැත්නම්, ඔබට උදව් කිරීමට රැකබලා ගන්නා දැනුවත් කර ඇත.';
-
-        card2Icon = '🛋️';
-        card2Title = 'කෙටි විවේකයක්\nගත්තාද?';
-        card2Speak = 'කෙටි විවේකයක් ගත්තාද?';
-        card2YesFeedback = 'ඉතා විශිෂ්ටයි! කෙටි විවේකයක් ගැනීමෙන් ඔබේ මනසට සහ සිරුරට නව ප්‍රබෝධයක් ලැබේ.';
-        card2NoFeedback = 'සුවදායක කෙටි විවේකයක් ලබා ගැනීමට සහායක කණ්ඩායම දැනුවත් කර ඇත.';
+        greetingTitle = 'සුබ දහවලක්,\n$honorificName! 👋';
         break;
 
       case DayPeriod.evening:
-        // 4:00 PM to 6:59 PM (Evening / සවස / සන්ධ්‍යාව)
-        greetingTitle = 'සුබ සන්ධ්‍යාවක්, $displayName! 👋';
-        greetingSubtitle = 'සන්සුන්, ප්‍රීතිමත් සන්ධ්‍යාවක්! 💕';
-        mascotBubble = 'අද සවස\nනැවුම් සුවය\nවින්දාද? 💜';
-        mascotSpeech = 'නෆියා ඔබෙන් අසනවා: අද සවස නැවුම් සුවය වින්දාද?';
-
-        card1Icon = '☕';
-        card1Title = 'සවස තේ පැන්\nපානය කළාද?';
-        card1Speak = 'සවස තේ පැන් පානය කළාද?';
-        card1YesFeedback = 'සවස උණුසුම් තේ පැන් පානය කර තිබීම සතුටක්!';
-        card1NoFeedback = 'ඔබ තවම සවස තේ බීලා නැත්නම්, රැකබලා ගන්නා ඔබ වෙත පැමිණෙනු ඇත.';
-
-        card2Icon = '🌿';
-        card2Title = 'නැවුම් සුළං\nසුවය වින්දාද?';
-        card2Speak = 'නැවුම් සුළං සුවය වින්දාද?';
-        card2YesFeedback = 'නැවුම් සවස සුළං සුවය විඳීම ඔබේ මනස සන්සුන් කරයි!';
-        card2NoFeedback = 'සවස නැවුම් සුළං සුවය විඳීමට ඔබට උපකාර කිරීමට රැකබලා ගන්නා පැමිණෙනු ඇත.';
+        greetingTitle = 'සුබ සන්ධ්‍යාවක්,\n$honorificName! 👋';
         break;
 
       case DayPeriod.night:
-        // 7:00 PM onwards (Night / රාත්‍රිය)
-        greetingTitle = 'සුබ රාත්‍රියක්, $displayName! 👋';
-        greetingSubtitle = 'සුවබර, සැනසිලිදායක රාත්‍රියක්! 💕';
-        mascotBubble = 'අද රාත්‍රී\nසුව නින්දකට\nසූදානම්ද? 💜';
-        mascotSpeech = 'නෆියා ඔබෙන් අසනවා: අද රාත්‍රී සුව නින්දකට සූදානම්ද?';
-
-        card1Icon = '💊';
-        card1Title = 'රාත්‍රී ආහාර හා\nඖෂධ ගත්තාද?';
-        card1Speak = 'රාත්‍රී ආහාර හා ඖෂධ ගත්තාද?';
-        card1YesFeedback = 'ඉතා විශිෂ්ටයි! රාත්‍රී ආහාර සහ ඖෂධ නියමිත වේලාවට ලබා ගැනීම නීරෝගී බවට ඉතා වැදගත්.';
-        card1NoFeedback = 'ඔබ තවම රාත්‍රී ආහාර හෝ ඖෂධ ගෙන නැත්නම්, ඔබට උදව් කිරීමට රැකබලා ගන්නා දැනුවත් කළා.';
-
-        card2Icon = '🛏️';
-        card2Title = 'සුව නින්දකට\nසූදානම්ද?';
-        card2Speak = 'සුව නින්දකට සූදානම්ද?';
-        card2YesFeedback = 'සුවබර, සැනසිලිදායක නින්දක් සහ මිහිරි සිහින ඔබට ප්‍රාර්ථනා කරනවා!';
-        card2NoFeedback = 'සුව නින්දකට සූදානම් වීමට ඔබට උපකාර කිරීමට රැකබලා ගන්නා දැනුවත් කර ඇත.';
+        greetingTitle = 'සුබ රාත්‍රියක්,\n$honorificName! 👋';
         break;
-    }
-
-    // Dynamic Mascot Reminder based on 3 Daily Assessment Slots
-    final currentSlot = _getCurrentAssessmentSlot(_now);
-    final currentSlotName = _getSlotNameSi(currentSlot);
-    final emotionalSlotDone = _isSlotDone('emotional', currentSlot);
-    final memorySlotDone = _isSlotDone('memory', currentSlot);
-
-    if (!emotionalSlotDone) {
-      mascotBubble = 'අද $currentSlotName\nසුවතා කතාබහ\nකරමුද? 💜';
-      mascotSpeech = 'නෆියා ඔබෙන් අසනවා: අද $currentSlotName මානසික සුවතා කතාබහ කරමුද?';
-    } else if (!memorySlotDone) {
-      mascotBubble = 'අද $currentSlotName\nමතක ක්‍රීඩා\nකරමුද? 🧩';
-      mascotSpeech = 'නෆියා ඔබෙන් අසනවා: අද $currentSlotName මතක පරීක්ෂාව සහ විනෝද ක්‍රීඩා කරමුද?';
     }
 
     return Container(
@@ -984,7 +978,7 @@ class _ElderInteractiveHomePageState
         borderRadius: BorderRadius.circular(26),
         gradient: const LinearGradient(
           colors: [
-            Color(0xFF6D28D9), // vibrant, elegant royal violet (softened from dark 0xFF3B0764)
+            Color(0xFF6D28D9), // vibrant, elegant royal violet
             Color(0xFF7C3AED), // bright cheerful purple
             Color(0xFF8B5CF6), // warm radiant violet
             Color(0xFFA855F7), // soft gentle lavender purple
@@ -1009,7 +1003,7 @@ class _ElderInteractiveHomePageState
         borderRadius: BorderRadius.circular(24),
         child: Stack(
           children: [
-            // Floral background decoration
+            // Floral background decoration spreading from right edge
             Positioned(
               right: 0,
               top: 0,
@@ -1027,7 +1021,7 @@ class _ElderInteractiveHomePageState
             // Animated floating sparkles
             Positioned(
               top: 14,
-              left: 380,
+              left: 420,
               child: AnimatedBuilder(
                 animation: _pulseController,
                 builder: (context, child) {
@@ -1040,86 +1034,10 @@ class _ElderInteractiveHomePageState
               ),
             ),
 
-            // Main Banner Content
+            // Main Banner Content: Clean, spacious & elder-friendly
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-              child: Column(
-                children: [
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      final isWide = constraints.maxWidth >= 1020;
-                      if (isWide) {
-                        return Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            // Left: Elder Photo & Dynamic Period Greeting
-                            Expanded(
-                              flex: 11,
-                              child: _buildBannerLeftGreeting(greetingTitle, greetingSubtitle, avatarUrl),
-                            ),
-                            const SizedBox(width: 14),
-
-                            // Center: Mascot & Speech Bubble
-                            Expanded(
-                              flex: 7,
-                              child: _buildBannerCenterMascot(mascotBubble, mascotSpeech),
-                            ),
-                            const SizedBox(width: 14),
-
-                            // Right: Routine Cards
-                            Expanded(
-                              flex: 14,
-                              child: _buildBannerRightRoutineCards(
-                                card1Icon: card1Icon,
-                                card1Title: card1Title,
-                                card1Speak: card1Speak,
-                                card1YesFeedback: card1YesFeedback,
-                                card1NoFeedback: card1NoFeedback,
-                                card2Icon: card2Icon,
-                                card2Title: card2Title,
-                                card2Speak: card2Speak,
-                                card2YesFeedback: card2YesFeedback,
-                                card2NoFeedback: card2NoFeedback,
-                              ),
-                            ),
-                          ],
-                        );
-                      } else {
-                        return Column(
-                          children: [
-                            _buildBannerLeftGreeting(greetingTitle, greetingSubtitle, avatarUrl),
-                            const SizedBox(height: 14),
-                            Row(
-                              children: [
-                                Expanded(child: _buildBannerCenterMascot(mascotBubble, mascotSpeech)),
-                              ],
-                            ),
-                            const SizedBox(height: 14),
-                            _buildBannerRightRoutineCards(
-                              card1Icon: card1Icon,
-                              card1Title: card1Title,
-                              card1Speak: card1Speak,
-                              card1YesFeedback: card1YesFeedback,
-                              card1NoFeedback: card1NoFeedback,
-                              card2Icon: card2Icon,
-                              card2Title: card2Title,
-                              card2Speak: card2Speak,
-                              card2YesFeedback: card2YesFeedback,
-                              card2NoFeedback: card2NoFeedback,
-                            ),
-                          ],
-                        );
-                      }
-                    },
-                  ),
-
-                  // Bottom Hydration Reminder Pill
-                  if (_showHydrationReminder) ...[
-                    const SizedBox(height: 10),
-                    _buildHydrationReminderPill(),
-                  ],
-                ],
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
+              child: _buildBannerLeftGreeting(greetingTitle, greetingSubtitle, avatarUrl),
             ),
           ],
         ),
@@ -1132,16 +1050,16 @@ class _ElderInteractiveHomePageState
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // Elder photo
+        // Elder photo (86x86 circular avatar with white border)
         Container(
-          width: 82,
-          height: 82,
+          width: 86,
+          height: 86,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            border: Border.all(color: Colors.white, width: 3),
+            border: Border.all(color: Colors.white, width: 3.5),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.25),
+                color: Colors.black.withValues(alpha: 0.28),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
@@ -1152,9 +1070,9 @@ class _ElderInteractiveHomePageState
             ),
           ),
         ),
-        const SizedBox(width: 16),
+        const SizedBox(width: 20),
 
-        // Text Greeting
+        // Text Greeting & Audio Pill
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1164,52 +1082,60 @@ class _ElderInteractiveHomePageState
                 title,
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 23,
-                  fontWeight: FontWeight.w800,
+                  fontSize: 24,
+                  fontWeight: FontWeight.w900,
                   letterSpacing: 0.2,
+                  height: 1.25,
                   shadows: [
-                    Shadow(color: Colors.black38, blurRadius: 4, offset: Offset(0, 2)),
+                    Shadow(color: Colors.black38, blurRadius: 6, offset: Offset(0, 2)),
                   ],
                 ),
               ),
-              const SizedBox(height: 4),
-              Text(
-                subtitle,
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.95),
-                  fontSize: 15.5,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
               const SizedBox(height: 6),
-
-              // Audio Pill "ඔබ ගැන අදත් හොඳින් සලකමු!"
-              InkWell(
-                onTap: () => _speak('$title $subtitle ඔබ ගැන අදත් හොඳින් සලකමු!'),
-                borderRadius: BorderRadius.circular(99),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.20),
+              Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 12,
+                runSpacing: 6,
+                children: [
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.95),
+                      fontSize: 15.5,
+                      fontWeight: FontWeight.w600,
+                      shadows: const [
+                        Shadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 1)),
+                      ],
+                    ),
+                  ),
+                  InkWell(
+                    onTap: () => _speak('${title.replaceAll('\n', ' ')}. $subtitle ඔබ ගැන අදත් හොඳින් සලකමු!'),
                     borderRadius: BorderRadius.circular(99),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(LucideIcons.volume2, size: 16, color: Colors.white),
-                      SizedBox(width: 6),
-                      Text(
-                        'ඔබ ගැන අදත් හොඳින් සලකමු! ·|||··||·',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w600,
-                        ),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.22),
+                        borderRadius: BorderRadius.circular(99),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.40)),
                       ),
-                    ],
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(LucideIcons.volume2, size: 14, color: Colors.white),
+                          SizedBox(width: 5),
+                          Text(
+                            'සවන් දෙන්න',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
             ],
           ),
@@ -1218,332 +1144,343 @@ class _ElderInteractiveHomePageState
     );
   }
 
-  // Center mascot & dynamic speech bubble
-  Widget _buildBannerCenterMascot(String bubbleText, String speakText) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        // Robot mascot with breathing animation
-        AnimatedBuilder(
-          animation: _pulseController,
-          builder: (context, child) {
-            final dy = math.sin(_pulseController.value * math.pi) * 4.0;
-            return Transform.translate(
-              offset: Offset(0, dy),
-              child: Image.asset(
-                'assets/images/clean_robot_transparent.png',
-                width: 68,
-                height: 68,
-                fit: BoxFit.contain,
-                errorBuilder: (_, __, ___) => Image.asset(
-                  'assets/images/elder_robot_mascot.png',
-                  width: 68,
-                  height: 68,
-                  fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) => const Icon(LucideIcons.bot, size: 50, color: Colors.white),
-                ),
-              ),
-            );
-          },
-        ),
-        const SizedBox(width: 8),
 
-        // Speech bubble
-        Flexible(
-          child: InkWell(
-            onTap: () => _speak(speakText),
-            borderRadius: BorderRadius.circular(16),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.15),
-                    blurRadius: 8,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Flexible(
-                    child: Text(
-                      bubbleText,
-                      style: const TextStyle(
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF6B21A8),
-                        height: 1.25,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  const Icon(LucideIcons.volume2, size: 16, color: Color(0xFF7E22CE)),
-                ],
-              ),
+
+  // =========================================================================
+  // 2.1 DAILY ROUTINE QUESTION CARDS (Placed beautifully below Welcome Banner)
+  // =========================================================================
+  Widget _buildDailyRoutineSection(DayPeriod period) {
+    // Card 1: Meal Check
+    String card1Icon = '🍲';
+    String card1Question = 'දිවා ආහාරය\nගත්තාද?';
+    String card1YesText = 'ගත්තා';
+    String card1NoText = 'තවම නැහැ';
+    String card1YesFeedback = 'ඔබ දිවා ආහාරය ගෙන තිබීම සතුටක්! නිරෝගීව හා ශක්තිමත්ව සිටින්න.';
+    String card1NoFeedback = 'ඔබ තවම දිවා ආහාරය ගෙන නැත්නම්, ඔබට උදව් කිරීමට සහායකයා දැනුවත් කර ඇත.';
+
+    // Card 2: Rest Check
+    String card2Icon = '🛋️';
+    String card2Question = 'කෙටි විවේකයක්\nගත්තාද?';
+    String card2YesText = 'ගත්තා';
+    String card2NoText = 'තවම නැහැ';
+    String card2YesFeedback = 'ඉතා විශිෂ්ටයි! කෙටි විවේකයක් ගැනීමෙන් ඔබේ මනසට සහ සිරුරට නව ප්‍රබෝධයක් ලැබේ.';
+    String card2NoFeedback = 'සුවදායක කෙටි විවේකයක් ලබා ගැනීමට සහායක කණ්ඩායම දැනුවත් කර ඇත.';
+
+    switch (period) {
+      case DayPeriod.morning:
+        card1Icon = '☕';
+        card1Question = 'උදෑසන ආහාර\nගත්තාද?';
+        card1YesFeedback = 'ඔබ උදෑසන ආහාරය ලබාගෙන තිබීම සතුටක්!';
+        card1NoFeedback = 'උදෑසන ආහාරය ලබා ගැනීමට සහායකයා ඔබට උදව් කරනු ඇත.';
+
+        card2Icon = '🚿';
+        card2Question = 'මුහුණ හෝදා\nගත්තාද?';
+        card2YesFeedback = 'ඉතා විශිෂ්ටයි! ඔබ ප්‍රබෝධමත්ව අද දවස සතුටින් ගත කිරීමට සූදානම්.';
+        card2NoFeedback = 'අපි මුහුණ සෝදා ප්‍රබෝධමත් වෙමු. සහායකයා දැනුවත් කර ඇත.';
+        break;
+
+      case DayPeriod.afternoon:
+        card1Icon = '🍲';
+        card1Question = 'දිවා ආහාරය\nගත්තාද?';
+        card1YesFeedback = 'ඔබ දිවා ආහාරය ගෙන තිබීම සතුටක්!';
+        card1NoFeedback = 'ඔබ තවම දිවා ආහාරය ගෙන නැත්නම්, ඔබට උදව් කිරීමට සහායකයා දැනුවත් කර ඇත.';
+
+        card2Icon = '🛋️';
+        card2Question = 'කෙටි විවේකයක්\nගත්තාද?';
+        card2YesFeedback = 'ඉතා විශිෂ්ටයි! කෙටි විවේකයක් ගැනීමෙන් නව ප්‍රබෝධයක් ලැබේ.';
+        card2NoFeedback = 'සුවදායක කෙටි විවේකයක් ලබා ගැනීමට සහායකයා දැනුවත් කර ඇත.';
+        break;
+
+      case DayPeriod.evening:
+        card1Icon = '☕';
+        card1Question = 'සවස තේ පැන්\nපානය කළාද?';
+        card1YesFeedback = 'සවස උණුසුම් තේ පැන් පානය කර තිබීම සතුටක්!';
+        card1NoFeedback = 'සවස තේ පැන් ලබා ගැනීමට සහායකයා පැමිණෙනු ඇත.';
+
+        card2Icon = '🌿';
+        card2Question = 'නැවුම් සුළං\nසුවය වින්දාද?';
+        card2YesFeedback = 'නැවුම් සවස සුළං සුවය විඳීම ඔබේ මනස සන්සුන් කරයි!';
+        card2NoFeedback = 'සවස නැවුම් සුළං සුවය විඳීමට සහායකයා පැමිණෙනු ඇත.';
+        break;
+
+      case DayPeriod.night:
+        card1Icon = '💊';
+        card1Question = 'රාත්‍රී ආහාර හා\nඖෂධ ගත්තාද?';
+        card1YesFeedback = 'ඉතා විශිෂ්ටයි! රාත්‍රී ආහාර සහ ඖෂධ නියමිත වේලාවට ලබා ගැනීම නීරෝගී බවට ඉතා වැදගත්.';
+        card1NoFeedback = 'ඔබ තවම රාත්‍රී ආහාර හෝ ඖෂධ ගෙන නැත්නම්, සහායකයා දැනුවත් කර ඇත.';
+
+        card2Icon = '🛏️';
+        card2Question = 'සුව නින්දකට\nසූදානම්ද?';
+        card2YesFeedback = 'සුවබර, සැනසිලිදායක නින්දක් ඔබට ප්‍රාර්ථනා කරනවා!';
+        card2NoFeedback = 'සුව නින්දකට සූදානම් වීමට සහායකයා දැනුවත් කර ඇත.';
+        break;
+    }
+
+    // Card 3: Water Check
+    const card3Question = 'ප්‍රමාණවත් ජලය\nබිව්වාද?';
+    const card3YesFeedback = 'ඉතා විශිෂ්ටයි! ප්‍රමාණවත් ලෙස ජලය පානය කිරීම ඔබගේ නිරෝගී සුවයට ඉතා වැදගත් වේ.';
+    const card3NoFeedback = 'ජලය ප්‍රමාණවත් ලෙස පානය කිරීමට අමතක නොකරන්න. මම සහායකයාට දැන්වුවා ඔබට ජලය ගෙන එන්න.';
+
+    final card1 = _buildMockupRoutineCard(
+      iconWidget: Container(
+        width: 46,
+        height: 46,
+        decoration: BoxDecoration(
+          color: const Color(0xFFFEF3C7),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFFDE68A), width: 1.4),
+        ),
+        alignment: Alignment.center,
+        child: Text(card1Icon, style: const TextStyle(fontSize: 23)),
+      ),
+      question: card1Question,
+      isAnsweredYes: _routine1AnsweredYes,
+      isAnsweredNo: _routine1AnsweredNo,
+      yesButtonText: card1YesText,
+      noButtonText: card1NoText,
+      isWaterCard: false,
+      onToggle: () {
+        setState(() {
+          _routine1AnsweredYes = !_routine1AnsweredYes;
+          _routine1AnsweredNo = !_routine1AnsweredYes;
+        });
+        _speak(_routine1AnsweredYes ? card1YesFeedback : card1NoFeedback);
+      },
+    );
+
+    final card2 = _buildMockupRoutineCard(
+      iconWidget: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Container(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              color: const Color(0xFFEFF6FF),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFBFDBFE), width: 1.4),
             ),
+            alignment: Alignment.center,
+            child: Text(card2Icon, style: const TextStyle(fontSize: 23)),
           ),
+          const Positioned(
+            top: -4,
+            right: -4,
+            child: Text('💤', style: TextStyle(fontSize: 12)),
+          ),
+        ],
+      ),
+      question: card2Question,
+      isAnsweredYes: _routine2AnsweredYes,
+      isAnsweredNo: _routine2AnsweredNo,
+      yesButtonText: card2YesText,
+      noButtonText: card2NoText,
+      isWaterCard: false,
+      onToggle: () {
+        setState(() {
+          _routine2AnsweredYes = !_routine2AnsweredYes;
+          _routine2AnsweredNo = !_routine2AnsweredYes;
+        });
+        _speak(_routine2AnsweredYes ? card2YesFeedback : card2NoFeedback);
+      },
+    );
+
+    final card3 = _buildMockupRoutineCard(
+      iconWidget: Container(
+        width: 46,
+        height: 46,
+        decoration: BoxDecoration(
+          color: const Color(0xFFF0F9FF),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFBAE6FD), width: 1.4),
         ),
-      ],
+        alignment: Alignment.center,
+        child: const Text('🥛', style: TextStyle(fontSize: 23)),
+      ),
+      question: card3Question,
+      isAnsweredYes: _routineWaterAnsweredYes,
+      isAnsweredNo: _routineWaterAnsweredNo,
+      yesButtonText: 'බිව්වා',
+      noButtonText: 'තවම නැහැ',
+      isWaterCard: true,
+      onToggle: () {
+        setState(() {
+          _routineWaterAnsweredYes = !_routineWaterAnsweredYes;
+          _routineWaterAnsweredNo = !_routineWaterAnsweredYes;
+        });
+        _speak(_routineWaterAnsweredYes ? card3YesFeedback : card3NoFeedback);
+      },
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWide = constraints.maxWidth >= 840;
+        if (isWide) {
+          return Row(
+            children: [
+              Expanded(child: card1),
+              const SizedBox(width: 14),
+              Expanded(child: card2),
+              const SizedBox(width: 14),
+              Expanded(child: card3),
+            ],
+          );
+        } else {
+          return Column(
+            children: [
+              card1,
+              const SizedBox(height: 10),
+              card2,
+              const SizedBox(height: 10),
+              card3,
+            ],
+          );
+        }
+      },
     );
   }
 
-  // Right side: Routine Question Cards
-  Widget _buildBannerRightRoutineCards({
-    required String card1Icon,
-    required String card1Title,
-    required String card1Speak,
-    required String card1YesFeedback,
-    required String card1NoFeedback,
-    required String card2Icon,
-    required String card2Title,
-    required String card2Speak,
-    required String card2YesFeedback,
-    required String card2NoFeedback,
-  }) {
-    return Row(
-      children: [
-        // Card 1
-        Expanded(
-          child: _buildSingleRoutineCard(
-            icon: card1Icon,
-            title: card1Title,
-            speakText: card1Speak,
-            isYes: _routine1AnsweredYes,
-            isNo: _routine1AnsweredNo,
-            onYes: () {
-              setState(() {
-                _routine1AnsweredYes = true;
-                _routine1AnsweredNo = false;
-              });
-              _speak(card1YesFeedback);
-            },
-            onNo: () {
-              setState(() {
-                _routine1AnsweredYes = false;
-                _routine1AnsweredNo = true;
-              });
-              _speak(card1NoFeedback);
-            },
-          ),
-        ),
-        const SizedBox(width: 10),
-
-        // Card 2
-        Expanded(
-          child: _buildSingleRoutineCard(
-            icon: card2Icon,
-            title: card2Title,
-            speakText: card2Speak,
-            isYes: _routine2AnsweredYes,
-            isNo: _routine2AnsweredNo,
-            onYes: () {
-              setState(() {
-                _routine2AnsweredYes = true;
-                _routine2AnsweredNo = false;
-              });
-              _speak(card2YesFeedback);
-            },
-            onNo: () {
-              setState(() {
-                _routine2AnsweredYes = false;
-                _routine2AnsweredNo = true;
-              });
-              _speak(card2NoFeedback);
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSingleRoutineCard({
-    required String icon,
-    required String title,
-    required String speakText,
-    required bool isYes,
-    required bool isNo,
-    required VoidCallback onYes,
-    required VoidCallback onNo,
+  Widget _buildMockupRoutineCard({
+    required Widget iconWidget,
+    required String question,
+    required bool isAnsweredYes,
+    required bool isAnsweredNo,
+    required String yesButtonText,
+    required String noButtonText,
+    required bool isWaterCard,
+    required VoidCallback onToggle,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isAnsweredYes
+              ? const Color(0xFFC084FC)
+              : const Color(0xFFE9D5FF),
+          width: 1.6,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.10),
+            color: const Color(0xFF7C3AED).withValues(alpha: 0.06),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
         ],
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Header: Icon + Title + Speaker
-          Row(
-            children: [
-              Text(icon, style: const TextStyle(fontSize: 24)),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF1E293B),
-                    height: 1.2,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onToggle,
+          borderRadius: BorderRadius.circular(20),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
+              children: [
+                // Squircle Icon Container
+                iconWidget,
+                const SizedBox(width: 10),
+
+                // Question Text (2 lines)
+                Expanded(
+                  child: Text(
+                    question,
+                    style: const TextStyle(
+                      fontSize: 15.5,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFF1E1B4B),
+                      height: 1.25,
+                      letterSpacing: 0.1,
+                    ),
                   ),
                 ),
-              ),
-              InkWell(
-                onTap: () => _speak(speakText),
-                child: const Padding(
-                  padding: EdgeInsets.all(3.0),
-                  child: Icon(LucideIcons.volume2, size: 16, color: Color(0xFF7E22CE)),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
+                const SizedBox(width: 8),
 
-          // Action Buttons: ඔව් / තවම නැහැ
-          Row(
-            children: [
-              // Yes Button
-              Expanded(
-                child: InkWell(
-                  onTap: onYes,
-                  borderRadius: BorderRadius.circular(99),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 7),
+                // Pill Action Button
+                if (isAnsweredYes)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7.5),
                     decoration: BoxDecoration(
-                      color: isYes ? const Color(0xFF16A34A) : const Color(0xFF22C55E),
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF10B981), Color(0xFF059669)],
+                      ),
                       borderRadius: BorderRadius.circular(99),
-                      boxShadow: isYes
-                          ? [
-                              BoxShadow(
-                                color: const Color(0xFF16A34A).withValues(alpha: 0.4),
-                                blurRadius: 6,
-                                offset: const Offset(0, 2),
-                              )
-                            ]
-                          : null,
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF10B981).withValues(alpha: 0.35),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
                     ),
-                    alignment: Alignment.center,
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(LucideIcons.check, size: 13, color: Colors.white),
+                        const Icon(LucideIcons.check, size: 15, color: Colors.white),
                         const SizedBox(width: 4),
                         Text(
-                          isYes ? 'කළා' : 'ඔව්',
+                          yesButtonText,
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w800,
                           ),
                         ),
                       ],
                     ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 5),
-
-              // Not yet Button
-              Expanded(
-                child: InkWell(
-                  onTap: onNo,
-                  borderRadius: BorderRadius.circular(99),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 7),
+                  )
+                else if (isWaterCard)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7.5),
                     decoration: BoxDecoration(
-                      color: isNo ? const Color(0xFFF1F5F9) : Colors.white,
+                      color: const Color(0xFFF0F9FF),
                       borderRadius: BorderRadius.circular(99),
-                      border: Border.all(
-                        color: isNo ? const Color(0xFFEF4444) : const Color(0xFFE2E8F0),
-                        width: isNo ? 1.5 : 1.0,
-                      ),
+                      border: Border.all(color: const Color(0xFFBAE6FD), width: 1.3),
                     ),
-                    alignment: Alignment.center,
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(
-                          LucideIcons.clock,
-                          size: 12,
-                          color: isNo ? const Color(0xFFEF4444) : const Color(0xFF64748B),
-                        ),
+                        const Icon(LucideIcons.droplets, size: 14, color: Color(0xFF0284C7)),
                         const SizedBox(width: 4),
                         Text(
-                          'තවම නැහැ',
-                          style: TextStyle(
-                            color: isNo ? const Color(0xFFEF4444) : const Color(0xFF475569),
-                            fontSize: 12.5,
+                          noButtonText,
+                          style: const TextStyle(
+                            color: Color(0xFF0284C7),
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7.5),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFFBEB),
+                      borderRadius: BorderRadius.circular(99),
+                      border: Border.all(color: const Color(0xFFFDE68A), width: 1.2),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(LucideIcons.clock, size: 14, color: Color(0xFFD97706)),
+                        const SizedBox(width: 4),
+                        Text(
+                          noButtonText,
+                          style: const TextStyle(
+                            color: Color(0xFFB45309),
+                            fontSize: 13.5,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
                       ],
                     ),
                   ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Bottom Hydration Reminder
-  Widget _buildHydrationReminderPill() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.95),
-        borderRadius: BorderRadius.circular(99),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text('🔔', style: TextStyle(fontSize: 16)),
-          const SizedBox(width: 8),
-          InkWell(
-            onTap: () => _speak('ජලය ප්‍රමාණවත් ලෙස පානය කිරීමට අමතක නොකරන්න.'),
-            child: const Row(
-              children: [
-                Text(
-                  'ජලය ප්‍රමාණවත් ලෙස පානය කිරීමට අමතක නොකරන්න. 💧',
-                  style: TextStyle(
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF1E293B),
-                  ),
-                ),
-                SizedBox(width: 8),
-                Icon(LucideIcons.volume2, size: 16, color: Color(0xFF7E22CE)),
               ],
             ),
           ),
-          const SizedBox(width: 12),
-          InkWell(
-            onTap: () => setState(() => _showHydrationReminder = false),
-            child: const Icon(LucideIcons.x, size: 16, color: Color(0xFF94A3B8)),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -1562,55 +1499,49 @@ class _ElderInteractiveHomePageState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        // Section Title Row (Exact match with reference mockup)
+        Row(
           children: [
-            Wrap(
-              crossAxisAlignment: WrapCrossAlignment.center,
-              spacing: 10,
-              runSpacing: 6,
-              children: [
-                const Text(
-                  'මෙම ක්‍රියාකාරකම් දෙක දිනකට 3 වතාවක් අනිවාර්යයෙන් කරන්න',
-                  style: TextStyle(
-                    fontSize: 21,
-                    fontWeight: FontWeight.w900,
-                    color: Color(0xFF1E1B4B),
-                    letterSpacing: 0.1,
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFEF3C7),
-                    borderRadius: BorderRadius.circular(99),
-                    border: Border.all(color: const Color(0xFFFDE68A)),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text('⏰', style: TextStyle(fontSize: 13)),
-                      SizedBox(width: 4),
-                      Text(
-                        'දිනකට 3 වරක්',
-                        style: TextStyle(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFFB45309),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+            Container(
+              padding: const EdgeInsets.all(7),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF3E8FF),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(LucideIcons.calendar, size: 20, color: Color(0xFF7C3AED)),
             ),
-            const SizedBox(height: 5),
+            const SizedBox(width: 10),
             const Text(
-              'ඔබගේ මානසික සුවතාවය සහ මතකය යහපත්ව තබා ගැනීමට උදෑසන, දහවල් හා රාත්‍රී සැසි අනිවාර්යයෙන් සම්පූර්ණ කරන්න.',
+              'අද දින සිදුකල යුතු ක්‍රියාකාරකම්',
               style: TextStyle(
-                fontSize: 13.5,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF64748B),
+                fontSize: 22,
+                fontWeight: FontWeight.w900,
+                color: Color(0xFF1E1B4B),
+                letterSpacing: 0.1,
+              ),
+            ),
+            const Spacer(),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF5F3FF),
+                borderRadius: BorderRadius.circular(99),
+                border: Border.all(color: const Color(0xFFDDD6FE), width: 1.2),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(LucideIcons.calendarDays, size: 15, color: Color(0xFF7C3AED)),
+                  SizedBox(width: 6),
+                  Text(
+                    'දිනකට 3 වතාවක්',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF6D28D9),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -1619,40 +1550,37 @@ class _ElderInteractiveHomePageState
 
         LayoutBuilder(
           builder: (context, constraints) {
+            final slotAction = _getSlotActionName(currentSlot);
+
             final assessmentCards = [
-              // Card 1: මානසික සුවතා කාලය (Unified Royal Purple Theme)
+              // Card 1: මානසික ක්‍රියාකාරකම් (Green Gradient Action Button as in Mockup)
               _wrapWithFloatingReminder(
                 isDone: emotionalDone,
                 child: _buildTopAssessmentCard(
                   backgroundColor: Colors.white,
-                  borderColor: emotionalDone ? const Color(0xFF86EFAC) : const Color(0xFFE9D5FF),
-                  iconBorderColor: const Color(0xFF8B5CF6),
-                  badgeIcon: '💓',
-                  title: 'මානසික සුවතා කාලය',
-                  description: 'ඔබගේ හැඟීම්, මානසික තත්වය සහ සෞඛ්‍ය සුවතාවය පිළිබඳ සරල ප්‍රශ්න කිහිපයකට පිළිතුරු දෙන්න.',
-                  statusBadgeWidget: _buildSlotStatusBadge(
-                    isCurrentDone: emotionalDone,
-                    currentSlotName: currentSlotName,
-                    activeColor: const Color(0xFF7E22CE),
-                    customNotDoneText: 'අද මානසික ඇගයීම සම්පූර්ණ කරන්න!',
-                  ),
+                  borderColor: emotionalDone ? const Color(0xFFC084FC) : const Color(0xFFE9D5FF),
+                  iconBorderColor: const Color(0xFFC084FC),
+                  badgeIcon: '🧠',
+                  title: 'මානසික ක්‍රියාකාරකම්',
+                  description: 'ඔබගේ මානසික සුවය වැඩි දියුණු කරයි.',
+                  statusBadgeWidget: const SizedBox.shrink(),
                   sessionTrackerWidget: _buildDailySessionTracker(
                     activity: 'emotional',
                     currentSlot: currentSlot,
                     activeThemeColor: const Color(0xFF7E22CE),
                   ),
                   topRightIllustration: _buildGrandmaIllustrationExact(),
-                  buttonText: emotionalDone ? 'සම්පූර්ණයි ($nextSlotTime ට) ⏰' : 'අදම සම්පූර්ණ කරන්න ➔',
-                  buttonGradient: emotionalDone
-                      ? const [Color(0xFF16A34A), Color(0xFF22C55E)]
-                      : const [Color(0xFF6B21A8), Color(0xFF7C3AED)],
+                  buttonText: emotionalDone
+                      ? 'සම්පූර්ණයි ($nextSlotTime ට) ⏰'
+                      : 'ඊලඟ ක්‍රියාකාරකම කරන්න',
+                  buttonGradient: const [Color(0xFF059669), Color(0xFF10B981)],
                   isEmotionalCard: true,
-                  bottomDecoration: _buildCard1HibiscusBlossomTrim(),
+                  bottomDecoration: null,
                   onTap: () {
                     if (emotionalDone) {
                       _showSessionAlreadyCompletedDialog(
                         context: context,
-                        activityTitle: 'මානසික සුවතා කාලය',
+                        activityTitle: 'මානසික ක්‍රියාකාරකම්',
                         activityKey: 'emotional',
                         slot: currentSlot,
                         onContinueAnyway: () {
@@ -1661,46 +1589,41 @@ class _ElderInteractiveHomePageState
                       );
                     } else {
                       _markSessionCompleted('emotional', currentSlot);
-                      _speak('මානසික සුවතා කාලය වෙත ඔබව සාදරයෙන් පිළිගන්නවා.');
+                      _speak('මානසික ක්‍රියාකාරකම් වෙත ඔබව සාදරයෙන් පිළිගන්නවා.');
                       context.go('/dashboard/emotional');
                     }
                   },
                 ),
               ),
 
-              // Card 2: මනස පරීක්ෂණ සහ විනෝද ක්‍රීඩා (Unified Royal Purple Theme)
+              // Card 2: මනස පරීක්ෂණ ක්‍රියාකාරකම් (Royal Purple Gradient Action Button as in Mockup)
               _wrapWithFloatingReminder(
                 isDone: memoryDone,
                 child: _buildTopAssessmentCard(
                   backgroundColor: Colors.white,
-                  borderColor: memoryDone ? const Color(0xFF86EFAC) : const Color(0xFFE9D5FF),
-                  iconBorderColor: const Color(0xFF8B5CF6),
+                  borderColor: memoryDone ? const Color(0xFFC084FC) : const Color(0xFFE9D5FF),
+                  iconBorderColor: const Color(0xFFC084FC),
                   badgeIcon: '🧩',
-                  title: 'මනස පරීක්ෂණ සහ විනෝද ක්‍රීඩා',
-                  description: 'ඔබගේ මතකය වර්ධනය කරගන්න සහ මනස සතුටු කරගන්න විනෝද ක්‍රීඩා කරන්න.',
-                  statusBadgeWidget: _buildSlotStatusBadge(
-                    isCurrentDone: memoryDone,
-                    currentSlotName: currentSlotName,
-                    activeColor: const Color(0xFFD97706),
-                    customNotDoneText: 'අද ක්‍රීඩා ක්‍රියාකාරකම් කරන්න!',
-                  ),
+                  title: 'මනස පරීක්ෂණ ක්‍රියාකාරකම්',
+                  description: 'මනස හා අවධානය වැඩි කර කරයි.',
+                  statusBadgeWidget: const SizedBox.shrink(),
                   sessionTrackerWidget: _buildDailySessionTracker(
                     activity: 'memory',
                     currentSlot: currentSlot,
-                    activeThemeColor: const Color(0xFFD97706),
+                    activeThemeColor: const Color(0xFF7E22CE),
                   ),
                   topRightIllustration: _buildCrosswordLightbulbIllustrationExact(),
-                  buttonText: memoryDone ? 'සම්පූර්ණයි ($nextSlotTime ට) ⏰' : 'ක්‍රීඩා කරන්න ➔',
-                  buttonGradient: memoryDone
-                      ? const [Color(0xFF16A34A), Color(0xFF22C55E)]
-                      : const [Color(0xFF6B21A8), Color(0xFF7C3AED)],
+                  buttonText: memoryDone
+                      ? 'සම්පූර්ණයි ($nextSlotTime ට) ⏰'
+                      : 'ඊලඟ ක්‍රීඩාව කරන්න',
+                  buttonGradient: const [Color(0xFF5B21B6), Color(0xFF7C3AED)],
                   isEmotionalCard: false,
-                  bottomDecoration: _buildCard1HibiscusBlossomTrim(),
+                  bottomDecoration: null,
                   onTap: () {
                     if (memoryDone) {
                       _showSessionAlreadyCompletedDialog(
                         context: context,
-                        activityTitle: 'මනස පරීක්ෂණ සහ විනෝද ක්‍රීඩා',
+                        activityTitle: 'මනස පරීක්ෂණ ක්‍රියාකාරකම්',
                         activityKey: 'memory',
                         slot: currentSlot,
                         onContinueAnyway: () {
@@ -1709,7 +1632,7 @@ class _ElderInteractiveHomePageState
                       );
                     } else {
                       _markSessionCompleted('memory', currentSlot);
-                      _speak('මනස පරීක්ෂණ සහ විනෝද ක්‍රීඩා පිටුවට යමු.');
+                      _speak('මනස පරීක්ෂණ ක්‍රියාකාරකම් පිටුවට යමු.');
                       context.go('/dashboard/memory-games');
                     }
                   },
@@ -1953,6 +1876,16 @@ class _ElderInteractiveHomePageState
   }
 
   // =========================================================================
+  // PURPLE BOTANICAL CORNER SPRIG (Matching Mockup)
+  // =========================================================================
+  Widget _buildPurpleCornerSprig({required bool isLeft}) {
+    return CustomPaint(
+      size: const Size(38, 38),
+      painter: _PurpleBotanicalCornerPainter(isLeft: isLeft),
+    );
+  }
+
+  // =========================================================================
   // TOP ROW ASSESSMENT CARD (EXACT MOCKUP DESIGN FOR CARDS 1 & 2)
   // =========================================================================
   Widget _buildTopAssessmentCard({
@@ -1961,7 +1894,7 @@ class _ElderInteractiveHomePageState
     required Color iconBorderColor,
     required String badgeIcon,
     required String title,
-    required String description,
+    String? description,
     required Widget statusBadgeWidget,
     required Widget sessionTrackerWidget,
     required Widget topRightIllustration,
@@ -1974,34 +1907,43 @@ class _ElderInteractiveHomePageState
     return Container(
       decoration: BoxDecoration(
         color: backgroundColor,
-        borderRadius: BorderRadius.circular(26),
-        border: Border.all(color: borderColor, width: 2.0),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: borderColor, width: 1.8),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 16,
-            offset: const Offset(0, 5),
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+        borderRadius: BorderRadius.circular(22),
+        child: Stack(
           children: [
+            // Bottom-Left Purple Botanical Corner Foliage
+            Positioned(
+              left: 4,
+              bottom: 4,
+              child: _buildPurpleCornerSprig(isLeft: true),
+            ),
+
+            // Bottom-Right Purple Botanical Corner Foliage
+            Positioned(
+              right: 4,
+              bottom: 4,
+              child: _buildPurpleCornerSprig(isLeft: false),
+            ),
+
+            // Main Content
             Padding(
-              padding: EdgeInsets.only(
-                left: 18,
-                right: 18,
-                top: 16,
-                bottom: bottomDecoration != null ? 6 : 20,
-              ),
+              padding: const EdgeInsets.fromLTRB(16, 13, 16, 13),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Upper Row: Left Column (Badge+Title, Status, Description) & Right Illustration
+                  // Upper Row: Left Column (Badge+Title & Status) & Right Illustration
                   Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       // Left Column
                       Expanded(
@@ -2012,124 +1954,119 @@ class _ElderInteractiveHomePageState
                             Row(
                               children: [
                                 Container(
-                                  width: 48,
-                                  height: 48,
+                                  width: 44,
+                                  height: 44,
                                   decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    shape: BoxShape.circle,
-                                    border: Border.all(color: iconBorderColor, width: 2.2),
+                                    color: isEmotionalCard
+                                        ? const Color(0xFF5B21B6) // Solid Royal Purple squircle
+                                        : Colors.white,
+                                    borderRadius: BorderRadius.circular(13),
+                                    border: isEmotionalCard
+                                        ? null
+                                        : Border.all(color: const Color(0xFF7C3AED), width: 1.8),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: iconBorderColor.withValues(alpha: 0.25),
-                                        blurRadius: 8,
+                                        color: const Color(0xFF6B21A8).withValues(alpha: 0.18),
+                                        blurRadius: 6,
                                         offset: const Offset(0, 2),
                                       ),
                                     ],
                                   ),
                                   alignment: Alignment.center,
                                   child: isEmotionalCard
-                                      ? Container(
-                                          width: 34,
-                                          height: 34,
-                                          decoration: const BoxDecoration(
-                                            color: Color(0xFFF43F5E),
-                                            shape: BoxShape.circle,
-                                          ),
-                                          alignment: Alignment.center,
-                                          child: const Icon(LucideIcons.activity, color: Colors.white, size: 19),
-                                        )
-                                      : Text(badgeIcon, style: const TextStyle(fontSize: 24)),
+                                      ? const Icon(LucideIcons.brain, color: Colors.white, size: 24)
+                                      : const Icon(LucideIcons.puzzle, color: Color(0xFF6B21A8), size: 22),
                                 ),
                                 const SizedBox(width: 10),
                                 Expanded(
-                                  child: Text(
-                                    title,
-                                    style: const TextStyle(
-                                      fontSize: 19.5,
-                                      fontWeight: FontWeight.w900,
-                                      color: Color(0xFF3B0764),
-                                      letterSpacing: 0.1,
-                                    ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        title,
+                                        style: const TextStyle(
+                                          fontSize: 17.5,
+                                          fontWeight: FontWeight.w900,
+                                          color: Color(0xFF1E1B4B),
+                                          letterSpacing: 0.1,
+                                        ),
+                                      ),
+                                      if (description != null && description.isNotEmpty) ...[
+                                        const SizedBox(height: 3),
+                                        Text(
+                                          description,
+                                          style: const TextStyle(
+                                            fontSize: 12.5,
+                                            fontWeight: FontWeight.w600,
+                                            color: Color(0xFF64748B),
+                                            height: 1.25,
+                                          ),
+                                        ),
+                                      ],
+                                    ],
                                   ),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 8),
-
-                            // Status Badge
-                            statusBadgeWidget,
-                            const SizedBox(height: 8),
-
-                            // Description
-                            Text(
-                              description,
-                              style: const TextStyle(
-                                fontSize: 13.5,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF334155),
-                                height: 1.35,
-                              ),
-                            ),
+                            if (statusBadgeWidget is! SizedBox) ...[
+                              const SizedBox(height: 6),
+                              statusBadgeWidget,
+                            ],
                           ],
                         ),
                       ),
 
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 6),
 
-                      // Right Illustration
+                      // Right Illustration (compact size)
                       topRightIllustration,
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 11),
 
-                  // Full-Width Daily Sessions Tracker Box
+                  // Direct 3-Slot Session Cards Row (Clean, Compact & Elder-Friendly)
                   sessionTrackerWidget,
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 11),
 
-                  // Full-Width Action Button
+                  // Action Pill Button (Wide, rounded 99 pill matching reference mockup)
                   InkWell(
                     onTap: onTap,
                     borderRadius: BorderRadius.circular(99),
                     child: Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 12.5),
+                      padding: const EdgeInsets.symmetric(vertical: 9.5),
                       decoration: BoxDecoration(
                         gradient: LinearGradient(colors: buttonGradient),
                         borderRadius: BorderRadius.circular(99),
                         boxShadow: [
                           BoxShadow(
-                            color: buttonGradient.first.withValues(alpha: 0.38),
-                            blurRadius: 10,
+                            color: buttonGradient.first.withValues(alpha: 0.35),
+                            blurRadius: 7,
                             offset: const Offset(0, 3),
                           ),
                         ],
                       ),
+                      alignment: Alignment.center,
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           if (isEmotionalCard)
-                            const Icon(LucideIcons.clipboardCheck, color: Colors.white, size: 20)
+                            const Icon(LucideIcons.brain, color: Colors.white, size: 18)
                           else
-                            Container(
-                              padding: const EdgeInsets.all(3),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.25),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(LucideIcons.gamepad2, color: Colors.white, size: 17),
-                            ),
+                            const Icon(LucideIcons.gamepad2, color: Colors.white, size: 18),
                           const SizedBox(width: 8),
                           Text(
                             buttonText,
                             style: const TextStyle(
                               color: Colors.white,
-                              fontSize: 16,
+                              fontSize: 14.5,
                               fontWeight: FontWeight.w800,
                               letterSpacing: 0.2,
                             ),
                           ),
                           const SizedBox(width: 6),
-                          const Icon(LucideIcons.arrowRight, color: Colors.white, size: 18),
+                          const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 16),
                         ],
                       ),
                     ),
@@ -2137,9 +2074,6 @@ class _ElderInteractiveHomePageState
                 ],
               ),
             ),
-
-            // Bottom Blossom Trim if provided
-            if (bottomDecoration != null) bottomDecoration,
           ],
         ),
       ),
@@ -2150,100 +2084,95 @@ class _ElderInteractiveHomePageState
   // ILLUSTRATIONS & DECORATIONS
   // =========================================================================
 
-  // Card 1: Smiling Grandmother with Glasses & Floating Hearts
+  // Card 1: Smiling Grandmother with Glasses & Floating Pink Hearts (Exact Mockup Match)
   Widget _buildGrandmaIllustrationExact() {
     return SizedBox(
-      width: 120,
-      height: 110,
+      width: 95,
+      height: 85,
       child: Stack(
         clipBehavior: Clip.none,
         alignment: Alignment.center,
         children: [
-          // Soft radial glow
+          // Soft radial purple glow
           Container(
-            width: 80,
-            height: 80,
+            width: 72,
+            height: 72,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: RadialGradient(
                 colors: [
-                  const Color(0xFFF472B6).withValues(alpha: 0.30),
-                  const Color(0xFFFBCFE8).withValues(alpha: 0.04),
+                  const Color(0xFFC084FC).withValues(alpha: 0.28),
+                  const Color(0xFFFAF5FF).withValues(alpha: 0.04),
                 ],
               ),
             ),
           ),
-          // Custom Vector Grandmother Avatar
+          // Custom Vector Grandmother Avatar (compact size)
           CustomPaint(
-            size: const Size(86, 95),
+            size: const Size(68, 76),
             painter: _GrandmaAvatarPainter(),
           ),
-          // Floating Hearts
+          // Floating Pink Hearts around Grandma (matching mockup)
           const Positioned(
-            top: 2,
-            right: 4,
-            child: Text('💕', style: TextStyle(fontSize: 18)),
-          ),
-          const Positioned(
-            top: 10,
-            left: 2,
-            child: Text('💖', style: TextStyle(fontSize: 15)),
-          ),
-          const Positioned(
-            bottom: 22,
-            left: 0,
-            child: Text('💕', style: TextStyle(fontSize: 16)),
-          ),
-          const Positioned(
-            bottom: 18,
-            right: 2,
+            top: 4,
+            left: -4,
             child: Text('💖', style: TextStyle(fontSize: 14)),
           ),
           const Positioned(
-            bottom: 2,
-            left: 4,
-            child: Text('🌿', style: TextStyle(fontSize: 18)),
+            top: 26,
+            left: -8,
+            child: Text('💕', style: TextStyle(fontSize: 12)),
+          ),
+          const Positioned(
+            top: 4,
+            right: -4,
+            child: Text('💖', style: TextStyle(fontSize: 14)),
+          ),
+          const Positioned(
+            top: 26,
+            right: -8,
+            child: Text('💕', style: TextStyle(fontSize: 12)),
           ),
         ],
       ),
     );
   }
 
-  // Card 2: 3D Crossword Puzzle Board with Glowing Lightbulb
+  // Card 2: 3D Crossword Puzzle Board with Glowing Lightbulb & Pencil (Compact)
   Widget _buildCrosswordLightbulbIllustrationExact() {
     return SizedBox(
-      width: 125,
-      height: 112,
+      width: 98,
+      height: 85,
       child: Stack(
         clipBehavior: Clip.none,
         children: [
           // Wooden Easel Crossword Board
           Positioned(
-            left: 18,
-            top: 14,
+            left: 12,
+            top: 10,
             child: Transform.rotate(
               angle: 0.05,
               child: Container(
-                width: 78,
-                height: 82,
-                padding: const EdgeInsets.all(5),
+                width: 62,
+                height: 66,
+                padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
                   color: const Color(0xFFFDE68A), // warm wood frame
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFFD97706), width: 1.5),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFFD97706), width: 1.2),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFFD97706).withValues(alpha: 0.22),
-                      blurRadius: 8,
-                      offset: const Offset(0, 3),
+                      color: const Color(0xFFD97706).withValues(alpha: 0.18),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
                     ),
                   ],
                 ),
                 child: Container(
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: const Color(0xFFCBD5E1), width: 1.0),
+                    borderRadius: BorderRadius.circular(5),
+                    border: Border.all(color: const Color(0xFFCBD5E1), width: 0.8),
                   ),
                   child: Column(
                     children: [
@@ -2260,27 +2189,26 @@ class _ElderInteractiveHomePageState
 
           // Glowing Lightbulb on top right of the board
           Positioned(
-            right: 12,
+            right: 8,
             top: -4,
             child: Stack(
               alignment: Alignment.center,
               children: [
-                // Radiant glow
                 Container(
-                  width: 36,
-                  height: 36,
+                  width: 26,
+                  height: 26,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
                         color: const Color(0xFFFBBF24).withValues(alpha: 0.65),
-                        blurRadius: 18,
-                        spreadRadius: 6,
+                        blurRadius: 12,
+                        spreadRadius: 3,
                       ),
                     ],
                   ),
                 ),
-                const Text('💡', style: TextStyle(fontSize: 28)),
+                const Text('💡', style: TextStyle(fontSize: 20)),
               ],
             ),
           ),
@@ -2288,17 +2216,27 @@ class _ElderInteractiveHomePageState
           // Green leaves sprouting on right
           const Positioned(
             right: 0,
-            bottom: 22,
-            child: Text('🌿', style: TextStyle(fontSize: 24)),
+            bottom: 14,
+            child: Text('🌿', style: TextStyle(fontSize: 18)),
+          ),
+
+          // Pencil leaning on the crossword board on bottom right (matching mockup)
+          Positioned(
+            right: 10,
+            bottom: 2,
+            child: Transform.rotate(
+              angle: 0.35,
+              child: const Text('✏️', style: TextStyle(fontSize: 22)),
+            ),
           ),
 
           // 3D Purple Puzzle Piece leaning on bottom left
           Positioned(
-            left: 4,
-            bottom: 4,
+            left: 0,
+            bottom: 2,
             child: Transform.rotate(
               angle: -0.15,
-              child: const Text('🧩', style: TextStyle(fontSize: 32)),
+              child: const Text('🧩', style: TextStyle(fontSize: 24)),
             ),
           ),
         ],
@@ -2909,41 +2847,43 @@ class _ElderInteractiveHomePageState
                   ),
                   const SizedBox(height: 10),
 
-                  // Action Pill Button
-                  InkWell(
-                    onTap: onTap,
-                    borderRadius: BorderRadius.circular(99),
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(colors: buttonGradient),
-                        borderRadius: BorderRadius.circular(99),
-                        boxShadow: [
-                          BoxShadow(
-                            color: buttonGradient.first.withValues(alpha: 0.35),
-                            blurRadius: 8,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          buttonIcon,
-                          const SizedBox(width: 6),
-                          Text(
-                            buttonText,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 0.2,
+                  // Action Pill Button (centered with reduced length)
+                  Center(
+                    child: InkWell(
+                      onTap: onTap,
+                      borderRadius: BorderRadius.circular(99),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 9.5),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(colors: buttonGradient),
+                          borderRadius: BorderRadius.circular(99),
+                          boxShadow: [
+                            BoxShadow(
+                              color: buttonGradient.first.withValues(alpha: 0.35),
+                              blurRadius: 7,
+                              offset: const Offset(0, 3),
                             ),
-                          ),
-                          const SizedBox(width: 4),
-                          const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 15),
-                        ],
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            buttonIcon,
+                            const SizedBox(width: 6),
+                            Text(
+                              buttonText,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.2,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 15),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -3573,32 +3513,41 @@ class _ElderInteractiveHomePageState
                     ),
                   ),
                   const SizedBox(height: 14),
-                  InkWell(
-                    onTap: onTap,
-                    borderRadius: BorderRadius.circular(99),
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 13),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(colors: buttonGradient),
-                        borderRadius: BorderRadius.circular(99),
-                        boxShadow: [
-                          BoxShadow(
-                            color: buttonGradient.first.withValues(alpha: 0.40),
-                            blurRadius: 10,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        buttonText,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 15.5,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.2,
+                  // Compact centered Action Button
+                  Center(
+                    child: InkWell(
+                      onTap: onTap,
+                      borderRadius: BorderRadius.circular(99),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 10.5),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(colors: buttonGradient),
+                          borderRadius: BorderRadius.circular(99),
+                          boxShadow: [
+                            BoxShadow(
+                              color: buttonGradient.first.withValues(alpha: 0.40),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              buttonText,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 14.5,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.2,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 16),
+                          ],
                         ),
                       ),
                     ),
@@ -5065,6 +5014,84 @@ class _ElderListeningMusicPainter extends CustomPainter {
     final earCushion = Paint()..color = const Color(0xFF0F172A);
     canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(cx - 24, cy - 13, 7, 16), const Radius.circular(3)), earCushion);
     canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(cx + 17, cy - 13, 7, 16), const Radius.circular(3)), earCushion);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+// =========================================================================
+// PURPLE BOTANICAL CORNER PAINTER (Matching Mockup)
+// =========================================================================
+class _PurpleBotanicalCornerPainter extends CustomPainter {
+  final bool isLeft;
+  const _PurpleBotanicalCornerPainter({required this.isLeft});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.save();
+    if (!isLeft) {
+      canvas.translate(size.width, 0);
+      canvas.scale(-1, 1);
+    }
+
+    final stemPaint = Paint()
+      ..color = const Color(0xFF8B5CF6).withValues(alpha: 0.60)
+      ..strokeWidth = 2.0
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    final leafPaint1 = Paint()
+      ..color = const Color(0xFFC084FC).withValues(alpha: 0.70)
+      ..style = PaintingStyle.fill;
+
+    final leafPaint2 = Paint()
+      ..color = const Color(0xFF7C3AED).withValues(alpha: 0.65)
+      ..style = PaintingStyle.fill;
+
+    final leafPaint3 = Paint()
+      ..color = const Color(0xFFA855F7).withValues(alpha: 0.75)
+      ..style = PaintingStyle.fill;
+
+    final leafPaint4 = Paint()
+      ..color = const Color(0xFFDDD6FE).withValues(alpha: 0.80)
+      ..style = PaintingStyle.fill;
+
+    // Curved stem from corner
+    final path = Path()
+      ..moveTo(2, size.height - 2)
+      ..quadraticBezierTo(size.width * 0.42, size.height * 0.55, size.width * 0.88, 4);
+    canvas.drawPath(path, stemPaint);
+
+    // Leaf 1 (lower left)
+    canvas.save();
+    canvas.translate(size.width * 0.32, size.height * 0.68);
+    canvas.rotate(-0.65);
+    canvas.drawOval(Rect.fromCenter(center: Offset.zero, width: 14, height: 7), leafPaint1);
+    canvas.restore();
+
+    // Leaf 2 (middle upward)
+    canvas.save();
+    canvas.translate(size.width * 0.58, size.height * 0.44);
+    canvas.rotate(0.50);
+    canvas.drawOval(Rect.fromCenter(center: Offset.zero, width: 15, height: 7.5), leafPaint2);
+    canvas.restore();
+
+    // Leaf 3 (tip)
+    canvas.save();
+    canvas.translate(size.width * 0.88, 4);
+    canvas.rotate(0.20);
+    canvas.drawOval(Rect.fromCenter(center: Offset.zero, width: 16, height: 8), leafPaint3);
+    canvas.restore();
+
+    // Leaf 4 (small soft accent)
+    canvas.save();
+    canvas.translate(size.width * 0.48, size.height * 0.60);
+    canvas.rotate(-0.25);
+    canvas.drawOval(Rect.fromCenter(center: Offset.zero, width: 10, height: 5), leafPaint4);
+    canvas.restore();
+
+    canvas.restore();
   }
 
   @override
