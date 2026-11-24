@@ -1554,16 +1554,60 @@ class _ElderInteractiveHomePageState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'ඉක්මන් සේවාවන් (Quick Access)',
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.w900,
-            color: Color(0xFF0F172A),
-            letterSpacing: 0.1,
-          ),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 10,
+              runSpacing: 6,
+              children: [
+                const Text(
+                  'මෙම ක්‍රියාකාරකම් දෙක දිනකට 3 වතාවක් අනිවාර්යයෙන් කරන්න',
+                  style: TextStyle(
+                    fontSize: 21,
+                    fontWeight: FontWeight.w900,
+                    color: Color(0xFF1E1B4B),
+                    letterSpacing: 0.1,
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFEF3C7),
+                    borderRadius: BorderRadius.circular(99),
+                    border: Border.all(color: const Color(0xFFFDE68A)),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('⏰', style: TextStyle(fontSize: 13)),
+                      SizedBox(width: 4),
+                      Text(
+                        'දිනකට 3 වරක්',
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFFB45309),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 5),
+            const Text(
+              'ඔබගේ මානසික සුවතාවය සහ මතකය යහපත්ව තබා ගැනීමට උදෑසන, දහවල් හා රාත්‍රී සැසි අනිවාර්යයෙන් සම්පූර්ණ කරන්න.',
+              style: TextStyle(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF64748B),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 16),
 
         LayoutBuilder(
           builder: (context, constraints) {
