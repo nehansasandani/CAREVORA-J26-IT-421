@@ -690,8 +690,8 @@ class _ElderInteractiveHomePageState
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('✅', style: TextStyle(fontSize: 14)),
-            const SizedBox(width: 6),
+            const Text('✅', style: TextStyle(fontSize: 20)),
+            const SizedBox(width: 8),
             Text(
               '$currentSlotName සැසිය සම්පූර්ණයි',
               style: const TextStyle(
@@ -722,11 +722,11 @@ class _ElderInteractiveHomePageState
                 return Transform.rotate(
                   angle: angle,
                   alignment: Alignment.topCenter,
-                  child: const Text('🔔', style: TextStyle(fontSize: 19)),
+                  child: const Text('🔔', style: TextStyle(fontSize: 25)),
                 );
               },
             ),
-            const SizedBox(width: 7),
+            const SizedBox(width: 8),
             Text(
               'අද $currentSlotName සැසිය තවම කර නැත!',
               style: const TextStyle(
