@@ -1164,23 +1164,81 @@ class _ElderInteractiveHomePageState
   Widget _buildBannerWellnessCard() {
     if (!_showHydrationReminder) {
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        constraints: const BoxConstraints(maxWidth: 380),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.20),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
+          color: Colors.white.withValues(alpha: 0.94),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.white, width: 1.5),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.12),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
         ),
-        child: const Row(
+        child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('🌸', style: TextStyle(fontSize: 20)),
-            SizedBox(width: 8),
-            Text(
-              'අද දිනය සතුටින් හා සුවබරව ගත කරන්න! 💕',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 13.5,
-                fontWeight: FontWeight.w700,
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: const Color(0xFFFDF2F8),
+                shape: BoxShape.circle,
+                border: Border.all(color: const Color(0xFFF472B6), width: 1.2),
+              ),
+              alignment: Alignment.center,
+              child: const Text('🌸', style: TextStyle(fontSize: 20)),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          'අද දවසත් සතුටින් ගත කරමු! 💕',
+                          style: TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF1E293B),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      InkWell(
+                        onTap: () => _speak('අද දවසත් සතුටින් හා සුවබරව ගත කරන්න! ඔබගේ සුවතාවය අපගේ එකම ප්‍රාර්ථනාවයි.'),
+                        borderRadius: BorderRadius.circular(99),
+                        child: Container(
+                          padding: const EdgeInsets.all(3.5),
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFF3E8FF),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(LucideIcons.volume2, size: 14, color: Color(0xFF7E22CE)),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  const Text(
+                    'ඔබගේ සුවතාවය හා සතුට අපගේ එකම බලාපොරොත්තුවයි 🌸',
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF64748B),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ),
             ),
           ],
@@ -1375,6 +1433,7 @@ class _ElderInteractiveHomePageState
       speakText: card1Speak,
       isYes: _routine1AnsweredYes,
       isNo: _routine1AnsweredNo,
+      isAmberTheme: true,
       onYes: () {
         setState(() {
           _routine1AnsweredYes = true;
@@ -1398,6 +1457,7 @@ class _ElderInteractiveHomePageState
       speakText: card2Speak,
       isYes: _routine2AnsweredYes,
       isNo: _routine2AnsweredNo,
+      isAmberTheme: false,
       onYes: () {
         setState(() {
           _routine2AnsweredYes = true;
@@ -1445,9 +1505,89 @@ class _ElderInteractiveHomePageState
     required String speakText,
     required bool isYes,
     required bool isNo,
+    required bool isAmberTheme,
     required VoidCallback onYes,
     required VoidCallback onNo,
   }) {
+    // Status Chip (reflecting warm amber / lavender colors from the page)
+    Widget statusChip;
+    if (isYes) {
+      statusChip = Container(
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 2.5),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFAF5FF),
+          borderRadius: BorderRadius.circular(99),
+          border: Border.all(color: const Color(0xFFC084FC), width: 1.1),
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('✨', style: TextStyle(fontSize: 11)),
+            SizedBox(width: 3),
+            Text(
+              'ලබාගත්තා',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF6D28D9),
+              ),
+            ),
+          ],
+        ),
+      );
+    } else if (isNo) {
+      statusChip = Container(
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 2.5),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFFBEB),
+          borderRadius: BorderRadius.circular(99),
+          border: Border.all(color: const Color(0xFFFDE68A), width: 1.1),
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('⏳', style: TextStyle(fontSize: 11)),
+            SizedBox(width: 3),
+            Text(
+              'පසුව ගන්නම්',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF92400E),
+              ),
+            ),
+          ],
+        ),
+      );
+    } else {
+      statusChip = Container(
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 2.5),
+        decoration: BoxDecoration(
+          color: isAmberTheme ? const Color(0xFFFEF3C7) : const Color(0xFFFAF5FF),
+          borderRadius: BorderRadius.circular(99),
+          border: Border.all(
+            color: isAmberTheme ? const Color(0xFFFDE68A) : const Color(0xFFDDD6FE),
+            width: 1.1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(isAmberTheme ? '🔔' : '🛋️', style: const TextStyle(fontSize: 11)),
+            const SizedBox(width: 3),
+            Text(
+              isAmberTheme ? 'දෛනික විමසීම' : 'සුවතා විමසීම',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: isAmberTheme ? const Color(0xFF92400E) : const Color(0xFF6D28D9),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -1455,7 +1595,7 @@ class _ElderInteractiveHomePageState
         border: Border.all(
           color: isYes
               ? const Color(0xFFC084FC)
-              : (isNo ? const Color(0xFFFECACA) : const Color(0xFFE9D5FF)),
+              : (isNo ? const Color(0xFFFCD34D) : const Color(0xFFE9D5FF)),
           width: 1.8,
         ),
         boxShadow: [
@@ -1492,52 +1632,63 @@ class _ElderInteractiveHomePageState
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      // Squircle Badge
+                      // Squircle Badge with rich colors matching the page
                       Container(
-                        width: 48,
-                        height: 48,
+                        width: 50,
+                        height: 50,
                         decoration: BoxDecoration(
-                          color: isYes ? const Color(0xFFF3E8FF) : const Color(0xFFFAF5FF),
-                          borderRadius: BorderRadius.circular(14),
+                          color: isAmberTheme
+                              ? (isYes ? const Color(0xFFFEF3C7) : const Color(0xFFFFFBEB))
+                              : (isYes ? const Color(0xFFF3E8FF) : const Color(0xFFFAF5FF)),
+                          borderRadius: BorderRadius.circular(15),
                           border: Border.all(
-                            color: isYes ? const Color(0xFFC084FC) : const Color(0xFFD8B4FE),
-                            width: 1.5,
+                            color: isAmberTheme
+                                ? (isYes ? const Color(0xFFF59E0B) : const Color(0xFFFCD34D))
+                                : (isYes ? const Color(0xFF9333EA) : const Color(0xFFC084FC)),
+                            width: 1.6,
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF7E22CE).withValues(alpha: isYes ? 0.20 : 0.12),
-                              blurRadius: 6,
+                              color: (isAmberTheme ? const Color(0xFFF59E0B) : const Color(0xFF7E22CE))
+                                  .withValues(alpha: isYes ? 0.24 : 0.15),
+                              blurRadius: 7,
                               offset: const Offset(0, 2),
                             ),
                           ],
                         ),
                         alignment: Alignment.center,
-                        child: Text(icon, style: const TextStyle(fontSize: 24)),
+                        child: Text(icon, style: const TextStyle(fontSize: 25)),
                       ),
                       const SizedBox(width: 12),
 
-                      // Title & Caring Subtitle
+                      // Title & Caring Subtitle with Status Chip
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(
-                              title,
-                              style: const TextStyle(
-                                fontSize: 16.5,
-                                fontWeight: FontWeight.w900,
-                                color: Color(0xFF1E1B4B),
-                                letterSpacing: 0.1,
-                              ),
+                            Row(
+                              children: [
+                                Text(
+                                  title,
+                                  style: const TextStyle(
+                                    fontSize: 16.5,
+                                    fontWeight: FontWeight.w900,
+                                    color: Color(0xFF1E1B4B),
+                                    letterSpacing: 0.1,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                statusChip,
+                              ],
                             ),
-                            const SizedBox(height: 2),
+                            const SizedBox(height: 3),
                             Text(
                               subtitle,
                               style: const TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
-                                color: Color(0xFF6B7280),
+                                color: Color(0xFF64748B),
                               ),
                             ),
                           ],
@@ -1612,7 +1763,7 @@ class _ElderInteractiveHomePageState
                       ),
                       const SizedBox(width: 12),
 
-                      // Not Yet Button
+                      // Not Yet Button (Warm Amber / Soft Lavender, no harsh red!)
                       Expanded(
                         child: InkWell(
                           onTap: onNo,
@@ -1620,10 +1771,10 @@ class _ElderInteractiveHomePageState
                           child: Container(
                             height: 42,
                             decoration: BoxDecoration(
-                              color: isNo ? const Color(0xFFFEF2F2) : const Color(0xFFFAF5FF),
+                              color: isNo ? const Color(0xFFFFFBEB) : const Color(0xFFFAF5FF),
                               borderRadius: BorderRadius.circular(99),
                               border: Border.all(
-                                color: isNo ? const Color(0xFFEF4444) : const Color(0xFFD8B4FE),
+                                color: isNo ? const Color(0xFFFCD34D) : const Color(0xFFD8B4FE),
                                 width: isNo ? 1.6 : 1.3,
                               ),
                               boxShadow: [
@@ -1641,13 +1792,13 @@ class _ElderInteractiveHomePageState
                                 Icon(
                                   LucideIcons.clock,
                                   size: 15,
-                                  color: isNo ? const Color(0xFFEF4444) : const Color(0xFF7C3AED),
+                                  color: isNo ? const Color(0xFFD97706) : const Color(0xFF7C3AED),
                                 ),
                                 const SizedBox(width: 6),
                                 Text(
-                                  'තවම නැහැ',
+                                  isNo ? 'පසුව ගන්නම්' : 'තවම නැහැ',
                                   style: TextStyle(
-                                    color: isNo ? const Color(0xFFEF4444) : const Color(0xFF581C87),
+                                    color: isNo ? const Color(0xFFB45309) : const Color(0xFF581C87),
                                     fontSize: 14,
                                     fontWeight: FontWeight.w700,
                                   ),
