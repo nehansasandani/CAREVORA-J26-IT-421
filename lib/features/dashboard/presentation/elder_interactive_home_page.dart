@@ -1129,14 +1129,7 @@ class _ElderInteractiveHomePageState
                               flex: 11,
                               child: _buildBannerLeftGreeting(greetingTitle, greetingSubtitle, avatarUrl),
                             ),
-                            const SizedBox(width: 14),
-
-                            // Center: Mascot & Speech Bubble
-                            Expanded(
-                              flex: 7,
-                              child: _buildBannerCenterMascot(mascotBubble, mascotSpeech),
-                            ),
-                            const SizedBox(width: 14),
+                            const SizedBox(width: 20),
 
                             // Right: Routine Cards
                             Expanded(
@@ -1160,12 +1153,6 @@ class _ElderInteractiveHomePageState
                         return Column(
                           children: [
                             _buildBannerLeftGreeting(greetingTitle, greetingSubtitle, avatarUrl),
-                            const SizedBox(height: 14),
-                            Row(
-                              children: [
-                                Expanded(child: _buildBannerCenterMascot(mascotBubble, mascotSpeech)),
-                              ],
-                            ),
                             const SizedBox(height: 14),
                             _buildBannerRightRoutineCards(
                               card1Icon: card1Icon,
