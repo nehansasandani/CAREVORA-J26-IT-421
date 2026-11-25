@@ -654,10 +654,10 @@ class _ElderInteractiveHomePageState
       children: [
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 6),
           decoration: BoxDecoration(
             color: bg,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(18),
             border: Border.all(color: borderColor, width: borderWidth),
             boxShadow: shadows,
           ),
@@ -666,25 +666,25 @@ class _ElderInteractiveHomePageState
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               iconWidget,
-              const SizedBox(height: 3),
+              const SizedBox(height: 5),
               Text(
                 label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize: 14.5,
+                  fontSize: 15,
                   fontWeight: FontWeight.w900,
                   color: titleColor,
                   letterSpacing: 0.1,
                 ),
               ),
-              const SizedBox(height: 1),
+              const SizedBox(height: 2),
               Text(
                 timeRange,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize: 11,
+                  fontSize: 11.5,
                   fontWeight: FontWeight.w700,
                   color: timeColor,
                 ),
@@ -2088,13 +2088,13 @@ class _ElderInteractiveHomePageState
               ),
             ),
 
-            // Main Content
+            // Main Content (Squarish, balanced & elder-friendly proportions)
             Padding(
-              padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+              padding: const EdgeInsets.fromLTRB(22, 20, 22, 20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Upper Row: Left Column (Badge+Title & Status) & Right Illustration
+                  // Upper Row: Left Column (Badge + Title & Description) & Right Framed Illustration
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
@@ -2107,8 +2107,8 @@ class _ElderInteractiveHomePageState
                             Row(
                               children: [
                                 Container(
-                                  width: 46,
-                                  height: 46,
+                                  width: 48,
+                                  height: 48,
                                   decoration: BoxDecoration(
                                     gradient: LinearGradient(
                                       begin: Alignment.topLeft,
@@ -2117,11 +2117,11 @@ class _ElderInteractiveHomePageState
                                           ? const [Color(0xFF8B5CF6), Color(0xFF6D28D9)]
                                           : const [Color(0xFFA855F7), Color(0xFF7C3AED)],
                                     ),
-                                    borderRadius: BorderRadius.circular(14),
+                                    borderRadius: BorderRadius.circular(15),
                                     boxShadow: [
                                       BoxShadow(
                                         color: const Color(0xFF7C3AED).withValues(alpha: 0.30),
-                                        blurRadius: 8,
+                                        blurRadius: 10,
                                         offset: const Offset(0, 3),
                                       ),
                                     ],
@@ -2130,10 +2130,10 @@ class _ElderInteractiveHomePageState
                                   child: Icon(
                                     isEmotionalCard ? LucideIcons.brain : LucideIcons.puzzle,
                                     color: Colors.white,
-                                    size: 23,
+                                    size: 24,
                                   ),
                                 ),
-                                const SizedBox(width: 12),
+                                const SizedBox(width: 14),
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -2142,10 +2142,10 @@ class _ElderInteractiveHomePageState
                                       Text(
                                         title,
                                         style: const TextStyle(
-                                          fontSize: 18,
+                                          fontSize: 19,
                                           fontWeight: FontWeight.w900,
                                           color: Color(0xFF1E1B4B),
-                                          letterSpacing: 0.1,
+                                          letterSpacing: -0.1,
                                         ),
                                       ),
                                       if (description != null && description.isNotEmpty) ...[
@@ -2153,10 +2153,10 @@ class _ElderInteractiveHomePageState
                                         Text(
                                           description,
                                           style: const TextStyle(
-                                            fontSize: 12.5,
+                                            fontSize: 13,
                                             fontWeight: FontWeight.w600,
                                             color: Color(0xFF64748B),
-                                            height: 1.25,
+                                            height: 1.3,
                                           ),
                                         ),
                                       ],
@@ -2173,25 +2173,54 @@ class _ElderInteractiveHomePageState
                         ),
                       ),
 
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 12),
 
-                      // Right Illustration (compact size)
-                      topRightIllustration,
+                      // Right Illustration inside an artistic softly-tinted frame
+                      Container(
+                        width: 86,
+                        height: 82,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: isEmotionalCard
+                                ? const [Color(0xFFFAF5FF), Color(0xFFF3E8FF)]
+                                : const [Color(0xFFF0FDF4), Color(0xFFDCFCE7)],
+                          ),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: isEmotionalCard
+                                ? const Color(0xFFDDD6FE)
+                                : const Color(0xFFBBF7D0),
+                            width: 1.4,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: (isEmotionalCard ? const Color(0xFF7C3AED) : const Color(0xFF10B981))
+                                  .withValues(alpha: 0.08),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        alignment: Alignment.center,
+                        child: topRightIllustration,
+                      ),
                     ],
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 18),
 
-                  // Direct 3-Slot Session Cards Row (Clean, Compact & Elder-Friendly)
+                  // Direct 3-Slot Session Cards Row (Squarish, spacious & elder-friendly)
                   sessionTrackerWidget,
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 18),
 
-                  // Action Pill Button (Wide, rounded 99 pill matching reference mockup)
+                  // Action Pill Button (Tall, rounded 99 pill matching reference mockup)
                   InkWell(
                     onTap: onTap,
                     borderRadius: BorderRadius.circular(99),
                     child: Container(
                       width: double.infinity,
-                      height: 48,
+                      height: 52,
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: buttonGradient,
@@ -2202,7 +2231,7 @@ class _ElderInteractiveHomePageState
                         boxShadow: [
                           BoxShadow(
                             color: buttonGradient.first.withValues(alpha: 0.35),
-                            blurRadius: 10,
+                            blurRadius: 12,
                             offset: const Offset(0, 4),
                           ),
                         ],
@@ -2214,20 +2243,20 @@ class _ElderInteractiveHomePageState
                           Icon(
                             isEmotionalCard ? LucideIcons.brain : LucideIcons.gamepad2,
                             color: Colors.white,
-                            size: 19,
+                            size: 20,
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 9),
                           Text(
                             buttonText,
                             style: const TextStyle(
-                              fontSize: 15,
+                              fontSize: 15.5,
                               fontWeight: FontWeight.w900,
                               color: Colors.white,
                               letterSpacing: 0.2,
                             ),
                           ),
-                          const SizedBox(width: 6),
-                          const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 18),
+                          const SizedBox(width: 7),
+                          const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 19),
                         ],
                       ),
                     ),
