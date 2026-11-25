@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'core/router/app_router.dart';
 import 'core/services/app_settings_controller.dart';
 import 'core/theme/app_theme.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  // Pre-link LucideIcons at stack depth ~1 so Flutter Web DDC never hits
+  // StackOverflowError lazily linking it deep inside a widget mount tree.
+  LucideIcons.home;
   runApp(const ProviderScope(child: CarevoraApp()));
 }
 

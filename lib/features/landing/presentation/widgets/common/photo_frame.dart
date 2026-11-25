@@ -76,7 +76,7 @@ class PhotoFrame extends StatelessWidget {
             ),
           ),
         ),
-        if (overlayWidget != null) overlayWidget!,
+        ?overlayWidget,
       ],
     );
   }
