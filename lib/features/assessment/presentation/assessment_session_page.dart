@@ -148,6 +148,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
   // Hybrid Sinhala typing state (Singlish auto-convert + virtual keyboard)
   bool? _sinhalaSinglishAuto;
   bool? _showSinhalaKeyboard;
+  Offset? _floatingKbOffset;
 
   bool get _isSinglishAutoEnabled => _sinhalaSinglishAuto ?? true;
   bool get _isSinhalaKeyboardOpen => _showSinhalaKeyboard ?? false;
@@ -616,7 +617,11 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
     _persistResponses(forSinhala: true);
   }
 
-  Widget _buildSinhalaTypingControls(int qId) {
+  Widget _buildSinhalaTypingControls(
+    int qId, {
+    String? promptText,
+    bool useFloatingDock = false,
+  }) {
     final preview = _isSinglishAutoEnabled
         ? SinhalaTypingHelper.previewActiveWord(_responseController.text)
         : null;
@@ -684,37 +689,53 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
               ),
             ),
 
-            // On-Screen Sinhala Virtual Keyboard Toggle
+            // On-Screen Sinhala Floating Virtual Keyboard Toggle
             Material(
               color: Colors.transparent,
               child: InkWell(
-                onTap: () => setState(
-                  () => _showSinhalaKeyboard = !_isSinhalaKeyboardOpen,
-                ),
+                onTap: () {
+                  setState(() {
+                    final next = !_isSinhalaKeyboardOpen;
+                    _showSinhalaKeyboard = next;
+                    if (next) _floatingKbOffset = Offset.zero;
+                  });
+                },
                 borderRadius: BorderRadius.circular(14),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 11,
-                    vertical: 6,
+                    horizontal: 12,
+                    vertical: 6.5,
                   ),
                   decoration: BoxDecoration(
-                    color: _isSinhalaKeyboardOpen
-                        ? const Color(0xFF6C3FC5)
-                        : Colors.white,
+                    gradient: _isSinhalaKeyboardOpen
+                        ? const LinearGradient(
+                            colors: [Color(0xFF6C3FC5), Color(0xFFEC4899)],
+                          )
+                        : null,
+                    color: _isSinhalaKeyboardOpen ? null : Colors.white,
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
                       color: _isSinhalaKeyboardOpen
-                          ? const Color(0xFF6C3FC5)
+                          ? const Color(0xFF7C3AED)
                           : const Color(0xFFD8B4FE),
-                      width: 1.2,
+                      width: 1.3,
                     ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF6C3FC5).withValues(
+                          alpha: _isSinhalaKeyboardOpen ? 0.24 : 0.08,
+                        ),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
                         LucideIcons.keyboard,
-                        size: 14,
+                        size: 14.5,
                         color: _isSinhalaKeyboardOpen
                             ? Colors.white
                             : const Color(0xFF6C3FC5),
@@ -725,8 +746,8 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                             ? 'යතුරුපුවරුව වසන්න'
                             : 'සිංහල යතුරුපුවරුව',
                         style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w800,
                           color: _isSinhalaKeyboardOpen
                               ? Colors.white
                               : const Color(0xFF5B21B6),
@@ -788,20 +809,306 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
           ],
         ),
 
-        // Collapsible Elder-Friendly On-Screen Sinhala Keyboard
-        AnimatedSize(
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOutCubic,
-          child: _isSinhalaKeyboardOpen
-              ? SinhalaVirtualKeyboard(
-                  controller: _responseController,
-                  onTextChanged: (val) =>
-                      _handleResponseTextChanged(qId, val, true),
-                  onClose: () => setState(() => _showSinhalaKeyboard = false),
-                )
-              : const SizedBox.shrink(),
-        ),
+        // Inline collapsible keyboard only when NOT using the Elder floating dock
+        if (!useFloatingDock)
+          AnimatedSize(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
+            child: _isSinhalaKeyboardOpen
+                ? SinhalaVirtualKeyboard(
+                    controller: _responseController,
+                    onTextChanged: (val) =>
+                        _handleResponseTextChanged(qId, val, true),
+                    onClose: () =>
+                        setState(() => _showSinhalaKeyboard = false),
+                  )
+                : const SizedBox.shrink(),
+          ),
       ],
+    );
+  }
+
+  /// Compact, freely draggable Ocean-Teal Floating Sinhala Keyboard Dock for Elders.
+  /// Uses real Positioned(left, top) coordinates (NOT Transform.translate) so every
+  /// key, drag handle, and close button stays 100% hit-testable anywhere on screen.
+  Widget _buildFloatingElderSinhalaKeyboard(int qId) {
+    return Positioned.fill(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final areaW = constraints.maxWidth;
+          final areaH = constraints.maxHeight;
+          final kbW = math.min(536.0, math.max(300.0, areaW - 24.0));
+          const double estKbH = 268.0;
+
+          final baseLeft = ((areaW - kbW) / 2).clamp(10.0, areaW);
+          final baseTop = (areaH - estKbH - 14.0).clamp(10.0, areaH);
+
+          final minDx = 10.0 - baseLeft;
+          final maxDx = math.max(minDx, (areaW - kbW - 10.0) - baseLeft);
+          final minDy = 10.0 - baseTop;
+          final maxDy = math.max(minDy, (areaH - estKbH - 10.0) - baseTop);
+
+          final rawOffset = _floatingKbOffset ?? Offset.zero;
+          final clampedDx = rawOffset.dx.clamp(minDx, maxDx);
+          final clampedDy = rawOffset.dy.clamp(minDy, maxDy);
+          final actualLeft = baseLeft + clampedDx;
+          final actualTop = baseTop + clampedDy;
+          final hasMoved = (clampedDx * clampedDx + clampedDy * clampedDy) > 36;
+
+          return Stack(
+            children: [
+              Positioned(
+                left: actualLeft,
+                top: actualTop,
+                width: kbW,
+                child: Material(
+                  color: Colors.transparent,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [
+                          Color(0xF8F0FDFA), // Cool ice-mint top
+                          Color(0xF8ECFEFF), // Soft aqua middle
+                          Color(0xF8E0F2FE), // Sky mist bottom
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(22),
+                      border: Border.all(
+                        color: const Color(0xFF14B8A6),
+                        width: 2.0,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF0F766E).withValues(alpha: 0.24),
+                          blurRadius: 28,
+                          offset: const Offset(0, 12),
+                        ),
+                        BoxShadow(
+                          color: const Color(0xFF0284C7).withValues(alpha: 0.12),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Rich Deep Teal -> Ocean Blue Draggable Handle Bar
+                          MouseRegion(
+                            cursor: SystemMouseCursors.grab,
+                            child: GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onPanUpdate: (details) {
+                                setState(() {
+                                  final cur = _floatingKbOffset ?? Offset.zero;
+                                  _floatingKbOffset = Offset(
+                                    (cur.dx + details.delta.dx).clamp(minDx, maxDx),
+                                    (cur.dy + details.delta.dy).clamp(minDy, maxDy),
+                                  );
+                                });
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.fromLTRB(12, 8, 10, 8),
+                                decoration: const BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      Color(0xFF0F766E),
+                                      Color(0xFF0D9488),
+                                      Color(0xFF0284C7),
+                                    ],
+                                    begin: Alignment.centerLeft,
+                                    end: Alignment.centerRight,
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    // Drag grip indicator
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 7,
+                                        vertical: 3.5,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withValues(alpha: 0.18),
+                                        borderRadius: BorderRadius.circular(9),
+                                        border: Border.all(
+                                          color: Colors.white.withValues(alpha: 0.32),
+                                        ),
+                                      ),
+                                      child: const Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            Icons.open_with_rounded,
+                                            size: 13.5,
+                                            color: Colors.white,
+                                          ),
+                                          SizedBox(width: 4),
+                                          Text(
+                                            'ඇදගෙන යන්න',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w800,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+
+                                    // Live compact answer preview pill
+                                    Expanded(
+                                      child: ValueListenableBuilder<TextEditingValue>(
+                                        valueListenable: _responseController,
+                                        builder: (context, value, _) {
+                                          final text = value.text.trim();
+                                          return Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 10,
+                                              vertical: 4.5,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white.withValues(alpha: 0.94),
+                                              borderRadius: BorderRadius.circular(10),
+                                            ),
+                                            child: Text(
+                                              text.isNotEmpty
+                                                  ? text
+                                                  : 'සිංහල යතුරුපුවරුව...',
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                fontSize: 13.5,
+                                                fontWeight: FontWeight.w800,
+                                                color: text.isNotEmpty
+                                                    ? const Color(0xFF0F172A)
+                                                    : const Color(0xFF64748B),
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                    const SizedBox(width: 7),
+
+                                    if (hasMoved) ...[
+                                      Material(
+                                        color: Colors.white.withValues(alpha: 0.20),
+                                        borderRadius: BorderRadius.circular(9),
+                                        child: InkWell(
+                                          onTap: () => setState(
+                                            () => _floatingKbOffset = Offset.zero,
+                                          ),
+                                          borderRadius: BorderRadius.circular(9),
+                                          child: const Padding(
+                                            padding: EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 4.5,
+                                            ),
+                                            child: Text(
+                                              'මැදට',
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w800,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                    ],
+
+                                    // Crisp White/Teal Done pill
+                                    Material(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(10),
+                                      child: InkWell(
+                                        onTap: () => setState(
+                                          () => _showSinhalaKeyboard = false,
+                                        ),
+                                        borderRadius: BorderRadius.circular(10),
+                                        child: const Padding(
+                                          padding: EdgeInsets.symmetric(
+                                            horizontal: 10,
+                                            vertical: 5,
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(
+                                                Icons.check_rounded,
+                                                size: 14,
+                                                color: Color(0xFF0F766E),
+                                              ),
+                                              SizedBox(width: 3),
+                                              Text(
+                                                'හරි',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w900,
+                                                  color: Color(0xFF0F766E),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+
+                                    // Clear Red-Rose Circular Close (✕) Button
+                                    Tooltip(
+                                      message: 'වසන්න',
+                                      child: Material(
+                                        color: const Color(0xFFFFE4E6),
+                                        shape: const CircleBorder(),
+                                        child: InkWell(
+                                          onTap: () => setState(
+                                            () => _showSinhalaKeyboard = false,
+                                          ),
+                                          customBorder: const CircleBorder(),
+                                          child: const Padding(
+                                            padding: EdgeInsets.all(5.5),
+                                            child: Icon(
+                                              Icons.close_rounded,
+                                              size: 15.5,
+                                              color: Color(0xFFBE123C),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+
+                          // Compact Ocean-Teal + Golden-Pillam Sinhala Keyboard
+                          SinhalaVirtualKeyboard(
+                            controller: _responseController,
+                            compactFloating: true,
+                            onTextChanged: (val) =>
+                                _handleResponseTextChanged(qId, val, true),
+                            onClose: () =>
+                                setState(() => _showSinhalaKeyboard = false),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 
@@ -2040,6 +2347,14 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
               child: _buildSubtleTherapeuticBackground(),
             ),
 
+            // Gentle falling blossom petals, pastel butterflies & sky sparkles around Elder view
+            if (isElder)
+              const Positioned.fill(
+                child: IgnorePointer(
+                  child: _ElderCognitiveFallingPetalsBackdrop(),
+                ),
+              ),
+
             // Animated swaying floral garden along the bottom of the screen for Elder view
             if (isElder)
               Positioned(
@@ -2055,7 +2370,11 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                 isElder ? 20 : 24,
                 isElder ? 12 : 20,
                 isElder ? 20 : 24,
-                isElder ? 85 : 20,
+                isElder
+                    ? (isSinhala && hasStartedForLang && _isSinhalaKeyboardOpen
+                        ? 320
+                        : 85)
+                    : 20,
               ),
               child: isElder
                   ? AnimatedSwitcher(
@@ -2142,6 +2461,10 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                     ],
                   ),
             ),
+
+            // Smart Draggable Floating Sinhala Keyboard Dock (Elder view only)
+            if (isElder && isSinhala && hasStartedForLang && _isSinhalaKeyboardOpen)
+              _buildFloatingElderSinhalaKeyboard(currentQ.id),
           ],
         ),
       ),
@@ -3362,14 +3685,26 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        gradient: const LinearGradient(
+          colors: [Color(0xFFFFFFFF), Color(0xFFFCF9FF), Color(0xFFF9F5FF)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
         borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: const Color(0xFFE5E1F6), width: 1.4),
+        border: Border.all(
+          color: const Color(0xFFD8B4FE).withValues(alpha: 0.72),
+          width: 1.6,
+        ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF6C3FC5).withValues(alpha: 0.08),
-            blurRadius: 32,
-            offset: const Offset(0, 10),
+            color: const Color(0xFF6C3FC5).withValues(alpha: 0.11),
+            blurRadius: 34,
+            offset: const Offset(0, 12),
+          ),
+          BoxShadow(
+            color: const Color(0xFFEC4899).withValues(alpha: 0.05),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -3378,73 +3713,103 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Top subtle gradient strip
+            // Top multi-color Aurora ribbon harmonized with the Hero Banner
             Container(
-              height: 4.5,
+              height: 5.5,
               width: double.infinity,
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Color(0xFF6C3FC5), Color(0xFF8B5CF6), Color(0xFFA78BFA)],
+                  colors: [
+                    Color(0xFF6C3FC5),
+                    Color(0xFF9333EA),
+                    Color(0xFFEC4899),
+                    Color(0xFF0D9488),
+                  ],
                 ),
               ),
             ),
 
             Padding(
-              padding: const EdgeInsets.fromLTRB(22, 18, 22, 18),
+              padding: const EdgeInsets.fromLTRB(22, 16, 22, 18),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 1. Question Header + Saved Badge + Top Prev/Next Controls (No Scrolling Needed!)
-                  Wrap(
-                    alignment: WrapAlignment.spaceBetween,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    spacing: 12,
-                    runSpacing: 10,
+                  // 1. Question Header + Saved Badge
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 40,
-                            height: 40,
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [Color(0xFF6C3FC5), Color(0xFF8B5CF6)],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: const Color(0xFF6C3FC5).withValues(alpha: 0.28),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 3),
+                      Flexible(
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 42,
+                              height: 42,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [
+                                    Color(0xFF6C3FC5),
+                                    Color(0xFF9333EA),
+                                    Color(0xFFEC4899),
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
                                 ),
-                              ],
-                            ),
-                            child: Text(
-                              '${_currentIndex + 1}',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 18,
-                                fontWeight: FontWeight.w800,
+                                borderRadius: BorderRadius.circular(14),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xFF7C3AED)
+                                        .withValues(alpha: 0.30),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: Text(
+                                '${_currentIndex + 1}',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18.5,
+                                  fontWeight: FontWeight.w900,
+                                ),
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 12),
-                          Text(
-                            isSinhala
-                                ? 'ප්‍රශ්නය ${_currentIndex + 1} / $_totalCount'
-                                : 'Question ${_currentIndex + 1} of $_totalCount',
-                            style: const TextStyle(
-                              fontSize: 19,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.navy,
+                            const SizedBox(width: 12),
+                            Flexible(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    isSinhala
+                                        ? 'ප්‍රශ්නය ${_currentIndex + 1} / $_totalCount'
+                                        : 'Question ${_currentIndex + 1} of $_totalCount',
+                                    style: const TextStyle(
+                                      fontSize: 19,
+                                      fontWeight: FontWeight.w900,
+                                      color: Color(0xFF1E1B4B),
+                                      letterSpacing: -0.2,
+                                    ),
+                                  ),
+                                  Text(
+                                    isSinhala
+                                        ? 'සන්සුන්ව සිතා හඬින් හෝ ටයිප් කර පිළිතුරු දෙන්න'
+                                        : 'Take your time — speak or type your answer',
+                                    style: const TextStyle(
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF64748B),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
+                      const SizedBox(width: 10),
                       _buildAnimatedAnswerSavedChip(currentQ.id),
                     ],
                   ),
@@ -3452,9 +3817,9 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
 
                   // 2. Interactive 10-Step Bar
                   _buildStepIndicator(true),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 14),
 
-                  // 3. Attractive Question Card (Minimal Text + Read Aloud Button)
+                  // 3. Radiant Pastel Question Prompt Stage (Minimal Text + Read Aloud)
                   AnimatedSwitcher(
                     duration: const Duration(milliseconds: 280),
                     switchInCurve: Curves.easeOutCubic,
@@ -3463,61 +3828,170 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                       key: ValueKey<int>(_currentIndex),
                       child: Container(
                         width: double.infinity,
-                        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 18),
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(
-                            colors: [Color(0xFFFAF7FF), Color(0xFFF3ECFF)],
+                            colors: [
+                              Color(0xFFFAF5FF),
+                              Color(0xFFF3E8FF),
+                              Color(0xFFFDF2F8),
+                              Color(0xFFF0FDFA),
+                            ],
+                            stops: [0.0, 0.42, 0.78, 1.0],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: const Color(0xFFDDD6FE), width: 1.3),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                _buildInfoChip(
-                                  label: _translateCategory(currentQ.category, isSinhala),
-                                  icon: LucideIcons.brain,
-                                  background: Colors.white,
-                                  color: AppColors.primary,
-                                  borderColor: const Color(0xFFDDD6FE),
-                                ),
-                                _buildListenButton(promptText),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              promptText,
-                              style: const TextStyle(
-                                fontSize: 23,
-                                height: 1.4,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.navy,
-                                letterSpacing: -0.2,
-                              ),
+                          borderRadius: BorderRadius.circular(22),
+                          border: Border.all(
+                            color: const Color(0xFFD8B4FE),
+                            width: 1.5,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF7C3AED)
+                                  .withValues(alpha: 0.08),
+                              blurRadius: 18,
+                              offset: const Offset(0, 6),
                             ),
                           ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(21),
+                          child: Stack(
+                            children: [
+                              // Soft decorative ambient corner circle
+                              Positioned(
+                                right: -26,
+                                bottom: -32,
+                                child: IgnorePointer(
+                                  child: Container(
+                                    width: 130,
+                                    height: 130,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      gradient: RadialGradient(
+                                        colors: [
+                                          const Color(0xFFEC4899)
+                                              .withValues(alpha: 0.12),
+                                          const Color(0xFFEC4899)
+                                              .withValues(alpha: 0.0),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  20,
+                                  16,
+                                  20,
+                                  18,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        _buildInfoChip(
+                                          label: _translateCategory(
+                                            currentQ.category,
+                                            isSinhala,
+                                          ),
+                                          icon: LucideIcons.brain,
+                                          background: Colors.white.withValues(
+                                            alpha: 0.94,
+                                          ),
+                                          color: const Color(0xFF6D28D9),
+                                          borderColor: const Color(0xFFD8B4FE),
+                                        ),
+                                        _buildListenButton(promptText),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 14),
+                                    Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Container(
+                                          width: 4.5,
+                                          height: 34,
+                                          margin: const EdgeInsets.only(
+                                            top: 3,
+                                            right: 12,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            gradient: const LinearGradient(
+                                              colors: [
+                                                Color(0xFF6C3FC5),
+                                                Color(0xFFEC4899),
+                                              ],
+                                              begin: Alignment.topCenter,
+                                              end: Alignment.bottomCenter,
+                                            ),
+                                            borderRadius:
+                                                BorderRadius.circular(4),
+                                          ),
+                                        ),
+                                        Expanded(
+                                          child: Text(
+                                            promptText,
+                                            style: const TextStyle(
+                                              fontSize: 25,
+                                              height: 1.38,
+                                              fontWeight: FontWeight.w800,
+                                              color: Color(0xFF1E1B4B),
+                                              letterSpacing: -0.25,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
                   ),
                   const SizedBox(height: 14),
 
-                  // 4. Smart Voice + Text Input Studio (With Inline Next Button & Zero Scroll)
+                  // 4. Smart Voice + Text Answer Studio (Tactile & Warm)
                   AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
+                    duration: const Duration(milliseconds: 220),
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: _isListening ? const Color(0xFFF0FDF4) : const Color(0xFFFBFBFE),
-                      borderRadius: BorderRadius.circular(20),
+                      gradient: _isListening
+                          ? const LinearGradient(
+                              colors: [Color(0xFFECFDF5), Color(0xFFF0FDFA)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            )
+                          : const LinearGradient(
+                              colors: [Color(0xFFFFFFFF), Color(0xFFF7F5FF)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                      borderRadius: BorderRadius.circular(22),
                       border: Border.all(
-                        color: _isListening ? const Color(0xFF86EFAC) : const Color(0xFFE5E1F6),
-                        width: _isListening ? 1.8 : 1.2,
+                        color: _isListening
+                            ? const Color(0xFF34D399)
+                            : const Color(0xFFE2DAF8),
+                        width: _isListening ? 2.0 : 1.4,
                       ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: (_isListening
+                                  ? const Color(0xFF10B981)
+                                  : const Color(0xFF6C3FC5))
+                              .withValues(alpha: _isListening ? 0.14 : 0.05),
+                          blurRadius: 18,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -3530,19 +4004,58 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(
-                                    _isListening
-                                        ? (isSinhala
-                                            ? 'සවන් දෙමින් පවතී... නැවැත්වීමට ඔබන්න'
-                                            : 'Listening... Tap mic to stop')
-                                        : (isSinhala
-                                            ? 'කතා කිරීමට මයික්‍රොෆෝනය ඔබන්න'
-                                            : 'Tap the microphone to speak'),
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w800,
-                                      color: AppColors.navy,
-                                    ),
+                                  Wrap(
+                                    crossAxisAlignment:
+                                        WrapCrossAlignment.center,
+                                    spacing: 8,
+                                    runSpacing: 4,
+                                    children: [
+                                      Text(
+                                        _isListening
+                                            ? (isSinhala
+                                                ? 'සවන් දෙමින් පවතී... නැවැත්වීමට ඔබන්න'
+                                                : 'Listening... Tap mic to stop')
+                                            : (isSinhala
+                                                ? 'කතා කිරීමට මයික්‍රොෆෝනය ඔබන්න'
+                                                : 'Tap the microphone to speak'),
+                                        style: TextStyle(
+                                          fontSize: 16.5,
+                                          fontWeight: FontWeight.w800,
+                                          color: _isListening
+                                              ? const Color(0xFF047857)
+                                              : const Color(0xFF1E1B4B),
+                                        ),
+                                      ),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 9,
+                                          vertical: 3,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: _isListening
+                                              ? const Color(0xFFD1FAE5)
+                                              : const Color(0xFFEDE9FE),
+                                          borderRadius:
+                                              BorderRadius.circular(99),
+                                        ),
+                                        child: Text(
+                                          _isListening
+                                              ? (isSinhala
+                                                  ? '● සජීවීව'
+                                                  : '● LIVE')
+                                              : (isSinhala
+                                                  ? 'හඬ සූදානම්'
+                                                  : 'Voice Ready'),
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w800,
+                                            color: _isListening
+                                                ? const Color(0xFF047857)
+                                                : const Color(0xFF6D28D9),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                   const SizedBox(height: 8),
                                   _buildAnimatedWaveform(),
@@ -3551,7 +4064,7 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                             ),
                           ],
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 14),
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
@@ -3571,6 +4084,18 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                                 minLines: 1,
                                 maxLines: 2,
                                 decoration: InputDecoration(
+                                  prefixIcon: const Padding(
+                                    padding: EdgeInsets.only(left: 12, right: 6),
+                                    child: Icon(
+                                      Icons.edit_rounded,
+                                      size: 18,
+                                      color: Color(0xFF8B5CF6),
+                                    ),
+                                  ),
+                                  prefixIconConstraints: const BoxConstraints(
+                                    minWidth: 36,
+                                    minHeight: 36,
+                                  ),
                                   hintText: isSinhala
                                       ? (_isSinglishAutoEnabled
                                           ? 'සිංහලෙන් හෝ Singlish (උදා: irida) මෙහි ටයිප් කරන්න...'
@@ -3578,82 +4103,231 @@ class _AssessmentSessionPageState extends ConsumerState<AssessmentSessionPage>
                                       : 'Or type your answer here...',
                                   hintStyle: const TextStyle(
                                     fontSize: 15,
-                                    color: AppColors.muted,
+                                    color: Color(0xFF94A3B8),
                                   ),
                                   filled: true,
                                   fillColor: Colors.white,
                                   border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(14),
-                                    borderSide: const BorderSide(color: Color(0xFFE5E1F6), width: 1.2),
+                                    borderRadius: BorderRadius.circular(16),
+                                    borderSide: const BorderSide(
+                                      color: Color(0xFFDDD6FE),
+                                      width: 1.4,
+                                    ),
                                   ),
                                   enabledBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(14),
-                                    borderSide: const BorderSide(color: Color(0xFFE5E1F6), width: 1.2),
+                                    borderRadius: BorderRadius.circular(16),
+                                    borderSide: const BorderSide(
+                                      color: Color(0xFFDDD6FE),
+                                      width: 1.4,
+                                    ),
                                   ),
                                   focusedBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(14),
-                                    borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                                    borderRadius: BorderRadius.circular(16),
+                                    borderSide: const BorderSide(
+                                      color: Color(0xFF7C3AED),
+                                      width: 2.0,
+                                    ),
                                   ),
                                   contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
+                                    horizontal: 14,
                                     vertical: 14,
                                   ),
                                 ),
                                 style: const TextStyle(
                                   fontSize: 17,
                                   fontWeight: FontWeight.w600,
-                                  color: AppColors.navy,
+                                  color: Color(0xFF1E1B4B),
                                   height: 1.35,
                                 ),
                               ),
                             ),
                             const SizedBox(width: 12),
                             if (_currentIndex > 0) ...[
-                              OutlinedButton.icon(
-                                onPressed: _prevQuestion,
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: AppColors.navy,
-                                  backgroundColor: Colors.white,
-                                  side: const BorderSide(color: Color(0xFFE5E1F6), width: 1.5),
-                                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(16),
+                              Material(
+                                color: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  side: const BorderSide(
+                                    color: Color(0xFFD4C5FC),
+                                    width: 1.5,
                                   ),
                                 ),
-                                icon: const Icon(LucideIcons.chevronLeft, size: 17),
-                                label: Text(
-                                  isSinhala ? 'පෙර' : 'Prev',
-                                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                                child: InkWell(
+                                  onTap: _prevQuestion,
+                                  borderRadius: BorderRadius.circular(16),
+                                  hoverColor: const Color(0xFFF3EEFF),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 14,
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(
+                                          LucideIcons.chevronLeft,
+                                          size: 18,
+                                          color: Color(0xFF6D28D9),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          isSinhala ? 'පෙර' : 'Prev',
+                                          style: const TextStyle(
+                                            fontSize: 14.5,
+                                            fontWeight: FontWeight.w800,
+                                            color: Color(0xFF5B21B6),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                 ),
                               ),
                               const SizedBox(width: 10),
                             ],
-                            _buildPrimaryActionButton(
-                              label: isLastQuestion
-                                  ? (isSinhala ? 'අවසන් කර යොමු කරන්න' : 'Finish & Submit')
-                                  : (isSinhala ? 'ඊළඟ ප්‍රශ්නය' : 'Next Question'),
-                              icon: isLastQuestion ? LucideIcons.send : LucideIcons.arrowRight,
-                              onTap: () {
-                                if (isSinhala && _isSinglishAutoEnabled) {
-                                  _commitActiveSinglishWord(currentQ.id);
-                                }
-                                _nextQuestion(true);
-                              },
-                              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 15),
+                            Container(
+                              decoration: BoxDecoration(
+                                gradient: isLastQuestion
+                                    ? const LinearGradient(
+                                        colors: [
+                                          Color(0xFF059669),
+                                          Color(0xFF0D9488),
+                                        ],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      )
+                                    : const LinearGradient(
+                                        colors: [
+                                          Color(0xFF6C3FC5),
+                                          Color(0xFF9333EA),
+                                          Color(0xFFEC4899),
+                                        ],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      ),
+                                borderRadius: BorderRadius.circular(16),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: (isLastQuestion
+                                            ? const Color(0xFF0D9488)
+                                            : const Color(0xFF7C3AED))
+                                        .withValues(alpha: 0.32),
+                                    blurRadius: 14,
+                                    offset: const Offset(0, 5),
+                                  ),
+                                ],
+                              ),
+                              child: Material(
+                                color: Colors.transparent,
+                                borderRadius: BorderRadius.circular(16),
+                                clipBehavior: Clip.antiAlias,
+                                child: InkWell(
+                                  onTap: () {
+                                    if (isSinhala && _isSinglishAutoEnabled) {
+                                      _commitActiveSinglishWord(currentQ.id);
+                                    }
+                                    _nextQuestion(true);
+                                  },
+                                  hoverColor:
+                                      Colors.white.withValues(alpha: 0.12),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 22,
+                                      vertical: 14,
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          isLastQuestion
+                                              ? (isSinhala
+                                                  ? 'අවසන් කර යොමු කරන්න'
+                                                  : 'Finish & Submit')
+                                              : (isSinhala
+                                                  ? 'ඊළඟ ප්‍රශ්නය'
+                                                  : 'Next Question'),
+                                          style: const TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w800,
+                                            color: Colors.white,
+                                            letterSpacing: 0.1,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Container(
+                                          width: 24,
+                                          height: 24,
+                                          decoration: BoxDecoration(
+                                            color: Colors.white
+                                                .withValues(alpha: 0.22),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: Icon(
+                                            isLastQuestion
+                                                ? LucideIcons.send
+                                                : LucideIcons.arrowRight,
+                                            size: 14,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
                             ),
                           ],
                         ),
-                        if (isSinhala) _buildSinhalaTypingControls(currentQ.id),
+                        if (isSinhala)
+                          _buildSinhalaTypingControls(
+                            currentQ.id,
+                            promptText: promptText,
+                            useFloatingDock: true,
+                          ),
                         if (hasStatus) ...[
-                          const SizedBox(height: 8),
-                          Text(
-                            _speechStatusMessage!,
-                            style: TextStyle(
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w600,
+                          const SizedBox(height: 10),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 7,
+                            ),
+                            decoration: BoxDecoration(
                               color: statusOk
-                                  ? const Color(0xFF15803D)
-                                  : const Color(0xFF92400E),
+                                  ? const Color(0xFFECFDF5)
+                                  : const Color(0xFFFFFBEB),
+                              borderRadius: BorderRadius.circular(11),
+                              border: Border.all(
+                                color: statusOk
+                                    ? const Color(0xFFA7F3D0)
+                                    : const Color(0xFFFDE68A),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  statusOk
+                                      ? Icons.check_circle_rounded
+                                      : Icons.info_outline_rounded,
+                                  size: 15,
+                                  color: statusOk
+                                      ? const Color(0xFF059669)
+                                      : const Color(0xFFD97706),
+                                ),
+                                const SizedBox(width: 7),
+                                Flexible(
+                                  child: Text(
+                                    _speechStatusMessage!,
+                                    style: TextStyle(
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.w700,
+                                      color: statusOk
+                                          ? const Color(0xFF15803D)
+                                          : const Color(0xFF92400E),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],
@@ -9559,6 +10233,390 @@ class _SwayingFloralMeadowPainter extends CustomPainter {
   bool shouldRepaint(covariant _SwayingFloralMeadowPainter oldDelegate) {
     return oldDelegate.swayValue != swayValue ||
         oldDelegate.breezeValue != breezeValue;
+  }
+}
+
+/// Gentle falling blossom petals, drifting pastel butterflies, and twinkling
+/// sparkles framing the Elder Cognitive Assessment screen. Isolated inside its
+/// own RepaintBoundary + StatefulWidget for 60fps smoothness & Hot-Reload safety.
+class _ElderCognitiveFallingPetalsBackdrop extends StatefulWidget {
+  const _ElderCognitiveFallingPetalsBackdrop();
+
+  @override
+  State<_ElderCognitiveFallingPetalsBackdrop> createState() =>
+      _ElderCognitiveFallingPetalsBackdropState();
+}
+
+class _ElderCognitiveFallingPetalsBackdropState
+    extends State<_ElderCognitiveFallingPetalsBackdrop>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 24),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return RepaintBoundary(
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, _) {
+          return CustomPaint(
+            painter: _ElderCognitiveFallingPetalsPainter(
+              progress: _controller.value,
+            ),
+            size: Size.infinite,
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _ElderCognitiveFallingPetalsPainter extends CustomPainter {
+  final double progress;
+
+  const _ElderCognitiveFallingPetalsPainter({required this.progress});
+
+  // (xFrac, startYFrac, speedCycles, size, swayAmp, phase, colorIndex)
+  static const List<List<double>> _petals = [
+    // Left side gentle cascade
+    [0.035, 0.05, 2.0, 11.5, 22.0, 0.2, 0],
+    [0.085, 0.28, 3.0, 9.5, 18.0, 1.4, 1],
+    [0.145, 0.62, 2.0, 12.0, 24.0, 2.6, 2],
+    [0.055, 0.80, 3.0, 8.5, 16.0, 3.8, 3],
+    [0.195, 0.14, 2.0, 10.0, 20.0, 4.7, 4],
+    [0.115, 0.48, 4.0, 8.0, 15.0, 5.4, 1],
+    [0.230, 0.72, 2.0, 9.0, 18.0, 0.9, 0],
+    [0.025, 0.42, 3.0, 10.5, 19.0, 2.1, 5],
+    [0.170, 0.90, 3.0, 9.0, 17.0, 3.3, 2],
+    // Subtle top sky petals drifting softly
+    [0.330, 0.08, 2.0, 8.0, 16.0, 1.1, 1],
+    [0.670, 0.45, 2.0, 8.0, 16.0, 4.0, 0],
+    // Right side gentle cascade
+    [0.965, 0.12, 2.0, 11.5, 22.0, 0.7, 1],
+    [0.915, 0.36, 3.0, 9.5, 19.0, 1.9, 0],
+    [0.855, 0.68, 2.0, 12.0, 24.0, 3.1, 4],
+    [0.945, 0.84, 3.0, 8.5, 16.0, 4.3, 2],
+    [0.805, 0.20, 2.0, 10.0, 20.0, 5.2, 3],
+    [0.885, 0.54, 4.0, 8.0, 15.0, 0.5, 5],
+    [0.770, 0.78, 2.0, 9.0, 18.0, 1.7, 1],
+    [0.975, 0.48, 3.0, 10.5, 19.0, 2.9, 0],
+    [0.830, 0.94, 3.0, 9.0, 17.0, 4.8, 2],
+  ];
+
+  static const List<Color> _petalColors = [
+    Color(0xFFC084FC), // Soft lavender
+    Color(0xFFF9A8D4), // Blossom pink
+    Color(0xFFA78BFA), // Lilac
+    Color(0xFF93C5FD), // Sky pastel
+    Color(0xFFFDE047), // Warm buttercup gold
+    Color(0xFF6EE7B7), // Gentle mint
+  ];
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final t = progress * 2 * math.pi;
+
+    // 1. Soft twinkling sparkles & drifting pollen motes on left/right sky
+    const sparkles = <(double, double, double, Color, double)>[
+      (0.06, 0.18, 7.5, Color(0xFFA78BFA), 0.3),
+      (0.16, 0.36, 6.0, Color(0xFFF472B6), 1.7),
+      (0.09, 0.64, 7.0, Color(0xFFF59E0B), 3.1),
+      (0.21, 0.78, 5.5, Color(0xFF38BDF8), 4.5),
+      (0.94, 0.16, 7.5, Color(0xFFF472B6), 0.9),
+      (0.84, 0.34, 6.0, Color(0xFFA78BFA), 2.3),
+      (0.91, 0.60, 7.0, Color(0xFF14B8A6), 3.7),
+      (0.79, 0.76, 5.5, Color(0xFFF59E0B), 5.1),
+    ];
+
+    for (final s in sparkles) {
+      final pulse = 0.5 + 0.5 * math.sin(t * 3 + s.$5);
+      final cx = size.width * s.$1 + math.sin(t + s.$5) * 10;
+      final cy = size.height * s.$2 + math.cos(t * 1.5 + s.$5) * 12;
+      _drawSparkle(
+        canvas,
+        Offset(cx, cy),
+        s.$3 * (0.72 + 0.35 * pulse),
+        s.$4.withValues(alpha: 0.22 + 0.36 * pulse),
+      );
+    }
+
+    // 2. Gently falling & swaying pastel flower petals
+    for (final spec in _petals) {
+      final xFrac = spec[0];
+      final startY = spec[1];
+      final speed = spec[2];
+      final radius = spec[3];
+      final swayAmp = spec[4];
+      final phase = spec[5];
+      final color = _petalColors[spec[6].toInt() % _petalColors.length];
+
+      // Seamless vertical loop from above top edge (-0.06) to near garden (0.96)
+      final rawY = (startY + progress * speed) % 1.0;
+      final yFrac = -0.06 + rawY * 1.02;
+
+      // Soft fade-in at very top & fade-out near bottom meadow
+      double edgeAlpha = 1.0;
+      if (rawY < 0.08) {
+        edgeAlpha = rawY / 0.08;
+      } else if (rawY > 0.86) {
+        edgeAlpha = (1.0 - rawY) / 0.14;
+      }
+      // Extra gentle alpha for top-middle sky petals
+      final isCenterSky = xFrac > 0.26 && xFrac < 0.74;
+      final baseAlpha = isCenterSky ? 0.32 : 0.62;
+      final alpha = (baseAlpha * edgeAlpha).clamp(0.0, 0.75);
+      if (alpha <= 0.01) continue;
+
+      final x = size.width * xFrac + math.sin(t * speed + phase) * swayAmp;
+      final y = size.height * yFrac;
+      final rot = math.sin(t * speed * 1.1 + phase) * 0.9 + rawY * math.pi * 1.6;
+      final tiltScale = 0.65 + 0.35 * math.cos(t * speed * 1.5 + phase);
+
+      canvas.save();
+      canvas.translate(x, y);
+      canvas.rotate(rot);
+      canvas.scale(1.0, tiltScale);
+
+      // Teardrop blossom petal shape
+      final petalPath = Path()
+        ..moveTo(0, -radius)
+        ..cubicTo(
+          radius * 0.95,
+          -radius * 0.35,
+          radius * 0.85,
+          radius * 0.65,
+          0,
+          radius * 0.95,
+        )
+        ..cubicTo(
+          -radius * 0.85,
+          radius * 0.65,
+          -radius * 0.95,
+          -radius * 0.35,
+          0,
+          -radius,
+        )
+        ..close();
+
+      canvas.drawPath(
+        petalPath,
+        Paint()
+          ..color = color.withValues(alpha: alpha)
+          ..style = PaintingStyle.fill,
+      );
+
+      // Delicate bright shimmer highlight inside each petal
+      canvas.drawOval(
+        Rect.fromCenter(
+          center: Offset(-radius * 0.18, -radius * 0.15),
+          width: radius * 0.36,
+          height: radius * 0.68,
+        ),
+        Paint()..color = Colors.white.withValues(alpha: alpha * 0.45),
+      );
+
+      canvas.restore();
+    }
+
+    // 3. Delicate rising iridescent pastel bubbles floating gently upward on left & right margins
+    const bubbles = <(double, double, double, double, Color, double)>[
+      (0.08, 0.15, 1.0, 18.0, Color(0xFFA78BFA), 0.4),
+      (0.18, 0.62, 1.0, 13.0, Color(0xFFF472B6), 2.1),
+      (0.05, 0.85, 2.0, 10.5, Color(0xFF38BDF8), 3.6),
+      (0.92, 0.25, 1.0, 19.0, Color(0xFFEC4899), 1.2),
+      (0.82, 0.70, 1.0, 13.5, Color(0xFF818CF8), 2.9),
+      (0.95, 0.52, 2.0, 10.0, Color(0xFF14B8A6), 4.7),
+    ];
+
+    for (final b in bubbles) {
+      final rawUp = (b.$2 + progress * b.$3) % 1.0;
+      final yFrac = 0.90 - rawUp * 0.96; // rises gently from meadow up into sky
+      double alphaFade = 1.0;
+      if (rawUp < 0.12) {
+        alphaFade = rawUp / 0.12;
+      } else if (rawUp > 0.84) {
+        alphaFade = (1.0 - rawUp) / 0.16;
+      }
+      final bx = size.width * b.$1 + math.sin(t * 2 + b.$6) * 16.0;
+      final by = size.height * yFrac;
+      _drawIridescentBubble(
+        canvas,
+        Offset(bx, by),
+        radius: b.$4 * (0.94 + 0.06 * math.sin(t * 3 + b.$6)),
+        tint: b.$5,
+        opacity: 0.58 * alphaFade,
+      );
+    }
+
+    // 4. Drifting dandelion wish seeds (fluffy memory wisps) gliding lazily on the breeze
+    const seeds = <(double, double, double, double, double)>[
+      // (startXFrac, baseYFrac, driftDir, phase, scale)
+      (0.06, 0.30, 1.0, 0.5, 1.05),
+      (0.17, 0.56, 1.0, 2.8, 0.88),
+      (0.94, 0.34, -1.0, 1.6, 1.0),
+      (0.83, 0.62, -1.0, 4.1, 0.86),
+    ];
+
+    for (final sd in seeds) {
+      final sx = size.width * sd.$1 +
+          math.sin(t * 1.5 + sd.$4) * 28.0 * sd.$3;
+      final sy = size.height * sd.$2 +
+          math.cos(t * 2.0 + sd.$4) * 18.0;
+      final tilt = math.sin(t * 1.8 + sd.$4) * 0.32 + (sd.$3 > 0 ? 0.18 : -0.18);
+      _drawDandelionSeed(
+        canvas,
+        Offset(sx, sy),
+        tilt: tilt,
+        scale: sd.$5,
+        alpha: 0.42 + 0.18 * math.sin(t * 2 + sd.$4).abs(),
+      );
+    }
+  }
+
+  void _drawIridescentBubble(
+    Canvas canvas,
+    Offset center, {
+    required double radius,
+    required Color tint,
+    required double opacity,
+  }) {
+    if (opacity <= 0.01) return;
+
+    // Soft translucent glass fill
+    final fillPaint = Paint()
+      ..shader = RadialGradient(
+        center: const Alignment(-0.35, -0.35),
+        radius: 0.95,
+        colors: [
+          Colors.white.withValues(alpha: opacity * 0.65),
+          tint.withValues(alpha: opacity * 0.18),
+          tint.withValues(alpha: opacity * 0.34),
+        ],
+        stops: const [0.0, 0.62, 1.0],
+      ).createShader(Rect.fromCircle(center: center, radius: radius));
+    canvas.drawCircle(center, radius, fillPaint);
+
+    // Delicate pastel rim
+    canvas.drawCircle(
+      center,
+      radius,
+      Paint()
+        ..color = tint.withValues(alpha: opacity * 0.55)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.2,
+    );
+
+    // Crisp curved glass shimmer highlight on top-left
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius * 0.72),
+      -math.pi * 0.82,
+      math.pi * 0.36,
+      false,
+      Paint()
+        ..color = Colors.white.withValues(alpha: opacity * 0.92)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = (radius * 0.14).clamp(1.4, 2.8)
+        ..strokeCap = StrokeCap.round,
+    );
+
+    // Tiny bright specular glint dot
+    canvas.drawCircle(
+      Offset(center.dx + radius * 0.34, center.dy + radius * 0.32),
+      (radius * 0.11).clamp(1.2, 2.2),
+      Paint()..color = Colors.white.withValues(alpha: opacity * 0.78),
+    );
+  }
+
+  void _drawDandelionSeed(
+    Canvas canvas,
+    Offset center, {
+    required double tilt,
+    required double scale,
+    required double alpha,
+  }) {
+    canvas.save();
+    canvas.translate(center.dx, center.dy);
+    canvas.rotate(tilt);
+    canvas.scale(scale);
+
+    // Soft warm glow around the pappus crown
+    canvas.drawCircle(
+      const Offset(0, -10),
+      11,
+      Paint()
+        ..shader = RadialGradient(
+          colors: [
+            const Color(0xFFC084FC).withValues(alpha: alpha * 0.25),
+            const Color(0xFFC084FC).withValues(alpha: 0.0),
+          ],
+        ).createShader(Rect.fromCircle(center: const Offset(0, -10), radius: 11)),
+    );
+
+    // Delicate slender stem
+    final stemPaint = Paint()
+      ..color = const Color(0xFF7C3AED).withValues(alpha: alpha * 0.72)
+      ..strokeWidth = 1.15
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(const Offset(0, 8), const Offset(0, -8), stemPaint);
+
+    // Tiny teardrop seed tip at bottom
+    canvas.drawOval(
+      Rect.fromCenter(center: const Offset(0, 9.5), width: 3.0, height: 5.0),
+      Paint()..color = const Color(0xFF9333EA).withValues(alpha: alpha * 0.75),
+    );
+
+    // Fluffy dandelion parachute rays fanning out at the top
+    final rayPaint = Paint()
+      ..color = const Color(0xFF8B5CF6).withValues(alpha: alpha * 0.68)
+      ..strokeWidth = 0.95
+      ..strokeCap = StrokeCap.round;
+    for (int i = -3; i <= 3; i++) {
+      final rayAngle = -math.pi / 2 + i * 0.24;
+      final tip = Offset(
+        math.cos(rayAngle) * 10.5,
+        -8.0 + math.sin(rayAngle) * 10.5,
+      );
+      canvas.drawLine(const Offset(0, -8), tip, rayPaint);
+      canvas.drawCircle(
+        tip,
+        1.1,
+        Paint()..color = Colors.white.withValues(alpha: alpha * 0.95),
+      );
+    }
+
+    canvas.restore();
+  }
+
+  void _drawSparkle(Canvas canvas, Offset center, double radius, Color color) {
+    final path = Path()
+      ..moveTo(center.dx, center.dy - radius)
+      ..quadraticBezierTo(center.dx, center.dy, center.dx + radius, center.dy)
+      ..quadraticBezierTo(center.dx, center.dy, center.dx, center.dy + radius)
+      ..quadraticBezierTo(center.dx, center.dy, center.dx - radius, center.dy)
+      ..quadraticBezierTo(center.dx, center.dy, center.dx, center.dy - radius)
+      ..close();
+    canvas.drawPath(path, Paint()..color = color);
+  }
+
+  @override
+  bool shouldRepaint(
+    covariant _ElderCognitiveFallingPetalsPainter oldDelegate,
+  ) {
+    return oldDelegate.progress != progress;
   }
 }
 

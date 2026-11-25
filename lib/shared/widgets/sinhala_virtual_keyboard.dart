@@ -8,12 +8,14 @@ class SinhalaVirtualKeyboard extends StatefulWidget {
   final TextEditingController controller;
   final ValueChanged<String> onTextChanged;
   final VoidCallback onClose;
+  final bool compactFloating;
 
   const SinhalaVirtualKeyboard({
     super.key,
     required this.controller,
     required this.onTextChanged,
     required this.onClose,
+    this.compactFloating = false,
   });
 
   @override
@@ -159,29 +161,15 @@ class _SinhalaVirtualKeyboardState extends State<SinhalaVirtualKeyboard> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(top: 10),
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFFFAF7FF), Color(0xFFF3ECFF)],
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-        ),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFD8B4FE), width: 1.4),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF6C3FC5).withValues(alpha: 0.09),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Header bar
+    final compact = widget.compactFloating;
+    final keyGap = compact ? 4.0 : 5.0;
+    final rowGap = compact ? 5.0 : 7.0;
+
+    final keyboardBody = Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (!compact) ...[
+          // Header bar (inline mode only; floating dock provides its own teal drag bar)
           Row(
             children: [
               const Icon(
@@ -213,141 +201,209 @@ class _SinhalaVirtualKeyboardState extends State<SinhalaVirtualKeyboard> {
             ],
           ),
           const SizedBox(height: 9),
+        ],
 
-          if (_showNumbers) ...[
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              alignment: WrapAlignment.center,
-              children: _numberKeys
-                  .map((k) => _buildKey(k, minWidth: 48, isAccent: false))
-                  .toList(),
-            ),
-          ] else ...[
-            // Row 1: Pillam (Vowel Modifiers)
-            Wrap(
-              spacing: 5,
-              runSpacing: 5,
-              alignment: WrapAlignment.center,
-              children: _pillamKeys
-                  .map((k) => _buildKey(k, minWidth: 38, isPillam: true))
-                  .toList(),
-            ),
-            const SizedBox(height: 7),
+        if (_showNumbers) ...[
+          Wrap(
+            spacing: compact ? 5 : 6,
+            runSpacing: compact ? 5 : 6,
+            alignment: WrapAlignment.center,
+            children: _numberKeys
+                .map((k) => _buildKey(k, minWidth: compact ? 42 : 48))
+                .toList(),
+          ),
+        ] else ...[
+          // Row 1: Pillam (Vowel Modifiers)
+          Wrap(
+            spacing: keyGap,
+            runSpacing: keyGap,
+            alignment: WrapAlignment.center,
+            children: _pillamKeys
+                .map((k) => _buildKey(k, minWidth: compact ? 31 : 38, isPillam: true))
+                .toList(),
+          ),
+          SizedBox(height: rowGap),
 
-            // Row 2: Vowels
-            Wrap(
-              spacing: 5,
-              runSpacing: 5,
-              alignment: WrapAlignment.center,
-              children: _vowelKeys
-                  .map((k) => _buildKey(k, minWidth: 42, isVowel: true))
-                  .toList(),
-            ),
-            const SizedBox(height: 7),
+          // Row 2: Vowels
+          Wrap(
+            spacing: keyGap,
+            runSpacing: keyGap,
+            alignment: WrapAlignment.center,
+            children: _vowelKeys
+                .map((k) => _buildKey(k, minWidth: compact ? 35 : 42, isVowel: true))
+                .toList(),
+          ),
+          SizedBox(height: rowGap),
 
-            // Row 3: Consonants 1
-            Wrap(
-              spacing: 5,
-              runSpacing: 5,
-              alignment: WrapAlignment.center,
-              children: _consonantRow1
-                  .map((k) => _buildKey(k, minWidth: 42))
-                  .toList(),
-            ),
-            const SizedBox(height: 6),
+          // Row 3: Consonants 1
+          Wrap(
+            spacing: keyGap,
+            runSpacing: keyGap,
+            alignment: WrapAlignment.center,
+            children: _consonantRow1
+                .map((k) => _buildKey(k, minWidth: compact ? 35 : 42))
+                .toList(),
+          ),
+          SizedBox(height: compact ? 4 : 6),
 
-            // Row 4: Consonants 2
-            Wrap(
-              spacing: 5,
-              runSpacing: 5,
-              alignment: WrapAlignment.center,
-              children: _consonantRow2
-                  .map((k) => _buildKey(k, minWidth: 42))
-                  .toList(),
-            ),
-          ],
+          // Row 4: Consonants 2
+          Wrap(
+            spacing: keyGap,
+            runSpacing: keyGap,
+            alignment: WrapAlignment.center,
+            children: _consonantRow2
+                .map((k) => _buildKey(k, minWidth: compact ? 35 : 42))
+                .toList(),
+          ),
+        ],
 
-          const SizedBox(height: 8),
+        SizedBox(height: compact ? 6 : 8),
 
-          // Bottom Control Bar: Comma, Space, Backspace
-          Row(
-            children: [
-              _buildKey(',', minWidth: 44),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Material(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(11),
-                  child: InkWell(
-                    onTap: () => _insertText(' '),
-                    borderRadius: BorderRadius.circular(11),
-                    child: Container(
-                      height: 40,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(11),
-                        border: Border.all(
-                          color: const Color(0xFFD8B4FE),
-                          width: 1.2,
-                        ),
-                      ),
-                      child: const Center(
-                        child: Text(
-                          'හිස්තැන (Space)',
-                          style: TextStyle(
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF5B21B6),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 6),
+        // Bottom Control Bar: (123 toggle in compact), Comma, Space, Backspace
+        Row(
+          children: [
+            if (compact) ...[
               Material(
-                color: const Color(0xFFFFF1F2),
-                borderRadius: BorderRadius.circular(11),
+                color: _showNumbers ? const Color(0xFF0F766E) : const Color(0xFFCCFBF1),
+                borderRadius: BorderRadius.circular(10),
                 child: InkWell(
-                  onTap: _backspace,
-                  borderRadius: BorderRadius.circular(11),
+                  onTap: () => setState(() => _showNumbers = !_showNumbers),
+                  borderRadius: BorderRadius.circular(10),
                   child: Container(
-                    height: 40,
-                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    height: 34,
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(11),
+                      borderRadius: BorderRadius.circular(10),
                       border: Border.all(
-                        color: const Color(0xFFFECDD3),
+                        color: _showNumbers
+                            ? const Color(0xFF0F766E)
+                            : const Color(0xFF2DD4BF),
                         width: 1.2,
                       ),
                     ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.backspace_outlined,
-                            size: 16,
-                            color: Color(0xFFE11D48),
-                          ),
-                          SizedBox(width: 5),
-                          Text(
-                            'මකන්න',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFFE11D48),
-                          ),
-                        ),
-                      ],
+                    alignment: Alignment.center,
+                    child: Text(
+                      _showNumbers ? 'අකුරු' : '123',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w800,
+                        color: _showNumbers
+                            ? Colors.white
+                            : const Color(0xFF0F766E),
+                      ),
                     ),
                   ),
                 ),
               ),
+              const SizedBox(width: 5),
             ],
+            _buildKey(',', minWidth: compact ? 34 : 44),
+            SizedBox(width: compact ? 5 : 6),
+            Expanded(
+              child: Material(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(compact ? 10 : 11),
+                child: InkWell(
+                  onTap: () => _insertText(' '),
+                  borderRadius: BorderRadius.circular(compact ? 10 : 11),
+                  child: Container(
+                    height: compact ? 34 : 40,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(compact ? 10 : 11),
+                      border: Border.all(
+                        color: compact
+                            ? const Color(0xFF5EEAD4)
+                            : const Color(0xFFD8B4FE),
+                        width: 1.2,
+                      ),
+                    ),
+                    child: Center(
+                      child: Text(
+                        'හිස්තැන (Space)',
+                        style: TextStyle(
+                          fontSize: compact ? 12.5 : 13.5,
+                          fontWeight: FontWeight.w700,
+                          color: compact
+                              ? const Color(0xFF0F766E)
+                              : const Color(0xFF5B21B6),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(width: compact ? 5 : 6),
+            Material(
+              color: const Color(0xFFFFE4E6),
+              borderRadius: BorderRadius.circular(compact ? 10 : 11),
+              child: InkWell(
+                onTap: _backspace,
+                borderRadius: BorderRadius.circular(compact ? 10 : 11),
+                child: Container(
+                  height: compact ? 34 : 40,
+                  padding: EdgeInsets.symmetric(horizontal: compact ? 11 : 14),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(compact ? 10 : 11),
+                    border: Border.all(
+                      color: const Color(0xFFFDA4AF),
+                      width: 1.2,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.backspace_outlined,
+                        size: compact ? 14.5 : 16,
+                        color: const Color(0xFFBE123C),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'මකන්න',
+                        style: TextStyle(
+                          fontSize: compact ? 12 : 13,
+                          fontWeight: FontWeight.w800,
+                          color: const Color(0xFFBE123C),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+
+    if (compact) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+        child: keyboardBody,
+      );
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(top: 10),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFFAF7FF), Color(0xFFF3ECFF)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFD8B4FE), width: 1.4),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF6C3FC5).withValues(alpha: 0.09),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
+      child: keyboardBody,
     );
   }
 
@@ -358,37 +414,63 @@ class _SinhalaVirtualKeyboardState extends State<SinhalaVirtualKeyboard> {
     bool isVowel = false,
     bool isAccent = false,
   }) {
-    final Color bg = isPillam
-        ? const Color(0xFFECFEFF)
-        : isVowel
-            ? const Color(0xFFEDE9FE)
-            : Colors.white;
-    final Color border = isPillam
-        ? const Color(0xFF67E8F9)
-        : isVowel
-            ? const Color(0xFFC4B5FD)
-            : const Color(0xFFE2D9F9);
-    final Color fg = isPillam
-        ? const Color(0xFF0F766E)
-        : isVowel
-            ? const Color(0xFF5B21B6)
-            : AppColors.navy;
+    final compact = widget.compactFloating;
+    final Color bg = compact
+        ? (isPillam
+            ? const Color(0xFFFEF3C7) // Warm golden amber for pillam
+            : isVowel
+                ? const Color(0xFFCCFBF1) // Fresh mint-teal for vowels
+                : Colors.white)
+        : (isPillam
+            ? const Color(0xFFECFEFF)
+            : isVowel
+                ? const Color(0xFFEDE9FE)
+                : Colors.white);
+    final Color border = compact
+        ? (isPillam
+            ? const Color(0xFFFBBF24)
+            : isVowel
+                ? const Color(0xFF2DD4BF)
+                : const Color(0xFF99F6E4))
+        : (isPillam
+            ? const Color(0xFF67E8F9)
+            : isVowel
+                ? const Color(0xFFC4B5FD)
+                : const Color(0xFFE2D9F9));
+    final Color fg = compact
+        ? (isPillam
+            ? const Color(0xFF92400E)
+            : isVowel
+                ? const Color(0xFF0F766E)
+                : const Color(0xFF0F172A))
+        : (isPillam
+            ? const Color(0xFF0F766E)
+            : isVowel
+                ? const Color(0xFF5B21B6)
+                : AppColors.navy);
 
     return Material(
       color: bg,
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(compact ? 8.5 : 10),
       child: InkWell(
         onTap: () => _insertText(label),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(compact ? 8.5 : 10),
         child: Container(
-          constraints: BoxConstraints(minWidth: minWidth, minHeight: 39),
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          constraints: BoxConstraints(
+            minWidth: minWidth,
+            minHeight: compact ? 33 : 39,
+          ),
+          padding: EdgeInsets.symmetric(
+            horizontal: compact ? 6 : 8,
+            vertical: compact ? 4 : 6,
+          ),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(compact ? 8.5 : 10),
             border: Border.all(color: border, width: 1.2),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
+                color: (compact ? const Color(0xFF0F766E) : Colors.black)
+                    .withValues(alpha: compact ? 0.08 : 0.04),
                 blurRadius: 2,
                 offset: const Offset(0, 1),
               ),
@@ -399,7 +481,7 @@ class _SinhalaVirtualKeyboardState extends State<SinhalaVirtualKeyboard> {
             child: Text(
               label,
               style: TextStyle(
-                fontSize: 17,
+                fontSize: compact ? 15.5 : 17,
                 fontWeight: FontWeight.w800,
                 color: fg,
               ),
