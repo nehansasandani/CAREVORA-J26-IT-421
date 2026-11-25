@@ -15,6 +15,7 @@ import '../../../core/localization/sinhala_name_transliterator.dart';
 import '../../../data/mock/mock_carevora_data.dart';
 import '../../auth/application/auth_controller.dart';
 import 'widgets/elder_game_invite_notifications.dart';
+import '../../../shared/widgets/carevora_ambient_backdrop.dart';
 
 class DashboardShell extends ConsumerWidget {
   final Widget child;
@@ -52,7 +53,7 @@ class DashboardShell extends ConsumerWidget {
                 isMobile: true,
                 elderBellButton: elderBellButton,
               ),
-              Expanded(child: child),
+              _buildContentWithBackdrop(child),
               MobileBottomNav(
                 currentRoute: location,
                 isElder: authState.isElder,
@@ -66,13 +67,13 @@ class DashboardShell extends ConsumerWidget {
                 child: Column(
                   children: [
                     _buildTopBar(
-                      context,
-                      authState,
-                      strings: strings,
-                      isMobile: false,
-                      elderBellButton: elderBellButton,
-                    ),
-                    Expanded(child: child),
+                       context,
+                       authState,
+                       strings: strings,
+                       isMobile: false,
+                       elderBellButton: elderBellButton,
+                     ),
+                    _buildContentWithBackdrop(child),
                   ],
                 ),
               ),
@@ -91,13 +92,29 @@ class DashboardShell extends ConsumerWidget {
                       isMobile: false,
                       elderBellButton: elderBellButton,
                     ),
-                    Expanded(child: child),
+                    _buildContentWithBackdrop(child),
                   ],
                 ),
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildContentWithBackdrop(Widget content) {
+    return Expanded(
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          content,
+          const Positioned.fill(
+            child: IgnorePointer(
+              child: CarevoraAmbientBackdrop(),
+            ),
+          ),
+        ],
       ),
     );
   }
