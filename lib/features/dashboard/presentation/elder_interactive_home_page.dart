@@ -1092,23 +1092,33 @@ class _ElderInteractiveHomePageState
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // Elder photo (86x86 circular avatar with white border)
+        // Elder photo (circular avatar with radiant glow ring)
         Container(
-          width: 86,
-          height: 86,
+          padding: const EdgeInsets.all(3.5),
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            border: Border.all(color: Colors.white, width: 3.5),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.60),
+              width: 2.0,
+            ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.28),
-                blurRadius: 10,
+                color: Colors.black.withValues(alpha: 0.22),
+                blurRadius: 12,
                 offset: const Offset(0, 4),
               ),
             ],
-            image: DecorationImage(
-              image: _resolveAvatarImage(avatarUrl),
-              fit: BoxFit.cover,
+          ),
+          child: Container(
+            width: 82,
+            height: 82,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 3.0),
+              image: DecorationImage(
+                image: _resolveAvatarImage(avatarUrl),
+                fit: BoxFit.cover,
+              ),
             ),
           ),
         ),
@@ -1394,19 +1404,32 @@ class _ElderInteractiveHomePageState
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white,
+            Color(0xFFFCFAFF),
+            Color(0xFFFAF5FF),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(
           color: isAnsweredYes
-              ? const Color(0xFFC084FC)
+              ? const Color(0xFFA855F7)
               : const Color(0xFFE9D5FF),
           width: 1.6,
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF7C3AED).withValues(alpha: 0.06),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
+            color: const Color(0xFF7C3AED).withValues(alpha: 0.07),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
           ),
         ],
       ),
@@ -1414,14 +1437,14 @@ class _ElderInteractiveHomePageState
         color: Colors.transparent,
         child: InkWell(
           onTap: onToggle,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(22),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
             child: Row(
               children: [
                 // Squircle Icon Container
                 iconWidget,
-                const SizedBox(width: 10),
+                const SizedBox(width: 12),
 
                 // Question Text (2 lines)
                 Expanded(
@@ -1441,16 +1464,16 @@ class _ElderInteractiveHomePageState
                 // Pill Action Button
                 if (isAnsweredYes)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7.5),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
-                        colors: [Color(0xFF10B981), Color(0xFF059669)],
+                        colors: [Color(0xFF059669), Color(0xFF10B981)],
                       ),
                       borderRadius: BorderRadius.circular(99),
                       boxShadow: [
                         BoxShadow(
                           color: const Color(0xFF10B981).withValues(alpha: 0.35),
-                          blurRadius: 6,
+                          blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
                       ],
@@ -1473,11 +1496,18 @@ class _ElderInteractiveHomePageState
                   )
                 else if (isWaterCard)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7.5),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                     decoration: BoxDecoration(
                       color: const Color(0xFFF0F9FF),
                       borderRadius: BorderRadius.circular(99),
-                      border: Border.all(color: const Color(0xFFBAE6FD), width: 1.3),
+                      border: Border.all(color: const Color(0xFFBAE6FD), width: 1.4),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF0284C7).withValues(alpha: 0.08),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -1497,11 +1527,18 @@ class _ElderInteractiveHomePageState
                   )
                 else
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7.5),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                     decoration: BoxDecoration(
                       color: const Color(0xFFFFFBEB),
                       borderRadius: BorderRadius.circular(99),
-                      border: Border.all(color: const Color(0xFFFDE68A), width: 1.2),
+                      border: Border.all(color: const Color(0xFFFDE68A), width: 1.4),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFD97706).withValues(alpha: 0.08),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -1541,34 +1578,57 @@ class _ElderInteractiveHomePageState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Section Title Row (Exact match with reference mockup)
+        // Section Title Row (Polished squircle icon + elder friendly badge)
         Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(7),
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
-                color: const Color(0xFFF3E8FF),
-                borderRadius: BorderRadius.circular(10),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFF3E8FF), Color(0xFFEDE9FE)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFDDD6FE), width: 1.4),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF7C3AED).withValues(alpha: 0.12),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
+              alignment: Alignment.center,
               child: const Icon(LucideIcons.calendar, size: 20, color: Color(0xFF7C3AED)),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 12),
             const Text(
               'අද දින සිදුකල යුතු ක්‍රියාකාරකම්',
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.w900,
                 color: Color(0xFF1E1B4B),
-                letterSpacing: 0.1,
+                letterSpacing: -0.2,
               ),
             ),
             const Spacer(),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
               decoration: BoxDecoration(
-                color: const Color(0xFFF5F3FF),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFFAF5FF), Color(0xFFF3E8FF)],
+                ),
                 borderRadius: BorderRadius.circular(99),
-                border: Border.all(color: const Color(0xFFDDD6FE), width: 1.2),
+                border: Border.all(color: const Color(0xFFDDD6FE), width: 1.3),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF7C3AED).withValues(alpha: 0.06),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
               child: const Row(
                 mainAxisSize: MainAxisSize.min,
@@ -1660,7 +1720,9 @@ class _ElderInteractiveHomePageState
                   buttonText: memoryDone
                       ? 'සම්පූර්ණයි ($nextSlotTime ට) ⏰'
                       : 'ඊලඟ ක්‍රීඩාව කරන්න',
-                  buttonGradient: const [Color(0xFF5B21B6), Color(0xFF7C3AED)],
+                  buttonGradient: memoryDone
+                      ? const [Color(0xFF5B21B6), Color(0xFF7C3AED)]
+                      : const [Color(0xFF6D28D9), Color(0xFF8B5CF6)],
                   isEmotionalCard: false,
                   bottomDecoration: null,
                   onTap: () {
@@ -1696,14 +1758,14 @@ class _ElderInteractiveHomePageState
                 illustration: _buildGrandmaReadingBookIllustration(),
                 buttonText: 'පොත් කියවන්න',
                 buttonIcon: const Icon(Icons.menu_book_rounded, color: Colors.white, size: 16),
-                buttonGradient: const [Color(0xFF6B21A8), Color(0xFF7C3AED)],
+                buttonGradient: const [Color(0xFF6D28D9), Color(0xFF8B5CF6)],
                 bottomTrim: _buildLavenderBlossomTrim(),
                 onTap: () {
                   _showReadingLibraryModal(context);
                 },
               ),
 
-              // Card 2: නිර්මාණාත්මක ක්‍රියාකාරකම් (Creative Activities - White Card with Royal Purple Button)
+              // Card 2: නිර්මාණාත්මක ක්‍රියාකාරකම් (Creative Activities - Golden Sunflowers Trim)
               _buildMockupLeisureCard(
                 backgroundColor: Colors.white,
                 borderColor: const Color(0xFFE9D5FF),
@@ -1714,14 +1776,14 @@ class _ElderInteractiveHomePageState
                 illustration: _buildGrandmaPaintingArtIllustration(),
                 buttonText: 'නිර්මාණය කරන්න',
                 buttonIcon: const Text('🎨', style: TextStyle(fontSize: 15)),
-                buttonGradient: const [Color(0xFF6B21A8), Color(0xFF7C3AED)],
-                bottomTrim: _buildLavenderBlossomTrim(),
+                buttonGradient: const [Color(0xFF6D28D9), Color(0xFF8B5CF6)],
+                bottomTrim: _buildGoldenFloraTrim(),
                 onTap: () {
                   _showCreativeActivitiesModal(context);
                 },
               ),
 
-              // Card 3: සංගීතය සහ විවේකය (Music & Relaxation - White Card with Royal Purple Button)
+              // Card 3: සංගීතය සහ විවේකය (Music & Relaxation - Sky Blue Trim)
               _buildMockupLeisureCard(
                 backgroundColor: Colors.white,
                 borderColor: const Color(0xFFE9D5FF),
@@ -1733,8 +1795,8 @@ class _ElderInteractiveHomePageState
                 illustration: _buildElderListeningMusicIllustration(),
                 buttonText: 'සංගීතය අසන්න',
                 buttonIcon: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 18),
-                buttonGradient: const [Color(0xFF6B21A8), Color(0xFF7C3AED)],
-                bottomTrim: _buildLavenderBlossomTrim(),
+                buttonGradient: const [Color(0xFF6D28D9), Color(0xFF8B5CF6)],
+                bottomTrim: _buildSkyBlueFloraTrim(),
                 onTap: () {
                   _speak('සන්සුන් සංගීතය සහ ස්වභාවික ශබ්ද ඔබ වෙනුවෙන් වාදනය කරමු.');
                   _showMusicPlayerModal(context);
@@ -1842,10 +1904,31 @@ class _ElderInteractiveHomePageState
       children: [
         Wrap(
           crossAxisAlignment: WrapCrossAlignment.center,
-          spacing: 10,
-          runSpacing: 6,
+          spacing: 12,
+          runSpacing: 8,
           children: [
-            const Text('🍃', style: TextStyle(fontSize: 22)),
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFDCFCE7), Color(0xFFD1FAE5)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFA7F3D0), width: 1.4),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              alignment: Alignment.center,
+              child: const Icon(LucideIcons.sparkles, size: 20, color: Color(0xFF059669)),
+            ),
             Text(
               isSinhala
                   ? 'නිදහසේ කාලය ගත කරන්න කැමතිද?'
@@ -1854,15 +1937,22 @@ class _ElderInteractiveHomePageState
                 fontSize: 21,
                 fontWeight: FontWeight.w900,
                 color: Color(0xFF1E1B4B),
-                letterSpacing: 0.1,
+                letterSpacing: -0.2,
               ),
             ),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
               decoration: BoxDecoration(
                 color: const Color(0xFFDCFCE7),
                 borderRadius: BorderRadius.circular(99),
-                border: Border.all(color: const Color(0xFFBBF7D0)),
+                border: Border.all(color: const Color(0xFF86EFAC), width: 1.2),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF16A34A).withValues(alpha: 0.08),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
               child: Text(
                 isSinhala ? 'මගේ කැමැත්ත තෝරන්න' : 'Choose Your Preference',
@@ -1875,7 +1965,7 @@ class _ElderInteractiveHomePageState
             ),
           ],
         ),
-        const SizedBox(height: 5),
+        const SizedBox(height: 6),
         Text(
           isSinhala
               ? 'දිනපතා විනෝදයෙන්, සතුටින් සහ නිරෝගීව සිටීමට ඔබ කැමති ක්‍රියාකාරකම් තෝරන්න.'
@@ -2832,14 +2922,30 @@ class _ElderInteractiveHomePageState
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: backgroundColor,
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white,
+            Color(0xFFFCFAFF),
+            Color(0xFFF9F5FF),
+          ],
+        ),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: borderColor, width: 1.8),
+        border: Border.all(
+          color: const Color(0xFFE9D5FF).withValues(alpha: 0.95),
+          width: 1.6,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 14,
-            offset: const Offset(0, 4),
+            color: const Color(0xFF7C3AED).withValues(alpha: 0.08),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
           ),
         ],
       ),
@@ -2849,7 +2955,7 @@ class _ElderInteractiveHomePageState
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -2857,16 +2963,20 @@ class _ElderInteractiveHomePageState
                   Row(
                     children: [
                       Container(
-                        width: 40,
-                        height: 40,
+                        width: 44,
+                        height: 44,
                         decoration: BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: borderColor.withValues(alpha: 0.9), width: 1.8),
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFFF5F3FF), Color(0xFFEDE9FE)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: const Color(0xFFDDD6FE), width: 1.5),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.05),
-                              blurRadius: 5,
+                              color: const Color(0xFF7C3AED).withValues(alpha: 0.12),
+                              blurRadius: 8,
                               offset: const Offset(0, 2),
                             ),
                           ],
@@ -2874,12 +2984,12 @@ class _ElderInteractiveHomePageState
                         alignment: Alignment.center,
                         child: badgeIcon,
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 10),
                       Expanded(
                         child: Text(
                           title,
                           style: TextStyle(
-                            fontSize: 16.5,
+                            fontSize: 17,
                             fontWeight: FontWeight.w900,
                             color: titleColor,
                             letterSpacing: 0.1,
@@ -2891,7 +3001,7 @@ class _ElderInteractiveHomePageState
                       if (topTrailingWidget != null) topTrailingWidget,
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
 
                   // Middle Row: Description text on left, Illustration on right
                   Row(
@@ -2902,7 +3012,7 @@ class _ElderInteractiveHomePageState
                         child: Text(
                           description,
                           style: const TextStyle(
-                            fontSize: 12.5,
+                            fontSize: 13,
                             fontWeight: FontWeight.w600,
                             color: Color(0xFF475569),
                             height: 1.35,
@@ -2916,44 +3026,51 @@ class _ElderInteractiveHomePageState
                       ),
                     ],
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 12),
 
-                  // Action Pill Button (centered with reduced length)
+                  // Action Pill Button (centered with elegant royal gradient)
                   Center(
-                    child: InkWell(
-                      onTap: onTap,
-                      borderRadius: BorderRadius.circular(99),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 9.5),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(colors: buttonGradient),
-                          borderRadius: BorderRadius.circular(99),
-                          boxShadow: [
-                            BoxShadow(
-                              color: buttonGradient.first.withValues(alpha: 0.35),
-                              blurRadius: 7,
-                              offset: const Offset(0, 3),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: onTap,
+                        borderRadius: BorderRadius.circular(99),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: buttonGradient,
+                              begin: Alignment.centerLeft,
+                              end: Alignment.centerRight,
                             ),
-                          ],
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            buttonIcon,
-                            const SizedBox(width: 6),
-                            Text(
-                              buttonText,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 13.5,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 0.2,
+                            borderRadius: BorderRadius.circular(99),
+                            boxShadow: [
+                              BoxShadow(
+                                color: buttonGradient.first.withValues(alpha: 0.35),
+                                blurRadius: 9,
+                                offset: const Offset(0, 3),
                               ),
-                            ),
-                            const SizedBox(width: 4),
-                            const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 15),
-                          ],
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              buttonIcon,
+                              const SizedBox(width: 7),
+                              Text(
+                                buttonText,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.2,
+                                ),
+                              ),
+                              const SizedBox(width: 5),
+                              const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 16),
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -3258,9 +3375,16 @@ class _ElderInteractiveHomePageState
     return Container(
       height: 32,
       width: double.infinity,
-      decoration: const BoxDecoration(
-        color: Color(0xFFF3E8FF),
-        borderRadius: BorderRadius.only(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFFFAF5FF), Color(0xFFF3E8FF)],
+        ),
+        border: Border(
+          top: BorderSide(color: const Color(0xFFE9D5FF).withValues(alpha: 0.60), width: 1.0),
+        ),
+        borderRadius: const BorderRadius.only(
           bottomLeft: Radius.circular(22),
           bottomRight: Radius.circular(22),
         ),
@@ -3297,9 +3421,16 @@ class _ElderInteractiveHomePageState
     return Container(
       height: 32,
       width: double.infinity,
-      decoration: const BoxDecoration(
-        color: Color(0xFFFEF3C7),
-        borderRadius: BorderRadius.only(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFFFFFBEB), Color(0xFFFEF3C7)],
+        ),
+        border: Border(
+          top: BorderSide(color: const Color(0xFFFDE68A).withValues(alpha: 0.60), width: 1.0),
+        ),
+        borderRadius: const BorderRadius.only(
           bottomLeft: Radius.circular(22),
           bottomRight: Radius.circular(22),
         ),
@@ -3336,9 +3467,16 @@ class _ElderInteractiveHomePageState
     return Container(
       height: 32,
       width: double.infinity,
-      decoration: const BoxDecoration(
-        color: Color(0xFFE0F2FE),
-        borderRadius: BorderRadius.only(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFFF0F9FF), Color(0xFFE0F2FE)],
+        ),
+        border: Border(
+          top: BorderSide(color: const Color(0xFFBAE6FD).withValues(alpha: 0.60), width: 1.0),
+        ),
+        borderRadius: const BorderRadius.only(
           bottomLeft: Radius.circular(22),
           bottomRight: Radius.circular(22),
         ),
