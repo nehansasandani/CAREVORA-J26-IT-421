@@ -115,13 +115,13 @@ class DesktopSidebar extends ConsumerWidget {
                   _buildNavItem(
                     context,
                     icon: LucideIcons.users,
-                    label: strings.residentDirectory,
+                    label: strings.isSinhala ? 'නේවාසික ලැයිස්තුව' : strings.residentDirectory,
                     route: '/dashboard/residents',
                   ),
                   _buildNavItem(
                     context,
                     icon: LucideIcons.brain,
-                    label: strings.cognitiveAssessment,
+                    label: strings.isSinhala ? 'මතක පරීක්ෂාව' : strings.cognitiveAssessment,
                     route: '/dashboard/cognitive/session',
                   ),
                   _buildNavItem(
@@ -134,61 +134,72 @@ class DesktopSidebar extends ConsumerWidget {
                     _buildNavItem(
                       context,
                       icon: LucideIcons.activity,
-                      label: 'Metabolic Health',
+                      label: strings.isSinhala
+                          ? 'ශරීර සෞඛ්‍යය'
+                          : strings.metabolicHealth,
                       route: '/dashboard/metabolic',
                     ),
                   _buildNavItem(
                     context,
                     icon: LucideIcons.bell,
-                    label: strings.alertsAndNotifications,
+                    label: strings.isSinhala ? 'දැනුම්දීම්' : strings.alertsAndNotifications,
                     route: '/dashboard/alerts',
                   ),
                   _buildNavItem(
                     context,
                     icon: LucideIcons.barChart3,
-                    label: strings.reportsAndAnalytics,
+                    label: strings.isSinhala ? 'වාර්තා සහ ප්‍රගතිය' : strings.reportsAndAnalytics,
                     route: '/dashboard/reports',
                   ),
                   _buildNavItem(
                     context,
                     icon: LucideIcons.clipboardList,
-                    label: strings.carePlans,
+                    label: strings.isSinhala ? 'සත්කාර සැලසුම්' : strings.carePlans,
                     route: '/dashboard/care-plans',
                   ),
                   _buildNavItem(
                     context,
                     icon: LucideIcons.stethoscope,
-                    label: 'Doctor Prescribing',
+                    label: strings.isSinhala
+                        ? 'වෛද්‍ය බෙහෙත්'
+                        : 'Doctor Prescribing',
                     route: '/dashboard/doctor',
                   ),
                   _buildNavItem(
                     context,
                     icon: LucideIcons.pill,
-                    label: 'Live Medicine Board',
+                    label: strings.isSinhala
+                        ? 'දිනපතා බෙහෙත්'
+                        : 'Live Medicine Board',
                     route: '/dashboard/medicine',
                   ),
                   _buildNavItem(
                     context,
                     icon: LucideIcons.clipboardCheck,
-                    label: 'Social Audit Hub',
+                    label: strings.isSinhala
+                        ? 'සමාජ සබඳතා'
+                        : 'Social Audit Hub',
                     route: '/dashboard/social-audit',
                   ),
-                  _buildNavItem(
-                    context,
-                    icon: LucideIcons.trendingUp,
-                    label: 'Emotional RALPA Trajectory',
-                    route: '/dashboard/emotional-ralpa-trajectory',
-                  ),
+                  if (!authState.isCaregiver)
+                    _buildNavItem(
+                      context,
+                      icon: LucideIcons.trendingUp,
+                      label: strings.isSinhala
+                          ? 'මානසික ප්‍රවණතා'
+                          : 'Emotional RALPA Trajectory',
+                      route: '/dashboard/emotional-ralpa-trajectory',
+                    ),
                   _buildNavItem(
                     context,
                     icon: LucideIcons.phoneCall,
-                    label: strings.stationHelpAndCalls,
+                    label: strings.isSinhala ? 'සහාය සහ ඇමතුම්' : strings.stationHelpAndCalls,
                     route: '/dashboard/station-help',
                   ),
                   _buildNavItem(
                     context,
                     icon: LucideIcons.settings,
-                    label: strings.settings,
+                    label: strings.isSinhala ? 'සැකසුම්' : strings.settings,
                     route: '/dashboard/settings',
                   ),
                 ],
@@ -439,104 +450,106 @@ class DesktopSidebar extends ConsumerWidget {
 
   // Pastoral Country Cottage Landscape Trim
   Widget _buildSidebarLandscapeTrim() {
-    return Container(
-      height: 84,
-      width: double.infinity,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Color(0xFFFAF7FF),
-            Color(0xFFF3E8FF),
-            Color(0xFFE9D5FF),
+    return IgnorePointer(
+      child: Container(
+        height: 84,
+        width: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFFFAF7FF),
+              Color(0xFFF3E8FF),
+              Color(0xFFE9D5FF),
+            ],
+          ),
+        ),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            // Background Purple Mountain Hills
+            Positioned(
+              left: -15,
+              right: -15,
+              bottom: 20,
+              child: Container(
+                height: 44,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFDDD6FE).withValues(alpha: 0.8),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(100),
+                    topRight: Radius.circular(80),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              left: 40,
+              right: -30,
+              bottom: 18,
+              child: Container(
+                height: 40,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFC4B5FD).withValues(alpha: 0.75),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(90),
+                    topRight: Radius.circular(110),
+                  ),
+                ),
+              ),
+            ),
+
+            // Foreground Green Lawn
+            Positioned(
+              left: -10,
+              right: -10,
+              bottom: -15,
+              child: Container(
+                height: 44,
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Color(0xFF86EFAC),
+                      Color(0xFF22C55E),
+                      Color(0xFF16A34A),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(140),
+                    topRight: Radius.circular(120),
+                  ),
+                ),
+              ),
+            ),
+
+            // Country Cottage with Purple Roof
+            const Positioned(
+              left: 82,
+              bottom: 8,
+              child: Text('🏡', style: TextStyle(fontSize: 38)),
+            ),
+
+            // Green Shade Tree next to Cottage
+            const Positioned(
+              right: 24,
+              bottom: 6,
+              child: Text('🌳', style: TextStyle(fontSize: 42)),
+            ),
+
+            // Small shrubs & daisy
+            const Positioned(
+              left: 60,
+              bottom: 10,
+              child: Text('🌿', style: TextStyle(fontSize: 16)),
+            ),
+            const Positioned(
+              left: 18,
+              bottom: 6,
+              child: Text('🌼', style: TextStyle(fontSize: 14)),
+            ),
           ],
         ),
-      ),
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          // Background Purple Mountain Hills
-          Positioned(
-            left: -15,
-            right: -15,
-            bottom: 20,
-            child: Container(
-              height: 44,
-              decoration: BoxDecoration(
-                color: const Color(0xFFDDD6FE).withValues(alpha: 0.8),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(100),
-                  topRight: Radius.circular(80),
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            left: 40,
-            right: -30,
-            bottom: 18,
-            child: Container(
-              height: 40,
-              decoration: BoxDecoration(
-                color: const Color(0xFFC4B5FD).withValues(alpha: 0.75),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(90),
-                  topRight: Radius.circular(110),
-                ),
-              ),
-            ),
-          ),
-
-          // Foreground Green Lawn
-          Positioned(
-            left: -10,
-            right: -10,
-            bottom: -15,
-            child: Container(
-              height: 44,
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Color(0xFF86EFAC),
-                    Color(0xFF22C55E),
-                    Color(0xFF16A34A),
-                  ],
-                ),
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(140),
-                  topRight: Radius.circular(120),
-                ),
-              ),
-            ),
-          ),
-
-          // Country Cottage with Purple Roof
-          const Positioned(
-            left: 82,
-            bottom: 8,
-            child: Text('🏡', style: TextStyle(fontSize: 38)),
-          ),
-
-          // Green Shade Tree next to Cottage
-          const Positioned(
-            right: 24,
-            bottom: 6,
-            child: Text('🌳', style: TextStyle(fontSize: 42)),
-          ),
-
-          // Small shrubs & daisy
-          const Positioned(
-            left: 60,
-            bottom: 10,
-            child: Text('🌿', style: TextStyle(fontSize: 16)),
-          ),
-          const Positioned(
-            left: 18,
-            bottom: 6,
-            child: Text('🌼', style: TextStyle(fontSize: 14)),
-          ),
-        ],
       ),
     );
   }
