@@ -560,7 +560,7 @@ class _ElderInteractiveHomePageState
             activeColor: const Color(0xFF9333EA),
           ),
         ),
-        const SizedBox(width: 6),
+        const SizedBox(width: 8),
 
         // 2. දහවල්
         Expanded(
@@ -574,7 +574,7 @@ class _ElderInteractiveHomePageState
             activeColor: const Color(0xFF9333EA),
           ),
         ),
-        const SizedBox(width: 6),
+        const SizedBox(width: 8),
 
         // 3. රාත්‍රී
         Expanded(
@@ -610,23 +610,43 @@ class _ElderInteractiveHomePageState
     Color bg;
     Color borderColor;
     double borderWidth;
+    List<BoxShadow>? shadows;
+    Color titleColor;
+    Color timeColor;
 
-    if (isCurrent && !isDone) {
-      bg = const Color(0xFFFAF5FF); // soft lavender-purple tint
-      borderColor = const Color(0xFF9333EA); // vibrant royal purple highlight
-      borderWidth = 1.8;
-    } else if (isDone) {
-      bg = const Color(0xFFF0FDF4); // soft green tint
-      borderColor = const Color(0xFF86EFAC); // soft green border
+    if (isDone) {
+      bg = const Color(0xFFF0FDF4); // Soft therapeutic mint
+      borderColor = const Color(0xFF86EFAC); // Soft emerald border
       borderWidth = 1.4;
-    } else if (slotType == DailyAssessmentSlot.morning) {
-      bg = const Color(0xFFFFFDF5); // warm cream
-      borderColor = const Color(0xFFFCD34D); // warm golden amber border (matching mockup)
-      borderWidth = 1.4;
+      titleColor = const Color(0xFF166534);
+      timeColor = const Color(0xFF15803D);
+      shadows = [
+        BoxShadow(
+          color: const Color(0xFF22C55E).withValues(alpha: 0.08),
+          blurRadius: 6,
+          offset: const Offset(0, 2),
+        ),
+      ];
+    } else if (isCurrent) {
+      bg = Colors.white;
+      borderColor = const Color(0xFF8B5CF6); // Radiant Royal Violet border
+      borderWidth = 2.0;
+      titleColor = const Color(0xFF581C87);
+      timeColor = const Color(0xFF7C3AED);
+      shadows = [
+        BoxShadow(
+          color: const Color(0xFF7C3AED).withValues(alpha: 0.18),
+          blurRadius: 10,
+          offset: const Offset(0, 3),
+        ),
+      ];
     } else {
-      bg = const Color(0xFFFAFAFA); // soft clean light grey
-      borderColor = const Color(0xFFE9D5FF); // soft lavender border
-      borderWidth = 1.1;
+      bg = const Color(0xFFFBF9FF); // Calming airy lavender-white
+      borderColor = const Color(0xFFE9D5FF); // Delicate border
+      borderWidth = 1.0;
+      titleColor = const Color(0xFF334155);
+      timeColor = const Color(0xFF64748B);
+      shadows = null;
     }
 
     return Stack(
@@ -634,20 +654,12 @@ class _ElderInteractiveHomePageState
       children: [
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 2),
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
           decoration: BoxDecoration(
             color: bg,
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(color: borderColor, width: borderWidth),
-            boxShadow: isCurrent && !isDone
-                ? [
-                    BoxShadow(
-                      color: const Color(0xFF7E22CE).withValues(alpha: 0.16),
-                      blurRadius: 6,
-                      offset: const Offset(0, 2),
-                    ),
-                  ]
-                : null,
+            boxShadow: shadows,
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -662,7 +674,7 @@ class _ElderInteractiveHomePageState
                 style: TextStyle(
                   fontSize: 14.5,
                   fontWeight: FontWeight.w900,
-                  color: isCurrent && !isDone ? const Color(0xFF581C87) : const Color(0xFF3B0764),
+                  color: titleColor,
                   letterSpacing: 0.1,
                 ),
               ),
@@ -674,35 +686,65 @@ class _ElderInteractiveHomePageState
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
-                  color: isCurrent && !isDone ? const Color(0xFF6B21A8) : const Color(0xFF475569),
+                  color: timeColor,
                 ),
               ),
             ],
           ),
         ),
 
-        // Floating Green Checkmark Badge if done or active current slot (matching mockup)
-        if (isDone || isCurrent)
+        // Floating Status Badge: Only checkmark when done, 'දැන්' pill when active
+        if (isDone)
           Positioned(
-            top: -5,
-            right: -5,
+            top: -6,
+            right: -4,
             child: Container(
-              width: 20,
-              height: 20,
+              width: 22,
+              height: 22,
               decoration: BoxDecoration(
-                color: const Color(0xFF22C55E),
+                color: const Color(0xFF16A34A),
                 shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 1.8),
+                border: Border.all(color: Colors.white, width: 2),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF22C55E).withValues(alpha: 0.35),
-                    blurRadius: 4,
+                    color: const Color(0xFF16A34A).withValues(alpha: 0.35),
+                    blurRadius: 6,
                     offset: const Offset(0, 2),
                   ),
                 ],
               ),
               alignment: Alignment.center,
-              child: const Icon(Icons.check_rounded, color: Colors.white, size: 13),
+              child: const Icon(Icons.check_rounded, color: Colors.white, size: 14),
+            ),
+          )
+        else if (isCurrent)
+          Positioned(
+            top: -6,
+            right: -4,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF8B5CF6), Color(0xFF7C3AED)],
+                ),
+                borderRadius: BorderRadius.circular(99),
+                border: Border.all(color: Colors.white, width: 1.5),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF7C3AED).withValues(alpha: 0.35),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: const Text(
+                'දැන්',
+                style: TextStyle(
+                  fontSize: 9.5,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.white,
+                ),
+              ),
             ),
           ),
       ],
@@ -1573,7 +1615,9 @@ class _ElderInteractiveHomePageState
                   buttonText: emotionalDone
                       ? 'සම්පූර්ණයි ($nextSlotTime ට) ⏰'
                       : 'ඊලඟ ක්‍රියාකාරකම කරන්න',
-                  buttonGradient: const [Color(0xFF059669), Color(0xFF10B981)],
+                  buttonGradient: emotionalDone
+                      ? const [Color(0xFF5B21B6), Color(0xFF7C3AED)]
+                      : const [Color(0xFF6D28D9), Color(0xFF8B5CF6)],
                   isEmotionalCard: true,
                   bottomDecoration: null,
                   onTap: () {
@@ -1906,38 +1950,57 @@ class _ElderInteractiveHomePageState
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: borderColor, width: 1.8),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white,
+            Color(0xFFFCFAFF),
+            Color(0xFFF9F5FF),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(
+          color: const Color(0xFFE9D5FF).withValues(alpha: 0.90),
+          width: 1.5,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 14,
-            offset: const Offset(0, 4),
+            color: const Color(0xFF7C3AED).withValues(alpha: 0.08),
+            blurRadius: 22,
+            offset: const Offset(0, 8),
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(24.5),
         child: Stack(
           children: [
-            // Bottom-Left Purple Botanical Corner Foliage
+            // Top Accent Vibrant Bar
             Positioned(
-              left: 4,
-              bottom: 4,
-              child: _buildPurpleCornerSprig(isLeft: true),
-            ),
-
-            // Bottom-Right Purple Botanical Corner Foliage
-            Positioned(
-              right: 4,
-              bottom: 4,
-              child: _buildPurpleCornerSprig(isLeft: false),
+              top: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                height: 4,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: isEmotionalCard
+                        ? const [Color(0xFF8B5CF6), Color(0xFFC084FC)]
+                        : const [Color(0xFFA855F7), Color(0xFF38BDF8)],
+                  ),
+                ),
+              ),
             ),
 
             // Main Content
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 13, 16, 13),
+              padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -1954,30 +2017,33 @@ class _ElderInteractiveHomePageState
                             Row(
                               children: [
                                 Container(
-                                  width: 44,
-                                  height: 44,
+                                  width: 46,
+                                  height: 46,
                                   decoration: BoxDecoration(
-                                    color: isEmotionalCard
-                                        ? const Color(0xFF5B21B6) // Solid Royal Purple squircle
-                                        : Colors.white,
-                                    borderRadius: BorderRadius.circular(13),
-                                    border: isEmotionalCard
-                                        ? null
-                                        : Border.all(color: const Color(0xFF7C3AED), width: 1.8),
+                                    gradient: LinearGradient(
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                      colors: isEmotionalCard
+                                          ? const [Color(0xFF8B5CF6), Color(0xFF6D28D9)]
+                                          : const [Color(0xFFA855F7), Color(0xFF7C3AED)],
+                                    ),
+                                    borderRadius: BorderRadius.circular(14),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: const Color(0xFF6B21A8).withValues(alpha: 0.18),
-                                        blurRadius: 6,
-                                        offset: const Offset(0, 2),
+                                        color: const Color(0xFF7C3AED).withValues(alpha: 0.30),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 3),
                                       ),
                                     ],
                                   ),
                                   alignment: Alignment.center,
-                                  child: isEmotionalCard
-                                      ? const Icon(LucideIcons.brain, color: Colors.white, size: 24)
-                                      : const Icon(LucideIcons.puzzle, color: Color(0xFF6B21A8), size: 22),
+                                  child: Icon(
+                                    isEmotionalCard ? LucideIcons.brain : LucideIcons.puzzle,
+                                    color: Colors.white,
+                                    size: 23,
+                                  ),
                                 ),
-                                const SizedBox(width: 10),
+                                const SizedBox(width: 12),
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1986,7 +2052,7 @@ class _ElderInteractiveHomePageState
                                       Text(
                                         title,
                                         style: const TextStyle(
-                                          fontSize: 17.5,
+                                          fontSize: 18,
                                           fontWeight: FontWeight.w900,
                                           color: Color(0xFF1E1B4B),
                                           letterSpacing: 0.1,
@@ -2017,17 +2083,17 @@ class _ElderInteractiveHomePageState
                         ),
                       ),
 
-                      const SizedBox(width: 6),
+                      const SizedBox(width: 8),
 
                       // Right Illustration (compact size)
                       topRightIllustration,
                     ],
                   ),
-                  const SizedBox(height: 11),
+                  const SizedBox(height: 14),
 
                   // Direct 3-Slot Session Cards Row (Clean, Compact & Elder-Friendly)
                   sessionTrackerWidget,
-                  const SizedBox(height: 11),
+                  const SizedBox(height: 14),
 
                   // Action Pill Button (Wide, rounded 99 pill matching reference mockup)
                   InkWell(
@@ -2035,15 +2101,19 @@ class _ElderInteractiveHomePageState
                     borderRadius: BorderRadius.circular(99),
                     child: Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 9.5),
+                      height: 48,
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(colors: buttonGradient),
+                        gradient: LinearGradient(
+                          colors: buttonGradient,
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                        ),
                         borderRadius: BorderRadius.circular(99),
                         boxShadow: [
                           BoxShadow(
                             color: buttonGradient.first.withValues(alpha: 0.35),
-                            blurRadius: 7,
-                            offset: const Offset(0, 3),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
                           ),
                         ],
                       ),
@@ -2051,22 +2121,23 @@ class _ElderInteractiveHomePageState
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          if (isEmotionalCard)
-                            const Icon(LucideIcons.brain, color: Colors.white, size: 18)
-                          else
-                            const Icon(LucideIcons.gamepad2, color: Colors.white, size: 18),
+                          Icon(
+                            isEmotionalCard ? LucideIcons.brain : LucideIcons.gamepad2,
+                            color: Colors.white,
+                            size: 19,
+                          ),
                           const SizedBox(width: 8),
                           Text(
                             buttonText,
                             style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w900,
                               color: Colors.white,
-                              fontSize: 14.5,
-                              fontWeight: FontWeight.w800,
                               letterSpacing: 0.2,
                             ),
                           ),
                           const SizedBox(width: 6),
-                          const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 16),
+                          const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 18),
                         ],
                       ),
                     ),
