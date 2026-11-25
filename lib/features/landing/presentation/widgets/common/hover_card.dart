@@ -40,18 +40,16 @@ class _HoverCardState extends State<HoverCard> {
           duration: const Duration(milliseconds: 200),
           curve: Curves.easeOut,
           transform: Matrix4.translationValues(0, _isHovered ? -6 : 0, 0),
-          padding: widget.padding,
           decoration: BoxDecoration(
             color: widget.backgroundColor ?? AppColors.card,
             borderRadius: BorderRadius.circular(widget.borderRadius),
-            border: widget.hasTopPurpleAccent && _isHovered
-                ? const Border(
-                    top: BorderSide(color: AppColors.primary, width: 3.5),
-                    left: BorderSide(color: AppColors.border, width: 1),
-                    right: BorderSide(color: AppColors.border, width: 1),
-                    bottom: BorderSide(color: AppColors.border, width: 1),
-                  )
-                : widget.border ?? Border.all(color: AppColors.border, width: 1),
+            border: widget.border ??
+                Border.all(
+                  color: widget.hasTopPurpleAccent && _isHovered
+                      ? AppColors.primary.withValues(alpha: 0.45)
+                      : AppColors.border,
+                  width: 1,
+                ),
             boxShadow: [
               BoxShadow(
                 color: AppColors.primary.withValues(alpha: _isHovered ? 0.12 : 0.04),
@@ -60,7 +58,25 @@ class _HoverCardState extends State<HoverCard> {
               ),
             ],
           ),
-          child: widget.child,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(widget.borderRadius),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (widget.hasTopPurpleAccent)
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    height: 3.5,
+                    color: _isHovered ? AppColors.primary : Colors.transparent,
+                  ),
+                Padding(
+                  padding: widget.padding,
+                  child: widget.child,
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

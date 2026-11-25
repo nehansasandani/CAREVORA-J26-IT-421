@@ -13,6 +13,7 @@ import '../../../core/services/picnic_bgm_player.dart';
 import '../../../core/services/tts_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../shared/widgets/carevora_avatar.dart';
 import '../../assessment/application/memory_game_service.dart';
 import '../../auth/application/auth_controller.dart';
 import 'widgets/elder_game_invite_notifications.dart';
@@ -189,26 +190,32 @@ class _MemoryGamesPageState extends ConsumerState<MemoryGamesPage> {
 
     switch (_activeGame) {
       case MemoryGameType.sequence:
+        final isSinhala = ref.watch(languageProvider).isSinhala;
         return _SequenceGameView(
           key: const ValueKey('sequence_game'),
           onBack: _backToHub,
           initialSequence: widget.initialSequence,
           residentId: effectiveResidentId,
           token: effectiveToken,
+          isSinhala: isSinhala,
         );
       case MemoryGameType.pairs:
+        final isSinhala = ref.watch(languageProvider).isSinhala;
         return _PairsGameView(
           key: const ValueKey('pairs_game'),
           onBack: _backToHub,
           residentId: effectiveResidentId,
           token: effectiveToken,
+          isSinhala: isSinhala,
         );
       case MemoryGameType.items:
+        final isSinhala = ref.watch(languageProvider).isSinhala;
         return _ItemsGameView(
           key: const ValueKey('items_game'),
           onBack: _backToHub,
           residentId: effectiveResidentId,
           token: effectiveToken,
+          isSinhala: isSinhala,
         );
       case MemoryGameType.collaborative:
         final isSinhala = ref.watch(languageProvider).isSinhala;
@@ -219,6 +226,7 @@ class _MemoryGamesPageState extends ConsumerState<MemoryGamesPage> {
           elderHomeId: auth.elderHomeId ?? 1,
           elderHomeName: auth.elderHomeName ?? 'Serene Valley Senior Living',
           hostName: auth.userName ?? 'Sarah Jenkins',
+          hostAvatarUrl: auth.avatarUrl,
           token: effectiveToken,
           isSinhala: isSinhala,
           initialLiveRoomId: widget.initialLiveRoomId,
@@ -1923,6 +1931,7 @@ class _SequenceGameView extends StatefulWidget {
   final List<int>? initialSequence;
   final int residentId;
   final String? token;
+  final bool isSinhala;
 
   const _SequenceGameView({
     super.key,
@@ -1930,6 +1939,7 @@ class _SequenceGameView extends StatefulWidget {
     this.initialSequence,
     required this.residentId,
     this.token,
+    this.isSinhala = false,
   });
 
   @override
@@ -1946,6 +1956,7 @@ enum _SeqPhase {
 class _SequenceTileData {
   final int id;
   final String label;
+  final String sinhalaLabel;
   final Color color;
   final Color accentGradient;
   final IconData icon;
@@ -1953,17 +1964,23 @@ class _SequenceTileData {
   const _SequenceTileData({
     required this.id,
     required this.label,
+    required this.sinhalaLabel,
     required this.color,
     required this.accentGradient,
     required this.icon,
   });
+
+  String displayLabel(bool isSi) => isSi ? sinhalaLabel : label;
 }
 
 class _SequenceGameViewState extends State<_SequenceGameView> {
+  static const int _maxLevels = 3;
+
   static const List<_SequenceTileData> _tiles = [
     _SequenceTileData(
       id: 0,
       label: 'Violet 1',
+      sinhalaLabel: 'දම් 1',
       color: Color(0xFF7C3AED),
       accentGradient: Color(0xFF9333EA),
       icon: Icons.looks_one_rounded,
@@ -1971,6 +1988,7 @@ class _SequenceGameViewState extends State<_SequenceGameView> {
     _SequenceTileData(
       id: 1,
       label: 'Blue 2',
+      sinhalaLabel: 'නිල් 2',
       color: Color(0xFF2563EB),
       accentGradient: Color(0xFF3B82F6),
       icon: Icons.looks_two_rounded,
@@ -1978,6 +1996,7 @@ class _SequenceGameViewState extends State<_SequenceGameView> {
     _SequenceTileData(
       id: 2,
       label: 'Green 3',
+      sinhalaLabel: 'කොළ 3',
       color: Color(0xFF16A34A),
       accentGradient: Color(0xFF22C55E),
       icon: Icons.looks_3_rounded,
@@ -1985,6 +2004,7 @@ class _SequenceGameViewState extends State<_SequenceGameView> {
     _SequenceTileData(
       id: 3,
       label: 'Orange 4',
+      sinhalaLabel: 'තැඹිලි 4',
       color: Color(0xFFEA580C),
       accentGradient: Color(0xFFF97316),
       icon: Icons.looks_4_rounded,
@@ -2012,32 +2032,164 @@ class _SequenceGameViewState extends State<_SequenceGameView> {
   int _lastAttempts = 1;
   int _lastCorrectCount = 0;
 
+  // Hot-reload-safe nullable state for voice, chimes, animated preview & 3-level finish flow
+  bool? _voiceEnabled;
+  Timer? _voiceDelayTimer;
+  Timer? _highlightTimer;
+  int? _highlightedPreviewStep;
+  PicnicBgmPlayer? _sfxPlayer;
+  List<double>? _levelScores;
+  int? _lastRetryMatchedCount;
+  bool? _isTestEnv;
+  bool? _isCheckingResult;
+  Timer? _evalTimer;
+
+  bool get _isVoiceOn => _voiceEnabled ?? true;
+  bool get _isFinalLevel => _currentLevel >= _maxLevels;
+  PicnicBgmPlayer get _sfx => _sfxPlayer ??= PicnicBgmPlayer();
+
+  static const String _siHowToSpeech =
+      'අනුපිළිවෙල මතක ක්‍රීඩාව ක්‍රීඩා කරන ආකාරය. පළමුව, පියවර එක සිට අවසානය දක්වා පෙන්වන පාට සහ අංක පිළිවෙල හොඳින් මතක තබාගන්න. දෙවනුව, මතකයි ආරම්භ කරමු ඔබා, ඒ පිළිවෙලටම පහළ ඇති පාට අංක බොත්තම් ඔබන්න. තෙවනුව, මට්ටම් තුනම සම්පූර්ණ කර ජය ගන්න. අමතක වුණොත් නැවත බලන්න ඔබන්න.';
+  static const String _enHowToSpeech =
+      'How to play Remember the Sequence. Step 1: Watch the colored numbers in order from Step 1 to the end. Step 2: Tap Start My Turn, then tap the colored buttons in the exact same order. Step 3: Complete all 3 levels to win! You can tap Watch Again anytime if you need another look.';
+
   @override
   void initState() {
     super.initState();
+    _isTestEnv = WidgetsBinding.instance.runtimeType.toString().contains('Test');
+    _levelScores = <double>[];
     if (widget.initialSequence != null && widget.initialSequence!.isNotEmpty) {
       _sequenceLength = widget.initialSequence!.length;
       _targetSequence = List<int>.from(widget.initialSequence!);
       _userTaps = [];
       _phase = _SeqPhase.showing;
+      _startPreviewPulse();
+      _speakPhasePrompt(_SeqPhase.showing, delay: const Duration(milliseconds: 350));
     } else {
-      _startNewRound();
+      _startNewRound(initialDelay: const Duration(milliseconds: 350));
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _SequenceGameView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isSinhala != widget.isSinhala) {
+      _speakPhasePrompt(_phase);
     }
   }
 
   @override
   void dispose() {
     _completionTimer?.cancel();
+    _voiceDelayTimer?.cancel();
+    _highlightTimer?.cancel();
+    _evalTimer?.cancel();
+    if (_isTestEnv != true) {
+      TtsService.instance.onComplete = null;
+      TtsService.instance.stop();
+    }
+    _sfxPlayer?.dispose();
     super.dispose();
   }
 
-  void _startNewRound() {
+  void _speakText(String enText, String siText, {Duration delay = Duration.zero}) {
+    if (_isTestEnv == true || !_isVoiceOn || !mounted) return;
+    _voiceDelayTimer?.cancel();
+    final isSi = widget.isSinhala;
+    final text = isSi ? siText : enText;
+    if (delay == Duration.zero) {
+      TtsService.instance.speak(text, isSinhala: isSi);
+      return;
+    }
+    _voiceDelayTimer = Timer(delay, () {
+      if (!mounted || !_isVoiceOn || _isTestEnv == true) return;
+      TtsService.instance.speak(text, isSinhala: isSi);
+    });
+  }
+
+  void _speakPhasePrompt(_SeqPhase phase, {Duration delay = Duration.zero}) {
+    switch (phase) {
+      case _SeqPhase.showing:
+        _speakText(
+          'Watch and remember the colored numbers in order. When you are ready, tap Start My Turn.',
+          'පාට සහ අංක පිළිවෙල හොඳින් බලා මතක තබාගන්න. සූදානම් වූ පසු ආරම්භ කරමු ඔබන්න.',
+          delay: delay,
+        );
+        break;
+      case _SeqPhase.input:
+        _speakText(
+          "Now it's your turn! Tap the colored circles in the exact same order.",
+          'දැන් ඔබේ වාරයයි! කලින් දුටු පිළිවෙලටම පාට අංක බොත්තම් ඔබන්න.',
+          delay: delay,
+        );
+        break;
+      case _SeqPhase.success:
+        if (_isFinalLevel) {
+          _speakText(
+            'Amazing champion! You completed all 3 levels of Remember the Sequence! Your memory is shining bright!',
+            'විශිෂ්ට ජයග්‍රහණයක්! ඔබ අනුපිළිවෙල මතක ක්‍රීඩාවේ මට්ටම් තුනම සාර්ථකව අවසන් කළා! ඔබේ මතක ශක්තිය හරිම අපූරුයි!',
+            delay: delay,
+          );
+        } else {
+          _speakText(
+            "Wonderful job! You remembered the sequence perfectly! Let's try the next level.",
+            'හරිම විශිෂ්ටයි! ඔබ පිළිවෙල හරියටම මතක තබා ගත්තා! අපි ඊළඟ මට්ටමට යමු.',
+            delay: delay,
+          );
+        }
+        break;
+      case _SeqPhase.retry:
+        _speakText(
+          'Good try! Take a deep breath, watch the sequence again, and give it another try.',
+          'හොඳ උත්සාහයක්! කලබල වෙන්න එපා. අපි පිළිවෙල නැවත බලා ආයෙත් උත්සාහ කරමු.',
+          delay: delay,
+        );
+        break;
+    }
+  }
+
+  void _toggleVoice() {
+    final next = !_isVoiceOn;
+    setState(() => _voiceEnabled = next);
+    if (!next) {
+      _voiceDelayTimer?.cancel();
+      if (_isTestEnv != true) {
+        TtsService.instance.stop();
+      }
+    } else {
+      _speakPhasePrompt(_phase);
+    }
+  }
+
+  void _startPreviewPulse() {
+    _highlightTimer?.cancel();
+    if (_isTestEnv == true || _targetSequence.isEmpty) return;
+    _highlightedPreviewStep = 0;
+    _highlightTimer = Timer.periodic(const Duration(milliseconds: 950), (timer) {
+      if (!mounted || _phase != _SeqPhase.showing) {
+        timer.cancel();
+        return;
+      }
+      setState(() {
+        final next = ((_highlightedPreviewStep ?? 0) + 1) % _targetSequence.length;
+        _highlightedPreviewStep = next;
+      });
+    });
+  }
+
+  void _startNewRound({Duration initialDelay = Duration.zero}) {
     _completionTimer?.cancel();
+    _evalTimer?.cancel();
     _hasShownSuccessPopup = false;
     _isPopupOpen = false;
     final List<int> seq = [];
     for (int i = 0; i < _sequenceLength; i++) {
-      seq.add(_random.nextInt(_tiles.length));
+      // Avoid 3 identical tiles in a row so sequences feel natural & memorable
+      int pick = _random.nextInt(_tiles.length);
+      if (seq.length >= 2 && seq[seq.length - 1] == pick && seq[seq.length - 2] == pick) {
+        pick = (pick + 1) % _tiles.length;
+      }
+      seq.add(pick);
     }
     setState(() {
       _targetSequence = seq;
@@ -2045,41 +2197,76 @@ class _SequenceGameViewState extends State<_SequenceGameView> {
       _phase = _SeqPhase.showing;
       _roundAttempts = 1;
       _wrongTapsInRound = 0;
+      _lastRetryMatchedCount = null;
+      _isCheckingResult = false;
       _saveSuccessMessage = null;
       _saveErrorMessage = null;
+      _highlightedPreviewStep = 0;
     });
+    _startPreviewPulse();
+    _speakPhasePrompt(_SeqPhase.showing, delay: initialDelay);
   }
 
   void _startInputPhase() {
+    _highlightTimer?.cancel();
+    _evalTimer?.cancel();
+    if (_isTestEnv != true) {
+      _sfx.playTapChime(volume: 0.24);
+    }
     setState(() {
       _userTaps = [];
       _phase = _SeqPhase.input;
+      _highlightedPreviewStep = null;
+      _isCheckingResult = false;
     });
+    _speakPhasePrompt(_SeqPhase.input);
   }
 
   void _replaySequence() {
+    _evalTimer?.cancel();
     setState(() {
       _userTaps = [];
       _phase = _SeqPhase.showing;
+      _highlightedPreviewStep = 0;
+      _isCheckingResult = false;
+    });
+    _startPreviewPulse();
+    _speakPhasePrompt(_SeqPhase.showing);
+  }
+
+  void _undoLastTap() {
+    if (_phase != _SeqPhase.input || _userTaps.isEmpty || _isCheckingResult == true) return;
+    if (_isTestEnv != true) {
+      _sfx.playTapChime(volume: 0.22);
+    }
+    setState(() {
+      _userTaps = List<int>.from(_userTaps)..removeLast();
     });
   }
 
   void _resetToBeginning() {
     _completionTimer?.cancel();
+    _evalTimer?.cancel();
     _hasShownSuccessPopup = false;
     _isPopupOpen = false;
     setState(() {
       _currentLevel = 1;
       _sequenceLength = 3;
+      _levelScores = <double>[];
+      _isCheckingResult = false;
     });
     _startNewRound();
   }
 
   void _onTileTap(int tileId) {
-    if (_phase != _SeqPhase.input) return;
+    if (_phase != _SeqPhase.input || _isCheckingResult == true) return;
 
     final nextIndex = _userTaps.length;
     if (nextIndex >= _targetSequence.length) return;
+
+    if (_isTestEnv != true) {
+      _sfx.playTapChime(volume: 0.26);
+    }
 
     final updatedTaps = List<int>.from(_userTaps)..add(tileId);
 
@@ -2102,43 +2289,80 @@ class _SequenceGameViewState extends State<_SequenceGameView> {
       }
     }
 
-    if (isAllCorrect) {
-      final totalTaps = _targetSequence.length + _wrongTapsInRound;
-      final accuracy =
-          ((_targetSequence.length.toDouble() / totalTaps.toDouble()) * 100.0)
-              .clamp(0.0, 100.0);
-      final roundedScore = (accuracy * 10).round() / 10.0;
-      final attemptsCount = _roundAttempts;
+    void finalizeRoundEvaluation() {
+      if (!mounted) return;
+      if (isAllCorrect) {
+        final totalTaps = _targetSequence.length + _wrongTapsInRound;
+        final accuracy =
+            ((_targetSequence.length.toDouble() / totalTaps.toDouble()) * 100.0)
+                .clamp(0.0, 100.0);
+        final roundedScore = (accuracy * 10).round() / 10.0;
+        final attemptsCount = _roundAttempts;
 
-      setState(() {
-        _userTaps = updatedTaps;
-        _phase = _SeqPhase.success;
-        _lastScore = roundedScore;
-        _lastAttempts = attemptsCount;
-        _lastCorrectCount = _targetSequence.length;
-      });
-
-      _saveSession(
-        score: roundedScore,
-        attempts: attemptsCount,
-        correctAnswers: _targetSequence.length,
-        totalItems: _targetSequence.length,
-      );
-
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && _phase == _SeqPhase.success && !_hasShownSuccessPopup) {
-          _showSuccessPopup();
+        final scores = List<double>.from(_levelScores ?? const <double>[]);
+        if (scores.length >= _currentLevel) {
+          scores[_currentLevel - 1] = roundedScore;
+        } else {
+          scores.add(roundedScore);
         }
-      });
-    } else {
-      final wrongCount = _targetSequence.length - correctCount;
-      setState(() {
-        _userTaps = updatedTaps;
-        _wrongTapsInRound += (wrongCount > 0 ? wrongCount : 1);
-        _roundAttempts++;
-        _phase = _SeqPhase.retry;
-      });
+
+        setState(() {
+          _userTaps = updatedTaps;
+          _isCheckingResult = false;
+          _phase = _SeqPhase.success;
+          _lastScore = roundedScore;
+          _lastAttempts = attemptsCount;
+          _lastCorrectCount = _targetSequence.length;
+          _levelScores = scores;
+        });
+
+        if (_isTestEnv != true) {
+          _sfx.playVictoryChime(volume: 0.28);
+        }
+        _speakPhasePrompt(_SeqPhase.success, delay: const Duration(milliseconds: 220));
+
+        _saveSession(
+          score: roundedScore,
+          attempts: attemptsCount,
+          correctAnswers: _targetSequence.length,
+          totalItems: _targetSequence.length,
+        );
+
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted &&
+              _phase == _SeqPhase.success &&
+              !_hasShownSuccessPopup &&
+              !_isFinalLevel) {
+            _showSuccessPopup();
+          }
+        });
+      } else {
+        final wrongCount = _targetSequence.length - correctCount;
+        setState(() {
+          _userTaps = updatedTaps;
+          _isCheckingResult = false;
+          _wrongTapsInRound += (wrongCount > 0 ? wrongCount : 1);
+          _lastRetryMatchedCount = correctCount;
+          _roundAttempts++;
+          _phase = _SeqPhase.retry;
+        });
+        _speakPhasePrompt(_SeqPhase.retry);
+      }
     }
+
+    if (_isTestEnv == true) {
+      finalizeRoundEvaluation();
+      return;
+    }
+
+    // Show the final tapped tile cleanly in the last slot for 800ms before transitioning
+    // so the elder clearly sees their complete selection instead of an abrupt jump!
+    setState(() {
+      _userTaps = updatedTaps;
+      _isCheckingResult = true;
+    });
+    _evalTimer?.cancel();
+    _evalTimer = Timer(const Duration(milliseconds: 800), finalizeRoundEvaluation);
   }
 
   Future<void> _saveSession({
@@ -2154,7 +2378,7 @@ class _SequenceGameViewState extends State<_SequenceGameView> {
     });
 
     try {
-      final record = await MemoryGameService.saveCompletedSession(
+      await MemoryGameService.saveCompletedSession(
         residentId: widget.residentId,
         gameType: 'SEQUENCE',
         scorePercentage: score,
@@ -2165,6 +2389,7 @@ class _SequenceGameViewState extends State<_SequenceGameView> {
         completionDetailsJson: jsonEncode({
           'sequenceLength': _sequenceLength,
           'level': _currentLevel,
+          'maxLevels': _maxLevels,
           'wrongTaps': _wrongTapsInRound,
         }),
         token: widget.token,
@@ -2173,7 +2398,9 @@ class _SequenceGameViewState extends State<_SequenceGameView> {
       if (mounted) {
         setState(() {
           _isSaving = false;
-          _saveSuccessMessage = null;
+          _saveSuccessMessage = widget.isSinhala
+              ? 'ප්‍රගති වාර්තාවේ සුරැකුණා'
+              : 'Saved to Cognitive Progress';
         });
         _dialogSetState?.call(() {});
       }
@@ -2199,20 +2426,383 @@ class _SequenceGameViewState extends State<_SequenceGameView> {
     _startNewRound();
   }
 
+  Future<void> _showSequenceHowToPlayDialog() async {
+    final isSi = widget.isSinhala;
+    final tts = TtsService.instance;
+    bool isSpeakingNow = false;
+    bool dialogOpen = true;
+
+    void stopGuideSpeech({void Function(VoidCallback)? setDlgState}) {
+      tts.onComplete = null;
+      tts.stop();
+      if (isSpeakingNow) {
+        isSpeakingNow = false;
+        if (dialogOpen && setDlgState != null) {
+          setDlgState(() {});
+        }
+      }
+    }
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogCtx) {
+        return StatefulBuilder(
+          builder: (ctx, setDlgState) {
+            void toggleSpeak() {
+              if (isSpeakingNow) {
+                stopGuideSpeech(setDlgState: setDlgState);
+                return;
+              }
+              setDlgState(() => isSpeakingNow = true);
+              tts.onComplete = () {
+                if (dialogOpen) {
+                  isSpeakingNow = false;
+                  setDlgState(() {});
+                }
+              };
+              tts.speak(
+                isSi ? _siHowToSpeech : _enHowToSpeech,
+                isSinhala: isSi,
+              );
+            }
+
+            return Dialog(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 530),
+                child: AuroraGradientBorderFrame(
+                  borderRadius: 24,
+                  borderWidth: 3.0,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(21),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF4C1D95).withValues(alpha: 0.22),
+                          blurRadius: 28,
+                          offset: const Offset(0, 12),
+                        ),
+                      ],
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Header Strip with Listen button
+                        Container(
+                          padding: const EdgeInsets.fromLTRB(20, 16, 14, 16),
+                          decoration: const BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                Color(0xFF2E1065),
+                                Color(0xFF6D28D9),
+                                Color(0xFF0D9488),
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 42,
+                                height: 42,
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.20),
+                                  borderRadius: BorderRadius.circular(13),
+                                  border: Border.all(
+                                    color: Colors.white.withValues(alpha: 0.45),
+                                    width: 1.5,
+                                  ),
+                                ),
+                                child: const Center(
+                                  child: Text('🔢', style: TextStyle(fontSize: 22)),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      isSi ? 'ක්‍රීඩා කරන ආකාරය' : 'How to Play',
+                                      style: const TextStyle(
+                                        fontSize: 19,
+                                        fontWeight: FontWeight.w900,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 1),
+                                    Text(
+                                      isSi
+                                          ? 'සරල පියවර 3 කින් අනුපිළිවෙල මතක තබාගනිමු'
+                                          : '3 simple steps to master the sequence',
+                                      style: TextStyle(
+                                        fontSize: 12.5,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.white.withValues(alpha: 0.88),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              ElevatedButton.icon(
+                                key: const ValueKey('seq_howto_listen_button'),
+                                onPressed: toggleSpeak,
+                                icon: Icon(
+                                  isSpeakingNow
+                                      ? Icons.stop_rounded
+                                      : Icons.volume_up_rounded,
+                                  size: 18,
+                                ),
+                                label: Text(
+                                  isSpeakingNow
+                                      ? (isSi ? 'නවත්වන්න' : 'Stop')
+                                      : (isSi ? 'අසන්න' : 'Listen'),
+                                  style: const TextStyle(
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: isSpeakingNow
+                                      ? const Color(0xFFEF4444)
+                                      : const Color(0xFFFDE68A),
+                                  foregroundColor: isSpeakingNow
+                                      ? Colors.white
+                                      : const Color(0xFF1E1B4B),
+                                  elevation: 0,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 10,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(13),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              IconButton(
+                                onPressed: () => Navigator.of(dialogCtx).pop(),
+                                icon: const Icon(
+                                  Icons.close_rounded,
+                                  color: Colors.white,
+                                  size: 22,
+                                ),
+                                tooltip: isSi ? 'වසන්න' : 'Close',
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _buildSeqGuideStepCard(
+                                stepNumber: '1',
+                                emoji: '👀',
+                                title: isSi
+                                    ? 'පාට සහ අංක පිළිවෙල බලන්න'
+                                    : 'Watch the Color & Number Order',
+                                description: isSi
+                                    ? 'පියවර 1 සිට අවසානය දක්වා පෙන්වන පාට සහ අංක පිළිවෙල හොඳින් මතක තබාගන්න.'
+                                    : 'Look closely at the colored numbered circles from Step 1 to the end at your own pace.',
+                                accentColor: const Color(0xFF7C3AED),
+                                bgColors: const [Color(0xFFFAF5FF), Color(0xFFF3E8FF)],
+                              ),
+                              const SizedBox(height: 11),
+                              _buildSeqGuideStepCard(
+                                stepNumber: '2',
+                                emoji: '👆',
+                                title: isSi
+                                    ? 'ඒ පිළිවෙලටම ඔබන්න'
+                                    : 'Tap in the Exact Same Order',
+                                description: isSi
+                                    ? '"මතකයි! ආරම්භ කරමු" ඔබා, කලින් දුටු පිළිවෙලටම පහළ ඇති පාට බොත්තම් ඔබන්න.'
+                                    : 'Tap "Start My Turn", then tap the large colored buttons in the exact same order. Use Undo if you mis-tap!',
+                                accentColor: const Color(0xFF0D9488),
+                                bgColors: const [Color(0xFFECFDF5), Color(0xFFF0FDFA)],
+                              ),
+                              const SizedBox(height: 11),
+                              _buildSeqGuideStepCard(
+                                stepNumber: '3',
+                                emoji: '🏆',
+                                title: isSi
+                                    ? 'මට්ටම් 3ම සම්පූර්ණ කර ජය ගන්න!'
+                                    : 'Complete All 3 Levels & Win!',
+                                description: isSi
+                                    ? 'මට්ටම 1 (අංක 3), මට්ටම 2 (අංක 4), මට්ටම 3 (අංක 5) සම්පූර්ණ කර ක්‍රීඩාව ජය ගන්න. අමතක වුණොත් නැවත බලන්න ඔබන්න!'
+                                    : 'Finish Level 1 (3 tiles), Level 2 (4 tiles), and Level 3 (5 tiles) to complete the game! Tap Watch Again anytime.',
+                                accentColor: const Color(0xFFD97706),
+                                bgColors: const [Color(0xFFFFFBEB), Color(0xFFFEF3C7)],
+                              ),
+                              const SizedBox(height: 16),
+                              SizedBox(
+                                height: 46,
+                                child: ElevatedButton(
+                                  onPressed: () => Navigator.of(dialogCtx).pop(),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF6D28D9),
+                                    foregroundColor: Colors.white,
+                                    elevation: 0,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    isSi
+                                        ? '👍 හරි, තේරුණා!'
+                                        : "👍 Got It! Let's Play",
+                                    style: const TextStyle(
+                                      fontSize: 15.5,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    ).whenComplete(() {
+      dialogOpen = false;
+      stopGuideSpeech();
+    });
+  }
+
+  Widget _buildSeqGuideStepCard({
+    required String stepNumber,
+    required String emoji,
+    required String title,
+    required String description,
+    required Color accentColor,
+    required List<Color> bgColors,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: bgColors,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: accentColor.withValues(alpha: 0.30),
+          width: 1.5,
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(13),
+              border: Border.all(
+                color: accentColor.withValues(alpha: 0.35),
+                width: 1.5,
+              ),
+            ),
+            child: Center(
+              child: Text(emoji, style: const TextStyle(fontSize: 22)),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: accentColor,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        stepNumber,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 7),
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w900,
+                          color: accentColor,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  description,
+                  style: const TextStyle(
+                    fontSize: 13.5,
+                    height: 1.38,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1E293B),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  double get _overallAverageScore {
+    final scores = _levelScores ?? const <double>[];
+    if (scores.isEmpty) return _lastScore ?? 100.0;
+    final avg = scores.reduce((a, b) => a + b) / scores.length;
+    return (avg * 10).round() / 10.0;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isSi = widget.isSinhala;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildGameNavBar(
-          gameTitle: 'Remember the Sequence',
+          gameTitle: isSi ? 'අනුපිළිවෙල මතකය' : 'Remember the Sequence',
           gameIcon: LucideIcons.sparkles,
           gameColor: const Color(0xFF7C3AED),
           onBack: widget.onBack,
           onReset: _resetToBeginning,
-          statusBadge: 'Level $_currentLevel ($_sequenceLength Tiles)',
+          backLabel: isSi ? 'සියලුම ක්‍රීඩා' : 'All Games',
+          statusBadge: isSi
+              ? 'මට්ටම $_currentLevel / $_maxLevels • අංක $_sequenceLength'
+              : 'Level $_currentLevel of $_maxLevels • $_sequenceLength Tiles',
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 10),
 
         Container(
           width: double.infinity,
@@ -2221,102 +2811,72 @@ class _SequenceGameViewState extends State<_SequenceGameView> {
               colors: [
                 Color(0xFFFFFFFF),
                 Color(0xFFFBF9FE),
-                Color(0xFFF7F4FD),
+                Color(0xFFF5F3FF),
               ],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
             borderRadius: BorderRadius.circular(24),
             border: Border.all(
-              color: const Color(0xFF8B5CF6).withValues(alpha: 0.18),
+              color: const Color(0xFF8B5CF6).withValues(alpha: 0.22),
               width: 1.5,
             ),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF7C3AED).withValues(alpha: 0.08),
-                blurRadius: 32,
+                color: const Color(0xFF7C3AED).withValues(alpha: 0.10),
+                blurRadius: 30,
                 offset: const Offset(0, 10),
-              ),
-              BoxShadow(
-                color: const Color(0xFF1E1B4B).withValues(alpha: 0.03),
-                blurRadius: 10,
-                offset: const Offset(0, 2),
-              ),
-              BoxShadow(
-                color: Colors.white.withValues(alpha: 0.95),
-                blurRadius: 6,
-                offset: const Offset(0, -2),
               ),
             ],
           ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(23),
-            child: Stack(
+            borderRadius: BorderRadius.circular(22.5),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Top Multi-Color Highlight Strip matching the 4 sequence tiles
-                Container(
-                  height: 4.5,
-                  width: double.infinity,
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        Color(0xFF7C3AED), // Violet 1
-                        Color(0xFF2563EB), // Blue 2
-                        Color(0xFF16A34A), // Green 3
-                        Color(0xFFEA580C), // Orange 4
-                      ],
-                      begin: Alignment.centerLeft,
-                      end: Alignment.centerRight,
-                    ),
-                  ),
-                ),
+                // 1. Attractive Cosmic Header Banner with 3-Level Stepper, Voice & How to Play
+                _buildSequenceCosmicHeader(isSi),
 
-                // Ambient decorative background rings in top-right
-                Positioned(
-                  top: -50,
-                  right: -50,
-                  child: IgnorePointer(
-                    child: Container(
-                      width: 220,
-                      height: 220,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: RadialGradient(
-                          colors: [
-                            const Color(0xFFDDD6FE).withValues(alpha: 0.35),
-                            const Color(0xFFDDD6FE).withValues(alpha: 0.0),
-                          ],
+                // 2. Main Interactive Game Content with Gentle Animated Pastel Backdrop
+                ConstrainedBox(
+                  constraints: const BoxConstraints(minHeight: 462),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      const Positioned.fill(
+                        child: IgnorePointer(
+                          child: _SeqAmbientPlayBackdrop(),
                         ),
                       ),
-                    ),
-                  ),
-                ),
-
-                // Main Game Content
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 26),
-                  child: Column(
-                    children: [
-                      _buildInstructionBanner(),
-                      const SizedBox(height: 28),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(22, 16, 22, 18),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                      if (!(_phase == _SeqPhase.success && _isFinalLevel) &&
+                          _phase != _SeqPhase.retry) ...[
+                        _buildInstructionBanner(isSi),
+                        const SizedBox(height: 12),
+                      ],
 
                       if (_phase == _SeqPhase.showing) ...[
-                        _buildSequencePreview(),
-                        const SizedBox(height: 32),
+                        const SizedBox(height: 14),
+                        _buildSequencePreview(isSi),
+                        const SizedBox(height: 28),
                         SizedBox(
-                          height: 52,
+                          height: 56,
                           child: DecoratedBox(
                             decoration: BoxDecoration(
                               gradient: const LinearGradient(
-                                colors: [Color(0xFF7C3AED), Color(0xFF6D28D9)],
+                                colors: [Color(0xFF7C3AED), Color(0xFF4F46E5)],
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
                               ),
-                              borderRadius: BorderRadius.circular(16),
+                              borderRadius: BorderRadius.circular(17),
                               boxShadow: [
                                 BoxShadow(
                                   color: const Color(0xFF7C3AED).withValues(alpha: 0.38),
-                                  blurRadius: 14,
+                                  blurRadius: 16,
                                   offset: const Offset(0, 6),
                                 ),
                               ],
@@ -2329,20 +2889,22 @@ class _SequenceGameViewState extends State<_SequenceGameView> {
                                 foregroundColor: Colors.white,
                                 shadowColor: Colors.transparent,
                                 elevation: 0,
-                                padding: const EdgeInsets.symmetric(horizontal: 36),
+                                padding: const EdgeInsets.symmetric(horizontal: 38),
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
+                                  borderRadius: BorderRadius.circular(17),
                                 ),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Icon(LucideIcons.sparkles, size: 19),
-                                  const SizedBox(width: 9),
+                                  const Icon(LucideIcons.sparkles, size: 21),
+                                  const SizedBox(width: 10),
                                   Text(
-                                    'I Remember! Hide & Start My Turn',
+                                    isSi
+                                        ? 'මතකයි! සඟවා මගේ වාරය අරඹන්න'
+                                        : 'I Remember! Hide & Start My Turn',
                                     style: AppTextStyles.button.copyWith(
-                                      fontSize: 16,
+                                      fontSize: 17,
                                       fontWeight: FontWeight.w800,
                                       color: Colors.white,
                                       letterSpacing: 0.2,
@@ -2353,40 +2915,90 @@ class _SequenceGameViewState extends State<_SequenceGameView> {
                             ),
                           ),
                         ),
+                        const SizedBox(height: 14),
                       ] else if (_phase == _SeqPhase.input) ...[
-                        _buildProgressSlots(),
-                        const SizedBox(height: 30),
-                        _buildInteractiveTilesGrid(),
-                        const SizedBox(height: 28),
-                        OutlinedButton.icon(
-                          key: const ValueKey('replay_sequence_button'),
-                          onPressed: _replaySequence,
-                          icon: const Icon(LucideIcons.rotateCcw, size: 18),
-                          label: const Text(
-                            'Replay Sequence to Watch Again',
-                            style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700),
-                          ),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: const Color(0xFF6D28D9),
-                            side: const BorderSide(color: Color(0xFFDDD6FE), width: 1.5),
-                            backgroundColor: const Color(0xFFFAF5FF),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 24,
-                              vertical: 13,
+                        const SizedBox(height: 4),
+                        _buildProgressSlots(isSi),
+                        const SizedBox(height: 16),
+                        _buildInteractiveTilesGrid(isSi),
+                        const SizedBox(height: 16),
+                        Wrap(
+                          alignment: WrapAlignment.center,
+                          spacing: 14,
+                          runSpacing: 8,
+                          children: [
+                            if (_userTaps.isNotEmpty && _isCheckingResult != true)
+                              OutlinedButton.icon(
+                                key: const ValueKey('seq_undo_tap_button'),
+                                onPressed: _undoLastTap,
+                                icon: const Icon(Icons.backspace_outlined, size: 18),
+                                label: Text(
+                                  isSi ? 'පසුපසට (Undo)' : 'Undo Last Tap',
+                                  style: const TextStyle(
+                                    fontSize: 14.5,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: const Color(0xFFEA580C),
+                                  side: const BorderSide(
+                                    color: Color(0xFFFDBA74),
+                                    width: 1.6,
+                                  ),
+                                  backgroundColor: const Color(0xFFFFF7ED),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 20,
+                                    vertical: 12,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                ),
+                              ),
+                            OutlinedButton.icon(
+                              key: const ValueKey('replay_sequence_button'),
+                              onPressed: _isCheckingResult == true ? null : _replaySequence,
+                              icon: const Icon(LucideIcons.rotateCcw, size: 17),
+                              label: Text(
+                                isSi
+                                    ? 'පිළිවෙල නැවත බලන්න'
+                                    : 'Replay Sequence to Watch Again',
+                                style: const TextStyle(
+                                  fontSize: 14.5,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: const Color(0xFF6D28D9),
+                                side: const BorderSide(
+                                  color: Color(0xFFDDD6FE),
+                                  width: 1.6,
+                                ),
+                                backgroundColor: const Color(0xFFFAF5FF),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 22,
+                                  vertical: 12,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                elevation: 0,
+                              ),
                             ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            elevation: 0,
-                          ),
+                          ],
                         ),
                       ] else if (_phase == _SeqPhase.success) ...[
-                        _buildSuccessView(),
+                        _isFinalLevel
+                            ? _buildGrandFinishCard(isSi)
+                            : _buildSuccessView(isSi),
                       ] else if (_phase == _SeqPhase.retry) ...[
-                        _buildRetryView(),
+                        _buildRetryView(isSi),
                       ],
-                    ],
-                  ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
                 ),
               ],
             ),
@@ -2396,7 +3008,230 @@ class _SequenceGameViewState extends State<_SequenceGameView> {
     );
   }
 
-  Widget _buildInstructionBanner() {
+  Widget _buildSequenceCosmicHeader(bool isSi) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Color(0xFF2E1065),
+            Color(0xFF5B21B6),
+            Color(0xFF1D4ED8),
+            Color(0xFF0D9488),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 14,
+        runSpacing: 10,
+        children: [
+          // Left: Title + 3-Level Visual Stepper
+          Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 14,
+            runSpacing: 8,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFFEF3C7), Color(0xFFFDE68A)],
+                      ),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
+                    child: const Center(
+                      child: Text('🔢', style: TextStyle(fontSize: 22)),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        isSi ? 'අනුපිළිවෙල මතක ක්‍රීඩාව ✨' : 'Remember the Sequence ✨',
+                        style: const TextStyle(
+                          fontSize: 18.5,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                          letterSpacing: -0.2,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        isSi
+                            ? 'මට්ටම් 3ම සම්පූර්ණ කර ජය ගන්න'
+                            : 'Complete all 3 levels to finish the challenge',
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white.withValues(alpha: 0.88),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+
+              // 3-Level Progress Pills
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: List.generate(_maxLevels, (idx) {
+                  final lvl = idx + 1;
+                  final tilesCount = 2 + lvl;
+                  final isCompleted = lvl < _currentLevel ||
+                      (lvl == _currentLevel && _phase == _SeqPhase.success);
+                  final isCurrent = lvl == _currentLevel && !isCompleted;
+                  return Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isCompleted
+                              ? const Color(0xFF10B981)
+                              : (isCurrent
+                                  ? Colors.white
+                                  : Colors.white.withValues(alpha: 0.14)),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: isCompleted
+                                ? const Color(0xFF6EE7B7)
+                                : (isCurrent
+                                    ? const Color(0xFFFDE68A)
+                                    : Colors.white.withValues(alpha: 0.30)),
+                            width: isCurrent ? 2 : 1,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (isCompleted)
+                              const Icon(Icons.check_circle, size: 13, color: Colors.white)
+                            else
+                              Icon(
+                                isCurrent ? Icons.play_circle_fill : Icons.circle_outlined,
+                                size: 13,
+                                color: isCurrent
+                                    ? const Color(0xFF6D28D9)
+                                    : Colors.white.withValues(alpha: 0.80),
+                              ),
+                            const SizedBox(width: 4),
+                            Text(
+                              isSi ? 'L$lvl ($tilesCount)' : 'L$lvl • $tilesCount',
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w900,
+                                color: isCompleted
+                                    ? Colors.white
+                                    : (isCurrent
+                                        ? const Color(0xFF1E1B4B)
+                                        : Colors.white.withValues(alpha: 0.85)),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (idx < _maxLevels - 1)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 3),
+                          child: Icon(
+                            Icons.chevron_right_rounded,
+                            size: 16,
+                            color: Colors.white.withValues(alpha: 0.60),
+                          ),
+                        ),
+                    ],
+                  );
+                }),
+              ),
+            ],
+          ),
+
+          // Right: Voice Toggle + How to Play Button
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            children: [
+              OutlinedButton.icon(
+                key: const ValueKey('seq_voice_toggle_button'),
+                onPressed: _toggleVoice,
+                icon: Icon(
+                  _isVoiceOn ? Icons.volume_up_rounded : Icons.volume_off_rounded,
+                  size: 16,
+                ),
+                label: Text(
+                  _isVoiceOn
+                      ? (isSi ? 'හඬ: ON' : 'Voice: ON')
+                      : (isSi ? 'හඬ: OFF' : 'Voice: OFF'),
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: _isVoiceOn
+                      ? const Color(0xFFA7F3D0)
+                      : Colors.white.withValues(alpha: 0.78),
+                  backgroundColor: _isVoiceOn
+                      ? const Color(0xFF10B981).withValues(alpha: 0.22)
+                      : Colors.white.withValues(alpha: 0.08),
+                  side: BorderSide(
+                    color: _isVoiceOn
+                        ? const Color(0xFF6EE7B7).withValues(alpha: 0.75)
+                        : Colors.white.withValues(alpha: 0.35),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                  minimumSize: Size.zero,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+              OutlinedButton.icon(
+                key: const ValueKey('seq_how_to_play_button'),
+                onPressed: _showSequenceHowToPlayDialog,
+                icon: const Icon(Icons.help_outline_rounded, size: 17),
+                label: Text(
+                  isSi ? 'ක්‍රීඩා කරන ආකාරය' : 'How to Play',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  backgroundColor: Colors.white.withValues(alpha: 0.18),
+                  side: BorderSide(
+                    color: Colors.white.withValues(alpha: 0.65),
+                    width: 1.5,
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                  minimumSize: Size.zero,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInstructionBanner(bool isSi) {
     String title = '';
     String subtitle = '';
     List<Color> gradientColors = [const Color(0xFFFAF5FF), const Color(0xFFF3E8FF)];
@@ -2406,36 +3241,46 @@ class _SequenceGameViewState extends State<_SequenceGameView> {
 
     switch (_phase) {
       case _SeqPhase.showing:
-        title = 'Watch & Remember the Sequence';
-        subtitle =
-            'Take your time to memorize the colors and numbers shown below. When ready, tap the button to begin.';
+        title = isSi
+            ? 'පිළිවෙල හොඳින් බලා මතක තබාගන්න'
+            : 'Watch & Remember the Sequence';
+        subtitle = isSi
+            ? 'පහළ පෙන්වන පාට සහ අංක පිළිවෙල නිදහසේ මතක තබාගන්න. සූදානම් වූ පසු ආරම්භ කිරීමට බොත්තම ඔබන්න.'
+            : 'Take your time to memorize the colors and numbers shown below. When ready, tap the button to begin.';
         gradientColors = [const Color(0xFFFAF5FF), const Color(0xFFF3E8FF)];
         borderColor = const Color(0xFFDDD6FE);
         iconColor = const Color(0xFF7C3AED);
         icon = LucideIcons.sparkles;
         break;
       case _SeqPhase.input:
-        title = 'Your Turn: Tap the Tiles in Order';
-        subtitle =
-            'Tap the colored circles below in the same sequence you just saw.';
+        title = isSi
+            ? 'ඔබේ වාරය: පිළිවෙලට පාට අංක ඔබන්න'
+            : 'Your Turn: Tap the Tiles in Order';
+        subtitle = isSi
+            ? 'කලින් දුටු පිළිවෙලටම පහළ ඇති පාට අංක වටයන් ඔබන්න.'
+            : 'Tap the colored circles below in the exact same sequence you just saw.';
         gradientColors = [const Color(0xFFF5F3FF), const Color(0xFFEDE9FE)];
         borderColor = const Color(0xFFC7D2FE);
         iconColor = const Color(0xFF6D28D9);
         icon = LucideIcons.mousePointerClick;
         break;
       case _SeqPhase.success:
-        title = 'Well done! Perfect Memory!';
-        subtitle =
-            'You correctly recalled all $_sequenceLength tiles in the sequence. Would you like to advance to the next level?';
+        title = isSi
+            ? 'විශිෂ්ටයි! ඔබ හරියටම මතක තබා ගත්තා!'
+            : 'Well done! Perfect Memory!';
+        subtitle = isSi
+            ? 'ඔබ අංක $_sequenceLength ම නිවැරදි පිළිවෙලට තෝරා ගත්තා. ඊළඟ මට්ටමට යමුද?'
+            : 'You correctly recalled all $_sequenceLength tiles in order! Ready for Level ${_currentLevel + 1}?';
         gradientColors = [const Color(0xFFF0FDF4), const Color(0xFFDCFCE7)];
         borderColor = const Color(0xFF86EFAC);
         iconColor = const Color(0xFF16A34A);
         icon = LucideIcons.check;
         break;
       case _SeqPhase.retry:
-        title = 'Good try!';
-        subtitle =
-            'Memory practice takes patience. You can replay the sequence to take another look and try again!';
+        title = isSi ? 'හොඳ උත්සාහයක්!' : 'Good try!';
+        subtitle = isSi
+            ? 'කලබල වෙන්න එපා — මතක පුහුණුවට ටිකක් කාලය අවශ්‍යයි. පිළිවෙල නැවත බලා උත්සාහ කරමු!'
+            : 'Memory practice takes patience. Watch the sequence once more and give it another try!';
         gradientColors = [const Color(0xFFFFFBEB), const Color(0xFFFEF3C7)];
         borderColor = const Color(0xFFFDE68A);
         iconColor = const Color(0xFFD97706);
@@ -2445,46 +3290,32 @@ class _SequenceGameViewState extends State<_SequenceGameView> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: gradientColors,
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: borderColor, width: 1.3),
-        boxShadow: [
-          BoxShadow(
-            color: iconColor.withValues(alpha: 0.06),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: borderColor, width: 1.4),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
-            width: 44,
-            height: 44,
+            width: 36,
+            height: 36,
             decoration: BoxDecoration(
               color: Colors.white,
               shape: BoxShape.circle,
-              border: Border.all(color: borderColor, width: 1.2),
-              boxShadow: [
-                BoxShadow(
-                  color: iconColor.withValues(alpha: 0.15),
-                  blurRadius: 6,
-                  offset: const Offset(0, 2),
-                ),
-              ],
+              border: Border.all(color: borderColor, width: 1.3),
             ),
             child: Center(
-              child: Icon(icon, color: iconColor, size: 22),
+              child: Icon(icon, color: iconColor, size: 19),
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -2492,22 +3323,43 @@ class _SequenceGameViewState extends State<_SequenceGameView> {
                 Text(
                   title,
                   style: AppTextStyles.h3.copyWith(
-                    fontSize: 18.5,
+                    fontSize: 16,
                     fontWeight: FontWeight.w800,
                     color: const Color(0xFF1E1B4B),
-                    letterSpacing: -0.3,
+                    letterSpacing: -0.2,
                   ),
                 ),
-                const SizedBox(height: 3),
                 Text(
                   subtitle,
                   style: AppTextStyles.body.copyWith(
-                    fontSize: 14.5,
+                    fontSize: 13,
                     color: const Color(0xFF475569),
-                    height: 1.45,
+                    height: 1.3,
                   ),
                 ),
               ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Tooltip(
+            message: isSi ? 'නැවත අසන්න' : 'Listen Again',
+            child: InkWell(
+              onTap: () {
+                if (!_isVoiceOn) {
+                  setState(() => _voiceEnabled = true);
+                }
+                _speakPhasePrompt(_phase);
+              },
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: const EdgeInsets.all(9),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: borderColor),
+                ),
+                child: Icon(Icons.volume_up_rounded, size: 19, color: iconColor),
+              ),
             ),
           ),
         ],
@@ -2515,214 +3367,445 @@ class _SequenceGameViewState extends State<_SequenceGameView> {
     );
   }
 
-  Widget _buildSequencePreview() {
+  Widget _buildSequencePreview(bool isSi) {
+    final activeHighlight = _highlightedPreviewStep;
+    final count = _targetSequence.length;
+    final double cardWidth = count <= 3 ? 182 : (count == 4 ? 162 : 140);
+    final double circleSize = count <= 3 ? 112 : (count == 4 ? 102 : 92);
+    final double iconSize = count <= 3 ? 58 : (count == 4 ? 52 : 46);
+    final double vPad = count <= 3 ? 24 : 20;
+    final double labelSize = count <= 3 ? 16.5 : (count == 4 ? 15.5 : 14.5);
+
     return Wrap(
       alignment: WrapAlignment.center,
       crossAxisAlignment: WrapCrossAlignment.center,
-      spacing: 16,
+      spacing: count <= 3 ? 14 : 10,
       runSpacing: 16,
       children: List.generate(_targetSequence.length, (index) {
         final tile = _tiles[_targetSequence[index]];
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 18),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(22),
-            border: Border.all(
-              color: tile.color.withValues(alpha: 0.22),
-              width: 1.5,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: tile.color.withValues(alpha: 0.12),
-                blurRadius: 16,
-                offset: const Offset(0, 6),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                margin: const EdgeInsets.only(bottom: 12),
-                decoration: BoxDecoration(
-                  color: tile.color.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: tile.color.withValues(alpha: 0.25)),
+        final isGlowing = activeHighlight == index;
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 280),
+              curve: Curves.easeOutCubic,
+              width: cardWidth,
+              transform: Matrix4.translationValues(0, isGlowing ? -6 : 0, 0),
+              padding: EdgeInsets.symmetric(horizontal: 14, vertical: vPad),
+              decoration: BoxDecoration(
+                gradient: isGlowing
+                    ? LinearGradient(
+                        colors: [
+                          tile.color.withValues(alpha: 0.16),
+                          tile.color.withValues(alpha: 0.06),
+                        ],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      )
+                    : const LinearGradient(
+                        colors: [Color(0xFFFFFFFF), Color(0xFFFAF9FF)],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      ),
+                borderRadius: BorderRadius.circular(26),
+                border: Border.all(
+                  color: isGlowing
+                      ? tile.color
+                      : tile.color.withValues(alpha: 0.28),
+                  width: isGlowing ? 2.8 : 1.7,
                 ),
-                child: Text(
-                  'Step ${index + 1}',
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w800,
-                    color: tile.color,
+                boxShadow: [
+                  BoxShadow(
+                    color: tile.color.withValues(alpha: isGlowing ? 0.30 : 0.12),
+                    blurRadius: isGlowing ? 26 : 16,
+                    offset: Offset(0, isGlowing ? 10 : 6),
                   ),
-                ),
+                ],
               ),
-              Container(
-                width: 90,
-                height: 90,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [tile.color, tile.accentGradient],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 3.5),
-                  boxShadow: [
-                    BoxShadow(
-                      color: tile.color.withValues(alpha: 0.4),
-                      blurRadius: 16,
-                      offset: const Offset(0, 6),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+                    margin: const EdgeInsets.only(bottom: 14),
+                    decoration: BoxDecoration(
+                      color: isGlowing
+                          ? tile.color
+                          : tile.color.withValues(alpha: 0.13),
+                      borderRadius: BorderRadius.circular(14),
                     ),
-                  ],
-                ),
-                child: Center(
-                  child: Icon(tile.icon, size: 46, color: Colors.white),
-                ),
+                    child: Text(
+                      isSi ? 'පියවර ${index + 1}' : 'Step ${index + 1}',
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w800,
+                        color: isGlowing ? Colors.white : tile.color,
+                      ),
+                    ),
+                  ),
+                  Container(
+                    width: circleSize,
+                    height: circleSize,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [tile.color, tile.accentGradient],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 4),
+                      boxShadow: [
+                        BoxShadow(
+                          color: tile.color.withValues(alpha: 0.44),
+                          blurRadius: 16,
+                          offset: const Offset(0, 7),
+                        ),
+                      ],
+                    ),
+                    child: Center(
+                      child: Icon(tile.icon, size: iconSize, color: Colors.white),
+                    ),
+                  ),
+                  const SizedBox(height: 15),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: isGlowing
+                          ? Colors.white.withValues(alpha: 0.92)
+                          : const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: tile.color.withValues(alpha: 0.16),
+                      ),
+                    ),
+                    child: Text(
+                      tile.displayLabel(isSi),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFF1E293B),
+                        fontSize: labelSize,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 10),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  tile.label,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF1E293B),
-                    fontSize: 13,
+            ),
+            if (index < _targetSequence.length - 1)
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: count <= 3 ? 10 : 6),
+                child: Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.85),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: const Color(0xFF7C3AED).withValues(alpha: 0.22),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF7C3AED).withValues(alpha: 0.08),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.arrow_forward_rounded,
+                    size: 20,
+                    color: Color(0xFF7C3AED),
                   ),
                 ),
               ),
-            ],
-          ),
+          ],
         );
       }),
     );
   }
 
-  Widget _buildProgressSlots() {
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF8FAFC),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.02),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(LucideIcons.listOrdered, size: 16, color: Color(0xFF64748B)),
-              const SizedBox(width: 8),
-              Text(
-                'Progress: ${_userTaps.length} of ${_targetSequence.length} tiles tapped',
-                style: AppTextStyles.caption.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF1E293B),
-                  fontSize: 13.5,
-                ),
-              ),
-            ],
-          ),
+  Widget _buildProgressSlots(bool isSi) {
+    final nextStepNum = (_userTaps.length + 1).clamp(1, _targetSequence.length);
+    final isComplete = _userTaps.length >= _targetSequence.length;
+    final isChecking = _isCheckingResult == true;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [
+            Color(0xFFFFFFFF),
+            Color(0xFFFAF5FF),
+            Color(0xFFEEF2FF),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-        const SizedBox(height: 18),
-        Wrap(
-          alignment: WrapAlignment.center,
-          spacing: 16,
-          runSpacing: 14,
-          children: List.generate(_targetSequence.length, (index) {
-            final isFilled = index < _userTaps.length;
-            final isNext = index == _userTaps.length;
-            if (isFilled) {
-              final tile = _tiles[_userTaps[index]];
-              return Container(
-                width: 64,
-                height: 64,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: const Color(0xFF8B5CF6).withValues(alpha: 0.26),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF7C3AED).withValues(alpha: 0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Wrap(
+            alignment: WrapAlignment.center,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 12,
+            runSpacing: 6,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [tile.color, tile.accentGradient],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 3),
-                  boxShadow: [
-                    BoxShadow(
-                      color: tile.color.withValues(alpha: 0.35),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFDDD6FE), width: 1.2),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(LucideIcons.listOrdered, size: 15, color: Color(0xFF6D28D9)),
+                    const SizedBox(width: 6),
+                    Text(
+                      isSi
+                          ? 'ප්‍රගතිය: අංක ${_targetSequence.length} න් ${_userTaps.length} ක් තෝරා ඇත'
+                          : 'Progress: ${_userTaps.length} of ${_targetSequence.length} tiles tapped',
+                      style: AppTextStyles.caption.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFF1E293B),
+                        fontSize: 13.5,
+                      ),
                     ),
                   ],
                 ),
-                child: Center(
-                  child: Icon(tile.icon, size: 32, color: Colors.white),
-                ),
-              );
-            } else {
-              return Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  color: isNext ? const Color(0xFFFAF5FF) : const Color(0xFFF8FAFC),
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: isNext ? const Color(0xFF8B5CF6) : const Color(0xFFCBD5E1),
-                    width: isNext ? 2.2 : 1.8,
+              ),
+              if (isChecking)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 5),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF0D9488), Color(0xFF10B981)],
+                    ),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  boxShadow: isNext
-                      ? [
-                          BoxShadow(
-                            color: const Color(0xFF8B5CF6).withValues(alpha: 0.15),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ]
-                      : null,
-                ),
-                child: Center(
                   child: Text(
-                    '${index + 1}',
-                    style: TextStyle(
-                      fontSize: 18,
+                    isSi ? '✨ පරීක්ෂා කරමින්...' : '✨ Checking your sequence...',
+                    style: const TextStyle(
+                      fontSize: 13,
                       fontWeight: FontWeight.w800,
-                      color: isNext ? const Color(0xFF7C3AED) : const Color(0xFF94A3B8),
+                      color: Colors.white,
+                    ),
+                  ),
+                )
+              else if (!isComplete)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 5),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF7C3AED), Color(0xFF4F46E5)],
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    isSi
+                        ? '👆 පියවර $nextStepNum තෝරන්න'
+                        : '👆 Tap Step $nextStepNum',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
                     ),
                   ),
                 ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            alignment: WrapAlignment.center,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 10,
+            children: List.generate(_targetSequence.length, (index) {
+              final isFilled = index < _userTaps.length;
+              final isNext = index == _userTaps.length;
+              Widget slotWidget;
+              if (isFilled) {
+                final tile = _tiles[_userTaps[index]];
+                final matches = _userTaps[index] == _targetSequence[index];
+                slotWidget = Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      width: 66,
+                      height: 66,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [tile.color, tile.accentGradient],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: isChecking
+                              ? (matches
+                                  ? const Color(0xFF10B981)
+                                  : const Color(0xFFF59E0B))
+                              : Colors.white,
+                          width: 3.4,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: tile.color.withValues(alpha: 0.36),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: Icon(tile.icon, size: 34, color: Colors.white),
+                      ),
+                    ),
+                    if (isChecking)
+                      Positioned(
+                        right: -3,
+                        top: -3,
+                        child: Container(
+                          width: 22,
+                          height: 22,
+                          decoration: BoxDecoration(
+                            color: matches
+                                ? const Color(0xFF10B981)
+                                : const Color(0xFFF59E0B),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 1.8),
+                          ),
+                          child: Center(
+                            child: Icon(
+                              matches ? Icons.check_rounded : Icons.refresh_rounded,
+                              size: 13,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              } else {
+                slotWidget = AnimatedContainer(
+                  duration: const Duration(milliseconds: 220),
+                  width: 66,
+                  height: 66,
+                  decoration: BoxDecoration(
+                    gradient: isNext
+                        ? const LinearGradient(
+                            colors: [Color(0xFFF3E8FF), Color(0xFFE0E7FF)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          )
+                        : null,
+                    color: isNext ? null : Colors.white,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: isNext ? const Color(0xFF7C3AED) : const Color(0xFFCBD5E1),
+                      width: isNext ? 2.6 : 1.7,
+                    ),
+                    boxShadow: isNext
+                        ? [
+                            BoxShadow(
+                              color: const Color(0xFF7C3AED).withValues(alpha: 0.22),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: Center(
+                    child: Text(
+                      '${index + 1}',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        color: isNext ? const Color(0xFF6D28D9) : const Color(0xFF94A3B8),
+                      ),
+                    ),
+                  ),
+                );
+              }
+
+              return Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  slotWidget,
+                  if (index < _targetSequence.length - 1)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
+                      child: Icon(
+                        Icons.arrow_forward_rounded,
+                        size: 20,
+                        color: isFilled
+                            ? const Color(0xFF7C3AED)
+                            : const Color(0xFFCBD5E1),
+                      ),
+                    ),
+                ],
               );
-            }
-          }),
-        ),
-      ],
+            }),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildInteractiveTilesGrid() {
-    return Wrap(
-      alignment: WrapAlignment.center,
-      spacing: 22,
-      runSpacing: 22,
-      children: _tiles.map((tile) {
-        return _InteractiveSequencePad(
-          key: ValueKey('sequence_tile_${tile.id}'),
-          tile: tile,
-          onTap: () => _onTileTap(tile.id),
-        );
-      }).toList(),
+  Widget _buildInteractiveTilesGrid(bool isSi) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [
+            Color(0xFFFDFBFF),
+            Color(0xFFEEF2FF),
+            Color(0xFFECFDF5),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: const Color(0xFFC7D2FE),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF4F46E5).withValues(alpha: 0.06),
+            blurRadius: 14,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Wrap(
+        alignment: WrapAlignment.center,
+        spacing: 30,
+        runSpacing: 16,
+        children: _tiles.map((tile) {
+          return _InteractiveSequencePad(
+            key: ValueKey('sequence_tile_${tile.id}'),
+            tile: tile,
+            isSinhala: isSi,
+            onTap: () => _onTileTap(tile.id),
+          );
+        }).toList(),
+      ),
     );
   }
 
@@ -2731,240 +3814,453 @@ class _SequenceGameViewState extends State<_SequenceGameView> {
     _hasShownSuccessPopup = true;
     _isPopupOpen = true;
 
+    final isSi = widget.isSinhala;
     final score = _lastScore ?? 100.0;
     final attempts = _lastAttempts;
     final correctCount = _lastCorrectCount;
+    final starCount = score >= 90 ? 5 : (score >= 75 ? 4 : 3);
 
     showDialog<void>(
       context: context,
       barrierDismissible: true,
-      barrierColor: Colors.black.withValues(alpha: 0.5),
+      barrierColor: Colors.black.withValues(alpha: 0.45),
       builder: (dialogCtx) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             _dialogSetState = setDialogState;
-            return Dialog(
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-              child: Container(
-                constraints: const BoxConstraints(maxWidth: 500),
-                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 28),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [
-                      Color(0xFFFFFFFF),
-                      Color(0xFFFBFDFD),
-                      Color(0xFFF0FDF4),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+            return Stack(
+              alignment: Alignment.center,
+              children: [
+                // Joyful colorful celebration ribbons & confetti bursting around the popup!
+                const Positioned.fill(
+                  child: IgnorePointer(
+                    child: _SeqPopupConfettiOverlay(),
                   ),
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(
-                    color: const Color(0xFF16A34A).withValues(alpha: 0.28),
-                    width: 1.5,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF16A34A).withValues(alpha: 0.16),
-                      blurRadius: 32,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Celebratory 3D Star Badge
-                    Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        Container(
-                          width: 86,
-                          height: 86,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFDCFCE7),
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: const Color(0xFF86EFAC),
-                              width: 2,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFF16A34A).withValues(alpha: 0.18),
-                                blurRadius: 18,
-                                offset: const Offset(0, 6),
-                              ),
-                            ],
-                          ),
+                Dialog(
+                  backgroundColor: Colors.transparent,
+                  elevation: 0,
+                  insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 460),
+                    child: AuroraGradientBorderFrame(
+                  borderRadius: 26,
+                  borderWidth: 2.8,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(23.2),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF10B981).withValues(alpha: 0.18),
+                          blurRadius: 28,
+                          offset: const Offset(0, 12),
                         ),
+                      ],
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // 1. Bright Pastel Celebration Top Banner
                         Container(
-                          width: 62,
-                          height: 62,
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFF22C55E), Color(0xFF16A34A)],
+                          padding: const EdgeInsets.fromLTRB(22, 22, 22, 18),
+                          decoration: const BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                Color(0xFFECFDF5),
+                                Color(0xFFF0FDFA),
+                                Color(0xFFF5F3FF),
+                              ],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                             ),
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFF16A34A).withValues(alpha: 0.35),
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
+                            border: Border(
+                              bottom: BorderSide(
+                                color: Color(0xFFD1FAE5),
+                                width: 1.2,
+                              ),
+                            ),
+                          ),
+                          child: Column(
+                            children: [
+                              // Glowing Star Medallion with sparkles
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Text('✨', style: TextStyle(fontSize: 22)),
+                                  const SizedBox(width: 12),
+                                  Container(
+                                    width: 78,
+                                    height: 78,
+                                    decoration: BoxDecoration(
+                                      gradient: const LinearGradient(
+                                        colors: [
+                                          Color(0xFF34D399),
+                                          Color(0xFF10B981),
+                                          Color(0xFF0D9488),
+                                        ],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      ),
+                                      shape: BoxShape.circle,
+                                      border: Border.all(color: Colors.white, width: 3.5),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: const Color(0xFF10B981).withValues(alpha: 0.35),
+                                          blurRadius: 18,
+                                          offset: const Offset(0, 6),
+                                        ),
+                                      ],
+                                    ),
+                                    child: const Center(
+                                      child: Text('🌟', style: TextStyle(fontSize: 38)),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  const Text('🎉', style: TextStyle(fontSize: 22)),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                isSi
+                                    ? 'විශිෂ්ටයි! මට්ටම $_currentLevel අවසන්!'
+                                    : 'Well Done! Level $_currentLevel Clear!',
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  fontSize: 23,
+                                  fontWeight: FontWeight.w900,
+                                  color: Color(0xFF065F46),
+                                  letterSpacing: -0.3,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              // Golden Stars Row
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: List.generate(
+                                  5,
+                                  (i) => Icon(
+                                    Icons.star_rounded,
+                                    size: 26,
+                                    color: i < starCount
+                                        ? const Color(0xFFF59E0B)
+                                        : const Color(0xFFCBD5E1),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              // Mini 3-Level Journey Stepper
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: List.generate(_maxLevels, (idx) {
+                                  final lvl = idx + 1;
+                                  final done = lvl <= _currentLevel;
+                                  final next = lvl == _currentLevel + 1;
+                                  return Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 11,
+                                          vertical: 4,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: done
+                                              ? const Color(0xFF10B981)
+                                              : (next
+                                                  ? const Color(0xFFEDE9FE)
+                                                  : Colors.white),
+                                          borderRadius: BorderRadius.circular(11),
+                                          border: Border.all(
+                                            color: done
+                                                ? const Color(0xFF059669)
+                                                : (next
+                                                    ? const Color(0xFF8B5CF6)
+                                                    : const Color(0xFFCBD5E1)),
+                                            width: next ? 1.6 : 1.1,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          done
+                                              ? (isSi ? '✓ L$lvl' : '✓ L$lvl')
+                                              : (isSi ? 'L$lvl' : 'L$lvl'),
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w900,
+                                            color: done
+                                                ? Colors.white
+                                                : (next
+                                                    ? const Color(0xFF6D28D9)
+                                                    : const Color(0xFF94A3B8)),
+                                          ),
+                                        ),
+                                      ),
+                                      if (idx < _maxLevels - 1)
+                                        const Padding(
+                                          padding: EdgeInsets.symmetric(horizontal: 5),
+                                          child: Icon(
+                                            Icons.arrow_forward_rounded,
+                                            size: 14,
+                                            color: Color(0xFF94A3B8),
+                                          ),
+                                        ),
+                                    ],
+                                  );
+                                }),
                               ),
                             ],
                           ),
-                          child: const Center(
-                            child: Icon(
-                              LucideIcons.sparkles,
-                              size: 34,
-                              color: Colors.white,
+                        ),
+
+                        // 2. Clean 3-Stat Tiles & Action Buttons
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(22, 18, 22, 20),
+                          child: Column(
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(vertical: 11),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFF5F3FF),
+                                        borderRadius: BorderRadius.circular(14),
+                                        border: Border.all(color: const Color(0xFFDDD6FE)),
+                                      ),
+                                      child: Column(
+                                        children: [
+                                          Text(
+                                            '${score.toStringAsFixed(0)}%',
+                                            style: const TextStyle(
+                                              fontSize: 20,
+                                              fontWeight: FontWeight.w900,
+                                              color: Color(0xFF6D28D9),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            isSi ? 'ලකුණු' : 'Score',
+                                            style: const TextStyle(
+                                              fontSize: 11.5,
+                                              fontWeight: FontWeight.w700,
+                                              color: Color(0xFF64748B),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(vertical: 11),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFECFDF5),
+                                        borderRadius: BorderRadius.circular(14),
+                                        border: Border.all(color: const Color(0xFFA7F3D0)),
+                                      ),
+                                      child: Column(
+                                        children: [
+                                          Text(
+                                            '$correctCount / $_sequenceLength',
+                                            style: const TextStyle(
+                                              fontSize: 20,
+                                              fontWeight: FontWeight.w900,
+                                              color: Color(0xFF047857),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            isSi ? 'නිවැරදි අංක' : 'Tiles',
+                                            style: const TextStyle(
+                                              fontSize: 11.5,
+                                              fontWeight: FontWeight.w700,
+                                              color: Color(0xFF64748B),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(vertical: 11),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFEFF6FF),
+                                        borderRadius: BorderRadius.circular(14),
+                                        border: Border.all(color: const Color(0xFFBFDBFE)),
+                                      ),
+                                      child: Column(
+                                        children: [
+                                          Text(
+                                            '$attempts',
+                                            style: const TextStyle(
+                                              fontSize: 20,
+                                              fontWeight: FontWeight.w900,
+                                              color: Color(0xFF1D4ED8),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            isSi ? 'උත්සාහයන්' : 'Tries',
+                                            style: const TextStyle(
+                                              fontSize: 11.5,
+                                              fontWeight: FontWeight.w700,
+                                              color: Color(0xFF64748B),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if (_saveSuccessMessage != null) ...[
+                                const SizedBox(height: 10),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFECFDF5),
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(color: const Color(0xFF86EFAC)),
+                                  ),
+                                  child: Text(
+                                    '✓ ${_saveSuccessMessage!}',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w800,
+                                      color: Color(0xFF047857),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                              const SizedBox(height: 16),
+
+                              // Primary: Advance to Next Level
+                              SizedBox(
+                                width: double.infinity,
+                                child: DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    gradient: const LinearGradient(
+                                      colors: [Color(0xFF7C3AED), Color(0xFF2563EB)],
+                                    ),
+                                    borderRadius: BorderRadius.circular(14),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: const Color(0xFF6D28D9).withValues(alpha: 0.32),
+                                        blurRadius: 12,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                  child: ElevatedButton.icon(
+                                    key: const ValueKey('next_level_button'),
+                                    onPressed: () {
+                                      Navigator.of(dialogCtx).pop();
+                                      _advanceToNextLevel();
+                                    },
+                                    icon: const Icon(LucideIcons.sparkles, size: 19),
+                                    label: Text(
+                                      isSi
+                                          ? 'ඊළඟ මට්ටම • මට්ටම ${_currentLevel + 1} (අංක ${_sequenceLength + 1})'
+                                          : 'Next Level • Level ${_currentLevel + 1} (${_sequenceLength + 1} Tiles)',
+                                      style: const TextStyle(
+                                        fontSize: 15.5,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.transparent,
+                                      foregroundColor: Colors.white,
+                                      shadowColor: Colors.transparent,
+                                      elevation: 0,
+                                      padding: const EdgeInsets.symmetric(vertical: 14),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(14),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: OutlinedButton.icon(
+                                      key: const ValueKey('replay_same_level_button'),
+                                      onPressed: () {
+                                        Navigator.of(dialogCtx).pop();
+                                        _startNewRound();
+                                      },
+                                      icon: const Icon(LucideIcons.rotateCcw, size: 15),
+                                      label: Text(
+                                        isSi ? 'නැවත' : 'Replay',
+                                        style: const TextStyle(
+                                          fontSize: 13.5,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: const Color(0xFF4C1D95),
+                                        side: const BorderSide(
+                                          color: Color(0xFFC4B5FD),
+                                          width: 1.4,
+                                        ),
+                                        backgroundColor: const Color(0xFFFAF5FF),
+                                        padding: const EdgeInsets.symmetric(vertical: 11),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: OutlinedButton.icon(
+                                      onPressed: () {
+                                        Navigator.of(dialogCtx).pop();
+                                        widget.onBack();
+                                      },
+                                      icon: const Icon(Icons.home_rounded, size: 16),
+                                      label: Text(
+                                        isSi ? 'සියලුම ක්‍රීඩා' : 'All Games',
+                                        style: const TextStyle(
+                                          fontSize: 13.5,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: const Color(0xFF475569),
+                                        side: const BorderSide(
+                                          color: Color(0xFFCBD5E1),
+                                          width: 1.3,
+                                        ),
+                                        backgroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(vertical: 11),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              ],
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 18),
-                    Text(
-                      'Well done!',
-                      style: AppTextStyles.h2.copyWith(
-                        color: const Color(0xFF15803D),
-                        fontWeight: FontWeight.w900,
-                        fontSize: 26,
-                        letterSpacing: -0.4,
+                        ],
                       ),
-                      textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'You remembered the entire sequence of $_sequenceLength tiles accurately!',
-                      style: AppTextStyles.body.copyWith(
-                        fontSize: 15,
-                        color: const Color(0xFF475569),
-                        fontWeight: FontWeight.w500,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 16),
-                    _buildGameScoreCard(
-                      score: score,
-                      scoreLabel: 'Accuracy',
-                      details:
-                          'Recalled: $correctCount / $_sequenceLength Tiles • Attempts: $attempts',
-                      isSaving: _isSaving,
-                      successMessage: null,
-                      errorMessage: _saveErrorMessage,
-                    ),
-                    const SizedBox(height: 18),
-                    SizedBox(
-                      width: double.infinity,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFF7C3AED), Color(0xFF6D28D9)],
-                          ),
-                          borderRadius: BorderRadius.circular(14),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFF7C3AED).withValues(alpha: 0.35),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: ElevatedButton.icon(
-                          key: const ValueKey('next_level_button'),
-                          onPressed: () {
-                            Navigator.of(dialogCtx).pop();
-                            _advanceToNextLevel();
-                          },
-                          icon: const Icon(LucideIcons.sparkles, size: 18),
-                          label: Text(
-                            'Next Round (${_sequenceLength + 1} Tiles)',
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.transparent,
-                            foregroundColor: Colors.white,
-                            shadowColor: Colors.transparent,
-                            elevation: 0,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () => Navigator.of(dialogCtx).pop(),
-                            icon: const Icon(LucideIcons.eye, size: 16),
-                            label: const Text(
-                              'View Board',
-                              style: TextStyle(
-                                fontSize: 13.5,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: const Color(0xFF475569),
-                              side: const BorderSide(
-                                color: Color(0xFFCBD5E1),
-                                width: 1.2,
-                              ),
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            key: const ValueKey('replay_same_level_button'),
-                            onPressed: () {
-                              Navigator.of(dialogCtx).pop();
-                              _startNewRound();
-                            },
-                            icon: const Icon(LucideIcons.rotateCcw, size: 16),
-                            label: const Text(
-                              'Replay Level',
-                              style: TextStyle(
-                                fontSize: 13.5,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: const Color(0xFF1E1B4B),
-                              side: const BorderSide(
-                                color: Color(0xFFCBD5E1),
-                                width: 1.4,
-                              ),
-                              backgroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                  ),
                 ),
               ),
+              ],
             );
           },
         );
@@ -2979,22 +4275,197 @@ class _SequenceGameViewState extends State<_SequenceGameView> {
     });
   }
 
-  Widget _buildSuccessView() {
+  Widget _buildGrandFinishCard(bool isSi) {
+    final scores = _levelScores ?? const <double>[];
+    final overall = _overallAverageScore;
+    final starCount = overall >= 90 ? 5 : (overall >= 75 ? 4 : 3);
+
+    return AuroraGradientBorderFrame(
+      borderRadius: 24,
+      borderWidth: 2.8,
+      child: _SequenceGrandCelebrationStage(
+        isSinhala: isSi,
+        centerContent: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('🎉 🏆 ✨', style: TextStyle(fontSize: 40)),
+            const SizedBox(height: 10),
+            Text(
+              isSi
+                  ? 'විශිෂ්ට ජයග්‍රහණයක්! ක්‍රීඩාව සම්පූර්ණයි!'
+                  : 'Memory Champion! Game Complete!',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w900,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              isSi
+                  ? 'සමස්ත නිවැරදි බව: ${overall.toStringAsFixed(0)}%'
+                  : 'Overall 3-Level Accuracy: ${overall.toStringAsFixed(0)}%',
+              style: const TextStyle(
+                fontSize: 19,
+                fontWeight: FontWeight.w900,
+                color: Color(0xFFFDE68A),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(
+                5,
+                (i) => Icon(
+                  Icons.star_rounded,
+                  size: 30,
+                  color: i < starCount
+                      ? const Color(0xFFFACC15)
+                      : Colors.white.withValues(alpha: 0.25),
+                ),
+              ),
+            ),
+            if (scores.isNotEmpty) ...[
+              const SizedBox(height: 14),
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 10,
+                runSpacing: 8,
+                children: List.generate(scores.length, (i) {
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.16),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.32),
+                      ),
+                    ),
+                    child: Text(
+                      isSi
+                          ? 'මට්ටම ${i + 1}: ${scores[i].toStringAsFixed(0)}%'
+                          : 'Level ${i + 1}: ${scores[i].toStringAsFixed(0)}%',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
+                    ),
+                  );
+                }),
+              ),
+            ],
+            if (_saveSuccessMessage != null) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF10B981).withValues(alpha: 0.25),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: const Color(0xFF6EE7B7).withValues(alpha: 0.65),
+                  ),
+                ),
+                child: Text(
+                  '✓ ${_saveSuccessMessage!}',
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFFA7F3D0),
+                  ),
+                ),
+              ),
+            ],
+            const SizedBox(height: 20),
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 12,
+              runSpacing: 10,
+              children: [
+                ElevatedButton.icon(
+                  key: const ValueKey('seq_play_again_finish_button'),
+                  onPressed: _resetToBeginning,
+                  icon: const Icon(LucideIcons.rotateCcw, size: 17),
+                  label: Text(
+                    isSi ? 'නැවත ක්‍රීඩා කරන්න' : 'Play Again',
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: const Color(0xFF4C1D95),
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 13),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+                OutlinedButton.icon(
+                  key: const ValueKey('seq_finish_back_to_games_button'),
+                  onPressed: widget.onBack,
+                  icon: const Icon(Icons.home_rounded, size: 18),
+                  label: Text(
+                    isSi ? 'සියලුම ක්‍රීඩා වෙත' : 'Back to All Games',
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    backgroundColor: Colors.white.withValues(alpha: 0.14),
+                    side: BorderSide(color: Colors.white.withValues(alpha: 0.65)),
+                    padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 13),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSuccessView(bool isSi) {
     return Column(
       children: [
-        _buildProgressSlots(),
-        const SizedBox(height: 30),
-        _buildInteractiveTilesGrid(),
-        const SizedBox(height: 28),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+        _buildProgressSlots(isSi),
+        const SizedBox(height: 24),
+        Wrap(
+          alignment: WrapAlignment.center,
+          spacing: 12,
+          runSpacing: 10,
           children: [
+            ElevatedButton.icon(
+              onPressed: _advanceToNextLevel,
+              icon: const Icon(LucideIcons.sparkles, size: 17),
+              label: Text(
+                isSi
+                    ? 'ඊළඟ මට්ටම (මට්ටම ${_currentLevel + 1})'
+                    : 'Next Level (Level ${_currentLevel + 1})',
+                style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF7C3AED),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 13),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(13),
+                ),
+              ),
+            ),
             OutlinedButton.icon(
               onPressed: _showSuccessPopup,
-              icon: const Icon(LucideIcons.sparkles, size: 17),
-              label: const Text(
-                'View Results',
-                style: TextStyle(
+              icon: const Icon(LucideIcons.award, size: 17),
+              label: Text(
+                isSi ? 'ප්‍රතිඵල බලන්න' : 'View Results',
+                style: const TextStyle(
                   fontSize: 14.5,
                   fontWeight: FontWeight.w700,
                 ),
@@ -3002,12 +4473,9 @@ class _SequenceGameViewState extends State<_SequenceGameView> {
               style: OutlinedButton.styleFrom(
                 foregroundColor: const Color(0xFF16A34A),
                 side: const BorderSide(color: Color(0xFF16A34A), width: 1.4),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 13,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 13),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(13),
                 ),
               ),
             ),
@@ -3017,126 +4485,468 @@ class _SequenceGameViewState extends State<_SequenceGameView> {
     );
   }
 
-  Widget _buildRetryView() {
-    return Column(
-      children: [
-        // 3D Amber Sunbeam Retry Badge
-        Stack(
-          alignment: Alignment.center,
-          children: [
-            Container(
-              width: 96,
-              height: 96,
-              decoration: BoxDecoration(
-                color: const Color(0xFFFEF3C7),
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: const Color(0xFFFDE68A),
-                  width: 2,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFFD97706).withValues(alpha: 0.18),
-                    blurRadius: 18,
-                    offset: const Offset(0, 6),
+  Widget _buildRetryView(bool isSi) {
+    final matched = _lastRetryMatchedCount ?? 0;
+    final total = _targetSequence.length;
+
+    Widget buildLeftHeroPanel() {
+      return AuroraGradientBorderFrame(
+        borderRadius: 22,
+        borderWidth: 2.2,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 22),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [
+                Color(0xFFF5F3FF),
+                Color(0xFFEEF2FF),
+                Color(0xFFECFDF5),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(19.8),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Minimal Top Row: Level pill + Listen pill
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFDDD6FE)),
+                    ),
+                    child: Text(
+                      isSi ? 'මට්ටම $_currentLevel' : 'Level $_currentLevel',
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF6D28D9),
+                      ),
+                    ),
+                  ),
+                  InkWell(
+                    onTap: () {
+                      if (!_isVoiceOn) {
+                        setState(() => _voiceEnabled = true);
+                      }
+                      _speakPhasePrompt(_SeqPhase.retry);
+                    },
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFDDD6FE)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.volume_up_rounded,
+                            size: 16,
+                            color: Color(0xFF7C3AED),
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            isSi ? 'අසන්න' : 'Listen',
+                            style: const TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF4C1D95),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 16),
+
+              // Cheerful Bright Sun-Star Emblem
+              Container(
+                width: 92,
+                height: 92,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFFEF08A), Color(0xFFFBBF24), Color(0xFFF59E0B)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 4),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFF59E0B).withValues(alpha: 0.30),
+                      blurRadius: 18,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: const Center(
+                  child: Text('🌟', style: TextStyle(fontSize: 44)),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Short, Big Elder-Friendly Title & Subtitle
+              Text(
+                isSi ? 'හොඳ උත්සාහයක්!' : 'Good Try!',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFF1E1B4B),
+                  letterSpacing: -0.3,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                isSi ? 'ආයෙත් උත්සාහ කරමු!' : "Let's try once more!",
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 16.5,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF475569),
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Bright Primary CTA Button
+              SizedBox(
+                width: double.infinity,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF7C3AED), Color(0xFF2563EB)],
+                    ),
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF6D28D9).withValues(alpha: 0.30),
+                        blurRadius: 12,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
+                  ),
+                  child: ElevatedButton.icon(
+                    key: const ValueKey('try_again_button'),
+                    onPressed: _replaySequence,
+                    icon: const Icon(LucideIcons.rotateCcw, size: 19),
+                    label: Text(
+                      isSi ? 'නැවත බලන්න' : 'Watch Again',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.transparent,
+                      foregroundColor: Colors.white,
+                      shadowColor: Colors.transparent,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  key: const ValueKey('reset_level_1_button'),
+                  onPressed: _resetToBeginning,
+                  icon: const Icon(LucideIcons.rotateCcw, size: 16),
+                  label: Text(
+                    isSi ? 'මුල සිට (මට්ටම 1)' : 'Restart Level 1',
+                    style: const TextStyle(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF4C1D95),
+                    backgroundColor: Colors.white,
+                    side: const BorderSide(
+                      color: Color(0xFFC4B5FD),
+                      width: 1.5,
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(13),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    Widget buildRightReviewPanel() {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 22),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [
+              Color(0xFFFFFFFF),
+              Color(0xFFFAF5FF),
+              Color(0xFFF0FDFA),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(
+            color: const Color(0xFFDDD6FE),
+            width: 1.6,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF7C3AED).withValues(alpha: 0.06),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Short Header + Score Pill
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  isSi ? 'ඔබේ පිළිවෙල' : 'Your Picks',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                    color: Color(0xFF1E1B4B),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: matched > 0
+                        ? const Color(0xFFDCFCE7)
+                        : const Color(0xFFFEF3C7),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: matched > 0
+                          ? const Color(0xFF86EFAC)
+                          : const Color(0xFFFCD34D),
+                    ),
+                  ),
+                  child: Text(
+                    '$matched / $total ✓',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w900,
+                      color: matched > 0
+                          ? const Color(0xFF15803D)
+                          : const Color(0xFFB45309),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+
+            // Clean Visual Progress Bar
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: LinearProgressIndicator(
+                value: total > 0 ? (matched / total).clamp(0.10, 1.0) : 0.1,
+                minHeight: 10,
+                backgroundColor: const Color(0xFFE2E8F0),
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  matched > 0 ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
+                ),
               ),
             ),
-            Container(
-              width: 68,
-              height: 68,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFF59E0B), Color(0xFFD97706)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 2),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFFD97706).withValues(alpha: 0.35),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: const Center(
-                child: Icon(
-                  LucideIcons.rotateCcw,
-                  size: 34,
+            const SizedBox(height: 18),
+
+            // Big Clear Visual Tiles (Minimal Words!)
+            if (_userTaps.length == _targetSequence.length)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 28),
+                decoration: BoxDecoration(
                   color: Colors.white,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: const Color(0xFFE9D5FF), width: 1.4),
                 ),
+                child: Wrap(
+                  alignment: WrapAlignment.center,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 12,
+                  runSpacing: 16,
+                  children: List.generate(_targetSequence.length, (i) {
+                    final tappedTile = _tiles[_userTaps[i]];
+                    final ok = _userTaps[i] == _targetSequence[i];
+                    return Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Stack(
+                              clipBehavior: Clip.none,
+                              children: [
+                                Container(
+                                  width: 78,
+                                  height: 78,
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        tappedTile.color,
+                                        tappedTile.accentGradient,
+                                      ],
+                                    ),
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: ok
+                                          ? const Color(0xFF10B981)
+                                          : const Color(0xFFF59E0B),
+                                      width: 3.4,
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: tappedTile.color.withValues(alpha: 0.28),
+                                        blurRadius: 12,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Center(
+                                    child: Icon(
+                                      tappedTile.icon,
+                                      size: 38,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                                Positioned(
+                                  right: -4,
+                                  top: -4,
+                                  child: Container(
+                                    width: 24,
+                                    height: 24,
+                                    decoration: BoxDecoration(
+                                      color: ok
+                                          ? const Color(0xFF10B981)
+                                          : const Color(0xFFF59E0B),
+                                      shape: BoxShape.circle,
+                                      border: Border.all(color: Colors.white, width: 2),
+                                    ),
+                                    child: Center(
+                                      child: Icon(
+                                        ok ? Icons.check_rounded : Icons.refresh_rounded,
+                                        size: 14,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              tappedTile.displayLabel(isSi),
+                              style: const TextStyle(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF1E293B),
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (i < _targetSequence.length - 1)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 6, bottom: 20),
+                            child: Icon(
+                              Icons.arrow_forward_rounded,
+                              size: 20,
+                              color: const Color(0xFF94A3B8),
+                            ),
+                          ),
+                      ],
+                    );
+                  }),
+                ),
+              ),
+            const SizedBox(height: 16),
+
+            // Ultra-Short Friendly Tip Pill
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 11),
+              decoration: BoxDecoration(
+                color: const Color(0xFFECFDF5),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFA7F3D0)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text('💡', style: TextStyle(fontSize: 18)),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      isSi
+                          ? 'පාට සහ අංක පිළිවෙල හිතින් කියමින් මතක තබාගන්න!'
+                          : 'Say each color & number out loud!',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF065F46),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
         ),
-        const SizedBox(height: 16),
-        Text(
-          'Good try!',
-          style: AppTextStyles.h2.copyWith(
-            color: const Color(0xFF1E1B4B),
-            fontWeight: FontWeight.w900,
-            fontSize: 28,
-            letterSpacing: -0.4,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Don\'t worry at all! Memory takes practice. Would you like to play again?',
-          style: AppTextStyles.body.copyWith(
-            fontSize: 16.5,
-            color: const Color(0xFF475569),
-            fontWeight: FontWeight.w500,
-          ),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 24),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+      );
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth >= 740) {
+          return ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 424),
+            child: IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(flex: 5, child: buildLeftHeroPanel()),
+                  const SizedBox(width: 18),
+                  Expanded(flex: 6, child: buildRightReviewPanel()),
+                ],
+              ),
+            ),
+          );
+        }
+        return Column(
           children: [
-            ElevatedButton.icon(
-              key: const ValueKey('try_again_button'),
-              onPressed: _replaySequence,
-              icon: const Icon(LucideIcons.rotateCcw, size: 18),
-              label: const Text(
-                'Watch & Try Again',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF7C3AED),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 15),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                elevation: 3,
-                shadowColor: const Color(0xFF7C3AED).withValues(alpha: 0.4),
-              ),
-            ),
-            const SizedBox(width: 16),
-            OutlinedButton.icon(
-              key: const ValueKey('reset_level_1_button'),
-              onPressed: _resetToBeginning,
-              icon: const Icon(LucideIcons.rotateCcw, size: 18),
-              label: const Text(
-                'Restart from Level 1',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
-              ),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFF1E1B4B),
-                side: const BorderSide(color: Color(0xFFCBD5E1), width: 1.5),
-                backgroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 15),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-            ),
+            buildLeftHeroPanel(),
+            const SizedBox(height: 14),
+            buildRightReviewPanel(),
           ],
-        ),
-      ],
+        );
+      },
     );
   }
 }
@@ -3148,11 +4958,13 @@ class _SequenceGameViewState extends State<_SequenceGameView> {
 class _InteractiveSequencePad extends StatefulWidget {
   final _SequenceTileData tile;
   final VoidCallback onTap;
+  final bool isSinhala;
 
   const _InteractiveSequencePad({
     super.key,
     required this.tile,
     required this.onTap,
+    this.isSinhala = false,
   });
 
   @override
@@ -3181,11 +4993,11 @@ class _InteractiveSequencePadState extends State<_InteractiveSequencePad> {
           curve: Curves.easeOutCubic,
           transform: Matrix4.translationValues(
             0,
-            _isPressed ? 1 : (_isHovered ? -5 : 0),
+            _isPressed ? 2 : (_isHovered ? -6 : 0),
             0,
           ),
-          width: 106,
-          height: 106,
+          width: 112,
+          height: 112,
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [widget.tile.color, widget.tile.accentGradient],
@@ -3193,30 +5005,30 @@ class _InteractiveSequencePadState extends State<_InteractiveSequencePad> {
               end: Alignment.bottomRight,
             ),
             shape: BoxShape.circle,
-            border: Border.all(color: Colors.white, width: 3.5),
+            border: Border.all(color: Colors.white, width: 3.8),
             boxShadow: [
               BoxShadow(
-                color: widget.tile.color.withValues(alpha: _isHovered ? 0.5 : 0.32),
-                blurRadius: _isHovered ? 20 : 12,
-                offset: Offset(0, _isHovered ? 8 : 4),
+                color: widget.tile.color.withValues(alpha: _isHovered ? 0.52 : 0.34),
+                blurRadius: _isHovered ? 22 : 14,
+                offset: Offset(0, _isHovered ? 8 : 5),
               ),
             ],
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(widget.tile.icon, size: 44, color: Colors.white),
-              const SizedBox(height: 2),
+              Icon(widget.tile.icon, size: 46, color: Colors.white),
+              const SizedBox(height: 4),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
                 decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.18),
+                  color: Colors.black.withValues(alpha: 0.20),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
-                  widget.tile.label,
+                  widget.tile.displayLabel(widget.isSinhala),
                   style: const TextStyle(
-                    fontSize: 11.5,
+                    fontSize: 13.5,
                     fontWeight: FontWeight.w800,
                     color: Colors.white,
                     letterSpacing: 0.2,
@@ -3232,6 +5044,827 @@ class _InteractiveSequencePadState extends State<_InteractiveSequencePad> {
 }
 
 // ==============================================================================
+// ANIMATED CELEBRATING ELDERS STAGE FOR REMEMBER THE SEQUENCE FINISH SCREEN
+// ==============================================================================
+
+class _SequenceGrandCelebrationStage extends StatefulWidget {
+  final bool isSinhala;
+  final Widget centerContent;
+
+  const _SequenceGrandCelebrationStage({
+    required this.isSinhala,
+    required this.centerContent,
+  });
+
+  @override
+  State<_SequenceGrandCelebrationStage> createState() =>
+      _SequenceGrandCelebrationStageState();
+}
+
+class _SequenceGrandCelebrationStageState
+    extends State<_SequenceGrandCelebrationStage>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2200),
+    );
+    final isTestEnv =
+        WidgetsBinding.instance.runtimeType.toString().contains('Test');
+    if (!isTestEnv) {
+      _controller.repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isSi = widget.isSinhala;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(21.2),
+      child: Container(
+        width: double.infinity,
+        constraints: const BoxConstraints(minHeight: 424),
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Color(0xFF2E1065),
+              Color(0xFF4C1D95),
+              Color(0xFF1D4ED8),
+              Color(0xFF0F766E),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // Animated floating confetti & golden sparkles
+            Positioned.fill(
+              child: IgnorePointer(
+                child: AnimatedBuilder(
+                  animation: _controller,
+                  builder: (_, __) => CustomPaint(
+                    painter: _SeqCelebrationConfettiPainter(
+                      progress: _controller.value,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            // Main layout: Left Celebrating Grandma + Center Champion Card + Right Celebrating Grandpa
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 30),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final showSideCharacters = constraints.maxWidth >= 700;
+                  if (!showSideCharacters) {
+                    return Center(child: widget.centerContent);
+                  }
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      // Left Celebrating Character (Smiling Grandma)
+                      SizedBox(
+                        width: 175,
+                        child: AnimatedBuilder(
+                          animation: _controller,
+                          builder: (_, __) {
+                            final phase = _controller.value * 2 * pi;
+                            final bounce = sin(phase).abs() * -10.0;
+                            final wave = sin(phase * 2) * 0.28;
+                            return Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Transform.translate(
+                                  offset: Offset(0, sin(phase) * 3.0),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 5,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withValues(alpha: 0.94),
+                                      borderRadius: BorderRadius.circular(14),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withValues(alpha: 0.16),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 3),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Text(
+                                      isSi ? 'හරිම අපූරුයි! 🎉' : 'Bravo! 🎉',
+                                      style: const TextStyle(
+                                        fontSize: 12.5,
+                                        fontWeight: FontWeight.w900,
+                                        color: Color(0xFF7C3AED),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Transform.translate(
+                                  offset: Offset(0, bounce),
+                                  child: SizedBox(
+                                    width: 150,
+                                    height: 175,
+                                    child: CustomPaint(
+                                      painter: _CelebratingElderPainter(
+                                        isGrandma: true,
+                                        armWave: wave,
+                                        sparklePhase: _controller.value,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                      ),
+
+                      // Center Trophy & Score Content
+                      Expanded(child: widget.centerContent),
+
+                      // Right Celebrating Character (Smiling Grandpa)
+                      SizedBox(
+                        width: 175,
+                        child: AnimatedBuilder(
+                          animation: _controller,
+                          builder: (_, __) {
+                            final phase = (_controller.value + 0.35) * 2 * pi;
+                            final bounce = sin(phase).abs() * -10.0;
+                            final wave = sin(phase * 2) * 0.28;
+                            return Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Transform.translate(
+                                  offset: Offset(0, sin(phase) * 3.0),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 5,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withValues(alpha: 0.94),
+                                      borderRadius: BorderRadius.circular(14),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withValues(alpha: 0.16),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 3),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Text(
+                                      isSi ? 'විශිෂ්ටයි! 👏' : 'Well Done! 👏',
+                                      style: const TextStyle(
+                                        fontSize: 12.5,
+                                        fontWeight: FontWeight.w900,
+                                        color: Color(0xFF0F766E),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Transform.translate(
+                                  offset: Offset(0, bounce),
+                                  child: SizedBox(
+                                    width: 150,
+                                    height: 175,
+                                    child: CustomPaint(
+                                      painter: _CelebratingElderPainter(
+                                        isGrandma: false,
+                                        armWave: wave,
+                                        sparklePhase: (_controller.value + 0.5) % 1.0,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CelebratingElderPainter extends CustomPainter {
+  final bool isGrandma;
+  final double armWave;
+  final double sparklePhase;
+
+  const _CelebratingElderPainter({
+    required this.isGrandma,
+    required this.armWave,
+    required this.sparklePhase,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cx = size.width / 2;
+
+    // Soft glowing floor aura under character
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: Offset(cx, size.height - 10),
+        width: 90,
+        height: 18,
+      ),
+      Paint()..color = Colors.white.withValues(alpha: 0.18),
+    );
+
+    final skinPaint = Paint()..color = const Color(0xFFF6C6A5);
+    final hairPaint = Paint()..color = const Color(0xFFE2E8F0);
+    final hairHighlight = Paint()..color = Colors.white;
+    final outfitColor =
+        isGrandma ? const Color(0xFFEC4899) : const Color(0xFF14B8A6);
+    final outfitAccent =
+        isGrandma ? const Color(0xFFFDE047) : const Color(0xFFFEF08A);
+
+    // 1. Cheering Raised Arms (animated wave!)
+    final armPaint = Paint()
+      ..color = outfitColor
+      ..strokeWidth = 15
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+
+    final leftShoulder = Offset(cx - 24, 98);
+    final rightShoulder = Offset(cx + 24, 98);
+    final leftHand = Offset(
+      cx - 52 + sin(armWave) * 10,
+      44 + cos(armWave) * 8,
+    );
+    final rightHand = Offset(
+      cx + 52 - sin(armWave) * 10,
+      44 + cos(armWave) * 8,
+    );
+
+    final leftArmPath = Path()
+      ..moveTo(leftShoulder.dx, leftShoulder.dy)
+      ..quadraticBezierTo(cx - 46, 78, leftHand.dx, leftHand.dy);
+    final rightArmPath = Path()
+      ..moveTo(rightShoulder.dx, rightShoulder.dy)
+      ..quadraticBezierTo(cx + 46, 78, rightHand.dx, rightHand.dy);
+    canvas.drawPath(leftArmPath, armPaint);
+    canvas.drawPath(rightArmPath, armPaint);
+
+    // Hands
+    canvas.drawCircle(leftHand, 9, skinPaint);
+    canvas.drawCircle(rightHand, 9, skinPaint);
+
+    // Mini twinkling celebration stars above both hands
+    final starPulse = 0.55 + 0.45 * sin(sparklePhase * 2 * pi);
+    _drawMiniSparkle(
+      canvas,
+      Offset(leftHand.dx - 10, leftHand.dy - 14),
+      6.5 * starPulse + 2,
+      const Color(0xFFFDE047),
+    );
+    _drawMiniSparkle(
+      canvas,
+      Offset(rightHand.dx + 10, rightHand.dy - 14),
+      6.5 * (1.1 - starPulse * 0.4) + 2,
+      const Color(0xFF67E8F9),
+    );
+
+    // 2. Torso / Outfit
+    final bodyRect = RRect.fromRectAndRadius(
+      Rect.fromCenter(center: Offset(cx, 126), width: 64, height: 68),
+      const Radius.circular(26),
+    );
+    canvas.drawRRect(bodyRect, Paint()..color = outfitColor);
+
+    if (isGrandma) {
+      // Diagonal golden saree pallu sash
+      final sash = Paint()
+        ..color = outfitAccent.withValues(alpha: 0.90)
+        ..strokeWidth = 9
+        ..strokeCap = StrokeCap.round;
+      canvas.drawLine(Offset(cx - 24, 96), Offset(cx + 22, 152), sash);
+    } else {
+      // Grandpa crisp white collar & vest buttons
+      final collarPath = Path()
+        ..moveTo(cx - 14, 92)
+        ..lineTo(cx, 108)
+        ..lineTo(cx + 14, 92)
+        ..close();
+      canvas.drawPath(collarPath, Paint()..color = Colors.white);
+      canvas.drawCircle(Offset(cx, 120), 3, Paint()..color = outfitAccent);
+      canvas.drawCircle(Offset(cx, 134), 3, Paint()..color = outfitAccent);
+    }
+
+    // 3. Hair (Back Bun for Grandma / Soft Side Hair for Grandpa)
+    if (isGrandma) {
+      canvas.drawCircle(Offset(cx, 25), 16, hairPaint);
+      canvas.drawCircle(Offset(cx - 3, 22), 7, hairHighlight);
+    }
+
+    // 4. Head
+    final headCenter = Offset(cx, 62);
+    canvas.drawCircle(headCenter, 30, skinPaint);
+
+    // Hair bangs / cap
+    final hairTopPath = Path()
+      ..addArc(
+        Rect.fromCircle(center: headCenter, radius: 31),
+        pi * 1.05,
+        pi * 0.90,
+      );
+    canvas.drawPath(hairTopPath, hairPaint);
+
+    // Rosy happy cheeks
+    final cheekPaint = Paint()
+      ..color = const Color(0xFFFB7185).withValues(alpha: 0.40);
+    canvas.drawCircle(Offset(cx - 16, 68), 5.5, cheekPaint);
+    canvas.drawCircle(Offset(cx + 16, 68), 5.5, cheekPaint);
+
+    // Smiling happy arched eyes (^ ^)
+    final eyePaint = Paint()
+      ..color = const Color(0xFF1E293B)
+      ..strokeWidth = 2.6
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+    canvas.drawArc(
+      Rect.fromCenter(center: Offset(cx - 10, 59), width: 10, height: 8),
+      pi,
+      pi,
+      false,
+      eyePaint,
+    );
+    canvas.drawArc(
+      Rect.fromCenter(center: Offset(cx + 10, 59), width: 10, height: 8),
+      pi,
+      pi,
+      false,
+      eyePaint,
+    );
+
+    // Friendly round glasses for Grandpa
+    if (!isGrandma) {
+      final glassPaint = Paint()
+        ..color = const Color(0xFF334155)
+        ..strokeWidth = 2.0
+        ..style = PaintingStyle.stroke;
+      canvas.drawCircle(Offset(cx - 10, 59), 8, glassPaint);
+      canvas.drawCircle(Offset(cx + 10, 59), 8, glassPaint);
+      canvas.drawLine(Offset(cx - 2, 59), Offset(cx + 2, 59), glassPaint);
+    }
+
+    // Big Joyful Smile
+    final smilePaint = Paint()
+      ..color = const Color(0xFF9F1239)
+      ..strokeWidth = 3.0
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+    canvas.drawArc(
+      Rect.fromCenter(center: Offset(cx, 69), width: 20, height: 14),
+      0.15,
+      pi - 0.30,
+      false,
+      smilePaint,
+    );
+  }
+
+  void _drawMiniSparkle(Canvas canvas, Offset center, double radius, Color color) {
+    final paint = Paint()..color = color;
+    final path = Path()
+      ..moveTo(center.dx, center.dy - radius)
+      ..quadraticBezierTo(center.dx, center.dy, center.dx + radius, center.dy)
+      ..quadraticBezierTo(center.dx, center.dy, center.dx, center.dy + radius)
+      ..quadraticBezierTo(center.dx, center.dy, center.dx - radius, center.dy)
+      ..quadraticBezierTo(center.dx, center.dy, center.dx, center.dy - radius)
+      ..close();
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _CelebratingElderPainter oldDelegate) =>
+      oldDelegate.armWave != armWave ||
+      oldDelegate.sparklePhase != sparklePhase ||
+      oldDelegate.isGrandma != isGrandma;
+}
+
+class _SeqCelebrationConfettiPainter extends CustomPainter {
+  final double progress;
+
+  const _SeqCelebrationConfettiPainter({required this.progress});
+
+  static const _colors = [
+    Color(0xFFFDE047),
+    Color(0xFFF472B6),
+    Color(0xFF34D399),
+    Color(0xFF60A5FA),
+    Color(0xFFC084FC),
+    Color(0xFFFB923C),
+  ];
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    for (int i = 0; i < 24; i++) {
+      final seed = i * 1.37;
+      final baseX = ((i * 73) % 100) / 100.0;
+      final x = baseX * size.width + sin(progress * 2 * pi + seed) * 14;
+      final yOffset = ((progress + (i * 0.13)) % 1.0);
+      final y = yOffset * (size.height + 24) - 12;
+      final color = _colors[i % _colors.length].withValues(alpha: 0.72);
+      final paint = Paint()..color = color;
+
+      canvas.save();
+      canvas.translate(x, y);
+      canvas.rotate(progress * 2 * pi + seed);
+      if (i % 3 == 0) {
+        canvas.drawCircle(Offset.zero, 4.0, paint);
+      } else {
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+            const Rect.fromLTWH(-4.5, -2.2, 9, 4.4),
+            const Radius.circular(2),
+          ),
+          paint,
+        );
+      }
+      canvas.restore();
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _SeqCelebrationConfettiPainter oldDelegate) =>
+      oldDelegate.progress != progress;
+}
+
+class _SeqPopupConfettiOverlay extends StatefulWidget {
+  const _SeqPopupConfettiOverlay();
+
+  @override
+  State<_SeqPopupConfettiOverlay> createState() =>
+      _SeqPopupConfettiOverlayState();
+}
+
+class _SeqPopupConfettiOverlayState extends State<_SeqPopupConfettiOverlay>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 3400),
+    );
+    final isTestEnv =
+        WidgetsBinding.instance.runtimeType.toString().contains('Test');
+    if (!isTestEnv) {
+      _controller.repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (_, __) => CustomPaint(
+        painter: _SeqPopupConfettiBurstPainter(progress: _controller.value),
+      ),
+    );
+  }
+}
+
+class _SeqPopupConfettiBurstPainter extends CustomPainter {
+  final double progress;
+
+  const _SeqPopupConfettiBurstPainter({required this.progress});
+
+  static const _palette = [
+    Color(0xFFFDE047), // bright gold
+    Color(0xFFF43F5E), // festive rose
+    Color(0xFF10B981), // emerald
+    Color(0xFF38BDF8), // sky blue
+    Color(0xFFA855F7), // violet
+    Color(0xFFFB923C), // orange
+    Color(0xFFEC4899), // pink
+  ];
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cx = size.width / 2;
+    final cy = size.height / 2;
+
+    // 1. Bursting festive celebration ribbons & confetti shooting around the popup
+    for (int i = 0; i < 42; i++) {
+      final t = (progress + (i * 0.047)) % 1.0;
+      final angle = (i / 42.0) * 2 * pi + sin(t * pi) * 0.18;
+      final speed = 175.0 + (i % 5) * 62.0;
+      final radius = 90.0 + speed * Curves.easeOut.transform(t);
+      final gravityY = 120.0 * t * t;
+
+      final x = cx + cos(angle) * radius;
+      final y = cy + sin(angle) * (radius * 0.72) + gravityY - 30.0;
+      final alpha = (1.0 - (t * t)).clamp(0.0, 0.92);
+      final color = _palette[i % _palette.length].withValues(alpha: alpha);
+
+      canvas.save();
+      canvas.translate(x, y);
+      canvas.rotate(angle + t * 5.2 + (i % 3));
+
+      if (i % 4 == 0) {
+        // Wavy party streamer ribbon ("celebration pati")
+        final ribbonPaint = Paint()
+          ..color = color
+          ..strokeWidth = 3.6
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round;
+        final path = Path()
+          ..moveTo(-12, 0)
+          ..quadraticBezierTo(-6, -7, 0, 0)
+          ..quadraticBezierTo(6, 7, 12, 0);
+        canvas.drawPath(path, ribbonPaint);
+      } else if (i % 4 == 1) {
+        // Confetti strip
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+            const Rect.fromLTWH(-7, -3, 14, 6),
+            const Radius.circular(2.5),
+          ),
+          Paint()..color = color,
+        );
+      } else if (i % 4 == 2) {
+        // Sparkling star
+        final r = 6.0;
+        final star = Path()
+          ..moveTo(0, -r)
+          ..quadraticBezierTo(0, 0, r, 0)
+          ..quadraticBezierTo(0, 0, 0, r)
+          ..quadraticBezierTo(0, 0, -r, 0)
+          ..quadraticBezierTo(0, 0, 0, -r)
+          ..close();
+        canvas.drawPath(star, Paint()..color = color);
+      } else {
+        // Round festive dot
+        canvas.drawCircle(Offset.zero, 4.5, Paint()..color = color);
+      }
+      canvas.restore();
+    }
+
+    // 2. Gentle drifting ribbons falling down left & right edges around the dialog
+    for (int j = 0; j < 20; j++) {
+      final isLeft = j.isEven;
+      final laneX = isLeft
+          ? size.width * (0.06 + ((j * 17) % 24) / 100.0)
+          : size.width * (0.70 + ((j * 19) % 24) / 100.0);
+      final driftX = laneX + sin(progress * 2 * pi + j) * 18;
+      final fallY = ((progress + j * 0.11) % 1.0) * (size.height + 40) - 20;
+      final color = _palette[(j + 2) % _palette.length].withValues(alpha: 0.80);
+
+      canvas.save();
+      canvas.translate(driftX, fallY);
+      canvas.rotate(progress * 2 * pi + j * 0.7);
+      final ribbonPaint = Paint()
+        ..color = color
+        ..strokeWidth = 3.4
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round;
+      final path = Path()
+        ..moveTo(-10, -2)
+        ..quadraticBezierTo(-3, -8, 2, 0)
+        ..quadraticBezierTo(7, 8, 12, 2);
+      canvas.drawPath(path, ribbonPaint);
+      canvas.restore();
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _SeqPopupConfettiBurstPainter oldDelegate) =>
+      oldDelegate.progress != progress;
+}
+
+class _SeqAmbientPlayBackdrop extends StatefulWidget {
+  const _SeqAmbientPlayBackdrop();
+
+  @override
+  State<_SeqAmbientPlayBackdrop> createState() =>
+      _SeqAmbientPlayBackdropState();
+}
+
+class _SeqAmbientPlayBackdropState extends State<_SeqAmbientPlayBackdrop>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 9000),
+    );
+    final isTestEnv =
+        WidgetsBinding.instance.runtimeType.toString().contains('Test');
+    if (!isTestEnv) {
+      _controller.repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (_, __) => CustomPaint(
+        painter: _SeqAmbientPlayPainter(progress: _controller.value),
+      ),
+    );
+  }
+}
+
+class _SeqAmbientPlayPainter extends CustomPainter {
+  final double progress;
+
+  const _SeqAmbientPlayPainter({required this.progress});
+
+  static const _tilePastels = [
+    Color(0xFFA78BFA), // soft violet
+    Color(0xFF60A5FA), // soft sky blue
+    Color(0xFF34D399), // soft emerald
+    Color(0xFFFB923C), // soft warm peach
+  ];
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final t = progress * 2 * pi;
+
+    // 1. Soft pastel wash gradient base
+    final bgPaint = Paint()
+      ..shader = const LinearGradient(
+        colors: [
+          Color(0xFFFDFBFF),
+          Color(0xFFF5F3FF),
+          Color(0xFFEFF6FF),
+          Color(0xFFECFDF5),
+        ],
+        stops: [0.0, 0.35, 0.70, 1.0],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), bgPaint);
+
+    // 2. 4 Gently Breathing Pastel Glow Orbs matching the 4 Sequence Tile colors
+    final orbs = [
+      (
+        Offset(size.width * 0.12 + sin(t) * 18, size.height * 0.25 + cos(t) * 12),
+        125.0,
+        const Color(0xFFDDD6FE),
+      ),
+      (
+        Offset(size.width * 0.88 + cos(t) * 20, size.height * 0.24 + sin(t) * 14),
+        135.0,
+        const Color(0xFFBAE6FD),
+      ),
+      (
+        Offset(size.width * 0.18 + cos(t + 1.4) * 22, size.height * 0.82 + sin(t) * 10),
+        120.0,
+        const Color(0xFFA7F3D0),
+      ),
+      (
+        Offset(size.width * 0.82 + sin(t + 2.1) * 18, size.height * 0.80 + cos(t) * 12),
+        125.0,
+        const Color(0xFFFED7AA),
+      ),
+    ];
+
+    for (final (center, radius, color) in orbs) {
+      final paint = Paint()
+        ..shader = RadialGradient(
+          colors: [
+            color.withValues(alpha: 0.42),
+            color.withValues(alpha: 0.0),
+          ],
+        ).createShader(Rect.fromCircle(center: center, radius: radius));
+      canvas.drawCircle(center, radius, paint);
+    }
+
+    // 3. Soft Undulating Pastel Waves at Bottom Edge
+    final wavePath1 = Path()..moveTo(0, size.height);
+    for (double x = 0; x <= size.width; x += 18) {
+      final y = size.height -
+          28 +
+          sin((x / size.width) * 2 * pi + t) * 9 +
+          cos((x / size.width) * 4 * pi - t) * 4;
+      wavePath1.lineTo(x, y);
+    }
+    wavePath1
+      ..lineTo(size.width, size.height)
+      ..close();
+    canvas.drawPath(
+      wavePath1,
+      Paint()
+        ..shader = LinearGradient(
+          colors: [
+            const Color(0xFF7C3AED).withValues(alpha: 0.10),
+            const Color(0xFF2563EB).withValues(alpha: 0.10),
+            const Color(0xFF10B981).withValues(alpha: 0.12),
+          ],
+        ).createShader(Rect.fromLTWH(0, size.height - 50, size.width, 50)),
+    );
+
+    final wavePath2 = Path()..moveTo(0, size.height);
+    for (double x = 0; x <= size.width; x += 18) {
+      final y = size.height -
+          16 +
+          cos((x / size.width) * 2.5 * pi - t * 1.2) * 7;
+      wavePath2.lineTo(x, y);
+    }
+    wavePath2
+      ..lineTo(size.width, size.height)
+      ..close();
+    canvas.drawPath(
+      wavePath2,
+      Paint()..color = const Color(0xFF8B5CF6).withValues(alpha: 0.07),
+    );
+
+    // 4. Gently Floating Luminous Bubbles, Rings & Twinkling Sparkles
+    for (int i = 0; i < 16; i++) {
+      final seed = i * 1.61;
+      final baseX = ((i * 61 + 13) % 94 + 3) / 100.0;
+      final rise = (1.0 - ((progress + i * 0.073) % 1.0));
+      final x = baseX * size.width + sin(t + seed) * 14;
+      final y = rise * (size.height + 24) - 12;
+      final color = _tilePastels[i % _tilePastels.length];
+      final pulse = 0.45 + 0.55 * sin(t * 2 + seed).abs();
+
+      if (i % 3 == 0) {
+        // 4-point twinkling memory star sparkle
+        final r = 5.5 * pulse + 2.5;
+        final star = Path()
+          ..moveTo(x, y - r)
+          ..quadraticBezierTo(x, y, x + r, y)
+          ..quadraticBezierTo(x, y, x, y + r)
+          ..quadraticBezierTo(x, y, x - r, y)
+          ..quadraticBezierTo(x, y, x, y - r)
+          ..close();
+        canvas.drawPath(
+          star,
+          Paint()..color = color.withValues(alpha: 0.48 * pulse),
+        );
+      } else if (i % 3 == 1) {
+        // Translucent floating pastel bubble ring
+        canvas.drawCircle(
+          Offset(x, y),
+          8.0 + (i % 4) * 3.0,
+          Paint()
+            ..color = color.withValues(alpha: 0.22)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1.6,
+        );
+      } else {
+        // Soft glowing dot
+        canvas.drawCircle(
+          Offset(x, y),
+          3.8 + (i % 3) * 1.5,
+          Paint()..color = color.withValues(alpha: 0.26 * pulse),
+        );
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _SeqAmbientPlayPainter oldDelegate) =>
+      oldDelegate.progress != progress;
+}
+
+// ==============================================================================
 // GAME 2: FIND THE MATCHING PAIRS
 // ==============================================================================
 
@@ -3239,12 +5872,14 @@ class _PairsGameView extends StatefulWidget {
   final VoidCallback onBack;
   final int residentId;
   final String? token;
+  final bool isSinhala;
 
   const _PairsGameView({
     super.key,
     required this.onBack,
     required this.residentId,
     this.token,
+    this.isSinhala = false,
   });
 
   @override
@@ -3332,20 +5967,106 @@ class _PairsGameViewState extends State<_PairsGameView> {
   double? _lastScore;
   int _lastTurns = 0;
 
+  // Nullable for Hot-Reload safety
+  bool? _voiceEnabled;
+  Timer? _voiceIntroTimer;
+  PicnicBgmPlayer? _sfxPlayer;
+  int? _consecutiveMismatches;
+  int? _encourageIdx;
+  PicnicBgmPlayer get _sfx => _sfxPlayer ??= PicnicBgmPlayer();
+  bool get _isVoiceOn => _voiceEnabled ?? true;
+
+  bool get _isWidgetTest =>
+      WidgetsBinding.instance.runtimeType.toString().contains('Test');
+
+  void _speakPairsVoice(String enText, String siText) {
+    if (!mounted || !_isVoiceOn || _isWidgetTest) return;
+    final text = widget.isSinhala ? siText : enText;
+    TtsService.instance.speak(text, isSinhala: widget.isSinhala);
+  }
+
+  void _speakStartPrompt() {
+    _speakPairsVoice(
+      'Welcome to Find the Matching Pairs! Tap any two cards to discover matching pairs. Take your time, there is no rush.',
+      'ගැළපෙන යුගල සෙවීමේ ක්‍රීඩාවට සාදරයෙන් පිළිගනිමු! ඕනෑම කාඩ්පත් දෙකක් ඔබා ගැළපෙන යුගල සොයාගන්න. කලබල වෙන්න එපා, නිදහසේ සෙල්ලම් කරන්න.',
+    );
+  }
+
+  void _speakMatchPrompt() {
+    _speakPairsVoice(
+      'Wonderful! You found a matching pair!',
+      'හරිම හොඳයි! ඔබ ගැළපෙන යුගලයක් සොයා ගත්තා!',
+    );
+  }
+
+  void _speakGentleEncouragementIfNeeded() {
+    final streak = (_consecutiveMismatches ?? 0) + 1;
+    _consecutiveMismatches = streak;
+    // Stay calm & quiet on ordinary mismatches; only give a brief varied nudge every 3 consecutive misses
+    if (streak % 3 != 0) return;
+
+    const enLines = [
+      'Keep going, you are doing great!',
+      'Almost there, take your time!',
+      'You are getting closer!',
+    ];
+    const siLines = [
+      'හොඳයි, දිගටම උත්සාහ කරමු!',
+      'කලබල වෙන්න එපා, නිදහසේ බලමු!',
+      'දැන් හරිම ළඟයි, ආයෙත් බලමු!',
+    ];
+    final idx = (_encourageIdx ?? 0) % enLines.length;
+    _encourageIdx = idx + 1;
+    _speakPairsVoice(enLines[idx], siLines[idx]);
+  }
+
+  void _speakCompletePrompt() {
+    _speakPairsVoice(
+      'Fantastic matching! You found all six pairs with wonderful memory and focus!',
+      'හරිම විශිෂ්ටයි! ඔබ ගැළපෙන යුගල හයම සාර්ථකව සොයා ගත්තා! ඔබේ මතක ශක්තිය හරිම අපූරුයි!',
+    );
+  }
+
+  void _scheduleStartVoice() {
+    _voiceIntroTimer?.cancel();
+    if (_isWidgetTest || !_isVoiceOn) return;
+    _voiceIntroTimer = Timer(const Duration(milliseconds: 360), () {
+      if (mounted && _isVoiceOn) {
+        _speakStartPrompt();
+      }
+    });
+  }
+
   @override
   void initState() {
     super.initState();
-    _startNewGame();
+    _startNewGame(speakIntro: true);
+  }
+
+  @override
+  void didUpdateWidget(covariant _PairsGameView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isSinhala != widget.isSinhala && _isVoiceOn) {
+      if (_pairsFound == _symbols.length) {
+        _speakCompletePrompt();
+      } else {
+        _speakStartPrompt();
+      }
+    }
   }
 
   @override
   void dispose() {
     _flipBackTimer?.cancel();
     _completionTimer?.cancel();
+    _voiceIntroTimer?.cancel();
+    if (!_isWidgetTest) {
+      TtsService.instance.stop();
+    }
     super.dispose();
   }
 
-  void _startNewGame() {
+  void _startNewGame({bool speakIntro = true}) {
     _flipBackTimer?.cancel();
     _completionTimer?.cancel();
     final List<_CardModel> list = [];
@@ -3366,13 +6087,22 @@ class _PairsGameViewState extends State<_PairsGameView> {
       _saveSuccessMessage = null;
       _saveErrorMessage = null;
       _hasShownCompletionPopup = false;
+      _consecutiveMismatches = 0;
     });
+
+    if (speakIntro) {
+      _scheduleStartVoice();
+    }
   }
 
   void _onCardTap(int index) {
     if (_isProcessing) return;
     if (_cards[index].isMatched) return;
     if (_flippedIndices.contains(index)) return;
+
+    if (_isVoiceOn && !_isWidgetTest) {
+      _sfx.playTapChime(volume: 0.24);
+    }
 
     if (_flippedIndices.isEmpty) {
       setState(() {
@@ -3404,6 +6134,7 @@ class _PairsGameViewState extends State<_PairsGameView> {
           secondCard.isMatched = true;
           _pairsFound = updatedPairsFound;
           _flippedIndices.clear();
+          _consecutiveMismatches = 0;
           if (isCompleted) {
             _lastScore = roundedScore;
             _lastTurns = turns;
@@ -3411,6 +6142,10 @@ class _PairsGameViewState extends State<_PairsGameView> {
         });
 
         if (isCompleted) {
+          if (_isVoiceOn && !_isWidgetTest) {
+            _sfx.playVictoryChime(volume: 0.28);
+          }
+          _speakCompletePrompt();
           _saveSession(
             score: roundedScore,
             attempts: turns,
@@ -3423,9 +6158,15 @@ class _PairsGameViewState extends State<_PairsGameView> {
               _showCompletionDialog();
             }
           });
+        } else {
+          if (_isVoiceOn && !_isWidgetTest) {
+            _sfx.playTapChime(volume: 0.30);
+          }
+          _speakMatchPrompt();
         }
       } else {
-        // MISMATCH: allow elder plenty of time to view both cards
+        // MISMATCH: keep ordinary misses calm & quiet; only nudge gently every 3 consecutive misses
+        _speakGentleEncouragementIfNeeded();
         _isProcessing = true;
         _flipBackTimer = Timer(const Duration(milliseconds: 1200), () {
           if (mounted) {
@@ -3492,209 +6233,421 @@ class _PairsGameViewState extends State<_PairsGameView> {
     final score = _lastScore ?? 100.0;
     final turns = _lastTurns;
     final totalPairs = _symbols.length;
+    final isSi = widget.isSinhala;
+    final starCount = score >= 85 ? 5 : (score >= 60 ? 4 : 3);
 
     showDialog<void>(
       context: context,
       barrierDismissible: true,
-      barrierColor: Colors.black.withValues(alpha: 0.5),
+      barrierColor: const Color(0xFF0F172A).withValues(alpha: 0.42),
       builder: (dialogCtx) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             _dialogSetState = setDialogState;
-            return Dialog(
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-              child: Container(
-                constraints: const BoxConstraints(maxWidth: 480),
-                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 28),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [
-                      Color(0xFFFFFFFF),
-                      Color(0xFFFBFDFD),
-                      Color(0xFFF0FDF4),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+            return Stack(
+              children: [
+                // Full-screen animated celebration streamers, ribbons & confetti bursting around popup
+                const Positioned.fill(
+                  child: IgnorePointer(
+                    child: _SeqPopupConfettiOverlay(),
                   ),
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(
-                    color: const Color(0xFF0D9488).withValues(alpha: 0.28),
-                    width: 1.5,
+                ),
+                Dialog(
+                  backgroundColor: Colors.transparent,
+                  elevation: 0,
+                  insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 460),
+                    child: AuroraGradientBorderFrame(
+                      borderRadius: 28,
+                      borderWidth: 2.8,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(25.2),
+                        child: Container(
+                          color: Colors.white,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // 1. Bright Pastel Emerald-Mint-Sky Celebration Header
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.fromLTRB(24, 22, 24, 18),
+                                decoration: const BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      Color(0xFFECFDF5),
+                                      Color(0xFFE0F2FE),
+                                      Color(0xFFF5F3FF),
+                                    ],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                ),
+                                child: Column(
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        const Text('✨', style: TextStyle(fontSize: 23)),
+                                        const SizedBox(width: 12),
+                                        Container(
+                                          width: 78,
+                                          height: 78,
+                                          decoration: BoxDecoration(
+                                            gradient: const LinearGradient(
+                                              colors: [
+                                                Color(0xFF14B8A6),
+                                                Color(0xFF0D9488),
+                                                Color(0xFF0284C7),
+                                              ],
+                                              begin: Alignment.topLeft,
+                                              end: Alignment.bottomRight,
+                                            ),
+                                            shape: BoxShape.circle,
+                                            border: Border.all(
+                                              color: Colors.white,
+                                              width: 4,
+                                            ),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: const Color(0xFF0D9488)
+                                                    .withValues(alpha: 0.34),
+                                                blurRadius: 18,
+                                                offset: const Offset(0, 6),
+                                              ),
+                                            ],
+                                          ),
+                                          child: const Center(
+                                            child: Icon(
+                                              Icons.emoji_events_rounded,
+                                              size: 40,
+                                              color: Color(0xFFFEF08A),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        const Text('🎉', style: TextStyle(fontSize: 23)),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      isSi
+                                          ? 'විශිෂ්ටයි! සියල්ල ගැළපුණා!'
+                                          : 'Fantastic Matching!',
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.w900,
+                                        color: Color(0xFF134E4A),
+                                        letterSpacing: -0.3,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: List.generate(
+                                        5,
+                                        (i) => Icon(
+                                          Icons.star_rounded,
+                                          size: 26,
+                                          color: i < starCount
+                                              ? const Color(0xFFF59E0B)
+                                              : const Color(0xFFCBD5E1),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    // Cheerful Mini Row of All 6 Matched Symbols
+                                    Wrap(
+                                      alignment: WrapAlignment.center,
+                                      spacing: 8,
+                                      runSpacing: 6,
+                                      children: _symbols.map((sym) {
+                                        return Container(
+                                          width: 34,
+                                          height: 34,
+                                          decoration: BoxDecoration(
+                                            color: Colors.white,
+                                            shape: BoxShape.circle,
+                                            border: Border.all(
+                                              color: sym.color.withValues(alpha: 0.35),
+                                              width: 1.5,
+                                            ),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: sym.color.withValues(alpha: 0.14),
+                                                blurRadius: 6,
+                                                offset: const Offset(0, 2),
+                                              ),
+                                            ],
+                                          ),
+                                          child: Center(
+                                            child: Icon(
+                                              sym.icon,
+                                              size: 18,
+                                              color: sym.color,
+                                            ),
+                                          ),
+                                        );
+                                      }).toList(),
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                              // 2. Clean 3-Stat Tiles & Elder-Friendly Action Buttons
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(22, 16, 22, 20),
+                                child: Column(
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 12,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFF5F3FF),
+                                              borderRadius: BorderRadius.circular(15),
+                                              border: Border.all(
+                                                color: const Color(0xFFDDD6FE),
+                                              ),
+                                            ),
+                                            child: Column(
+                                              children: [
+                                                Text(
+                                                  '${score.toStringAsFixed(0)}%',
+                                                  style: const TextStyle(
+                                                    fontSize: 21,
+                                                    fontWeight: FontWeight.w900,
+                                                    color: Color(0xFF6D28D9),
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 2),
+                                                Text(
+                                                  isSi ? 'ලකුණු' : 'Score',
+                                                  style: const TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w700,
+                                                    color: Color(0xFF64748B),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 12,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFECFDF5),
+                                              borderRadius: BorderRadius.circular(15),
+                                              border: Border.all(
+                                                color: const Color(0xFFA7F3D0),
+                                              ),
+                                            ),
+                                            child: Column(
+                                              children: [
+                                                Text(
+                                                  '$totalPairs / $totalPairs',
+                                                  style: const TextStyle(
+                                                    fontSize: 21,
+                                                    fontWeight: FontWeight.w900,
+                                                    color: Color(0xFF047857),
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 2),
+                                                Text(
+                                                  isSi ? 'යුගල' : 'Pairs',
+                                                  style: const TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w700,
+                                                    color: Color(0xFF64748B),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 12,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFEFF6FF),
+                                              borderRadius: BorderRadius.circular(15),
+                                              border: Border.all(
+                                                color: const Color(0xFFBFDBFE),
+                                              ),
+                                            ),
+                                            child: Column(
+                                              children: [
+                                                Text(
+                                                  '$turns',
+                                                  style: const TextStyle(
+                                                    fontSize: 21,
+                                                    fontWeight: FontWeight.w900,
+                                                    color: Color(0xFF1D4ED8),
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 2),
+                                                Text(
+                                                  isSi ? 'වාර ගණන' : 'Turns',
+                                                  style: const TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w700,
+                                                    color: Color(0xFF64748B),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 16),
+
+                                    // Primary CTA: Play Again
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: DecoratedBox(
+                                        decoration: BoxDecoration(
+                                          gradient: const LinearGradient(
+                                            colors: [
+                                              Color(0xFF0D9488),
+                                              Color(0xFF0284C7),
+                                            ],
+                                          ),
+                                          borderRadius: BorderRadius.circular(15),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: const Color(0xFF0D9488)
+                                                  .withValues(alpha: 0.34),
+                                              blurRadius: 12,
+                                              offset: const Offset(0, 5),
+                                            ),
+                                          ],
+                                        ),
+                                        child: ElevatedButton.icon(
+                                          key: const ValueKey(
+                                            'dialog_play_pairs_again_button',
+                                          ),
+                                          onPressed: () {
+                                            Navigator.of(dialogCtx).pop();
+                                            _startNewGame();
+                                          },
+                                          icon: const Icon(
+                                            LucideIcons.rotateCcw,
+                                            size: 19,
+                                          ),
+                                          label: Text(
+                                            isSi ? 'නැවත ක්‍රීඩා කරන්න' : 'Play Again',
+                                            style: const TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w900,
+                                            ),
+                                          ),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.transparent,
+                                            foregroundColor: Colors.white,
+                                            shadowColor: Colors.transparent,
+                                            elevation: 0,
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 14,
+                                            ),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(15),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 10),
+
+                                    // Secondary Row: View Board + All Games
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: OutlinedButton.icon(
+                                            onPressed: () =>
+                                                Navigator.of(dialogCtx).pop(),
+                                            icon: const Icon(LucideIcons.eye, size: 15),
+                                            label: Text(
+                                              isSi ? 'පුවරුව' : 'View Board',
+                                              style: const TextStyle(
+                                                fontSize: 13.5,
+                                                fontWeight: FontWeight.w800,
+                                              ),
+                                            ),
+                                            style: OutlinedButton.styleFrom(
+                                              foregroundColor: const Color(0xFF0F766E),
+                                              side: const BorderSide(
+                                                color: Color(0xFF99F6E4),
+                                                width: 1.5,
+                                              ),
+                                              backgroundColor: const Color(0xFFF0FDFA),
+                                              padding: const EdgeInsets.symmetric(
+                                                vertical: 11,
+                                              ),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(12),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: OutlinedButton.icon(
+                                            onPressed: () {
+                                              Navigator.of(dialogCtx).pop();
+                                              widget.onBack();
+                                            },
+                                            icon: const Icon(
+                                              Icons.home_rounded,
+                                              size: 16,
+                                            ),
+                                            label: Text(
+                                              isSi ? 'සියලුම ක්‍රීඩා' : 'All Games',
+                                              style: const TextStyle(
+                                                fontSize: 13.5,
+                                                fontWeight: FontWeight.w800,
+                                              ),
+                                            ),
+                                            style: OutlinedButton.styleFrom(
+                                              foregroundColor: const Color(0xFF475569),
+                                              side: const BorderSide(
+                                                color: Color(0xFFCBD5E1),
+                                                width: 1.3,
+                                              ),
+                                              backgroundColor: Colors.white,
+                                              padding: const EdgeInsets.symmetric(
+                                                vertical: 11,
+                                              ),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(12),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF0D9488).withValues(alpha: 0.16),
-                      blurRadius: 32,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Celebratory 3D Trophy Badge
-                    Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        Container(
-                          width: 86,
-                          height: 86,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFCCFBF1),
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: const Color(0xFF99F6E4),
-                              width: 2,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFF0D9488).withValues(alpha: 0.2),
-                                blurRadius: 18,
-                                offset: const Offset(0, 6),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Container(
-                          width: 62,
-                          height: 62,
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFF14B8A6), Color(0xFF0D9488)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFF0D9488).withValues(alpha: 0.35),
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: const Center(
-                            child: Icon(
-                              Icons.emoji_events_rounded,
-                              size: 34,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 18),
-                    Text(
-                      'Fantastic Matching!',
-                      style: AppTextStyles.h2.copyWith(
-                        color: const Color(0xFF134E4A),
-                        fontWeight: FontWeight.w900,
-                        fontSize: 24,
-                        letterSpacing: -0.4,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'You matched all 6 card pairs with great memory and focus! Here are your results:',
-                      style: AppTextStyles.body.copyWith(
-                        fontSize: 14.5,
-                        color: const Color(0xFF475569),
-                        fontWeight: FontWeight.w500,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 16),
-                    _buildGameScoreCard(
-                      score: score,
-                      scoreLabel: 'Matching Performance',
-                      details:
-                          'Pairs Found: $totalPairs / $totalPairs • Turns Taken: $turns',
-                      isSaving: _isSaving,
-                      successMessage: null,
-                      errorMessage: _saveErrorMessage,
-                    ),
-                    const SizedBox(height: 18),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        OutlinedButton.icon(
-                          onPressed: () => Navigator.of(dialogCtx).pop(),
-                          icon: const Icon(LucideIcons.eye, size: 16),
-                          label: const Text(
-                            'View Board',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: const Color(0xFF475569),
-                            side: const BorderSide(
-                              color: Color(0xFFCBD5E1),
-                              width: 1.2,
-                            ),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 18,
-                              vertical: 13,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        DecoratedBox(
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFF0D9488), Color(0xFF14B8A6)],
-                            ),
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFF0D9488).withValues(alpha: 0.35),
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: ElevatedButton.icon(
-                            key: const ValueKey('dialog_play_pairs_again_button'),
-                            onPressed: () {
-                              Navigator.of(dialogCtx).pop();
-                              _startNewGame();
-                            },
-                            icon: const Icon(LucideIcons.rotateCcw, size: 17),
-                            label: const Text(
-                              'Play Again',
-                              style: TextStyle(
-                                fontSize: 14.5,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.transparent,
-                              foregroundColor: Colors.white,
-                              shadowColor: Colors.transparent,
-                              elevation: 0,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 22,
-                                vertical: 13,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
+              ],
             );
           },
         );
@@ -3719,354 +6672,955 @@ class _PairsGameViewState extends State<_PairsGameView> {
           onReset: _startNewGame,
           statusBadge: 'Pairs Found: $_pairsFound / ${_symbols.length}',
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 12),
 
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 26),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppColors.border, width: 1.5),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: const Color(0xFF0D9488).withValues(alpha: 0.24),
+              width: 1.6,
+            ),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF0D9488).withValues(alpha: 0.05),
-                blurRadius: 18,
-                offset: const Offset(0, 6),
+                color: const Color(0xFF0D9488).withValues(alpha: 0.11),
+                blurRadius: 28,
+                offset: const Offset(0, 10),
               ),
             ],
           ),
-          child: Column(
-            children: [
-              // Instruction Banner
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                decoration: BoxDecoration(
-                  color: isGameCompleted
-                      ? AppColors.riskLowBg
-                      : const Color(0xFFF0FDFA),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: isGameCompleted
-                        ? AppColors.riskLow.withValues(alpha: 0.35)
-                        : const Color(0xFF0D9488).withValues(alpha: 0.25),
-                    width: 1.2,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(22.5),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // 1. Attractive Emerald-Teal-Ocean Header Banner with Live Pair Progress
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Color(0xFF115E59),
+                        Color(0xFF0D9488),
+                        Color(0xFF0284C7),
+                        Color(0xFF4F46E5),
+                      ],
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                    ),
                   ),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: (isGameCompleted
-                                    ? AppColors.riskLow
-                                    : const Color(0xFF0D9488))
-                                .withValues(alpha: 0.16),
-                            blurRadius: 8,
-                          ),
-                        ],
-                      ),
-                      child: Icon(
-                        isGameCompleted
-                            ? LucideIcons.sparkles
-                            : LucideIcons.puzzle,
-                        color: isGameCompleted
-                            ? AppColors.riskLow
-                            : const Color(0xFF0D9488),
-                        size: 24,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Wrap(
+                    alignment: WrapAlignment.spaceBetween,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 12,
+                    runSpacing: 8,
+                    children: [
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(
-                            isGameCompleted
-                                ? 'Well done! You found all the matching pairs!'
-                                : 'Tap any two cards to discover matching pairs.',
-                            style: AppTextStyles.h4.copyWith(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.navy,
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.95),
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.14),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: Center(
+                              child: Icon(
+                                isGameCompleted
+                                    ? LucideIcons.trophy
+                                    : LucideIcons.puzzle,
+                                color: const Color(0xFF0D9488),
+                                size: 22,
+                              ),
                             ),
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            isGameCompleted
-                                ? 'Fantastic work! Would you like to play again?'
-                                : 'Take your time. There are no timers or rush.',
-                            style: AppTextStyles.body.copyWith(
-                              fontSize: 13.5,
-                              color: AppColors.body,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 28),
-
-              // Cards Grid
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final crossAxisCount = constraints.maxWidth > 700 ? 4 : 3;
-                  return GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: _cards.length,
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: crossAxisCount,
-                      crossAxisSpacing: 16,
-                      mainAxisSpacing: 16,
-                      childAspectRatio: 1.1,
-                    ),
-                    itemBuilder: (context, index) {
-                      final card = _cards[index];
-                      final isFlipped =
-                          card.isMatched || _flippedIndices.contains(index);
-
-                      return InkWell(
-                        key: ValueKey('pair_card_$index'),
-                        onTap: () => _onCardTap(index),
-                        borderRadius: BorderRadius.circular(16),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 250),
-                          curve: Curves.easeInOut,
-                          decoration: BoxDecoration(
-                            color: isFlipped
-                                ? (card.isMatched
-                                    ? AppColors.riskLowBg
-                                    : Colors.white)
-                                : const Color(0xFFF5F3FF),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: isFlipped
-                                  ? (card.isMatched
-                                      ? AppColors.riskLow
-                                      : card.symbol.color)
-                                  : const Color(0xFFDDD6FE),
-                              width: isFlipped ? 2.5 : 1.5,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: isFlipped
-                                    ? (card.isMatched
-                                        ? AppColors.riskLow.withValues(alpha: 0.15)
-                                        : card.symbol.color.withValues(alpha: 0.15))
-                                    : AppColors.primary.withValues(alpha: 0.04),
-                                blurRadius: isFlipped ? 10 : 5,
-                                offset: const Offset(0, 3),
+                          const SizedBox(width: 12),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                isGameCompleted
+                                    ? 'Well done! All Pairs Matched! 🎉'
+                                    : 'Find the Matching Pairs ✨',
+                                style: const TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w900,
+                                  color: Colors.white,
+                                  letterSpacing: -0.2,
+                                ),
+                              ),
+                              Text(
+                                isGameCompleted
+                                    ? 'Fantastic memory and focus!'
+                                    : 'Tap any two cards to discover matching pairs — no rush!',
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white.withValues(alpha: 0.88),
+                                ),
                               ),
                             ],
                           ),
-                          child: isFlipped
-                              ? Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      card.symbol.icon,
-                                      size: 38,
-                                      color: card.symbol.color,
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Text(
-                                      card.symbol.label,
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w700,
-                                        color: card.isMatched
-                                            ? AppColors.riskLow
-                                            : AppColors.navy,
-                                      ),
-                                    ),
-                                    if (card.isMatched) ...[
-                                      const SizedBox(height: 3),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 7,
-                                          vertical: 2,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius: BorderRadius.circular(6),
-                                        ),
-                                        child: const Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(
-                                              LucideIcons.check,
-                                              size: 12,
-                                              color: AppColors.riskLow,
-                                            ),
-                                            SizedBox(width: 4),
-                                            Text(
-                                              'Matched',
-                                              style: TextStyle(
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.w700,
-                                                color: AppColors.riskLow,
+                        ],
+                      ),
+
+                      // Live 6-Pair Glowing Progress Dots + Turns Pill
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.16),
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.35),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                ...List.generate(_symbols.length, (i) {
+                                  final done = i < _pairsFound;
+                                  return AnimatedContainer(
+                                    duration: const Duration(milliseconds: 260),
+                                    margin: const EdgeInsets.symmetric(horizontal: 2.5),
+                                    width: done ? 16 : 10,
+                                    height: 10,
+                                    decoration: BoxDecoration(
+                                      color: done
+                                          ? const Color(0xFF6EE7B7)
+                                          : Colors.white.withValues(alpha: 0.34),
+                                      borderRadius: BorderRadius.circular(6),
+                                      boxShadow: done
+                                          ? [
+                                              BoxShadow(
+                                                color: const Color(0xFF6EE7B7)
+                                                    .withValues(alpha: 0.65),
+                                                blurRadius: 6,
                                               ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ],
-                                )
-                              : Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Container(
-                                      width: 44,
-                                      height: 44,
-                                      decoration: BoxDecoration(
-                                        color: Colors.white,
-                                        shape: BoxShape.circle,
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: AppColors.primary
-                                                .withValues(alpha: 0.12),
-                                            blurRadius: 6,
-                                          ),
-                                        ],
-                                      ),
-                                      child: const Center(
-                                        child: Icon(
-                                          LucideIcons.sparkles,
-                                          size: 22,
-                                          color: AppColors.primary,
-                                        ),
-                                      ),
+                                            ]
+                                          : null,
                                     ),
-                                    const SizedBox(height: 6),
-                                    Text(
-                                      'Tap Card',
-                                      style: AppTextStyles.caption.copyWith(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w700,
-                                        color: AppColors.primary,
-                                      ),
-                                    ),
-                                  ],
+                                  );
+                                }),
+                                const SizedBox(width: 8),
+                                Text(
+                                  '$_pairsFound / ${_symbols.length}',
+                                  style: const TextStyle(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w900,
+                                    color: Colors.white,
+                                  ),
                                 ),
-                        ),
-                      );
-                    },
-                  );
-                },
-              ),
-
-              const SizedBox(height: 28),
-
-              if (isGameCompleted) ...[
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    OutlinedButton.icon(
-                      onPressed: _showCompletionDialog,
-                      icon: const Icon(LucideIcons.sparkles, size: 17),
-                      label: const Text(
-                        'View Results',
-                        style: TextStyle(
-                          fontSize: 14.5,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFF0D9488),
-                        side: const BorderSide(
-                          color: Color(0xFF0D9488),
-                          width: 1.4,
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 22,
-                          vertical: 13,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF0D9488), Color(0xFF14B8A6)],
-                        ),
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF0D9488).withValues(alpha: 0.35),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.18),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.38),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  LucideIcons.sparkles,
+                                  size: 13.5,
+                                  color: Color(0xFFFDE68A),
+                                ),
+                                const SizedBox(width: 5),
+                                Text(
+                                  'Turns: $_turnsTaken',
+                                  style: const TextStyle(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          InkWell(
+                            key: const ValueKey('pairs_voice_toggle_button'),
+                            onTap: () {
+                              final next = !_isVoiceOn;
+                              setState(() => _voiceEnabled = next);
+                              if (!next) {
+                                TtsService.instance.stop();
+                              } else if (isGameCompleted) {
+                                _speakCompletePrompt();
+                              } else {
+                                _speakStartPrompt();
+                              }
+                            },
+                            borderRadius: BorderRadius.circular(16),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 11,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: _isVoiceOn
+                                    ? Colors.white.withValues(alpha: 0.20)
+                                    : Colors.black.withValues(alpha: 0.22),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: Colors.white.withValues(
+                                    alpha: _isVoiceOn ? 0.45 : 0.25,
+                                  ),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    _isVoiceOn
+                                        ? Icons.volume_up_rounded
+                                        : Icons.volume_off_rounded,
+                                    size: 15,
+                                    color: Colors.white,
+                                  ),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    widget.isSinhala
+                                        ? (_isVoiceOn ? 'හඬ: ON' : 'හඬ: OFF')
+                                        : (_isVoiceOn ? 'Voice: ON' : 'Voice: OFF'),
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Tooltip(
+                            message: widget.isSinhala ? 'නැවත අසන්න' : 'Listen Again',
+                            child: InkWell(
+                              key: const ValueKey('pairs_listen_again_button'),
+                              onTap: () {
+                                if (!_isVoiceOn) {
+                                  setState(() => _voiceEnabled = true);
+                                }
+                                if (isGameCompleted) {
+                                  _speakCompletePrompt();
+                                } else {
+                                  _speakStartPrompt();
+                                }
+                              },
+                              borderRadius: BorderRadius.circular(14),
+                              child: Container(
+                                padding: const EdgeInsets.all(6.5),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.20),
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                    color: Colors.white.withValues(alpha: 0.45),
+                                  ),
+                                ),
+                                child: const Icon(
+                                  Icons.record_voice_over_rounded,
+                                  size: 15,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
                           ),
                         ],
                       ),
-                      child: ElevatedButton.icon(
-                        key: const ValueKey('play_pairs_again_button'),
-                        onPressed: _startNewGame,
-                        icon: const Icon(LucideIcons.rotateCcw, size: 18),
-                        label: const Text(
-                          'Play Again with Fresh Cards',
-                          style: TextStyle(
-                            fontSize: 14.5,
-                            fontWeight: FontWeight.w700,
+                    ],
+                  ),
+                ),
+
+                // 2. Animated Pastel Background + Interactive Cards Grid
+                Stack(
+                  children: [
+                    const Positioned.fill(
+                      child: IgnorePointer(
+                        child: _PairsAmbientPlayBackdrop(),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(22, 16, 22, 16),
+                      child: Column(
+                        children: [
+                          // Cards Grid (Zero-scroll balanced height for desktop & tablet)
+                          LayoutBuilder(
+                            builder: (context, constraints) {
+                              final crossAxisCount =
+                                  constraints.maxWidth > 650 ? 4 : 3;
+                              final double cardExtent =
+                                  crossAxisCount == 4 ? 118 : 98;
+                              return GridView.builder(
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                itemCount: _cards.length,
+                                gridDelegate:
+                                    SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: crossAxisCount,
+                                  crossAxisSpacing: 15,
+                                  mainAxisSpacing: 13,
+                                  mainAxisExtent: cardExtent,
+                                ),
+                                itemBuilder: (context, index) {
+                                  final card = _cards[index];
+                                  final isFlipped = card.isMatched ||
+                                      _flippedIndices.contains(index);
+                                  return _PairsInteractiveCard(
+                                    key: ValueKey('pair_card_$index'),
+                                    card: card,
+                                    isFlipped: isFlipped,
+                                    index: index,
+                                    onTap: () => _onCardTap(index),
+                                  );
+                                },
+                              );
+                            },
                           ),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.transparent,
-                          foregroundColor: Colors.white,
-                          shadowColor: Colors.transparent,
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 24,
-                            vertical: 13,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
+
+                          const SizedBox(height: 14),
+
+                          if (isGameCompleted) ...[
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                OutlinedButton.icon(
+                                  onPressed: _showCompletionDialog,
+                                  icon: const Icon(LucideIcons.sparkles, size: 17),
+                                  label: const Text(
+                                    'View Results',
+                                    style: TextStyle(
+                                      fontSize: 14.5,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: const Color(0xFF0F766E),
+                                    backgroundColor:
+                                        Colors.white.withValues(alpha: 0.92),
+                                    side: const BorderSide(
+                                      color: Color(0xFF0D9488),
+                                      width: 1.5,
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 22,
+                                      vertical: 12,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(13),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 14),
+                                DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    gradient: const LinearGradient(
+                                      colors: [
+                                        Color(0xFF0D9488),
+                                        Color(0xFF0284C7),
+                                      ],
+                                    ),
+                                    borderRadius: BorderRadius.circular(13),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: const Color(0xFF0D9488)
+                                            .withValues(alpha: 0.34),
+                                        blurRadius: 12,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                  child: ElevatedButton.icon(
+                                    key: const ValueKey('play_pairs_again_button'),
+                                    onPressed: _startNewGame,
+                                    icon: const Icon(LucideIcons.rotateCcw, size: 18),
+                                    label: const Text(
+                                      'Play Again with Fresh Cards',
+                                      style: TextStyle(
+                                        fontSize: 14.5,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.transparent,
+                                      foregroundColor: Colors.white,
+                                      shadowColor: Colors.transparent,
+                                      elevation: 0,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 24,
+                                        vertical: 12,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(13),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ] else ...[
+                            OutlinedButton.icon(
+                              key: const ValueKey('restart_pairs_button'),
+                              onPressed: _startNewGame,
+                              icon: const Icon(LucideIcons.rotateCcw, size: 17),
+                              label: const Text(
+                                'Shuffle & Restart Game',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: const Color(0xFF0F766E),
+                                backgroundColor:
+                                    Colors.white.withValues(alpha: 0.90),
+                                side: const BorderSide(
+                                  color: Color(0xFF99F6E4),
+                                  width: 1.6,
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 22,
+                                  vertical: 11,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(13),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
                   ],
                 ),
-              ] else ...[
-                OutlinedButton.icon(
-                  key: const ValueKey('restart_pairs_button'),
-                  onPressed: _startNewGame,
-                  icon: const Icon(LucideIcons.rotateCcw, size: 18),
-                  label: const Text(
-                    'Shuffle & Restart Game',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.navy,
-                    side: const BorderSide(color: AppColors.border),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 22,
-                      vertical: 12,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
               ],
-            ],
+            ),
           ),
         ),
       ],
     );
   }
+}
+
+class _PairsInteractiveCard extends StatefulWidget {
+  final _CardModel card;
+  final bool isFlipped;
+  final int index;
+  final VoidCallback onTap;
+
+  const _PairsInteractiveCard({
+    super.key,
+    required this.card,
+    required this.isFlipped,
+    required this.index,
+    required this.onTap,
+  });
+
+  @override
+  State<_PairsInteractiveCard> createState() => _PairsInteractiveCardState();
+}
+
+class _PairsInteractiveCardState extends State<_PairsInteractiveCard> {
+  bool _hovered = false;
+  bool _pressed = false;
+
+  static const _hiddenAccents = [
+    (Color(0xFF0D9488), Color(0xFF0284C7)),
+    (Color(0xFF7C3AED), Color(0xFF4F46E5)),
+    (Color(0xFF0EA5E9), Color(0xFF0D9488)),
+    (Color(0xFF6366F1), Color(0xFF0284C7)),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final card = widget.card;
+    final isFlipped = widget.isFlipped;
+    final isMatched = card.isMatched;
+    final (accentA, accentB) =
+        _hiddenAccents[widget.index % _hiddenAccents.length];
+
+    return MouseRegion(
+      cursor: isMatched ? SystemMouseCursors.basic : SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() {
+        _hovered = false;
+        _pressed = false;
+      }),
+      child: GestureDetector(
+        onTapDown: (_) => setState(() => _pressed = true),
+        onTapUp: (_) => setState(() => _pressed = false),
+        onTapCancel: () => setState(() => _pressed = false),
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          transform: Matrix4.translationValues(
+            0,
+            _pressed ? 1.5 : (!isMatched && _hovered ? -4.5 : 0),
+            0,
+          ),
+          decoration: BoxDecoration(
+            gradient: isFlipped
+                ? (isMatched
+                    ? const LinearGradient(
+                        colors: [Color(0xFFECFDF5), Color(0xFFD1FAE5)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      )
+                    : LinearGradient(
+                        colors: [
+                          Colors.white,
+                          card.symbol.color.withValues(alpha: 0.06),
+                        ],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      ))
+                : LinearGradient(
+                    colors: _hovered
+                        ? const [
+                            Color(0xFFFFFFFF),
+                            Color(0xFFECFEFF),
+                            Color(0xFFEEF2FF),
+                          ]
+                        : const [
+                            Color(0xFFFFFFFF),
+                            Color(0xFFF0FDFA),
+                            Color(0xFFF5F3FF),
+                          ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: isFlipped
+                  ? (isMatched ? const Color(0xFF10B981) : card.symbol.color)
+                  : (_hovered
+                      ? accentA.withValues(alpha: 0.65)
+                      : const Color(0xFF99F6E4)),
+              width: isFlipped ? 2.4 : (_hovered ? 2.0 : 1.5),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: isFlipped
+                    ? (isMatched
+                        ? const Color(0xFF10B981).withValues(alpha: 0.20)
+                        : card.symbol.color.withValues(alpha: 0.22))
+                    : accentA.withValues(alpha: _hovered ? 0.18 : 0.08),
+                blurRadius: _hovered || isFlipped ? 16 : 9,
+                offset: Offset(0, _hovered || isFlipped ? 6 : 3),
+              ),
+            ],
+          ),
+          child: Stack(
+            children: [
+              // Subtle decorative corner sparkles on unflipped cards
+              if (!isFlipped) ...[
+                Positioned(
+                  top: 8,
+                  left: 10,
+                  child: Icon(
+                    Icons.auto_awesome_rounded,
+                    size: 12,
+                    color: accentA.withValues(alpha: 0.30),
+                  ),
+                ),
+                Positioned(
+                  bottom: 8,
+                  right: 10,
+                  child: Icon(
+                    Icons.auto_awesome_rounded,
+                    size: 12,
+                    color: accentB.withValues(alpha: 0.28),
+                  ),
+                ),
+              ],
+
+              // Matched glowing checkmark corner badge
+              if (isMatched)
+                Positioned(
+                  top: 7,
+                  right: 7,
+                  child: Container(
+                    width: 22,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF10B981), Color(0xFF059669)],
+                      ),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 1.8),
+                    ),
+                    child: const Center(
+                      child: Icon(
+                        Icons.check_rounded,
+                        size: 13,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+
+              // Main Card Face Content
+              Center(
+                child: isFlipped
+                    ? Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 52,
+                            height: 52,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  card.symbol.color.withValues(alpha: 0.18),
+                                  card.symbol.color.withValues(alpha: 0.08),
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: card.symbol.color.withValues(alpha: 0.35),
+                                width: 1.5,
+                              ),
+                            ),
+                            child: Center(
+                              child: Icon(
+                                card.symbol.icon,
+                                size: 30,
+                                color: card.symbol.color,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            card.symbol.label,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w800,
+                              color: isMatched
+                                  ? const Color(0xFF065F46)
+                                  : const Color(0xFF1E293B),
+                            ),
+                          ),
+                          if (isMatched) ...[
+                            const SizedBox(height: 2),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 1.5,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.92),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Text(
+                                '✓ Matched',
+                                style: TextStyle(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: Color(0xFF059669),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      )
+                    : Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [accentA, accentB],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 2.5),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: accentA.withValues(alpha: 0.32),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: const Center(
+                              child: Icon(
+                                LucideIcons.sparkles,
+                                size: 22,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 7),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 2.5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.88),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: accentA.withValues(alpha: 0.22),
+                              ),
+                            ),
+                            child: Text(
+                              'Tap Card',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                                color: accentA,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PairsAmbientPlayBackdrop extends StatefulWidget {
+  const _PairsAmbientPlayBackdrop();
+
+  @override
+  State<_PairsAmbientPlayBackdrop> createState() =>
+      _PairsAmbientPlayBackdropState();
+}
+
+class _PairsAmbientPlayBackdropState extends State<_PairsAmbientPlayBackdrop>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 9500),
+    );
+    final isTestEnv =
+        WidgetsBinding.instance.runtimeType.toString().contains('Test');
+    if (!isTestEnv) {
+      _controller.repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (_, __) => CustomPaint(
+        painter: _PairsAmbientPlayPainter(progress: _controller.value),
+      ),
+    );
+  }
+}
+
+class _PairsAmbientPlayPainter extends CustomPainter {
+  final double progress;
+
+  const _PairsAmbientPlayPainter({required this.progress});
+
+  static const _pastels = [
+    Color(0xFF14B8A6), // soft teal
+    Color(0xFF38BDF8), // soft sky
+    Color(0xFFA78BFA), // soft violet
+    Color(0xFFFBBF24), // soft gold
+    Color(0xFFF472B6), // soft rose
+  ];
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final t = progress * 2 * pi;
+
+    // 1. Fresh Mint-Sky-Lavender Pastel Wash Base
+    final bgPaint = Paint()
+      ..shader = const LinearGradient(
+        colors: [
+          Color(0xFFF7FEFC),
+          Color(0xFFECFEFF),
+          Color(0xFFF5F3FF),
+          Color(0xFFECFDF5),
+        ],
+        stops: [0.0, 0.34, 0.68, 1.0],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), bgPaint);
+
+    // 2. 4 Gently Breathing Pastel Glow Orbs
+    final orbs = [
+      (
+        Offset(size.width * 0.10 + sin(t) * 20, size.height * 0.22 + cos(t) * 14),
+        135.0,
+        const Color(0xFF99F6E4),
+      ),
+      (
+        Offset(size.width * 0.90 + cos(t) * 20, size.height * 0.20 + sin(t) * 14),
+        140.0,
+        const Color(0xFFBAE6FD),
+      ),
+      (
+        Offset(size.width * 0.16 + cos(t + 1.5) * 22, size.height * 0.84 + sin(t) * 12),
+        130.0,
+        const Color(0xFFDDD6FE),
+      ),
+      (
+        Offset(size.width * 0.84 + sin(t + 2.2) * 18, size.height * 0.82 + cos(t) * 12),
+        130.0,
+        const Color(0xFFFDE68A),
+      ),
+    ];
+
+    for (final (center, radius, color) in orbs) {
+      final paint = Paint()
+        ..shader = RadialGradient(
+          colors: [
+            color.withValues(alpha: 0.44),
+            color.withValues(alpha: 0.0),
+          ],
+        ).createShader(Rect.fromCircle(center: center, radius: radius));
+      canvas.drawCircle(center, radius, paint);
+    }
+
+    // 3. Soft Flowing Teal-Sky Waves along the Bottom Edge
+    final wave1 = Path()..moveTo(0, size.height);
+    for (double x = 0; x <= size.width; x += 18) {
+      final y = size.height -
+          26 +
+          sin((x / size.width) * 2 * pi + t) * 8 +
+          cos((x / size.width) * 4 * pi - t) * 4;
+      wave1.lineTo(x, y);
+    }
+    wave1
+      ..lineTo(size.width, size.height)
+      ..close();
+    canvas.drawPath(
+      wave1,
+      Paint()
+        ..shader = LinearGradient(
+          colors: [
+            const Color(0xFF0D9488).withValues(alpha: 0.12),
+            const Color(0xFF0284C7).withValues(alpha: 0.10),
+            const Color(0xFF7C3AED).withValues(alpha: 0.10),
+          ],
+        ).createShader(Rect.fromLTWH(0, size.height - 48, size.width, 48)),
+    );
+
+    final wave2 = Path()..moveTo(0, size.height);
+    for (double x = 0; x <= size.width; x += 18) {
+      final y = size.height -
+          14 +
+          cos((x / size.width) * 2.5 * pi - t * 1.2) * 6;
+      wave2.lineTo(x, y);
+    }
+    wave2
+      ..lineTo(size.width, size.height)
+      ..close();
+    canvas.drawPath(
+      wave2,
+      Paint()..color = const Color(0xFF14B8A6).withValues(alpha: 0.08),
+    );
+
+    // 4. Floating Pastel Sparkles, Soft Diamonds & Glowing Bubbles
+    for (int i = 0; i < 18; i++) {
+      final seed = i * 1.53;
+      final baseX = ((i * 59 + 11) % 94 + 3) / 100.0;
+      final rise = (1.0 - ((progress + i * 0.067) % 1.0));
+      final x = baseX * size.width + sin(t + seed) * 14;
+      final y = rise * (size.height + 24) - 12;
+      final color = _pastels[i % _pastels.length];
+      final pulse = 0.45 + 0.55 * sin(t * 2 + seed).abs();
+
+      if (i % 3 == 0) {
+        // 4-point twinkling star sparkle
+        final r = 5.5 * pulse + 2.5;
+        final star = Path()
+          ..moveTo(x, y - r)
+          ..quadraticBezierTo(x, y, x + r, y)
+          ..quadraticBezierTo(x, y, x, y + r)
+          ..quadraticBezierTo(x, y, x - r, y)
+          ..quadraticBezierTo(x, y, x, y - r)
+          ..close();
+        canvas.drawPath(
+          star,
+          Paint()..color = color.withValues(alpha: 0.50 * pulse),
+        );
+      } else if (i % 3 == 1) {
+        // Gently rotating pastel card-diamond motif
+        canvas.save();
+        canvas.translate(x, y);
+        canvas.rotate(sin(t + seed) * 0.5 + pi / 4);
+        final d = 6.5 + (i % 3) * 2.2;
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+            Rect.fromCenter(center: Offset.zero, width: d, height: d),
+            const Radius.circular(2.2),
+          ),
+          Paint()
+            ..color = color.withValues(alpha: 0.24)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1.6,
+        );
+        canvas.restore();
+      } else {
+        // Luminous floating pastel bubble ring
+        canvas.drawCircle(
+          Offset(x, y),
+          7.0 + (i % 4) * 2.8,
+          Paint()
+            ..color = color.withValues(alpha: 0.22)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1.5,
+        );
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _PairsAmbientPlayPainter oldDelegate) =>
+      oldDelegate.progress != progress;
 }
 
 // ==============================================================================
@@ -4077,12 +7631,14 @@ class _ItemsGameView extends StatefulWidget {
   final VoidCallback onBack;
   final int residentId;
   final String? token;
+  final bool isSinhala;
 
   const _ItemsGameView({
     super.key,
     required this.onBack,
     required this.residentId,
     this.token,
+    this.isSinhala = false,
   });
 
   @override
@@ -4098,15 +7654,19 @@ enum _ItemPhase {
 class _ObjectItem {
   final int id;
   final String name;
+  final String sinhalaName;
   final IconData icon;
   final Color color;
 
   const _ObjectItem({
     required this.id,
     required this.name,
+    required this.sinhalaName,
     required this.icon,
     required this.color,
   });
+
+  String displayName(bool isSinhala) => isSinhala ? sinhalaName : name;
 }
 
 class _ItemsGameViewState extends State<_ItemsGameView> {
@@ -4114,60 +7674,70 @@ class _ItemsGameViewState extends State<_ItemsGameView> {
     _ObjectItem(
       id: 1,
       name: 'Red Apple',
+      sinhalaName: 'රතු ඇපල්',
       icon: Icons.apple_rounded,
       color: Color(0xFFDC2626),
     ),
     _ObjectItem(
       id: 2,
       name: 'Story Book',
+      sinhalaName: 'කතන්දර පොත',
       icon: LucideIcons.bookOpen,
       color: Color(0xFF4F46E5),
     ),
     _ObjectItem(
       id: 3,
       name: 'Pink Flower',
+      sinhalaName: 'රෝස මල',
       icon: LucideIcons.flower,
       color: Color(0xFFDB2777),
     ),
     _ObjectItem(
       id: 4,
       name: 'Wall Clock',
+      sinhalaName: 'බිත්ති ඔරලෝසුව',
       icon: LucideIcons.clock,
       color: Color(0xFFD97706),
     ),
     _ObjectItem(
       id: 5,
       name: 'Tea Cup',
+      sinhalaName: 'තේ කෝප්පය',
       icon: LucideIcons.coffee,
       color: Color(0xFF854D0E),
     ),
     _ObjectItem(
       id: 6,
       name: 'Cozy House',
+      sinhalaName: 'ලස්සන නිවස',
       icon: Icons.home_rounded,
       color: Color(0xFF0D9488),
     ),
     _ObjectItem(
       id: 7,
       name: 'Bright Sun',
+      sinhalaName: 'දීප්තිමත් හිරු',
       icon: LucideIcons.sun,
       color: Color(0xFFEAB308),
     ),
     _ObjectItem(
       id: 8,
       name: 'Loving Heart',
+      sinhalaName: 'ආදර හදවත',
       icon: LucideIcons.heart,
       color: Color(0xFFE11D48),
     ),
     _ObjectItem(
       id: 9,
       name: 'Brass Bell',
+      sinhalaName: 'පිත්තල සීනුව',
       icon: LucideIcons.bell,
       color: Color(0xFFF97316),
     ),
     _ObjectItem(
       id: 10,
       name: 'Brass Key',
+      sinhalaName: 'පිත්තල යතුර',
       icon: Icons.vpn_key_rounded,
       color: Color(0xFF0284C7),
     ),
@@ -4189,13 +7759,86 @@ class _ItemsGameViewState extends State<_ItemsGameView> {
   double? _lastScore;
   int _correctRecalledCount = 0;
 
+  // Nullable for Hot-Reload safety
+  bool? _voiceEnabled;
+  Timer? _voiceIntroTimer;
+  PicnicBgmPlayer? _sfxPlayer;
+  PicnicBgmPlayer get _sfx => _sfxPlayer ??= PicnicBgmPlayer();
+  bool get _isVoiceOn => _voiceEnabled ?? true;
+  bool get _isWidgetTest =>
+      WidgetsBinding.instance.runtimeType.toString().contains('Test');
+
+  void _speakItemsVoice(String enText, String siText) {
+    if (!mounted || !_isVoiceOn || _isWidgetTest) return;
+    final text = widget.isSinhala ? siText : enText;
+    TtsService.instance.speak(text, isSinhala: widget.isSinhala);
+  }
+
+  void _speakPhasePrompt(_ItemPhase phase) {
+    switch (phase) {
+      case _ItemPhase.memorize:
+        _speakItemsVoice(
+          'Take a calm look at these four familiar items and remember them. When you feel ready, tap the button below.',
+          'මෙහි පෙන්වන හුරුපුරුදු භාණ්ඩ හතර හොඳින් බලා මතක තබාගන්න. සූදානම් වූ පසු පහළ බොත්තම ඔබන්න.',
+        );
+        break;
+      case _ItemPhase.select:
+        _speakItemsVoice(
+          'Now tap the four items you remember seeing, then tap Check My Answers.',
+          'දැන් ඔබ කලින් දුටු භාණ්ඩ හතර තෝරා, පිළිතුරු පරීක්ෂා කරන්න ඔබන්න.',
+        );
+        break;
+      case _ItemPhase.feedback:
+        final isPerfect = _correctRecalledCount == _targetItems.length;
+        if (isPerfect) {
+          _speakItemsVoice(
+            'Wonderful memory! You remembered all four items correctly!',
+            'හරිම විශිෂ්ටයි! ඔබ භාණ්ඩ හතරම නිවැරදිව මතක තබා ගත්තා!',
+          );
+        } else {
+          _speakItemsVoice(
+            'Good try! Great memory exercise. Feel free to try again whenever you like!',
+            'හොඳ උත්සාහයක්! ඉතා හොඳ මතක පුහුණුවක්. කැමති නම් ආයෙත් උත්සාහ කරමු!',
+          );
+        }
+        break;
+    }
+  }
+
+  void _scheduleStudyVoice() {
+    _voiceIntroTimer?.cancel();
+    if (_isWidgetTest || !_isVoiceOn) return;
+    _voiceIntroTimer = Timer(const Duration(milliseconds: 360), () {
+      if (mounted && _isVoiceOn && _phase == _ItemPhase.memorize) {
+        _speakPhasePrompt(_ItemPhase.memorize);
+      }
+    });
+  }
+
   @override
   void initState() {
     super.initState();
-    _startNewRound();
+    _startNewRound(speakIntro: true);
   }
 
-  void _startNewRound() {
+  @override
+  void didUpdateWidget(covariant _ItemsGameView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isSinhala != widget.isSinhala && _isVoiceOn) {
+      _speakPhasePrompt(_phase);
+    }
+  }
+
+  @override
+  void dispose() {
+    _voiceIntroTimer?.cancel();
+    if (!_isWidgetTest) {
+      TtsService.instance.stop();
+    }
+    super.dispose();
+  }
+
+  void _startNewRound({bool speakIntro = true}) {
     final shuffled = List<_ObjectItem>.from(_itemPool)..shuffle(_random);
     final targets = shuffled.take(4).toList();
     final remaining = shuffled.skip(4).take(4).toList();
@@ -4204,6 +7847,9 @@ class _ItemsGameViewState extends State<_ItemsGameView> {
     setState(() {
       _targetSequenceReset(targets, combined);
     });
+    if (speakIntro) {
+      _scheduleStudyVoice();
+    }
   }
 
   void _targetSequenceReset(
@@ -4222,16 +7868,23 @@ class _ItemsGameViewState extends State<_ItemsGameView> {
   }
 
   void _startSelectionPhase() {
+    if (_isVoiceOn && !_isWidgetTest) {
+      _sfx.playTapChime(volume: 0.24);
+    }
     setState(() {
       _selectedIds.clear();
       _phase = _ItemPhase.select;
       _hasShownFeedbackPopup = false;
       _isPopupOpen = false;
     });
+    _speakPhasePrompt(_ItemPhase.select);
   }
 
   void _toggleItemSelection(int id) {
     if (_phase != _ItemPhase.select) return;
+    if (_isVoiceOn && !_isWidgetTest) {
+      _sfx.playTapChime(volume: 0.24);
+    }
     setState(() {
       if (_selectedIds.contains(id)) {
         _selectedIds.remove(id);
@@ -4254,6 +7907,15 @@ class _ItemsGameViewState extends State<_ItemsGameView> {
       _lastScore = roundedScore;
       _phase = _ItemPhase.feedback;
     });
+
+    if (_isVoiceOn && !_isWidgetTest) {
+      if (correctCount == totalItems) {
+        _sfx.playVictoryChime(volume: 0.28);
+      } else {
+        _sfx.playTapChime(volume: 0.26);
+      }
+    }
+    _speakPhasePrompt(_ItemPhase.feedback);
 
     _saveSession(
       score: roundedScore,
@@ -4317,153 +7979,332 @@ class _ItemsGameViewState extends State<_ItemsGameView> {
   }
 
   void _peekOriginalItems() {
+    if (_isVoiceOn && !_isWidgetTest) {
+      _sfx.playTapChime(volume: 0.24);
+    }
     setState(() {
       _phase = _ItemPhase.memorize;
     });
+    _speakPhasePrompt(_ItemPhase.memorize);
   }
 
   @override
   Widget build(BuildContext context) {
+    final isSi = widget.isSinhala;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildGameNavBar(
-          gameTitle: 'Remember the Items',
+          gameTitle: isSi ? 'භාණ්ඩ මතක ක්‍රීඩාව' : 'Remember the Items',
           gameIcon: LucideIcons.bookOpen,
           gameColor: const Color(0xFFDB2777),
           onBack: widget.onBack,
-          onReset: _startNewRound,
+          onReset: () => _startNewRound(speakIntro: true),
+          backLabel: isSi ? 'සියලුම ක්‍රීඩා' : 'All Games',
           statusBadge: _phase == _ItemPhase.memorize
-              ? 'Study 4 Items'
+              ? (isSi ? 'භාණ්ඩ 4 බලන්න' : 'Study 4 Items')
               : (_phase == _ItemPhase.select
-                  ? 'Selected: ${_selectedIds.length} of 4'
-                  : 'Results Check'),
+                  ? (isSi
+                      ? 'තෝරාගත්තේ: ${_selectedIds.length} / 4'
+                      : 'Selected: ${_selectedIds.length} of 4')
+                  : (isSi ? 'ප්‍රතිඵල පරීක්ෂාව' : 'Results Check')),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 14),
 
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 26),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppColors.border, width: 1.5),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: const Color(0xFFDB2777).withValues(alpha: 0.24),
+              width: 1.6,
+            ),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFFDB2777).withValues(alpha: 0.05),
-                blurRadius: 18,
-                offset: const Offset(0, 6),
+                color: const Color(0xFFDB2777).withValues(alpha: 0.11),
+                blurRadius: 28,
+                offset: const Offset(0, 10),
               ),
             ],
           ),
-          child: Column(
-            children: [
-              _buildInstructionBanner(),
-              const SizedBox(height: 28),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(22.5),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // 1. Attractive Rose-Berry-Violet Gradient Header with 2-Step Stepper & Voice Controls
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Color(0xFF9D174D),
+                        Color(0xFFDB2777),
+                        Color(0xFF7C3AED),
+                        Color(0xFF4F46E5),
+                      ],
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                    ),
+                  ),
+                  child: Wrap(
+                    alignment: WrapAlignment.spaceBetween,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 12,
+                    runSpacing: 8,
+                    children: [
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.95),
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.14),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: const Center(
+                              child: Icon(
+                                LucideIcons.bookOpen,
+                                color: Color(0xFFDB2777),
+                                size: 21,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                isSi
+                                    ? 'භාණ්ඩ මතක ක්‍රීඩාව ✨'
+                                    : 'Remember the Items ✨',
+                                style: const TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w900,
+                                  color: Colors.white,
+                                  letterSpacing: -0.2,
+                                ),
+                              ),
+                              Text(
+                                isSi
+                                    ? 'හුරුපුරුදු භාණ්ඩ 4 මතක තබාගෙන තෝරන්න'
+                                    : 'Memorize 4 familiar items & pick them out',
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white.withValues(alpha: 0.88),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
 
-              if (_phase == _ItemPhase.memorize) ...[
-                _buildMemorizeView(),
-              ] else if (_phase == _ItemPhase.select) ...[
-                _buildSelectionView(),
-              ] else if (_phase == _ItemPhase.feedback) ...[
-                _buildFeedbackView(),
+                      // 2-Step Phase Pills
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _buildPhaseStepChip(
+                            label: isSi ? '1. බලන්න (4)' : '1. Study 4',
+                            active: _phase == _ItemPhase.memorize,
+                            done: _phase != _ItemPhase.memorize,
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 5),
+                            child: Icon(
+                              Icons.chevron_right_rounded,
+                              size: 16,
+                              color: Colors.white.withValues(alpha: 0.65),
+                            ),
+                          ),
+                          _buildPhaseStepChip(
+                            label: isSi ? '2. තෝරන්න (4)' : '2. Pick 4',
+                            active: _phase == _ItemPhase.select,
+                            done: _phase == _ItemPhase.feedback,
+                          ),
+                        ],
+                      ),
+
+                      // Voice ON/OFF & Listen Again
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          InkWell(
+                            key: const ValueKey('items_voice_toggle_button'),
+                            onTap: () {
+                              final next = !_isVoiceOn;
+                              setState(() => _voiceEnabled = next);
+                              if (!next) {
+                                TtsService.instance.stop();
+                              } else {
+                                _speakPhasePrompt(_phase);
+                              }
+                            },
+                            borderRadius: BorderRadius.circular(16),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6.5,
+                              ),
+                              decoration: BoxDecoration(
+                                color: _isVoiceOn
+                                    ? Colors.white.withValues(alpha: 0.20)
+                                    : Colors.black.withValues(alpha: 0.22),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: Colors.white.withValues(
+                                    alpha: _isVoiceOn ? 0.45 : 0.25,
+                                  ),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    _isVoiceOn
+                                        ? Icons.volume_up_rounded
+                                        : Icons.volume_off_rounded,
+                                    size: 15,
+                                    color: Colors.white,
+                                  ),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    isSi
+                                        ? (_isVoiceOn ? 'හඬ: ON' : 'හඬ: OFF')
+                                        : (_isVoiceOn ? 'Voice: ON' : 'Voice: OFF'),
+                                    style: const TextStyle(
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 7),
+                          Tooltip(
+                            message: isSi ? 'නැවත අසන්න' : 'Listen Again',
+                            child: InkWell(
+                              key: const ValueKey('items_listen_again_button'),
+                              onTap: () {
+                                if (!_isVoiceOn) {
+                                  setState(() => _voiceEnabled = true);
+                                }
+                                _speakPhasePrompt(_phase);
+                              },
+                              borderRadius: BorderRadius.circular(14),
+                              child: Container(
+                                padding: const EdgeInsets.all(7),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.20),
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                    color: Colors.white.withValues(alpha: 0.45),
+                                  ),
+                                ),
+                                child: const Icon(
+                                  Icons.record_voice_over_rounded,
+                                  size: 15,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                // 2. Uniform Height Animated Pastel Game Stage (Zero Scroll!)
+                ConstrainedBox(
+                  constraints: const BoxConstraints(minHeight: 462),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      const Positioned.fill(
+                        child: IgnorePointer(
+                          child: _ItemsAmbientPlayBackdrop(),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(22, 16, 22, 18),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _buildInstructionBanner(isSi),
+                            const SizedBox(height: 16),
+
+                            if (_phase == _ItemPhase.memorize) ...[
+                              _buildMemorizeView(isSi),
+                            ] else if (_phase == _ItemPhase.select) ...[
+                              _buildSelectionView(isSi),
+                            ] else if (_phase == _ItemPhase.feedback) ...[
+                              _buildFeedbackView(isSi),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ],
-            ],
+            ),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildInstructionBanner() {
-    String title = '';
-    String subtitle = '';
-    Color bg = const Color(0xFFFDF2F8);
-    Color iconColor = const Color(0xFFDB2777);
-    IconData icon = LucideIcons.bookOpen;
-
-    switch (_phase) {
-      case _ItemPhase.memorize:
-        title = 'Take a look at these 4 familiar items';
-        subtitle =
-            'Look at each object carefully. Whenever you feel ready, tap the button below to see if you can pick them out.';
-        break;
-      case _ItemPhase.select:
-        title = 'Which items do you remember seeing?';
-        subtitle =
-            'Tap all 4 items you recall from the previous screen, then tap Check Answers.';
-        bg = const Color(0xFFF3E8FF);
-        iconColor = AppColors.primary;
-        icon = LucideIcons.mousePointer;
-        break;
-      case _ItemPhase.feedback:
-        final correctCount =
-            _selectedIds.where((id) => _targetItems.any((t) => t.id == id)).length;
-        if (correctCount == _targetItems.length) {
-          title = 'Well done! All items correct!';
-          subtitle =
-              'You remembered every single item with great accuracy! Would you like to play again with a new set?';
-          bg = AppColors.riskLowBg;
-          iconColor = AppColors.riskLow;
-          icon = LucideIcons.check;
-        } else {
-          title = 'Good try!';
-          subtitle =
-              'You remembered $correctCount out of ${_targetItems.length} items correctly. Great mental exercise! Would you like to play again?';
-          bg = const Color(0xFFFEF3DC);
-          iconColor = AppColors.riskModerate;
-          icon = LucideIcons.rotateCcw;
-        }
-        break;
-    }
-
+  Widget _buildPhaseStepChip({
+    required String label,
+    required bool active,
+    required bool done,
+  }) {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
       decoration: BoxDecoration(
-        color: bg,
+        color: done
+            ? const Color(0xFF10B981)
+            : (active ? Colors.white : Colors.white.withValues(alpha: 0.16)),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: iconColor.withValues(alpha: 0.35), width: 1.2),
+        border: Border.all(
+          color: done
+              ? const Color(0xFF6EE7B7)
+              : (active ? Colors.white : Colors.white.withValues(alpha: 0.35)),
+        ),
       ),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: iconColor.withValues(alpha: 0.16),
-                  blurRadius: 8,
-                ),
-              ],
+          if (done)
+            const Padding(
+              padding: EdgeInsets.only(right: 4),
+              child: Icon(Icons.check_circle_rounded, size: 13.5, color: Colors.white),
+            )
+          else if (active)
+            const Padding(
+              padding: EdgeInsets.only(right: 4),
+              child: Icon(Icons.play_circle_fill_rounded, size: 13.5, color: Color(0xFFDB2777)),
             ),
-            child: Icon(icon, color: iconColor, size: 24),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: AppTextStyles.h3.copyWith(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.navy,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  style: AppTextStyles.body.copyWith(
-                    fontSize: 14,
-                    color: AppColors.body,
-                    height: 1.4,
-                  ),
-                ),
-              ],
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+              color: done
+                  ? Colors.white
+                  : (active ? const Color(0xFF831843) : Colors.white),
             ),
           ),
         ],
@@ -4471,225 +8312,408 @@ class _ItemsGameViewState extends State<_ItemsGameView> {
     );
   }
 
-  Widget _buildMemorizeView() {
+  Widget _buildInstructionBanner(bool isSi) {
+    String title = '';
+    String subtitle = '';
+    List<Color> gradientColors = const [Color(0xFFFDF2F8), Color(0xFFFCE7F3)];
+    Color borderColor = const Color(0xFFFBCFE8);
+    Color iconColor = const Color(0xFFDB2777);
+    IconData icon = LucideIcons.bookOpen;
+
+    switch (_phase) {
+      case _ItemPhase.memorize:
+        title = isSi
+            ? 'මෙම හුරුපුරුදු භාණ්ඩ 4 හොඳින් මතක තබාගන්න'
+            : 'Take a look at these 4 familiar items';
+        subtitle = isSi
+            ? 'සෑම භාණ්ඩයක්ම නිදහසේ බලන්න. සූදානම් වූ පසු ඉදිරියට යාමට පහළ බොත්තම ඔබන්න.'
+            : 'Look at each object carefully. Whenever you feel ready, tap the button below to continue.';
+        gradientColors = const [Color(0xFFFFF1F2), Color(0xFFFDF2F8)];
+        borderColor = const Color(0xFFFBCFE8);
+        iconColor = const Color(0xFFDB2777);
+        icon = LucideIcons.bookOpen;
+        break;
+      case _ItemPhase.select:
+        title = isSi
+            ? 'ඔබ කලින් දුටු භාණ්ඩ 4 කුමක්ද?'
+            : 'Which 4 items do you remember seeing?';
+        subtitle = isSi
+            ? 'කලින් තිරයේ දුටු භාණ්ඩ 4 ඔබා තෝරාගෙන, පිළිතුරු පරීක්ෂා කරන්න ඔබන්න.'
+            : 'Tap the 4 items you recall from the previous screen, then tap Check My Answers.';
+        gradientColors = const [Color(0xFFF5F3FF), Color(0xFFEDE9FE)];
+        borderColor = const Color(0xFFDDD6FE);
+        iconColor = const Color(0xFF7C3AED);
+        icon = LucideIcons.mousePointerClick;
+        break;
+      case _ItemPhase.feedback:
+        final correctCount =
+            _selectedIds.where((id) => _targetItems.any((t) => t.id == id)).length;
+        if (correctCount == _targetItems.length) {
+          title = isSi
+              ? 'විශිෂ්ටයි! භාණ්ඩ 4ම නිවැරදියි!'
+              : 'Well done! All 4 items correct!';
+          subtitle = isSi
+              ? 'ඔබ සෑම භාණ්ඩයක්ම ඉතා නිවැරදිව මතක තබා ගත්තා!'
+              : 'You remembered every single item with wonderful accuracy!';
+          gradientColors = const [Color(0xFFF0FDF4), Color(0xFFDCFCE7)];
+          borderColor = const Color(0xFF86EFAC);
+          iconColor = const Color(0xFF16A34A);
+          icon = LucideIcons.check;
+        } else {
+          title = isSi ? 'හොඳ උත්සාහයක්!' : 'Good try!';
+          subtitle = isSi
+              ? 'ඔබ භාණ්ඩ ${_targetItems.length} න් $correctCount ක් නිවැරදිව මතක තබා ගත්තා.'
+              : 'You remembered $correctCount out of ${_targetItems.length} items correctly. Great memory practice!';
+          gradientColors = const [Color(0xFFFFFBEB), Color(0xFFFEF3C7)];
+          borderColor = const Color(0xFFFDE68A);
+          iconColor = const Color(0xFFD97706);
+          icon = LucideIcons.rotateCcw;
+        }
+        break;
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: gradientColors,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: borderColor, width: 1.4),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              border: Border.all(color: borderColor, width: 1.3),
+            ),
+            child: Center(
+              child: Icon(icon, color: iconColor, size: 20),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: AppTextStyles.h3.copyWith(
+                    fontSize: 16.5,
+                    fontWeight: FontWeight.w800,
+                    color: const Color(0xFF1E1B4B),
+                    letterSpacing: -0.2,
+                  ),
+                ),
+                Text(
+                  subtitle,
+                  style: AppTextStyles.body.copyWith(
+                    fontSize: 13.5,
+                    color: const Color(0xFF475569),
+                    height: 1.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Tooltip(
+            message: isSi ? 'නැවත අසන්න' : 'Listen Again',
+            child: InkWell(
+              onTap: () {
+                if (!_isVoiceOn) {
+                  setState(() => _voiceEnabled = true);
+                }
+                _speakPhasePrompt(_phase);
+              },
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: const EdgeInsets.all(9),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: borderColor),
+                ),
+                child: Icon(Icons.volume_up_rounded, size: 19, color: iconColor),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMemorizeView(bool isSi) {
     return Column(
       children: [
+        const SizedBox(height: 12),
         Wrap(
           alignment: WrapAlignment.center,
-          spacing: 20,
-          runSpacing: 20,
-          children: _targetItems.map((item) {
+          spacing: 18,
+          runSpacing: 16,
+          children: List.generate(_targetItems.length, (index) {
+            final item = _targetItems[index];
             return Container(
-              width: 155,
-              padding: const EdgeInsets.symmetric(vertical: 22, horizontal: 16),
+              width: 188,
+              padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 14),
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.white,
+                    item.color.withValues(alpha: 0.06),
+                  ],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
+                borderRadius: BorderRadius.circular(26),
                 border: Border.all(
-                  color: item.color.withValues(alpha: 0.25),
-                  width: 1.5,
+                  color: item.color.withValues(alpha: 0.30),
+                  width: 1.8,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: item.color.withValues(alpha: 0.1),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
+                    color: item.color.withValues(alpha: 0.14),
+                    blurRadius: 18,
+                    offset: const Offset(0, 7),
                   ),
                 ],
               ),
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
-                    width: 66,
-                    height: 66,
+                    padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 4),
+                    margin: const EdgeInsets.only(bottom: 14),
                     decoration: BoxDecoration(
-                      color: item.color.withValues(alpha: 0.12),
-                      shape: BoxShape.circle,
+                      color: item.color.withValues(alpha: 0.13),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Center(
-                      child: Icon(item.icon, size: 38, color: item.color),
+                    child: Text(
+                      isSi ? 'භාණ්ඩය ${index + 1}' : 'Item ${index + 1}',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: item.color,
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  Text(
-                    item.name,
-                    style: AppTextStyles.h4.copyWith(
-                      fontSize: 15.5,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.navy,
+                  Container(
+                    width: 96,
+                    height: 96,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          item.color.withValues(alpha: 0.20),
+                          item.color.withValues(alpha: 0.09),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.white,
+                        width: 4,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: item.color.withValues(alpha: 0.24),
+                          blurRadius: 14,
+                          offset: const Offset(0, 5),
+                        ),
+                      ],
                     ),
-                    textAlign: TextAlign.center,
+                    child: Center(
+                      child: Icon(item.icon, size: 50, color: item.color),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.92),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: item.color.withValues(alpha: 0.16),
+                      ),
+                    ),
+                    child: Text(
+                      item.displayName(isSi),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 16.5,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF1E293B),
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
                   ),
                 ],
               ),
             );
-          }).toList(),
+          }),
         ),
-        const SizedBox(height: 30),
+        const SizedBox(height: 28),
         SizedBox(
-          height: 52,
+          height: 56,
           child: DecoratedBox(
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [Color(0xFFDB2777), Color(0xFFF43F5E)],
+                colors: [Color(0xFFDB2777), Color(0xFFE11D48), Color(0xFF9333EA)],
               ),
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(17),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFFDB2777).withValues(alpha: 0.35),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
+                  color: const Color(0xFFDB2777).withValues(alpha: 0.36),
+                  blurRadius: 16,
+                  offset: const Offset(0, 6),
                 ),
               ],
             ),
             child: ElevatedButton.icon(
               key: const ValueKey('ready_items_button'),
               onPressed: _startSelectionPhase,
-              icon: const Icon(LucideIcons.check, size: 18),
-              label: const Text(
-                'I Remember These Items! Continue',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+              icon: const Icon(LucideIcons.sparkles, size: 21),
+              label: Text(
+                isSi
+                    ? 'මට මතකයි! භාණ්ඩ තෝරන්න යමු'
+                    : 'I Remember These Items! Continue',
+                style: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.2,
+                ),
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.transparent,
                 foregroundColor: Colors.white,
                 shadowColor: Colors.transparent,
                 elevation: 0,
-                padding: const EdgeInsets.symmetric(horizontal: 32),
+                padding: const EdgeInsets.symmetric(horizontal: 36),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(17),
                 ),
               ),
             ),
           ),
         ),
+        const SizedBox(height: 10),
       ],
     );
   }
 
-  Widget _buildSelectionView() {
+  Widget _buildSelectionView(bool isSi) {
     return Column(
       children: [
+        // Balanced 4x2 Grid so all 8 items look large, symmetric & fit on 1 screen with ZERO scroll!
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final crossAxisCount = constraints.maxWidth > 620 ? 4 : 2;
+            final double cardExtent = crossAxisCount == 4 ? 128 : 112;
+            return GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _displayPool.length,
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: crossAxisCount,
+                crossAxisSpacing: 15,
+                mainAxisSpacing: 14,
+                mainAxisExtent: cardExtent,
+              ),
+              itemBuilder: (context, index) {
+                final item = _displayPool[index];
+                final isSelected = _selectedIds.contains(item.id);
+                return _ItemsSelectableCard(
+                  key: ValueKey('item_option_${item.id}'),
+                  item: item,
+                  isSelected: isSelected,
+                  isSinhala: isSi,
+                  onTap: () => _toggleItemSelection(item.id),
+                );
+              },
+            );
+          },
+        ),
+        const SizedBox(height: 18),
         Wrap(
           alignment: WrapAlignment.center,
-          spacing: 16,
-          runSpacing: 16,
-          children: _displayPool.map((item) {
-            final isSelected = _selectedIds.contains(item.id);
-            return InkWell(
-              key: ValueKey('item_option_${item.id}'),
-              onTap: () => _toggleItemSelection(item.id),
-              borderRadius: BorderRadius.circular(16),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                width: 142,
-                padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 12),
-                decoration: BoxDecoration(
-                  color: isSelected ? AppColors.primarySoft : Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: isSelected ? AppColors.primary : AppColors.border,
-                    width: isSelected ? 2.5 : 1.5,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: isSelected
-                          ? AppColors.primary.withValues(alpha: 0.16)
-                          : AppColors.navy.withValues(alpha: 0.03),
-                      blurRadius: isSelected ? 10 : 5,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        Container(
-                          width: 22,
-                          height: 22,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: isSelected
-                                ? AppColors.primary
-                                : Colors.transparent,
-                            border: Border.all(
-                              color: isSelected
-                                  ? AppColors.primary
-                                  : AppColors.muted,
-                              width: 1.5,
-                            ),
-                          ),
-                          child: isSelected
-                              ? const Icon(
-                                  LucideIcons.check,
-                                  size: 14,
-                                  color: Colors.white,
-                                )
-                              : null,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Icon(item.icon, size: 36, color: item.color),
-                    const SizedBox(height: 8),
-                    Text(
-                      item.name,
-                      style: TextStyle(
-                        fontSize: 13.5,
-                        fontWeight:
-                            isSelected ? FontWeight.w700 : FontWeight.w600,
-                        color:
-                            isSelected ? AppColors.primary : AppColors.navy,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }).toList(),
-        ),
-        const SizedBox(height: 30),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+          spacing: 14,
+          runSpacing: 10,
           children: [
-            ElevatedButton.icon(
-              key: const ValueKey('check_answers_button'),
-              onPressed: _selectedIds.isNotEmpty ? _checkAnswers : null,
-              icon: const Icon(LucideIcons.check, size: 18),
-              label: Text(
-                'Check My Answers (${_selectedIds.length} Picked)',
-                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: _selectedIds.isNotEmpty
+                    ? const LinearGradient(
+                        colors: [Color(0xFF7C3AED), Color(0xFFDB2777)],
+                      )
+                    : null,
+                color: _selectedIds.isNotEmpty ? null : const Color(0xFFE2E8F0),
+                borderRadius: BorderRadius.circular(15),
+                boxShadow: _selectedIds.isNotEmpty
+                    ? [
+                        BoxShadow(
+                          color: const Color(0xFF7C3AED).withValues(alpha: 0.34),
+                          blurRadius: 14,
+                          offset: const Offset(0, 5),
+                        ),
+                      ]
+                    : null,
               ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                disabledBackgroundColor: AppColors.border,
-                disabledForegroundColor: AppColors.muted,
-                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
+              child: ElevatedButton.icon(
+                key: const ValueKey('check_answers_button'),
+                onPressed: _selectedIds.isNotEmpty ? _checkAnswers : null,
+                icon: const Icon(LucideIcons.check, size: 19),
+                label: Text(
+                  isSi
+                      ? 'පිළිතුරු පරීක්ෂා කරන්න (${_selectedIds.length} තෝරා ඇත)'
+                      : 'Check My Answers (${_selectedIds.length} Picked)',
+                  style: const TextStyle(
+                    fontSize: 15.5,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
-                elevation: 0,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  foregroundColor: Colors.white,
+                  disabledBackgroundColor: Colors.transparent,
+                  disabledForegroundColor: const Color(0xFF94A3B8),
+                  shadowColor: Colors.transparent,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 28,
+                    vertical: 14,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  elevation: 0,
+                ),
               ),
             ),
-            const SizedBox(width: 16),
             OutlinedButton.icon(
               key: const ValueKey('peek_items_button'),
               onPressed: _peekOriginalItems,
               icon: const Icon(LucideIcons.rotateCcw, size: 18),
-              label: const Text(
-                'Peek at Original Items',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+              label: Text(
+                isSi ? 'මුල් භාණ්ඩ නැවත බලන්න' : 'Peek at Original Items',
+                style: const TextStyle(
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
               style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.navy,
-                side: const BorderSide(color: AppColors.border),
+                foregroundColor: const Color(0xFF831843),
+                backgroundColor: Colors.white.withValues(alpha: 0.92),
+                side: const BorderSide(color: Color(0xFFFBCFE8), width: 1.6),
                 padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(15),
                 ),
               ),
             ),
@@ -4708,239 +8732,439 @@ class _ItemsGameViewState extends State<_ItemsGameView> {
     final correctCount = _correctRecalledCount;
     final totalItems = _targetItems.length;
     final isPerfect = correctCount == totalItems;
+    final isSi = widget.isSinhala;
+    final starCount = isPerfect ? 5 : (correctCount >= 3 ? 4 : 3);
 
     showDialog<void>(
       context: context,
       barrierDismissible: true,
-      barrierColor: Colors.black.withValues(alpha: 0.5),
+      barrierColor: const Color(0xFF0F172A).withValues(alpha: 0.42),
       builder: (dialogCtx) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             _dialogSetState = setDialogState;
-            return Dialog(
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-              child: Container(
-                constraints: const BoxConstraints(maxWidth: 500),
-                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 28),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [
-                      Color(0xFFFFFFFF),
-                      Color(0xFFFDF8FB),
-                      Color(0xFFFDF2F8),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+            return Stack(
+              children: [
+                // Full-screen animated celebration streamers, ribbons & confetti bursting around popup
+                const Positioned.fill(
+                  child: IgnorePointer(
+                    child: _SeqPopupConfettiOverlay(),
                   ),
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(
-                    color: const Color(0xFFDB2777).withValues(alpha: 0.28),
-                    width: 1.5,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFFDB2777).withValues(alpha: 0.16),
-                      blurRadius: 32,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Celebratory 3D Rose/Pink Badge
-                    Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        Container(
-                          width: 86,
-                          height: 86,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFCE7F3),
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: const Color(0xFFFBCFE8),
-                              width: 2,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFFDB2777).withValues(alpha: 0.18),
-                                blurRadius: 18,
-                                offset: const Offset(0, 6),
+                Dialog(
+                  backgroundColor: Colors.transparent,
+                  elevation: 0,
+                  insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 460),
+                    child: AuroraGradientBorderFrame(
+                      borderRadius: 28,
+                      borderWidth: 2.8,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(25.2),
+                        child: Container(
+                          color: Colors.white,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // 1. Bright Pastel Rose-Lavender-Peach Celebration Header
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.fromLTRB(24, 22, 24, 18),
+                                decoration: const BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      Color(0xFFFDF2F8),
+                                      Color(0xFFF5F3FF),
+                                      Color(0xFFFFF7ED),
+                                    ],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                ),
+                                child: Column(
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        const Text('✨', style: TextStyle(fontSize: 23)),
+                                        const SizedBox(width: 12),
+                                        Container(
+                                          width: 78,
+                                          height: 78,
+                                          decoration: BoxDecoration(
+                                            gradient: LinearGradient(
+                                              colors: isPerfect
+                                                  ? const [
+                                                      Color(0xFFF43F5E),
+                                                      Color(0xFFDB2777),
+                                                      Color(0xFF7C3AED),
+                                                    ]
+                                                  : const [
+                                                      Color(0xFFF59E0B),
+                                                      Color(0xFFEC4899),
+                                                    ],
+                                              begin: Alignment.topLeft,
+                                              end: Alignment.bottomRight,
+                                            ),
+                                            shape: BoxShape.circle,
+                                            border: Border.all(
+                                              color: Colors.white,
+                                              width: 4,
+                                            ),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: const Color(0xFFDB2777)
+                                                    .withValues(alpha: 0.34),
+                                                blurRadius: 18,
+                                                offset: const Offset(0, 6),
+                                              ),
+                                            ],
+                                          ),
+                                          child: Center(
+                                            child: Icon(
+                                              isPerfect
+                                                  ? Icons.emoji_events_rounded
+                                                  : LucideIcons.sparkles,
+                                              size: 40,
+                                              color: const Color(0xFFFEF08A),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        const Text('🎉', style: TextStyle(fontSize: 23)),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      isPerfect
+                                          ? (isSi
+                                              ? 'හරිම විශිෂ්ටයි!'
+                                              : 'Well Done!')
+                                          : (isSi
+                                              ? 'හොඳ උත්සාහයක්!'
+                                              : 'Good Try!'),
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                        fontSize: 25,
+                                        fontWeight: FontWeight.w900,
+                                        color: Color(0xFF831843),
+                                        letterSpacing: -0.3,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: List.generate(
+                                        5,
+                                        (i) => Icon(
+                                          Icons.star_rounded,
+                                          size: 26,
+                                          color: i < starCount
+                                              ? const Color(0xFFF59E0B)
+                                              : const Color(0xFFCBD5E1),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    // Cheerful Mini Row of the 4 Target Items with Recall Checkmarks
+                                    Wrap(
+                                      alignment: WrapAlignment.center,
+                                      spacing: 10,
+                                      runSpacing: 6,
+                                      children: _targetItems.map((item) {
+                                        final recalled = _selectedIds.contains(item.id);
+                                        return Stack(
+                                          clipBehavior: Clip.none,
+                                          children: [
+                                            Container(
+                                              width: 40,
+                                              height: 40,
+                                              decoration: BoxDecoration(
+                                                color: Colors.white,
+                                                shape: BoxShape.circle,
+                                                border: Border.all(
+                                                  color: recalled
+                                                      ? const Color(0xFF10B981)
+                                                      : const Color(0xFFF59E0B),
+                                                  width: 2,
+                                                ),
+                                                boxShadow: [
+                                                  BoxShadow(
+                                                    color: item.color
+                                                        .withValues(alpha: 0.16),
+                                                    blurRadius: 6,
+                                                    offset: const Offset(0, 2),
+                                                  ),
+                                                ],
+                                              ),
+                                              child: Center(
+                                                child: Icon(
+                                                  item.icon,
+                                                  size: 20,
+                                                  color: item.color,
+                                                ),
+                                              ),
+                                            ),
+                                            Positioned(
+                                              right: -3,
+                                              top: -3,
+                                              child: Container(
+                                                width: 16,
+                                                height: 16,
+                                                decoration: BoxDecoration(
+                                                  color: recalled
+                                                      ? const Color(0xFF10B981)
+                                                      : const Color(0xFFF59E0B),
+                                                  shape: BoxShape.circle,
+                                                  border: Border.all(
+                                                    color: Colors.white,
+                                                    width: 1.5,
+                                                  ),
+                                                ),
+                                                child: Center(
+                                                  child: Icon(
+                                                    recalled
+                                                        ? Icons.check_rounded
+                                                        : Icons.priority_high_rounded,
+                                                    size: 10,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        );
+                                      }).toList(),
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                              // 2. Clean 2-Stat Pastel Tiles & Elder-Friendly Action Buttons
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(22, 16, 22, 20),
+                                child: Column(
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 13,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFFDF2F8),
+                                              borderRadius: BorderRadius.circular(15),
+                                              border: Border.all(
+                                                color: const Color(0xFFFBCFE8),
+                                              ),
+                                            ),
+                                            child: Column(
+                                              children: [
+                                                Text(
+                                                  '${score.toStringAsFixed(0)}%',
+                                                  style: const TextStyle(
+                                                    fontSize: 22,
+                                                    fontWeight: FontWeight.w900,
+                                                    color: Color(0xFFBE185D),
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 2),
+                                                Text(
+                                                  isSi ? 'ලකුණු' : 'Score',
+                                                  style: const TextStyle(
+                                                    fontSize: 12.5,
+                                                    fontWeight: FontWeight.w700,
+                                                    color: Color(0xFF64748B),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 13,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFECFDF5),
+                                              borderRadius: BorderRadius.circular(15),
+                                              border: Border.all(
+                                                color: const Color(0xFFA7F3D0),
+                                              ),
+                                            ),
+                                            child: Column(
+                                              children: [
+                                                Text(
+                                                  '$correctCount / $totalItems',
+                                                  style: const TextStyle(
+                                                    fontSize: 22,
+                                                    fontWeight: FontWeight.w900,
+                                                    color: Color(0xFF047857),
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 2),
+                                                Text(
+                                                  isSi ? 'මතක තබාගත් භාණ්ඩ' : 'Items Recalled',
+                                                  style: const TextStyle(
+                                                    fontSize: 12.5,
+                                                    fontWeight: FontWeight.w700,
+                                                    color: Color(0xFF64748B),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 16),
+
+                                    // Primary CTA: Play Again with New Items
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: DecoratedBox(
+                                        decoration: BoxDecoration(
+                                          gradient: const LinearGradient(
+                                            colors: [
+                                              Color(0xFFDB2777),
+                                              Color(0xFF7C3AED),
+                                            ],
+                                          ),
+                                          borderRadius: BorderRadius.circular(15),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: const Color(0xFFDB2777)
+                                                  .withValues(alpha: 0.34),
+                                              blurRadius: 12,
+                                              offset: const Offset(0, 5),
+                                            ),
+                                          ],
+                                        ),
+                                        child: ElevatedButton.icon(
+                                          key: const ValueKey(
+                                            'play_items_new_round_button',
+                                          ),
+                                          onPressed: () {
+                                            Navigator.of(dialogCtx).pop();
+                                            _startNewRound(speakIntro: true);
+                                          },
+                                          icon: const Icon(
+                                            LucideIcons.sparkles,
+                                            size: 19,
+                                          ),
+                                          label: Text(
+                                            isSi
+                                                ? 'නව භාණ්ඩ සමඟ ක්‍රීඩා කරන්න'
+                                                : 'Play Again with New Items',
+                                            style: const TextStyle(
+                                              fontSize: 15.5,
+                                              fontWeight: FontWeight.w900,
+                                            ),
+                                          ),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.transparent,
+                                            foregroundColor: Colors.white,
+                                            shadowColor: Colors.transparent,
+                                            elevation: 0,
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 14,
+                                            ),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(15),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 10),
+
+                                    // Secondary Row: View Board + Try Same Items
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: OutlinedButton.icon(
+                                            onPressed: () =>
+                                                Navigator.of(dialogCtx).pop(),
+                                            icon: const Icon(LucideIcons.eye, size: 15),
+                                            label: Text(
+                                              isSi ? 'පුවරුව' : 'View Board',
+                                              style: const TextStyle(
+                                                fontSize: 13.5,
+                                                fontWeight: FontWeight.w800,
+                                              ),
+                                            ),
+                                            style: OutlinedButton.styleFrom(
+                                              foregroundColor: const Color(0xFF831843),
+                                              side: const BorderSide(
+                                                color: Color(0xFFFBCFE8),
+                                                width: 1.5,
+                                              ),
+                                              backgroundColor: const Color(0xFFFDF2F8),
+                                              padding: const EdgeInsets.symmetric(
+                                                vertical: 11,
+                                              ),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(12),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: OutlinedButton.icon(
+                                            key: const ValueKey(
+                                              'try_same_items_button',
+                                            ),
+                                            onPressed: () {
+                                              Navigator.of(dialogCtx).pop();
+                                              _startSelectionPhase();
+                                            },
+                                            icon: const Icon(
+                                              LucideIcons.rotateCcw,
+                                              size: 15,
+                                            ),
+                                            label: Text(
+                                              isSi
+                                                  ? 'එම භාණ්ඩම නැවත'
+                                                  : 'Try Same Items',
+                                              style: const TextStyle(
+                                                fontSize: 13.5,
+                                                fontWeight: FontWeight.w800,
+                                              ),
+                                            ),
+                                            style: OutlinedButton.styleFrom(
+                                              foregroundColor: const Color(0xFF475569),
+                                              side: const BorderSide(
+                                                color: Color(0xFFCBD5E1),
+                                                width: 1.3,
+                                              ),
+                                              backgroundColor: Colors.white,
+                                              padding: const EdgeInsets.symmetric(
+                                                vertical: 11,
+                                              ),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(12),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
                               ),
                             ],
                           ),
                         ),
-                        Container(
-                          width: 62,
-                          height: 62,
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFFF43F5E), Color(0xFFDB2777)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFFDB2777).withValues(alpha: 0.35),
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: Center(
-                            child: Icon(
-                              isPerfect ? Icons.emoji_events_rounded : LucideIcons.sparkles,
-                              size: 34,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 18),
-                    Text(
-                      isPerfect ? 'Well done!' : 'Good try!',
-                      style: AppTextStyles.h2.copyWith(
-                        color: isPerfect ? const Color(0xFF9D174D) : const Color(0xFF831843),
-                        fontWeight: FontWeight.w900,
-                        fontSize: 26,
-                        letterSpacing: -0.4,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      isPerfect
-                          ? 'Outstanding memory! You identified every target item correctly.'
-                          : 'You remembered $correctCount out of $totalItems items correctly. Great mental exercise!',
-                      style: AppTextStyles.body.copyWith(
-                        fontSize: 15,
-                        color: const Color(0xFF475569),
-                        fontWeight: FontWeight.w500,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 16),
-                    _buildGameScoreCard(
-                      score: score,
-                      scoreLabel: 'Recall Accuracy',
-                      details:
-                          'Recalled: $correctCount / $totalItems Items • Attempts: 1',
-                      isSaving: _isSaving,
-                      successMessage: null,
-                      errorMessage: _saveErrorMessage,
-                    ),
-                    const SizedBox(height: 18),
-                    SizedBox(
-                      width: double.infinity,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFFDB2777), Color(0xFFBE185D)],
-                          ),
-                          borderRadius: BorderRadius.circular(14),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFFDB2777).withValues(alpha: 0.35),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: ElevatedButton.icon(
-                          key: const ValueKey('play_items_new_round_button'),
-                          onPressed: () {
-                            Navigator.of(dialogCtx).pop();
-                            _startNewRound();
-                          },
-                          icon: const Icon(LucideIcons.sparkles, size: 18),
-                          label: const Text(
-                            'Play Again with New Items',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.transparent,
-                            foregroundColor: Colors.white,
-                            shadowColor: Colors.transparent,
-                            elevation: 0,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                          ),
-                        ),
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () => Navigator.of(dialogCtx).pop(),
-                            icon: const Icon(LucideIcons.eye, size: 16),
-                            label: const Text(
-                              'View Board',
-                              style: TextStyle(
-                                fontSize: 13.5,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: const Color(0xFF475569),
-                              side: const BorderSide(
-                                color: Color(0xFFCBD5E1),
-                                width: 1.2,
-                              ),
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            key: const ValueKey('try_same_items_button'),
-                            onPressed: () {
-                              Navigator.of(dialogCtx).pop();
-                              _startSelectionPhase();
-                            },
-                            icon: const Icon(LucideIcons.rotateCcw, size: 16),
-                            label: const Text(
-                              'Try Same Items',
-                              style: TextStyle(
-                                fontSize: 13.5,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: const Color(0xFF1E1B4B),
-                              side: const BorderSide(
-                                color: Color(0xFFCBD5E1),
-                                width: 1.4,
-                              ),
-                              backgroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                  ),
                 ),
-              ),
+              ],
             );
           },
         );
@@ -4955,149 +9179,164 @@ class _ItemsGameViewState extends State<_ItemsGameView> {
     });
   }
 
-  Widget _buildFeedbackView() {
+  Widget _buildFeedbackView(bool isSi) {
     return Column(
       children: [
         Text(
-          'Review Your Answers',
+          isSi ? 'ඔබේ පිළිතුරු සමාලෝචනය' : 'Review Your Answers',
           style: AppTextStyles.h3.copyWith(
             fontSize: 18,
-            fontWeight: FontWeight.w700,
+            fontWeight: FontWeight.w800,
             color: AppColors.navy,
           ),
         ),
+        const SizedBox(height: 14),
+
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final crossAxisCount = constraints.maxWidth > 620 ? 4 : 2;
+            return GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _displayPool.length,
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: crossAxisCount,
+                crossAxisSpacing: 14,
+                mainAxisSpacing: 12,
+                mainAxisExtent: 124,
+              ),
+              itemBuilder: (context, index) {
+                final item = _displayPool[index];
+                final isTarget = _targetItems.any((t) => t.id == item.id);
+                final isSelected = _selectedIds.contains(item.id);
+
+                Color borderColor = AppColors.border;
+                Color bgColor = Colors.white;
+                String badgeText = '';
+                Color badgeColor = AppColors.muted;
+
+                if (isTarget && isSelected) {
+                  borderColor = AppColors.riskLow;
+                  bgColor = AppColors.riskLowBg;
+                  badgeText = isSi ? 'නිවැරදියි! ✅' : 'Correct! ✅';
+                  badgeColor = AppColors.riskLow;
+                } else if (isTarget && !isSelected) {
+                  borderColor = AppColors.riskModerate;
+                  bgColor = const Color(0xFFFEF3DC);
+                  badgeText = isSi ? 'මගහැරුණා' : 'Original (Missed)';
+                  badgeColor = AppColors.riskModerate;
+                } else if (!isTarget && isSelected) {
+                  borderColor = AppColors.riskHigh.withValues(alpha: 0.6);
+                  bgColor = const Color(0xFFFDE8E8);
+                  badgeText = isSi ? 'තිබුණේ නෑ' : 'Not in Group';
+                  badgeColor = AppColors.riskHigh;
+                }
+
+                return Container(
+                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+                  decoration: BoxDecoration(
+                    color: bgColor,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: borderColor, width: 2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: borderColor.withValues(alpha: 0.1),
+                        blurRadius: 6,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(item.icon, size: 32, color: item.color),
+                      const SizedBox(height: 5),
+                      Text(
+                        item.displayName(isSi),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.navy,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      if (badgeText.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2.5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: badgeColor.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            badgeText,
+                            style: TextStyle(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w800,
+                              color: badgeColor,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                );
+              },
+            );
+          },
+        ),
+
         const SizedBox(height: 16),
 
         Wrap(
           alignment: WrapAlignment.center,
-          spacing: 16,
-          runSpacing: 16,
-          children: _displayPool.map((item) {
-            final isTarget = _targetItems.any((t) => t.id == item.id);
-            final isSelected = _selectedIds.contains(item.id);
-
-            Color borderColor = AppColors.border;
-            Color bgColor = Colors.white;
-            String badgeText = '';
-            Color badgeColor = AppColors.muted;
-
-            if (isTarget && isSelected) {
-              borderColor = AppColors.riskLow;
-              bgColor = AppColors.riskLowBg;
-              badgeText = 'Correct! ✅';
-              badgeColor = AppColors.riskLow;
-            } else if (isTarget && !isSelected) {
-              borderColor = AppColors.riskModerate;
-              bgColor = const Color(0xFFFEF3DC);
-              badgeText = 'Original Item (Missed)';
-              badgeColor = AppColors.riskModerate;
-            } else if (!isTarget && isSelected) {
-              borderColor = AppColors.riskHigh.withValues(alpha: 0.6);
-              bgColor = const Color(0xFFFDE8E8);
-              badgeText = 'Not in Group';
-              badgeColor = AppColors.riskHigh;
-            }
-
-            return Container(
-              width: 145,
-              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
-              decoration: BoxDecoration(
-                color: bgColor,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: borderColor, width: 2),
-                boxShadow: [
-                  BoxShadow(
-                    color: borderColor.withValues(alpha: 0.1),
-                    blurRadius: 6,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  Icon(item.icon, size: 34, color: item.color),
-                  const SizedBox(height: 6),
-                  Text(
-                    item.name,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.navy,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  if (badgeText.isNotEmpty) ...[
-                    const SizedBox(height: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: badgeColor.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        badgeText,
-                        style: TextStyle(
-                          fontSize: 10.5,
-                          fontWeight: FontWeight.w700,
-                          color: badgeColor,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            );
-          }).toList(),
-        ),
-
-        const SizedBox(height: 24),
-
-        Wrap(
-          alignment: WrapAlignment.center,
           spacing: 14,
-          runSpacing: 12,
+          runSpacing: 10,
           children: [
             OutlinedButton.icon(
               onPressed: _showFeedbackPopup,
               icon: const Icon(LucideIcons.sparkles, size: 17),
-              label: const Text(
-                'View Results',
-                style: TextStyle(
+              label: Text(
+                isSi ? 'ප්‍රතිඵල බලන්න' : 'View Results',
+                style: const TextStyle(
                   fontSize: 14.5,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
               style: OutlinedButton.styleFrom(
                 foregroundColor: const Color(0xFFDB2777),
-                side: const BorderSide(color: Color(0xFFDB2777), width: 1.4),
+                backgroundColor: Colors.white.withValues(alpha: 0.92),
+                side: const BorderSide(color: Color(0xFFDB2777), width: 1.5),
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 13,
+                  horizontal: 22,
+                  vertical: 12,
                 ),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(13),
                 ),
               ),
             ),
             if (!_isPopupOpen) ...[
               ElevatedButton.icon(
                 key: const ValueKey('board_play_items_new_round_button'),
-                onPressed: _startNewRound,
+                onPressed: () => _startNewRound(speakIntro: true),
                 icon: const Icon(LucideIcons.sparkles, size: 18),
-                label: const Text(
-                  'Play Again with New Items',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                label: Text(
+                  isSi ? 'නව භාණ්ඩ සමඟ ක්‍රීඩා කරන්න' : 'Play Again with New Items',
+                  style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800),
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 14),
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 13),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(13),
                   ),
                   elevation: 0,
                 ),
@@ -5105,17 +9344,18 @@ class _ItemsGameViewState extends State<_ItemsGameView> {
               OutlinedButton.icon(
                 key: const ValueKey('board_try_same_items_button'),
                 onPressed: _startSelectionPhase,
-                icon: const Icon(LucideIcons.rotateCcw, size: 18),
-                label: const Text(
-                  'Try Same Items Again',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                icon: const Icon(LucideIcons.rotateCcw, size: 17),
+                label: Text(
+                  isSi ? 'එම භාණ්ඩම නැවත' : 'Try Same Items Again',
+                  style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700),
                 ),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.navy,
+                  backgroundColor: Colors.white.withValues(alpha: 0.92),
                   side: const BorderSide(color: AppColors.border),
-                  padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(13),
                   ),
                 ),
               ),
@@ -5125,6 +9365,377 @@ class _ItemsGameViewState extends State<_ItemsGameView> {
       ],
     );
   }
+}
+
+class _ItemsSelectableCard extends StatefulWidget {
+  final _ObjectItem item;
+  final bool isSelected;
+  final bool isSinhala;
+  final VoidCallback onTap;
+
+  const _ItemsSelectableCard({
+    super.key,
+    required this.item,
+    required this.isSelected,
+    required this.isSinhala,
+    required this.onTap,
+  });
+
+  @override
+  State<_ItemsSelectableCard> createState() => _ItemsSelectableCardState();
+}
+
+class _ItemsSelectableCardState extends State<_ItemsSelectableCard> {
+  bool _hovered = false;
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final item = widget.item;
+    final selected = widget.isSelected;
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() {
+        _hovered = false;
+        _pressed = false;
+      }),
+      child: GestureDetector(
+        onTapDown: (_) => setState(() => _pressed = true),
+        onTapUp: (_) => setState(() => _pressed = false),
+        onTapCancel: () => setState(() => _pressed = false),
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOutCubic,
+          transform: Matrix4.translationValues(
+            0,
+            _pressed ? 1.5 : (_hovered ? -4.5 : 0),
+            0,
+          ),
+          decoration: BoxDecoration(
+            gradient: selected
+                ? const LinearGradient(
+                    colors: [Color(0xFFF5F3FF), Color(0xFFFDF2F8)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  )
+                : LinearGradient(
+                    colors: _hovered
+                        ? [Colors.white, item.color.withValues(alpha: 0.08)]
+                        : [Colors.white, const Color(0xFFFFFBFE)],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: selected
+                  ? const Color(0xFF7C3AED)
+                  : (_hovered
+                      ? item.color.withValues(alpha: 0.65)
+                      : item.color.withValues(alpha: 0.24)),
+              width: selected ? 2.6 : (_hovered ? 2.0 : 1.5),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: selected
+                    ? const Color(0xFF7C3AED).withValues(alpha: 0.22)
+                    : item.color.withValues(alpha: _hovered ? 0.16 : 0.07),
+                blurRadius: selected || _hovered ? 16 : 8,
+                offset: Offset(0, selected || _hovered ? 6 : 3),
+              ),
+            ],
+          ),
+          child: Stack(
+            children: [
+              Positioned(
+                top: 9,
+                right: 9,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: selected
+                        ? const LinearGradient(
+                            colors: [Color(0xFF7C3AED), Color(0xFFDB2777)],
+                          )
+                        : null,
+                    color: selected ? null : Colors.white,
+                    border: Border.all(
+                      color: selected
+                          ? Colors.white
+                          : const Color(0xFFCBD5E1),
+                      width: selected ? 2 : 1.6,
+                    ),
+                    boxShadow: selected
+                        ? [
+                            BoxShadow(
+                              color: const Color(0xFF7C3AED).withValues(alpha: 0.35),
+                              blurRadius: 6,
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: selected
+                      ? const Icon(
+                          Icons.check_rounded,
+                          size: 14,
+                          color: Colors.white,
+                        )
+                      : null,
+                ),
+              ),
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 56,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              item.color.withValues(alpha: selected ? 0.22 : 0.15),
+                              item.color.withValues(alpha: 0.06),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: item.color.withValues(alpha: 0.30),
+                            width: 1.5,
+                          ),
+                        ),
+                        child: Center(
+                          child: Icon(item.icon, size: 30, color: item.color),
+                        ),
+                      ),
+                      const SizedBox(height: 9),
+                      Text(
+                        item.displayName(widget.isSinhala),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: selected
+                              ? const Color(0xFF5B21B6)
+                              : const Color(0xFF1E293B),
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ItemsAmbientPlayBackdrop extends StatefulWidget {
+  const _ItemsAmbientPlayBackdrop();
+
+  @override
+  State<_ItemsAmbientPlayBackdrop> createState() =>
+      _ItemsAmbientPlayBackdropState();
+}
+
+class _ItemsAmbientPlayBackdropState extends State<_ItemsAmbientPlayBackdrop>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 9500),
+    );
+    final isTestEnv =
+        WidgetsBinding.instance.runtimeType.toString().contains('Test');
+    if (!isTestEnv) {
+      _controller.repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (_, __) => CustomPaint(
+        painter: _ItemsAmbientPlayPainter(progress: _controller.value),
+      ),
+    );
+  }
+}
+
+class _ItemsAmbientPlayPainter extends CustomPainter {
+  final double progress;
+
+  const _ItemsAmbientPlayPainter({required this.progress});
+
+  static const _pastels = [
+    Color(0xFFF472B6), // soft rose
+    Color(0xFFA78BFA), // soft violet
+    Color(0xFFFB923C), // warm peach
+    Color(0xFF38BDF8), // soft sky
+    Color(0xFF34D399), // soft mint
+  ];
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final t = progress * 2 * pi;
+
+    // 1. Warm Blush-Lavender-Peach Pastel Wash Base
+    final bgPaint = Paint()
+      ..shader = const LinearGradient(
+        colors: [
+          Color(0xFFFFFBFD),
+          Color(0xFFFDF2F8),
+          Color(0xFFF5F3FF),
+          Color(0xFFFFF7ED),
+        ],
+        stops: [0.0, 0.34, 0.68, 1.0],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), bgPaint);
+
+    // 2. 4 Gently Breathing Pastel Glow Orbs
+    final orbs = [
+      (
+        Offset(size.width * 0.12 + sin(t) * 20, size.height * 0.24 + cos(t) * 14),
+        135.0,
+        const Color(0xFFFBCFE8),
+      ),
+      (
+        Offset(size.width * 0.88 + cos(t) * 20, size.height * 0.22 + sin(t) * 14),
+        140.0,
+        const Color(0xFFDDD6FE),
+      ),
+      (
+        Offset(size.width * 0.16 + cos(t + 1.4) * 22, size.height * 0.84 + sin(t) * 12),
+        130.0,
+        const Color(0xFFFED7AA),
+      ),
+      (
+        Offset(size.width * 0.84 + sin(t + 2.1) * 18, size.height * 0.82 + cos(t) * 12),
+        130.0,
+        const Color(0xFFBAE6FD),
+      ),
+    ];
+
+    for (final (center, radius, color) in orbs) {
+      final paint = Paint()
+        ..shader = RadialGradient(
+          colors: [
+            color.withValues(alpha: 0.44),
+            color.withValues(alpha: 0.0),
+          ],
+        ).createShader(Rect.fromCircle(center: center, radius: radius));
+      canvas.drawCircle(center, radius, paint);
+    }
+
+    // 3. Soft Undulating Rose-Violet Waves at Bottom Edge
+    final wave1 = Path()..moveTo(0, size.height);
+    for (double x = 0; x <= size.width; x += 18) {
+      final y = size.height -
+          28 +
+          sin((x / size.width) * 2 * pi + t) * 8 +
+          cos((x / size.width) * 4 * pi - t) * 4;
+      wave1.lineTo(x, y);
+    }
+    wave1
+      ..lineTo(size.width, size.height)
+      ..close();
+    canvas.drawPath(
+      wave1,
+      Paint()
+        ..shader = LinearGradient(
+          colors: [
+            const Color(0xFFDB2777).withValues(alpha: 0.11),
+            const Color(0xFF7C3AED).withValues(alpha: 0.10),
+            const Color(0xFFF97316).withValues(alpha: 0.09),
+          ],
+        ).createShader(Rect.fromLTWH(0, size.height - 50, size.width, 50)),
+    );
+
+    final wave2 = Path()..moveTo(0, size.height);
+    for (double x = 0; x <= size.width; x += 18) {
+      final y = size.height -
+          15 +
+          cos((x / size.width) * 2.5 * pi - t * 1.2) * 6;
+      wave2.lineTo(x, y);
+    }
+    wave2
+      ..lineTo(size.width, size.height)
+      ..close();
+    canvas.drawPath(
+      wave2,
+      Paint()..color = const Color(0xFFEC4899).withValues(alpha: 0.07),
+    );
+
+    // 4. Gently Floating Luminous Sparkles, Soft Petals & Pastel Rings
+    for (int i = 0; i < 18; i++) {
+      final seed = i * 1.57;
+      final baseX = ((i * 57 + 13) % 94 + 3) / 100.0;
+      final rise = (1.0 - ((progress + i * 0.069) % 1.0));
+      final x = baseX * size.width + sin(t + seed) * 14;
+      final y = rise * (size.height + 24) - 12;
+      final color = _pastels[i % _pastels.length];
+      final pulse = 0.45 + 0.55 * sin(t * 2 + seed).abs();
+
+      if (i % 3 == 0) {
+        final r = 5.5 * pulse + 2.5;
+        final star = Path()
+          ..moveTo(x, y - r)
+          ..quadraticBezierTo(x, y, x + r, y)
+          ..quadraticBezierTo(x, y, x, y + r)
+          ..quadraticBezierTo(x, y, x - r, y)
+          ..quadraticBezierTo(x, y, x, y - r)
+          ..close();
+        canvas.drawPath(
+          star,
+          Paint()..color = color.withValues(alpha: 0.50 * pulse),
+        );
+      } else if (i % 3 == 1) {
+        canvas.drawCircle(
+          Offset(x, y),
+          7.5 + (i % 4) * 2.8,
+          Paint()
+            ..color = color.withValues(alpha: 0.22)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1.6,
+        );
+      } else {
+        canvas.drawCircle(
+          Offset(x, y),
+          3.8 + (i % 3) * 1.6,
+          Paint()..color = color.withValues(alpha: 0.28 * pulse),
+        );
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _ItemsAmbientPlayPainter oldDelegate) =>
+      oldDelegate.progress != progress;
 }
 
 // ==============================================================================
@@ -5305,6 +9916,7 @@ class _InvitedPlayer {
   final int elderHomeId;
   final String elderHomeName;
   final Color color;
+  String? avatarUrl;
   bool isHost;
   bool isInvited;
   bool hasJoined;
@@ -5318,6 +9930,7 @@ class _InvitedPlayer {
     required this.elderHomeId,
     required this.elderHomeName,
     required this.color,
+    this.avatarUrl,
     this.isHost = false,
     this.isInvited = false,
     this.hasJoined = false,
@@ -5363,6 +9976,7 @@ class _CollaborativeMemoryGameView extends StatefulWidget {
   final int elderHomeId;
   final String elderHomeName;
   final String hostName;
+  final String? hostAvatarUrl;
   final String? token;
   final bool isSinhala;
   final String? initialLiveRoomId;
@@ -5374,6 +9988,7 @@ class _CollaborativeMemoryGameView extends StatefulWidget {
     required this.elderHomeId,
     required this.elderHomeName,
     required this.hostName,
+    this.hostAvatarUrl,
     this.token,
     this.isSinhala = false,
     this.initialLiveRoomId,
@@ -6232,6 +10847,7 @@ class _CollaborativeMemoryGameViewState
         elderHomeId: widget.elderHomeId,
         elderHomeName: widget.elderHomeName,
         color: const Color(0xFF2563EB),
+        avatarUrl: widget.hostAvatarUrl,
         isHost: true,
         isInvited: true,
         hasJoined: true,
@@ -6251,8 +10867,17 @@ class _CollaborativeMemoryGameViewState
     ];
 
     final List<_InvitedPlayer> realElders = [];
+    final Map<String, String> avatarsByName = {};
     final hostNameLower = widget.hostName.trim().toLowerCase();
     final targetHomeNameLower = widget.elderHomeName.trim().toLowerCase();
+
+    void recordAvatar(String rawName, String? rawAvatar) {
+      final clean = rawName.trim().toLowerCase();
+      final url = rawAvatar?.trim();
+      if (clean.isNotEmpty && url != null && url.isNotEmpty) {
+        avatarsByName.putIfAbsent(clean, () => url);
+      }
+    }
 
     void addIfSameHomeElder({
       required String id,
@@ -6260,8 +10885,10 @@ class _CollaborativeMemoryGameViewState
       required String room,
       required int? homeId,
       required String? homeName,
+      String? avatarUrl,
     }) {
       final cleanName = name.trim();
+      recordAvatar(cleanName, avatarUrl);
       if (cleanName.isEmpty || cleanName.toLowerCase() == hostNameLower) {
         return;
       }
@@ -6270,10 +10897,10 @@ class _CollaborativeMemoryGameViewState
           homeName.trim().toLowerCase() == targetHomeNameLower;
       if (!matchesHomeId && !matchesHomeName) return;
 
-      final alreadyAdded = realElders.any(
+      final existingIdx = realElders.indexWhere(
         (p) => p.name.toLowerCase() == cleanName.toLowerCase(),
       );
-      if (!alreadyAdded) {
+      if (existingIdx == -1) {
         final roomText = room.trim().isNotEmpty ? room.trim() : 'Suite';
         realElders.add(
           _InvitedPlayer(
@@ -6283,8 +10910,12 @@ class _CollaborativeMemoryGameViewState
             elderHomeId: widget.elderHomeId,
             elderHomeName: widget.elderHomeName,
             color: palette[realElders.length % palette.length],
+            avatarUrl: avatarUrl,
           ),
         );
+      } else if ((realElders[existingIdx].avatarUrl ?? '').isEmpty &&
+          (avatarUrl ?? '').isNotEmpty) {
+        realElders[existingIdx].avatarUrl = avatarUrl;
       }
     }
 
@@ -6314,6 +10945,7 @@ class _CollaborativeMemoryGameViewState
                     widget.elderHomeId,
                 homeName:
                     raw['elderHomeName']?.toString() ?? widget.elderHomeName,
+                avatarUrl: raw['avatarUrl']?.toString(),
               );
             }
           }
@@ -6321,8 +10953,11 @@ class _CollaborativeMemoryGameViewState
       }
     } catch (_) {}
 
-    // 2. Also query live /api/residents and /api/doctor/all-users so all real DB elders in this Elder Home are loaded even without restarting backend
-    if (realElders.isEmpty) {
+    // 2. Also query live /api/residents and /api/doctor/all-users to load real DB elders AND enrich profile pictures (avatarUrl)
+    final needsAvatars = realElders.isEmpty ||
+        realElders.any((e) => (e.avatarUrl ?? '').trim().isEmpty) ||
+        (widget.hostAvatarUrl ?? '').trim().isEmpty;
+    if (needsAvatars) {
       try {
         String? queryToken = widget.token;
         try {
@@ -6370,6 +11005,7 @@ class _CollaborativeMemoryGameViewState
                     room: raw['roomNumber']?.toString() ?? 'Suite',
                     homeId: int.tryParse(raw['elderHomeId']?.toString() ?? ''),
                     homeName: raw['elderHomeName']?.toString(),
+                    avatarUrl: raw['avatarUrl']?.toString(),
                   );
                 }
               }
@@ -6397,6 +11033,7 @@ class _CollaborativeMemoryGameViewState
                       room: raw['roomNumber']?.toString() ?? 'Suite',
                       homeId: int.tryParse(raw['elderHomeId']?.toString() ?? ''),
                       homeName: raw['elderHomeName']?.toString(),
+                      avatarUrl: raw['avatarUrl']?.toString(),
                     );
                   }
                 }
@@ -6407,7 +11044,7 @@ class _CollaborativeMemoryGameViewState
       } catch (_) {}
     }
 
-    if (realElders.isNotEmpty && mounted) {
+    if ((realElders.isNotEmpty || avatarsByName.isNotEmpty) && mounted) {
       setState(() {
         final hostEntry = _directoryPlayers.firstWhere(
           (p) => p.isHost,
@@ -6418,12 +11055,31 @@ class _CollaborativeMemoryGameViewState
             elderHomeId: widget.elderHomeId,
             elderHomeName: widget.elderHomeName,
             color: const Color(0xFF2563EB),
+            avatarUrl: widget.hostAvatarUrl,
             isHost: true,
             isInvited: true,
             hasJoined: true,
           ),
         );
-        _directoryPlayers = [hostEntry, ...realElders];
+        if ((hostEntry.avatarUrl ?? '').trim().isEmpty) {
+          hostEntry.avatarUrl =
+              widget.hostAvatarUrl ?? avatarsByName[hostNameLower];
+        }
+        if (realElders.isNotEmpty) {
+          for (final elder in realElders) {
+            if ((elder.avatarUrl ?? '').trim().isEmpty) {
+              elder.avatarUrl = avatarsByName[elder.name.trim().toLowerCase()];
+            }
+          }
+          _directoryPlayers = [hostEntry, ...realElders];
+        } else {
+          for (final p in _directoryPlayers) {
+            if ((p.avatarUrl ?? '').trim().isEmpty) {
+              p.avatarUrl =
+                  avatarsByName[_cleanName(p.name).toLowerCase()];
+            }
+          }
+        }
       });
       await _syncInvites();
     }
@@ -9514,306 +14170,539 @@ class _CollaborativeMemoryGameViewState
             ),
           ),
 
-        // 3. ZERO-SCROLL 2-Column Smart Game Lobby Workspace
-        Padding(
-          padding: const EdgeInsets.all(18),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final isWide = constraints.maxWidth >= 740;
-              final teamPanel = _buildTeamReadyPanel(isSi, canStart);
-              final friendsPanel = _buildCompactFriendsPanel(isSi, fellowElders);
+        // 3. ZERO-SCROLL Equal-Height Attractive 2-Column Game Lobby Workspace
+        ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 452),
+          child: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Color(0xFFFDFEFF),
+                  Color(0xFFF5F8FF),
+                  Color(0xFFF0FDFA),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isWide = constraints.maxWidth >= 740;
+                final teamPanel = _buildTeamReadyPanel(isSi, canStart);
+                final friendsPanel =
+                    _buildCompactFriendsPanel(isSi, fellowElders);
 
-              if (isWide) {
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                if (isWide) {
+                  return IntrinsicHeight(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Expanded(flex: 4, child: teamPanel),
+                        const SizedBox(width: 18),
+                        Expanded(flex: 6, child: friendsPanel),
+                      ],
+                    ),
+                  );
+                }
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Expanded(flex: 4, child: teamPanel),
-                    const SizedBox(width: 16),
-                    Expanded(flex: 6, child: friendsPanel),
+                    teamPanel,
+                    const SizedBox(height: 16),
+                    friendsPanel,
                   ],
                 );
-              }
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  teamPanel,
-                  const SizedBox(height: 14),
-                  friendsPanel,
-                ],
-              );
-            },
+              },
+            ),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildTeamReadyPanel(bool isSi, bool canStart) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFFF0F9FF), Color(0xFFF5F3FF)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: canStart ? const Color(0xFF6EE7B7) : const Color(0xFFBAE6FD),
-          width: 1.5,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              const Text('🎉', style: TextStyle(fontSize: 18)),
-              const SizedBox(width: 7),
-              Expanded(
-                child: Text(
-                  isSi
-                      ? 'ඔබේ කණ්ඩායම (${_joinedPlayers.length})'
-                      : 'Your Picnic Team (${_joinedPlayers.length})',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.navy,
-                  ),
+  bool _isLikelyFemaleElderName(String rawName) {
+    final lower = _cleanName(rawName).toLowerCase();
+    const femaleHints = [
+      'malini',
+      'seetha',
+      'sitha',
+      'padmini',
+      'kamala',
+      'chandra',
+      'nirmala',
+      'lakshmi',
+      'kusuma',
+      'swarna',
+      'sarah',
+      'margaret',
+      'mary',
+      'eleanor',
+      'helen',
+      'anula',
+      'shanthi',
+      'ranjani',
+      'sriyani',
+      'indrani',
+      'manel',
+      'kanthi',
+      'nalini',
+      'kumari',
+      'menika',
+      'amara',
+    ];
+    return femaleHints.any((h) => lower.contains(h));
+  }
+
+  Widget _buildLobbyProfileAvatar(
+    _InvitedPlayer player, {
+    double radius = 23,
+    bool showStatusDot = false,
+    bool isBusy = false,
+  }) {
+    final hasPhoto = (player.avatarUrl ?? '').trim().isNotEmpty;
+    final size = radius * 2;
+    final isFemale = _isLikelyFemaleElderName(player.name);
+
+    final avatarCore = hasPhoto
+        ? CarevoraAvatar(
+            avatarUrl: player.avatarUrl,
+            radius: radius,
+            initials: _safePlayerInitial(player),
+            backgroundColor: player.color,
+            foregroundColor: Colors.white,
+          )
+        : Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  player.color.withValues(alpha: 0.22),
+                  player.color.withValues(alpha: 0.08),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              shape: BoxShape.circle,
+            ),
+            child: ClipOval(
+              child: CustomPaint(
+                size: Size(size, size),
+                painter: _LobbyElderPortraitPainter(
+                  accentColor: player.color,
+                  isFemale: isFemale,
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-                decoration: BoxDecoration(
-                  color: canStart
-                      ? const Color(0xFFDCFCE7)
-                      : const Color(0xFFFEF3C7),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  canStart
-                      ? (isSi ? 'සූදානම්!' : 'READY!')
-                      : (isSi ? 'අවම 2' : 'MIN 2'),
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w900,
-                    color: canStart
-                        ? const Color(0xFF047857)
-                        : const Color(0xFFB45309),
-                  ),
-                ),
+            ),
+          );
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(2.4),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: LinearGradient(
+              colors: [
+                player.color.withValues(alpha: 0.75),
+                player.color.withValues(alpha: 0.30),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: player.color.withValues(alpha: 0.22),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-
-          // Joined Players Cards
-          ..._joinedPlayers.map((jp) {
-            final display = _safePlayerDisplayName(jp);
-            return Container(
-              key: jp.isHost ? ValueKey('invite_player_row_${jp.id}') : null,
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+          child: Container(
+            padding: const EdgeInsets.all(1.5),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+            ),
+            child: avatarCore,
+          ),
+        ),
+        if (showStatusDot)
+          Positioned(
+            right: 0,
+            bottom: 0,
+            child: Container(
+              width: 12,
+              height: 12,
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: jp.color.withValues(alpha: 0.45),
-                  width: 1.4,
-                ),
+                color: isBusy
+                    ? const Color(0xFFF59E0B)
+                    : const Color(0xFF10B981),
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 2),
+                boxShadow: [
+                  BoxShadow(
+                    color: (isBusy
+                            ? const Color(0xFFF59E0B)
+                            : const Color(0xFF10B981))
+                        .withValues(alpha: 0.45),
+                    blurRadius: 4,
+                  ),
+                ],
               ),
-              child: Row(
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildTeamReadyPanel(bool isSi, bool canStart) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [
+            Color(0xFFF0F9FF),
+            Color(0xFFF5F3FF),
+            Color(0xFFECFDF5),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: canStart ? const Color(0xFF6EE7B7) : const Color(0xFFBAE6FD),
+          width: 1.6,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF2563EB).withValues(alpha: 0.06),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
                 children: [
-                  CircleAvatar(
-                    radius: 15,
-                    backgroundColor: jp.color,
-                    child: Text(
-                      _safePlayerInitial(jp),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w900,
-                      ),
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(11),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF2563EB).withValues(alpha: 0.12),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: const Center(
+                      child: Text('🎉', style: TextStyle(fontSize: 19)),
                     ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          display,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.navy,
-                          ),
-                        ),
-                        Text(
-                          jp.isHost
-                              ? (isSi ? '👑 ප්‍රධාන ක්‍රීඩකයා' : '👑 Host • Ready')
-                              : (isSi ? '✅ එක්වී සිටී' : '✅ Joined & Ready'),
-                          style: TextStyle(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w700,
-                            color: jp.isHost
-                                ? const Color(0xFF1D4ED8)
-                                : const Color(0xFF059669),
-                          ),
-                        ),
-                      ],
+                    child: Text(
+                      isSi
+                          ? 'ඔබේ කණ්ඩායම (${_joinedPlayers.length})'
+                          : 'Your Picnic Team (${_joinedPlayers.length})',
+                      style: const TextStyle(
+                        fontSize: 17.5,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.navy,
+                      ),
                     ),
                   ),
-                  if (!jp.isHost)
-                    Material(
-                      color: const Color(0xFFFEF2F2),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(11),
-                        side: const BorderSide(
-                          color: Color(0xFFFCA5A5),
-                          width: 1.2,
-                        ),
-                      ),
-                      child: InkWell(
-                        key: ValueKey('remove_invited_${jp.id}'),
-                        onTap: () => _removeJoinedPlayer(jp),
-                        borderRadius: BorderRadius.circular(11),
-                        hoverColor: const Color(0xFFFEE2E2),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 11,
-                            vertical: 7,
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.close_rounded,
-                                size: 15,
-                                color: Color(0xFFDC2626),
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                isSi ? 'ඉවත්' : 'Remove',
-                                style: const TextStyle(
-                                  fontSize: 12.5,
-                                  fontWeight: FontWeight.w800,
-                                  color: Color(0xFFDC2626),
-                                  height: 1.1,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 11,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: canStart
+                          ? const Color(0xFFDCFCE7)
+                          : const Color(0xFFFEF3C7),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: canStart
+                            ? const Color(0xFF86EFAC)
+                            : const Color(0xFFFCD34D),
                       ),
                     ),
+                    child: Text(
+                      canStart
+                          ? (isSi ? 'සූදානම්!' : 'READY!')
+                          : (isSi ? 'අවම 2' : 'MIN 2'),
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w900,
+                        color: canStart
+                            ? const Color(0xFF047857)
+                            : const Color(0xFFB45309),
+                      ),
+                    ),
+                  ),
                 ],
               ),
-            );
-          }),
+              const SizedBox(height: 16),
 
-          if (!canStart)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFFBEB),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFFFCD34D)),
-              ),
-              child: Text(
-                isSi
-                    ? '👉 දකුණු පසින් මිතුරෙකු තෝරා එක් කරගන්න'
-                    : '👉 Pick a friend on the right to start playing!',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFFB45309),
-                ),
-              ),
-            ),
-
-          if (_feedbackBannerText != null) ...[
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: _isFeedbackPositive
-                    ? const Color(0xFFECFDF5)
-                    : const Color(0xFFFFFBEB),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: _isFeedbackPositive
-                      ? const Color(0xFF6EE7B7)
-                      : const Color(0xFFFCD34D),
-                ),
-              ),
-              child: Text(
-                _localizeBannerText(_feedbackBannerText!),
-                style: const TextStyle(
-                  fontSize: 12.2,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.navy,
-                ),
-              ),
-            ),
-          ],
-
-          const SizedBox(height: 14),
-
-          // Big Hero Start Button — ALWAYS Visible without Scrolling!
-          Container(
-            width: double.infinity,
-            decoration: BoxDecoration(
-              gradient: canStart
-                  ? const LinearGradient(
-                      colors: [
-                        Color(0xFF2563EB),
-                        Color(0xFF7C3AED),
-                        Color(0xFF0D9488),
-                      ],
-                    )
-                  : null,
-              color: canStart ? null : const Color(0xFFE2E8F0),
-              borderRadius: BorderRadius.circular(18),
-              boxShadow: canStart
-                  ? [
+              // Joined Players Cards with Profile Pictures
+              ..._joinedPlayers.map((jp) {
+                final display = _safePlayerDisplayName(jp);
+                return Container(
+                  key: jp.isHost ? ValueKey('invite_player_row_${jp.id}') : null,
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 11,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: jp.color.withValues(alpha: 0.40),
+                      width: 1.5,
+                    ),
+                    boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF2563EB).withValues(alpha: 0.30),
-                        blurRadius: 16,
-                        offset: const Offset(0, 6),
+                        color: jp.color.withValues(alpha: 0.08),
+                        blurRadius: 10,
+                        offset: const Offset(0, 3),
                       ),
-                    ]
-                  : null,
-            ),
-            child: ElevatedButton.icon(
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      _buildLobbyProfileAvatar(
+                        jp,
+                        radius: 21,
+                        showStatusDot: true,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              display,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.navy,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              jp.isHost
+                                  ? (isSi
+                                      ? '👑 ප්‍රධාන ක්‍රීඩකයා'
+                                      : '👑 Host • Ready')
+                                  : (isSi
+                                      ? '✅ එක්වී සිටී'
+                                      : '✅ Joined & Ready'),
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: jp.isHost
+                                    ? const Color(0xFF1D4ED8)
+                                    : const Color(0xFF059669),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (!jp.isHost)
+                        Material(
+                          color: const Color(0xFFFEF2F2),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(11),
+                            side: const BorderSide(
+                              color: Color(0xFFFCA5A5),
+                              width: 1.2,
+                            ),
+                          ),
+                          child: InkWell(
+                            key: ValueKey('remove_invited_${jp.id}'),
+                            onTap: () => _removeJoinedPlayer(jp),
+                            borderRadius: BorderRadius.circular(11),
+                            hoverColor: const Color(0xFFFEE2E2),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 11,
+                                vertical: 7,
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.close_rounded,
+                                    size: 15,
+                                    color: Color(0xFFDC2626),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    isSi ? 'ඉවත්' : 'Remove',
+                                    style: const TextStyle(
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.w800,
+                                      color: Color(0xFFDC2626),
+                                      height: 1.1,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                );
+              }),
+
+              if (!canStart) ...[
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 14,
+                  ),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFFFFBEB), Color(0xFFFEF3C7)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: const Color(0xFFFCD34D),
+                      width: 1.4,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const Text('👉', style: TextStyle(fontSize: 20)),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          isSi
+                              ? 'දකුණු පසින් මිතුරෙකු තෝරා එකට සෙල්ලම් කරමු!'
+                              : 'Pick a friend on the right to start your picnic party!',
+                          style: const TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF92400E),
+                            height: 1.3,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+
+              if (_feedbackBannerText != null) ...[
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 13,
+                    vertical: 9,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _isFeedbackPositive
+                        ? const Color(0xFFECFDF5)
+                        : const Color(0xFFFFFBEB),
+                    borderRadius: BorderRadius.circular(13),
+                    border: Border.all(
+                      color: _isFeedbackPositive
+                          ? const Color(0xFF6EE7B7)
+                          : const Color(0xFFFCD34D),
+                    ),
+                  ),
+                  child: Text(
+                    _localizeBannerText(_feedbackBannerText!),
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.navy,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+
+          const SizedBox(height: 18),
+
+          // Big Hero Start Button — Anchored Cleanly at Panel Bottom
+          Material(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(16),
+            child: InkWell(
               key: const ValueKey('start_collaborative_chain_button'),
-              onPressed: canStart ? _startCollaborativeGame : null,
-              icon: const Icon(LucideIcons.gamepad2, size: 20),
-              label: Text(
-                canStart
-                    ? (isSi ? 'ක්‍රීඩාව ආරම්භ කරන්න!' : 'Start Picnic Game!')
-                    : (isSi
-                        ? 'මිතුරෙකු එක් කරන්න'
-                        : 'Add 1 Friend to Start'),
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w900,
+              onTap: canStart ? _startCollaborativeGame : null,
+              borderRadius: BorderRadius.circular(16),
+              child: Ink(
+                height: 54,
+                decoration: BoxDecoration(
+                  gradient: canStart
+                      ? const LinearGradient(
+                          colors: [
+                            Color(0xFF2563EB),
+                            Color(0xFF7C3AED),
+                            Color(0xFF0D9488),
+                          ],
+                        )
+                      : null,
+                  color: canStart ? null : const Color(0xFFE2E8F0),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: canStart
+                      ? [
+                          BoxShadow(
+                            color: const Color(0xFF2563EB)
+                                .withValues(alpha: 0.30),
+                            blurRadius: 16,
+                            offset: const Offset(0, 6),
+                          ),
+                        ]
+                      : null,
                 ),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.transparent,
-                shadowColor: Colors.transparent,
-                foregroundColor: Colors.white,
-                disabledBackgroundColor: Colors.transparent,
-                disabledForegroundColor: const Color(0xFF64748B),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 18,
-                  vertical: 16,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      LucideIcons.gamepad2,
+                      size: 21,
+                      color: canStart ? Colors.white : const Color(0xFF64748B),
+                    ),
+                    const SizedBox(width: 9),
+                    Text(
+                      canStart
+                          ? (isSi
+                              ? 'ක්‍රීඩාව ආරම්භ කරන්න!'
+                              : 'Start Picnic Game!')
+                          : (isSi
+                              ? 'මිතුරෙකු එක් කරන්න'
+                              : 'Add 1 Friend to Start'),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                        color:
+                            canStart ? Colors.white : const Color(0xFF64748B),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -9836,471 +14725,594 @@ class _CollaborativeMemoryGameViewState
     final visibleElders = fellowElders.sublist(startIdx, endIdx);
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [Color(0xFFFFFFFF), Color(0xFFF8FAFF)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFDBEAFE), width: 1.4),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: const Color(0xFFDBEAFE), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF2563EB).withValues(alpha: 0.05),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF2563EB), Color(0xFF0D9488)],
+                  Row(
+                    children: [
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF2563EB), Color(0xFF0D9488)],
+                          ),
+                          borderRadius: BorderRadius.circular(11),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF2563EB)
+                                  .withValues(alpha: 0.22),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          LucideIcons.users,
+                          size: 18,
+                          color: Colors.white,
+                        ),
                       ),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(
-                      LucideIcons.users,
-                      size: 16,
-                      color: Colors.white,
-                    ),
+                      const SizedBox(width: 10),
+                      Text(
+                        isSi ? 'ආරාධනා කළ හැකි මිතුරන්' : 'Friends to Invite',
+                        style: const TextStyle(
+                          fontSize: 17.5,
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.navy,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 9),
-                  Text(
-                    isSi ? 'ආරාධනා කළ හැකි මිතුරන්' : 'Friends to Invite',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w900,
-                      color: AppColors.navy,
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEFF6FF),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFFBFDBFE)),
+                    ),
+                    child: Text(
+                      widget.elderHomeName,
+                      style: const TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF1D4ED8),
+                      ),
                     ),
                   ),
                 ],
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEFF6FF),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: const Color(0xFFBFDBFE)),
-                ),
-                child: Text(
-                  widget.elderHomeName,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF1D4ED8),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
+              const SizedBox(height: 16),
 
-          // Balanced 2x2 game-card grid (4 friends per page, zero scroll, zero stretch!)
-          LayoutBuilder(
-            builder: (context, constraints) {
-              const spacing = 12.0;
-              final isTwoCol = constraints.maxWidth >= 420;
-              final tileWidth = isTwoCol
-                  ? (constraints.maxWidth - spacing) / 2
-                  : constraints.maxWidth;
+                // Spacious 2x2 Friend Cards (Row+Expanded so IntrinsicHeight works with zero LayoutBuilder conflict!)
+                Builder(
+                  builder: (context) {
+                    Widget buildFriendCard(_InvitedPlayer player) {
+                      final displayName = _safePlayerDisplayName(player);
+                      final isBusyInGame = !player.hasJoined &&
+                          (_busyInGamePlayerNames?.contains(
+                                _cleanName(player.name).toLowerCase(),
+                              ) ??
+                              false);
 
-              return Wrap(
-                spacing: spacing,
-                runSpacing: spacing,
-                children: visibleElders.map((player) {
-                  final displayName = _safePlayerDisplayName(player);
-                  final initial = _safePlayerInitial(player);
-                  final isBusyInGame = !player.hasJoined &&
-                      (_busyInGamePlayerNames?.contains(
-                            _cleanName(player.name).toLowerCase(),
-                          ) ??
-                          false);
-
-                  return SizedBox(
-                    width: tileWidth,
-                    child: Container(
-                      key: ValueKey('invite_player_row_${player.id}'),
-                      padding: const EdgeInsets.all(13),
-                      decoration: BoxDecoration(
-                        color: player.hasJoined
-                            ? const Color(0xFFF0FDF4)
-                            : isBusyInGame
-                                ? const Color(0xFFF8FAFC)
-                                : Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: player.hasJoined
-                              ? const Color(0xFF6EE7B7)
+                      return Container(
+                        key: ValueKey('invite_player_row_${player.id}'),
+                        padding: const EdgeInsets.fromLTRB(15, 14, 15, 14),
+                        decoration: BoxDecoration(
+                          gradient: player.hasJoined
+                              ? const LinearGradient(
+                                  colors: [
+                                    Color(0xFFF0FDF4),
+                                    Color(0xFFECFDF5),
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                )
                               : isBusyInGame
-                                  ? const Color(0xFFC7D2FE)
-                                  : player.color.withValues(alpha: 0.24),
-                          width: 1.4,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: player.color.withValues(alpha: 0.07),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Row(
-                            children: [
-                              Stack(
-                                clipBehavior: Clip.none,
-                                children: [
-                                  CircleAvatar(
-                                    radius: 18,
-                                    backgroundColor: player.color,
-                                    child: Text(
-                                      initial,
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 14.5,
-                                        fontWeight: FontWeight.w900,
-                                      ),
+                                  ? const LinearGradient(
+                                      colors: [
+                                        Color(0xFFF8FAFC),
+                                        Color(0xFFEEF2FF),
+                                      ],
+                                    )
+                                  : LinearGradient(
+                                      colors: [
+                                        Colors.white,
+                                        player.color.withValues(alpha: 0.04),
+                                      ],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
                                     ),
-                                  ),
-                                  Positioned(
-                                    right: -1,
-                                    bottom: -1,
-                                    child: Container(
-                                      width: 10,
-                                      height: 10,
-                                      decoration: BoxDecoration(
-                                        color: isBusyInGame
-                                            ? const Color(0xFFF59E0B)
-                                            : const Color(0xFF10B981),
-                                        shape: BoxShape.circle,
-                                        border: Border.all(
-                                          color: Colors.white,
-                                          width: 1.8,
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(
+                            color: player.hasJoined
+                                ? const Color(0xFF6EE7B7)
+                                : isBusyInGame
+                                    ? const Color(0xFFC7D2FE)
+                                    : player.color.withValues(alpha: 0.28),
+                            width: 1.5,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: player.color.withValues(alpha: 0.09),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Row(
+                              children: [
+                                _buildLobbyProfileAvatar(
+                                  player,
+                                  radius: 23,
+                                  showStatusDot: true,
+                                  isBusy: isBusyInGame,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        displayName,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          fontSize: 15.5,
+                                          fontWeight: FontWeight.w800,
+                                          color: AppColors.navy,
                                         ),
                                       ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        isBusyInGame
+                                            ? (isSi
+                                                ? 'දැන් ක්‍රීඩාවේ'
+                                                : 'In a game')
+                                            : (player.hasJoined
+                                                ? (isSi
+                                                    ? 'කණ්ඩායමට එක්විය'
+                                                    : 'In your team')
+                                                : (isSi
+                                                    ? 'සූදානම් • මිතුරා'
+                                                    : 'Online • Ready to play')),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: 11.5,
+                                          fontWeight: FontWeight.w700,
+                                          color: isBusyInGame
+                                              ? const Color(0xFF6366F1)
+                                              : (player.hasJoined
+                                                  ? const Color(0xFF059669)
+                                                  : const Color(0xFF64748B)),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 14),
+                            if (isBusyInGame)
+                              Container(
+                                height: 38,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFEEF2FF),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: const Color(0xFFA5B4FC),
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Text(
+                                      '🎮',
+                                      style: TextStyle(fontSize: 14),
                                     ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  displayName,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontSize: 14.5,
-                                    fontWeight: FontWeight.w800,
-                                    color: AppColors.navy,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          if (isBusyInGame)
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 9,
-                              ),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFEEF2FF),
-                                borderRadius: BorderRadius.circular(11),
-                                border: Border.all(
-                                  color: const Color(0xFFA5B4FC),
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const Text(
-                                    '🎮',
-                                    style: TextStyle(fontSize: 13),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Flexible(
-                                    child: Text(
+                                    const SizedBox(width: 6),
+                                    Text(
                                       isSi
                                           ? 'ක්‍රීඩාවේ නිරතයි'
                                           : 'Playing Now',
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
                                       style: const TextStyle(
-                                        fontSize: 12,
+                                        fontSize: 12.5,
                                         fontWeight: FontWeight.w900,
                                         color: Color(0xFF4338CA),
                                       ),
                                     ),
-                                  ),
-                                ],
-                              ),
-                            )
-                          else if (player.hasJoined)
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 8,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFDCFCE7),
-                                      borderRadius: BorderRadius.circular(11),
-                                      border: Border.all(
-                                        color: const Color(0xFF6EE7B7),
-                                      ),
-                                    ),
-                                    child: Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        const Icon(
-                                          LucideIcons.check,
-                                          size: 13.5,
-                                          color: Color(0xFF059669),
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Flexible(
-                                          child: Text(
-                                            isSi ? 'එක්වී ඇත' : 'Joined',
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: const TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w800,
-                                              color: Color(0xFF047857),
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
+                                  ],
                                 ),
-                                const SizedBox(width: 8),
-                                Material(
-                                  color: const Color(0xFFFEF2F2),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(11),
-                                    side: const BorderSide(
-                                      color: Color(0xFFFCA5A5),
-                                      width: 1.2,
-                                    ),
-                                  ),
-                                  child: InkWell(
-                                    onTap: () => _removeJoinedPlayer(player),
-                                    borderRadius: BorderRadius.circular(11),
-                                    hoverColor: const Color(0xFFFEE2E2),
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 11,
-                                        vertical: 8,
+                              )
+                            else if (player.hasJoined)
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Container(
+                                      height: 38,
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFDCFCE7),
+                                        borderRadius:
+                                            BorderRadius.circular(12),
+                                        border: Border.all(
+                                          color: const Color(0xFF6EE7B7),
+                                        ),
                                       ),
                                       child: Row(
-                                        mainAxisSize: MainAxisSize.min,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
                                         children: [
                                           const Icon(
-                                            Icons.close_rounded,
+                                            LucideIcons.check,
                                             size: 15,
-                                            color: Color(0xFFDC2626),
+                                            color: Color(0xFF059669),
                                           ),
-                                          const SizedBox(width: 4),
+                                          const SizedBox(width: 5),
                                           Text(
-                                            isSi ? 'ඉවත්' : 'Remove',
+                                            isSi ? 'එක්වී ඇත' : 'Joined',
                                             style: const TextStyle(
                                               fontSize: 12.5,
                                               fontWeight: FontWeight.w800,
-                                              color: Color(0xFFDC2626),
-                                              height: 1.1,
+                                              color: Color(0xFF047857),
                                             ),
                                           ),
                                         ],
                                       ),
                                     ),
                                   ),
-                                ),
-                              ],
-                            )
-                          else if (player.isInvited && !player.hasJoined)
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 8,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFFFFBEB),
-                                      borderRadius: BorderRadius.circular(11),
-                                      border: Border.all(
-                                        color: const Color(0xFFFCD34D),
-                                      ),
-                                    ),
-                                    child: Text(
-                                      isSi ? '⏳ රැඳී සිටී...' : '⏳ Waiting...',
-                                      textAlign: TextAlign.center,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w800,
-                                        color: Color(0xFF92400E),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                OutlinedButton(
-                                  onPressed: () => _cancelSentInvite(player),
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: AppColors.muted,
-                                    side: const BorderSide(
-                                      color: Color(0xFFCBD5E1),
-                                    ),
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 9,
-                                    ),
+                                  const SizedBox(width: 8),
+                                  Material(
+                                    color: const Color(0xFFFEF2F2),
                                     shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(11),
-                                    ),
-                                  ),
-                                  child: Text(
-                                    isSi ? 'අවලංගු' : 'Cancel',
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            )
-                          else
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: OutlinedButton.icon(
-                                    key: ValueKey('sit_together_${player.id}'),
-                                    onPressed: () =>
-                                        _sitTogetherQuickJoin(player),
-                                    icon: const Icon(
-                                      LucideIcons.users,
-                                      size: 13.5,
-                                    ),
-                                    label: Text(
-                                      isSi ? 'එකට' : 'Sit Together',
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w800,
-                                      ),
-                                    ),
-                                    style: OutlinedButton.styleFrom(
-                                      foregroundColor: const Color(0xFF0F766E),
-                                      backgroundColor: const Color(0xFFF0FDFA),
+                                      borderRadius: BorderRadius.circular(12),
                                       side: const BorderSide(
-                                        color: Color(0xFF2DD4BF),
+                                        color: Color(0xFFFCA5A5),
+                                        width: 1.3,
                                       ),
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 10,
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(11),
+                                    ),
+                                    child: InkWell(
+                                      onTap: () =>
+                                          _removeJoinedPlayer(player),
+                                      borderRadius: BorderRadius.circular(12),
+                                      hoverColor: const Color(0xFFFEE2E2),
+                                      child: SizedBox(
+                                        height: 38,
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const Icon(
+                                                Icons.close_rounded,
+                                                size: 15,
+                                                color: Color(0xFFDC2626),
+                                              ),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                isSi ? 'ඉවත්' : 'Remove',
+                                                style: const TextStyle(
+                                                  fontSize: 12.5,
+                                                  fontWeight: FontWeight.w800,
+                                                  color: Color(0xFFDC2626),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
                                       ),
                                     ),
                                   ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: ElevatedButton.icon(
-                                    key: ValueKey('send_invite_${player.id}'),
-                                    onPressed: () =>
-                                        _sendInviteNotification(player),
-                                    icon: const Icon(
-                                      LucideIcons.bell,
-                                      size: 13.5,
-                                    ),
-                                    label: Text(
-                                      isSi ? 'ආරාධනා' : 'Invite',
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w800,
+                                ],
+                              )
+                            else if (player.isInvited && !player.hasJoined)
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Container(
+                                      height: 38,
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFFFFBEB),
+                                        borderRadius:
+                                            BorderRadius.circular(12),
+                                        border: Border.all(
+                                          color: const Color(0xFFFCD34D),
+                                        ),
                                       ),
-                                    ),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: const Color(0xFF2563EB),
-                                      foregroundColor: Colors.white,
-                                      elevation: 0,
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 10,
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(11),
+                                      child: Center(
+                                        child: Text(
+                                          isSi
+                                              ? '⏳ රැඳී සිටී...'
+                                              : '⏳ Waiting...',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            fontSize: 12.5,
+                                            fontWeight: FontWeight.w800,
+                                            color: Color(0xFF92400E),
+                                          ),
+                                        ),
                                       ),
                                     ),
                                   ),
-                                ),
-                              ],
-                            ),
-                        ],
-                      ),
-                    ),
-                  );
-                }).toList(),
-              );
-            },
+                                  const SizedBox(width: 8),
+                                  Material(
+                                    color: Colors.white,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      side: const BorderSide(
+                                        color: Color(0xFFCBD5E1),
+                                        width: 1.3,
+                                      ),
+                                    ),
+                                    child: InkWell(
+                                      onTap: () => _cancelSentInvite(player),
+                                      borderRadius: BorderRadius.circular(12),
+                                      hoverColor: const Color(0xFFF1F5F9),
+                                      child: SizedBox(
+                                        height: 38,
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                          ),
+                                          child: Center(
+                                            child: Text(
+                                              isSi ? 'අවලංගු' : 'Cancel',
+                                              style: const TextStyle(
+                                                fontSize: 12.5,
+                                                fontWeight: FontWeight.w800,
+                                                color: Color(0xFF64748B),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              )
+                            else
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Material(
+                                      color: const Color(0xFFF0FDFA),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(12),
+                                        side: const BorderSide(
+                                          color: Color(0xFF5EEAD4),
+                                          width: 1.4,
+                                        ),
+                                      ),
+                                      child: InkWell(
+                                        key: ValueKey(
+                                          'sit_together_${player.id}',
+                                        ),
+                                        onTap: () =>
+                                            _sitTogetherQuickJoin(player),
+                                        borderRadius:
+                                            BorderRadius.circular(12),
+                                        hoverColor: const Color(0xFFCCFBF1),
+                                        child: SizedBox(
+                                          height: 38,
+                                          child: Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: [
+                                              const Icon(
+                                                LucideIcons.users,
+                                                size: 14.5,
+                                                color: Color(0xFF0F766E),
+                                              ),
+                                              const SizedBox(width: 6),
+                                              Flexible(
+                                                child: Text(
+                                                  isSi
+                                                      ? 'එකට'
+                                                      : 'Sit Together',
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style: const TextStyle(
+                                                    fontSize: 12.5,
+                                                    fontWeight:
+                                                        FontWeight.w800,
+                                                    color: Color(0xFF0F766E),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 9),
+                                  Expanded(
+                                    child: Material(
+                                      color: Colors.transparent,
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: InkWell(
+                                        key: ValueKey(
+                                          'send_invite_${player.id}',
+                                        ),
+                                        onTap: () =>
+                                            _sendInviteNotification(player),
+                                        borderRadius:
+                                            BorderRadius.circular(12),
+                                        child: Ink(
+                                          height: 38,
+                                          decoration: BoxDecoration(
+                                            gradient: const LinearGradient(
+                                              colors: [
+                                                Color(0xFF2563EB),
+                                                Color(0xFF4F46E5),
+                                              ],
+                                            ),
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: const Color(0xFF2563EB)
+                                                    .withValues(alpha: 0.24),
+                                                blurRadius: 8,
+                                                offset: const Offset(0, 3),
+                                              ),
+                                            ],
+                                          ),
+                                          child: Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: [
+                                              const Icon(
+                                                LucideIcons.bell,
+                                                size: 14.5,
+                                                color: Colors.white,
+                                              ),
+                                              const SizedBox(width: 6),
+                                              Flexible(
+                                                child: Text(
+                                                  isSi ? 'ආරාධනා' : 'Invite',
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style: const TextStyle(
+                                                    fontSize: 12.5,
+                                                    fontWeight:
+                                                        FontWeight.w800,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    final rows = <Widget>[];
+                    for (int i = 0; i < visibleElders.length; i += 2) {
+                      final left = buildFriendCard(visibleElders[i]);
+                      final right = (i + 1 < visibleElders.length)
+                          ? buildFriendCard(visibleElders[i + 1])
+                          : const SizedBox.shrink();
+                      rows.add(
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(child: left),
+                            const SizedBox(width: 14),
+                            Expanded(child: right),
+                          ],
+                        ),
+                      );
+                      if (i + 2 < visibleElders.length) {
+                        rows.add(const SizedBox(height: 14));
+                      }
+                    }
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: rows,
+                    );
+                  },
+                ),
+            ],
           ),
 
-          // Elder-friendly page switcher when there are more than 4 friends
+          // Clean, Balanced Pagination Pill Bar when there are more than 4 friends
           if (totalPages > 1) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                OutlinedButton.icon(
-                  onPressed: safePage > 0
-                      ? () => setState(() => _friendsPageIndex = safePage - 1)
-                      : null,
-                  icon: const Icon(Icons.chevron_left_rounded, size: 18),
-                  label: Text(
-                    isSi ? 'පෙර' : 'Prev',
-                    style: const TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF1D4ED8),
+                Material(
+                  color: safePage > 0
+                      ? const Color(0xFFEFF6FF)
+                      : const Color(0xFFF8FAFC),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                     side: BorderSide(
                       color: safePage > 0
                           ? const Color(0xFF93C5FD)
                           : const Color(0xFFE2E8F0),
+                      width: 1.3,
                     ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(11),
+                  ),
+                  child: InkWell(
+                    onTap: safePage > 0
+                        ? () => setState(() => _friendsPageIndex = safePage - 1)
+                        : null,
+                    borderRadius: BorderRadius.circular(12),
+                    child: SizedBox(
+                      height: 38,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.chevron_left_rounded,
+                              size: 18,
+                              color: safePage > 0
+                                  ? const Color(0xFF1D4ED8)
+                                  : const Color(0xFF94A3B8),
+                            ),
+                            const SizedBox(width: 3),
+                            Text(
+                              isSi ? 'පෙර' : 'Prev',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                                color: safePage > 0
+                                    ? const Color(0xFF1D4ED8)
+                                    : const Color(0xFF94A3B8),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -10312,43 +15324,80 @@ class _CollaborativeMemoryGameViewState
                       onTap: () => setState(() => _friendsPageIndex = idx),
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
-                        margin: const EdgeInsets.symmetric(horizontal: 3),
-                        width: active ? 22 : 8,
-                        height: 8,
+                        margin: const EdgeInsets.symmetric(horizontal: 3.5),
+                        width: active ? 24 : 9,
+                        height: 9,
                         decoration: BoxDecoration(
-                          color: active
-                              ? const Color(0xFF2563EB)
-                              : const Color(0xFFCBD5E1),
+                          gradient: active
+                              ? const LinearGradient(
+                                  colors: [
+                                    Color(0xFF2563EB),
+                                    Color(0xFF0D9488),
+                                  ],
+                                )
+                              : null,
+                          color: active ? null : const Color(0xFFCBD5E1),
                           borderRadius: BorderRadius.circular(8),
                         ),
                       ),
                     );
                   }),
                 ),
-                ElevatedButton.icon(
-                  onPressed: safePage < totalPages - 1
-                      ? () => setState(() => _friendsPageIndex = safePage + 1)
-                      : null,
-                  icon: Text(
-                    isSi ? 'තව මිතුරන්' : 'More Friends',
-                    style: const TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  label: const Icon(Icons.chevron_right_rounded, size: 18),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2563EB),
-                    foregroundColor: Colors.white,
-                    disabledBackgroundColor: const Color(0xFFE2E8F0),
-                    disabledForegroundColor: const Color(0xFF94A3B8),
-                    elevation: 0,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(11),
+                Material(
+                  color: Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                  child: InkWell(
+                    onTap: safePage < totalPages - 1
+                        ? () => setState(() => _friendsPageIndex = safePage + 1)
+                        : null,
+                    borderRadius: BorderRadius.circular(12),
+                    child: Ink(
+                      height: 38,
+                      padding: const EdgeInsets.symmetric(horizontal: 15),
+                      decoration: BoxDecoration(
+                        gradient: safePage < totalPages - 1
+                            ? const LinearGradient(
+                                colors: [Color(0xFF2563EB), Color(0xFF0D9488)],
+                              )
+                            : null,
+                        color: safePage < totalPages - 1
+                            ? null
+                            : const Color(0xFFE2E8F0),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: safePage < totalPages - 1
+                            ? [
+                                BoxShadow(
+                                  color: const Color(0xFF2563EB)
+                                      .withValues(alpha: 0.24),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ]
+                            : null,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            isSi ? 'තව මිතුරන්' : 'More Friends',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                              color: safePage < totalPages - 1
+                                  ? Colors.white
+                                  : const Color(0xFF94A3B8),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Icon(
+                            Icons.chevron_right_rounded,
+                            size: 18,
+                            color: safePage < totalPages - 1
+                                ? Colors.white
+                                : const Color(0xFF94A3B8),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -10378,10 +15427,10 @@ class _CollaborativeMemoryGameViewState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // 1. Sleek Compact Cosmic Turn Header + Music / Hint / Leave Bar
+        // 1. Sleek Cosmic Turn Header with Profile Pictures + Guide / Music / Hint / Leave Bar
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           decoration: const BoxDecoration(
             gradient: LinearGradient(
               colors: [
@@ -10396,11 +15445,11 @@ class _CollaborativeMemoryGameViewState
           child: Wrap(
             alignment: WrapAlignment.spaceBetween,
             crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 10,
+            spacing: 12,
             runSpacing: 8,
             children: [
               Wrap(
-                spacing: 8,
+                spacing: 10,
                 runSpacing: 6,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: List.generate(turnPlayers.length, (i) {
@@ -10418,74 +15467,53 @@ class _CollaborativeMemoryGameViewState
                   return AnimatedContainer(
                     duration: const Duration(milliseconds: 220),
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 5,
+                      horizontal: 11,
+                      vertical: 5.5,
                     ),
                     decoration: BoxDecoration(
                       color: isTurn
                           ? Colors.white
                           : Colors.white.withValues(alpha: 0.14),
-                      borderRadius: BorderRadius.circular(15),
+                      borderRadius: BorderRadius.circular(18),
                       border: Border.all(
                         color: isTurn
                             ? const Color(0xFFFDE68A)
-                            : Colors.white.withValues(alpha: 0.28),
-                        width: isTurn ? 2 : 1,
+                            : Colors.white.withValues(alpha: 0.30),
+                        width: isTurn ? 2.2 : 1.1,
                       ),
+                      boxShadow: isTurn
+                          ? [
+                              BoxShadow(
+                                color: const Color(0xFFFDE68A)
+                                    .withValues(alpha: 0.28),
+                                blurRadius: 10,
+                              ),
+                            ]
+                          : null,
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Stack(
-                          clipBehavior: Clip.none,
-                          children: [
-                            CircleAvatar(
-                              radius: 11,
-                              backgroundColor: p.color,
-                              child: Text(
-                                _safePlayerInitial(p),
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
-                            ),
-                            if (_isLiveMultiplayerActive)
-                              Positioned(
-                                right: -2,
-                                bottom: -2,
-                                child: Container(
-                                  width: 8,
-                                  height: 8,
-                                  decoration: BoxDecoration(
-                                    color: hasEnteredLive
-                                        ? const Color(0xFF10B981)
-                                        : const Color(0xFFF59E0B),
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: Colors.white,
-                                      width: 1.3,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                          ],
+                        _buildLobbyProfileAvatar(
+                          p,
+                          radius: 13,
+                          showStatusDot: _isLiveMultiplayerActive,
+                          isBusy: !hasEnteredLive,
                         ),
-                        const SizedBox(width: 7),
+                        const SizedBox(width: 8),
                         Text(
                           pName,
                           style: TextStyle(
-                            fontSize: 12.8,
+                            fontSize: 13.5,
                             fontWeight: FontWeight.w900,
                             color: isTurn ? AppColors.navy : Colors.white,
                           ),
                         ),
                         if (_isLiveMultiplayerActive && !hasEnteredLive) ...[
-                          const SizedBox(width: 5),
+                          const SizedBox(width: 6),
                           Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
+                              horizontal: 7,
                               vertical: 2,
                             ),
                             decoration: BoxDecoration(
@@ -10496,24 +15524,24 @@ class _CollaborativeMemoryGameViewState
                               isSi ? '⏳ එක්වෙමින්' : '⏳ Joining',
                               style: const TextStyle(
                                 color: Color(0xFF92400E),
-                                fontSize: 9.5,
+                                fontSize: 10,
                                 fontWeight: FontWeight.w800,
                               ),
                             ),
                           ),
                         ],
                         if (isTurn) ...[
-                          const SizedBox(width: 6),
+                          const SizedBox(width: 7),
                           Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2,
+                              horizontal: 8,
+                              vertical: 2.5,
                             ),
                             decoration: BoxDecoration(
                               gradient: const LinearGradient(
                                 colors: [Color(0xFF7C3AED), Color(0xFFEC4899)],
                               ),
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(9),
                             ),
                             child: Text(
                               p.isHost || !_isLiveMultiplayerActive
@@ -10521,7 +15549,7 @@ class _CollaborativeMemoryGameViewState
                                   : (isSi ? 'වාරය' : 'PLAYING'),
                               style: const TextStyle(
                                 color: Colors.white,
-                                fontSize: 9.5,
+                                fontSize: 10,
                                 fontWeight: FontWeight.w900,
                               ),
                             ),
@@ -10533,128 +15561,194 @@ class _CollaborativeMemoryGameViewState
                 }),
               ),
               Wrap(
-                spacing: 8,
+                spacing: 9,
                 runSpacing: 6,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  // How to Play Guide Button (accessible mid-game)
-                  OutlinedButton.icon(
-                    key: const ValueKey('collab_how_to_play_play_button'),
-                    onPressed: _showHowToPlayDialog,
-                    icon: const Icon(Icons.help_outline_rounded, size: 15),
-                    label: Text(
-                      isSi ? 'උදව්' : 'Guide',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.white,
-                      backgroundColor: Colors.white.withValues(alpha: 0.14),
+                  // How to Play Guide Button (crisp non-squashed pill)
+                  Material(
+                    color: Colors.white.withValues(alpha: 0.16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                       side: BorderSide(
                         color: Colors.white.withValues(alpha: 0.50),
+                        width: 1.3,
                       ),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 11,
-                        vertical: 7,
-                      ),
-                      minimumSize: Size.zero,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(11),
+                    ),
+                    child: InkWell(
+                      key: const ValueKey('collab_how_to_play_play_button'),
+                      onTap: _showHowToPlayDialog,
+                      borderRadius: BorderRadius.circular(12),
+                      hoverColor: Colors.white.withValues(alpha: 0.24),
+                      child: SizedBox(
+                        height: 36,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 13),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.help_outline_rounded,
+                                size: 16,
+                                color: Colors.white,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                isSi ? 'උදව්' : 'Guide',
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white,
+                                  height: 1.1,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                   ),
                   // Gentle Picnic Music Toggle Pill
-                  OutlinedButton.icon(
-                    key: const ValueKey('collab_music_toggle_button'),
-                    onPressed: _toggleGameMusic,
-                    icon: Icon(
-                      isMuted ? Icons.music_off_rounded : Icons.music_note_rounded,
-                      size: 15,
-                    ),
-                    label: Text(
-                      isMuted
-                          ? (isSi ? 'සංගීතය: OFF' : 'Music: OFF')
-                          : (isSi ? 'සංගීතය: ON' : 'Music: ON'),
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: isMuted
-                          ? Colors.white.withValues(alpha: 0.75)
-                          : const Color(0xFFA7F3D0),
-                      backgroundColor: isMuted
-                          ? Colors.white.withValues(alpha: 0.08)
-                          : const Color(0xFF10B981).withValues(alpha: 0.22),
+                  Material(
+                    color: isMuted
+                        ? Colors.white.withValues(alpha: 0.10)
+                        : const Color(0xFF10B981).withValues(alpha: 0.24),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                       side: BorderSide(
                         color: isMuted
-                            ? Colors.white.withValues(alpha: 0.30)
-                            : const Color(0xFF6EE7B7).withValues(alpha: 0.70),
+                            ? Colors.white.withValues(alpha: 0.35)
+                            : const Color(0xFF6EE7B7).withValues(alpha: 0.78),
+                        width: 1.3,
                       ),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 11,
-                        vertical: 7,
-                      ),
-                      minimumSize: Size.zero,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(11),
+                    ),
+                    child: InkWell(
+                      key: const ValueKey('collab_music_toggle_button'),
+                      onTap: _toggleGameMusic,
+                      borderRadius: BorderRadius.circular(12),
+                      hoverColor: Colors.white.withValues(alpha: 0.18),
+                      child: SizedBox(
+                        height: 36,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 13),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                isMuted
+                                    ? Icons.music_off_rounded
+                                    : Icons.music_note_rounded,
+                                size: 16,
+                                color: isMuted
+                                    ? Colors.white.withValues(alpha: 0.80)
+                                    : const Color(0xFFA7F3D0),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                isMuted
+                                    ? (isSi ? 'සංගීතය: OFF' : 'Music: OFF')
+                                    : (isSi ? 'සංගීතය: ON' : 'Music: ON'),
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
+                                  color: isMuted
+                                      ? Colors.white.withValues(alpha: 0.80)
+                                      : const Color(0xFFA7F3D0),
+                                  height: 1.1,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                   ),
                   if (!isCompleted) ...[
-                    ElevatedButton.icon(
-                      key: const ValueKey('ask_teammate_hint_button'),
-                      onPressed: _askInvitedTeammateForHint,
-                      icon: const Icon(LucideIcons.messageCircle, size: 14),
-                      label: Text(
-                        isSi ? '💡 ඉඟියක්' : '💡 Hint',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
+                    // Crisp Golden Hint Pill
+                    Material(
+                      color: const Color(0xFFFDE68A),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: const BorderSide(
+                          color: Color(0xFFFCD34D),
+                          width: 1.3,
                         ),
                       ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFFDE68A),
-                        foregroundColor: const Color(0xFF4C1D95),
-                        elevation: 0,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 11,
-                          vertical: 7,
-                        ),
-                        minimumSize: Size.zero,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(11),
+                      child: InkWell(
+                        key: const ValueKey('ask_teammate_hint_button'),
+                        onTap: _askInvitedTeammateForHint,
+                        borderRadius: BorderRadius.circular(12),
+                        hoverColor: const Color(0xFFFCD34D),
+                        child: SizedBox(
+                          height: 36,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 13),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.lightbulb_rounded,
+                                  size: 16,
+                                  color: Color(0xFF4C1D95),
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  isSi ? 'ඉඟියක්' : 'Hint',
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w900,
+                                    color: Color(0xFF4C1D95),
+                                    height: 1.1,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                    OutlinedButton.icon(
-                      key: const ValueKey('leave_live_game_button'),
-                      onPressed: () =>
-                          _showLeaveGameConfirmDialog(exitToHub: false),
-                      icon: const Icon(Icons.logout_rounded, size: 14),
-                      label: Text(
-                        isSi ? 'ඉවත්වන්න' : 'Leave Game',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
+                    // Crisp Rose Leave Game Pill
+                    Material(
+                      color: const Color(0xFFDC2626).withValues(alpha: 0.30),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: BorderSide(
+                          color: const Color(0xFFFCA5A5).withValues(alpha: 0.78),
+                          width: 1.3,
                         ),
                       ),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFFFEE2E2),
-                        backgroundColor:
-                            const Color(0xFFDC2626).withValues(alpha: 0.28),
-                        side: BorderSide(
-                          color: const Color(0xFFFCA5A5).withValues(alpha: 0.70),
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 11,
-                          vertical: 7,
-                        ),
-                        minimumSize: Size.zero,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(11),
+                      child: InkWell(
+                        key: const ValueKey('leave_live_game_button'),
+                        onTap: () =>
+                            _showLeaveGameConfirmDialog(exitToHub: false),
+                        borderRadius: BorderRadius.circular(12),
+                        hoverColor:
+                            const Color(0xFFDC2626).withValues(alpha: 0.48),
+                        child: SizedBox(
+                          height: 36,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 13),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.logout_rounded,
+                                  size: 15.5,
+                                  color: Color(0xFFFEE2E2),
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  isSi ? 'ඉවත්වන්න' : 'Leave Game',
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w800,
+                                    color: Color(0xFFFEE2E2),
+                                    height: 1.1,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -10665,52 +15759,67 @@ class _CollaborativeMemoryGameViewState
           ),
         ),
 
-        // 2. ZERO-SCROLL 2-Column Smart Virtual Picnic Play Arena
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+        // 2. Bigger, Equal-Height Animated Pastel Picnic Play Arena (Zero Scroll!)
+        ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 462),
+          child: Stack(
             children: [
-              // Live Restart / Play Another Round Approval Strip (if active)
-              if (_restartRequestedBy != null)
-                _buildRestartVoteStrip(isSi, isCompleted),
+              const Positioned.fill(
+                child: IgnorePointer(
+                  child: _PairsAmbientPlayBackdrop(),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Live Restart / Play Another Round Approval Strip (if active)
+                    if (_restartRequestedBy != null)
+                      _buildRestartVoteStrip(isSi, isCompleted),
 
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final isWide = constraints.maxWidth >= 740;
-                  final leftBasketPanel = _buildGameplayLeftBasketPanel(
-                    isSi: isSi,
-                    isCompleted: isCompleted,
-                    isRecallStage: isRecallStage,
-                    lastPickedItem: lastPickedItem,
-                  );
-                  final rightPlayBoard = isCompleted
-                      ? _buildCompactVictoryPanel(isSi)
-                      : _buildGameplayRightItemsBoard(
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final isWide = constraints.maxWidth >= 740;
+                        final leftBasketPanel = _buildGameplayLeftBasketPanel(
                           isSi: isSi,
+                          isCompleted: isCompleted,
                           isRecallStage: isRecallStage,
-                          activeName: activeName,
+                          lastPickedItem: lastPickedItem,
                         );
+                        final rightPlayBoard = isCompleted
+                            ? _buildCompactVictoryPanel(isSi)
+                            : _buildGameplayRightItemsBoard(
+                                isSi: isSi,
+                                isRecallStage: isRecallStage,
+                                activeName: activeName,
+                                isWide: isWide,
+                              );
 
-                  if (isWide) {
-                    return Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(flex: 4, child: leftBasketPanel),
-                        const SizedBox(width: 14),
-                        Expanded(flex: 6, child: rightPlayBoard),
-                      ],
-                    );
-                  }
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      leftBasketPanel,
-                      const SizedBox(height: 12),
-                      rightPlayBoard,
-                    ],
-                  );
-                },
+                        if (isWide) {
+                          return IntrinsicHeight(
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Expanded(flex: 4, child: leftBasketPanel),
+                                const SizedBox(width: 16),
+                                Expanded(flex: 6, child: rightPlayBoard),
+                              ],
+                            ),
+                          );
+                        }
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            leftBasketPanel,
+                            const SizedBox(height: 14),
+                            rightPlayBoard,
+                          ],
+                        );
+                      },
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -10857,7 +15966,7 @@ class _CollaborativeMemoryGameViewState
     final showFeedback = rawFeedback != null && !isRedundantPickBanner;
 
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [
@@ -10868,285 +15977,350 @@ class _CollaborativeMemoryGameViewState
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFFCD34D), width: 1.5),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: const Color(0xFFFCD34D), width: 1.6),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFF59E0B).withValues(alpha: 0.10),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Basket Title + Progress Chip
-          Row(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text('🧺', style: TextStyle(fontSize: 20)),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  isRecallStage
-                      ? (isSi ? 'පිළිවෙලට මතකයෙන් තෝරන්න' : 'Recall in Order')
-                      : (isSi ? 'විනෝද චාරිකා කූඩය' : 'Picnic Basket'),
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.navy,
-                  ),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFF59E0B)),
-                ),
-                child: Text(
-                  isRecallStage
-                      ? '${_currentRecallInput.length} / ${_packedChain.length}'
-                      : '${_packedChain.length} / $_targetChainLength',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w900,
-                    color: Color(0xFFB45309),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-
-          // 5 Compact Plush Basket Slots (zero scroll!)
-          ...List.generate(_targetChainLength, (slotIndex) {
-            final isPacked = slotIndex < _packedChain.length;
-            final isRevealed = !isRecallStage ||
-                slotIndex < _currentRecallInput.length ||
-                isCompleted;
-            final item = isPacked ? _packedChain[slotIndex] : null;
-            final isNextToRecall =
-                isRecallStage && slotIndex == _currentRecallInput.length;
-
-            return Container(
-              margin: const EdgeInsets.only(bottom: 7),
-              padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
-              decoration: BoxDecoration(
-                color: isNextToRecall
-                    ? const Color(0xFFDBEAFE)
-                    : isPacked
-                        ? (isRevealed ? Colors.white : const Color(0xFFEFF6FF))
-                        : Colors.white.withValues(alpha: 0.65),
-                borderRadius: BorderRadius.circular(13),
-                border: Border.all(
-                  color: isNextToRecall
-                      ? const Color(0xFF2563EB)
-                      : isPacked
-                          ? (isRevealed ? item!.color : const Color(0xFF93C5FD))
-                          : const Color(0xFFCBD5E1),
-                  width: isNextToRecall ? 2.0 : (isPacked ? 1.5 : 1.0),
-                ),
-              ),
-              child: Row(
+              // Basket Title + Progress Chip
+              Row(
                 children: [
                   Container(
-                    width: 22,
-                    height: 22,
+                    width: 36,
+                    height: 36,
                     decoration: BoxDecoration(
-                      color: isPacked && isRevealed
-                          ? item!.color
-                          : isNextToRecall
-                              ? const Color(0xFF2563EB)
-                              : const Color(0xFFE2E8F0),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Center(
-                      child: Text(
-                        '${slotIndex + 1}',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w900,
-                          color: (isPacked && isRevealed) || isNextToRecall
-                              ? Colors.white
-                              : const Color(0xFF475569),
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(11),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFF59E0B).withValues(alpha: 0.18),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
                         ),
+                      ],
+                    ),
+                    child: const Center(
+                      child: Text('🧺', style: TextStyle(fontSize: 20)),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      isRecallStage
+                          ? (isSi ? 'පිළිවෙලට මතකයෙන් තෝරන්න' : 'Recall in Order')
+                          : (isSi ? 'විනෝද චාරිකා කූඩය' : 'Picnic Basket'),
+                      style: const TextStyle(
+                        fontSize: 16.5,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.navy,
                       ),
                     ),
                   ),
-                  const SizedBox(width: 9),
-                  if (!isPacked)
-                    Text(
-                      isSi ? 'හිස්' : 'Empty Slot',
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 11,
+                      vertical: 4.5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(13),
+                      border: Border.all(
+                        color: const Color(0xFFF59E0B),
+                        width: 1.4,
+                      ),
+                    ),
+                    child: Text(
+                      isRecallStage
+                          ? '${_currentRecallInput.length} / ${_packedChain.length}'
+                          : '${_packedChain.length} / $_targetChainLength',
                       style: const TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF94A3B8),
-                      ),
-                    )
-                  else if (isRevealed) ...[
-                    Icon(item!.icon, size: 17, color: item.color),
-                    const SizedBox(width: 7),
-                    Expanded(
-                      child: Text(
-                        _itemLabel(item),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w900,
-                          color: AppColors.navy,
-                        ),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFFB45309),
                       ),
                     ),
-                    const Icon(
-                      LucideIcons.check,
-                      size: 14,
-                      color: Color(0xFF10B981),
-                    ),
-                  ] else ...[
-                    const Icon(
-                      LucideIcons.helpCircle,
-                      size: 16,
-                      color: Color(0xFF2563EB),
-                    ),
-                    const SizedBox(width: 7),
-                    Text(
-                      isNextToRecall
-                          ? (isSi ? 'මෙය තෝරන්න!' : 'Tap this item!')
-                          : (isSi ? 'මතකයෙන් තෝරන්න' : 'Hidden in basket'),
-                      style: TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w800,
-                        color: isNextToRecall
-                            ? const Color(0xFF1D4ED8)
-                            : const Color(0xFF3B82F6),
-                      ),
-                    ),
-                  ],
+                  ),
                 ],
               ),
-            );
-          }),
+              const SizedBox(height: 14),
 
-          // Live Selected Spotlight inside left panel (zero vertical bloat above grid!)
-          if (spotlightVisible) ...[
-            const SizedBox(height: 4),
-            TweenAnimationBuilder<double>(
-              key: ValueKey('live_picked_spotlight_${_lastSelectedAtMs ?? 0}'),
-              tween: Tween(begin: 0.94, end: 1.0),
-              duration: const Duration(milliseconds: 260),
-              curve: Curves.easeOutBack,
-              builder: (context, scale, child) =>
-                  Transform.scale(scale: scale, child: child),
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(13),
-                  border: Border.all(
-                    color: _lastSelectedAction == 'wrong'
-                        ? const Color(0xFFF59E0B)
-                        : lastPickedItem!.color,
-                    width: 1.6,
+              // 5 Big Clear Plush Basket Slots (zero scroll!)
+              ...List.generate(_targetChainLength, (slotIndex) {
+                final isPacked = slotIndex < _packedChain.length;
+                final isRevealed = !isRecallStage ||
+                    slotIndex < _currentRecallInput.length ||
+                    isCompleted;
+                final item = isPacked ? _packedChain[slotIndex] : null;
+                final isNextToRecall =
+                    isRecallStage && slotIndex == _currentRecallInput.length;
+
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 9),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 13,
+                    vertical: 10.5,
                   ),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 28,
-                      height: 28,
-                      decoration: BoxDecoration(
-                        color: lastPickedItem!.color,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        lastPickedItem.icon,
-                        size: 15,
-                        color: Colors.white,
-                      ),
+                  decoration: BoxDecoration(
+                    color: isNextToRecall
+                        ? const Color(0xFFDBEAFE)
+                        : isPacked
+                            ? (isRevealed
+                                ? Colors.white
+                                : const Color(0xFFEFF6FF))
+                            : Colors.white.withValues(alpha: 0.78),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: isNextToRecall
+                          ? const Color(0xFF2563EB)
+                          : isPacked
+                              ? (isRevealed
+                                  ? item!.color
+                                  : const Color(0xFF93C5FD))
+                              : const Color(0xFFCBD5E1),
+                      width: isNextToRecall ? 2.2 : (isPacked ? 1.6 : 1.1),
                     ),
-                    const SizedBox(width: 9),
-                    Expanded(
-                      child: Text(
-                        () {
-                          final rawActor = _lastSelectedByName!;
-                          final actorDisp = isSi
-                              ? SinhalaNameTransliterator.toSinhala(
-                                  rawActor,
-                                  fallback: rawActor,
-                                )
-                              : rawActor;
-                          final itemDisp = _itemLabel(lastPickedItem);
-                          if (_lastSelectedAction == 'packed') {
-                            return isSi
-                                ? '✨ $actorDisp: "$itemDisp" කූඩයට දැම්මා!'
-                                : '✨ $rawActor packed "$itemDisp"!';
-                          }
-                          if (_lastSelectedAction == 'recalled') {
-                            return isSi
-                                ? '✅ $actorDisp: "$itemDisp" නිවැරදියි!'
-                                : '✅ $rawActor recalled "$itemDisp"!';
-                          }
-                          return isSi
-                              ? '💛 $actorDisp: "$itemDisp" — නැවත උත්සාහ කරමු!'
-                              : '💛 $rawActor tapped "$itemDisp" — try again!';
-                        }(),
-                        style: const TextStyle(
-                          fontSize: 12.3,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.navy,
-                          height: 1.25,
+                    boxShadow: isPacked && isRevealed
+                        ? [
+                            BoxShadow(
+                              color: item!.color.withValues(alpha: 0.12),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 26,
+                        height: 26,
+                        decoration: BoxDecoration(
+                          color: isPacked && isRevealed
+                              ? item!.color
+                              : isNextToRecall
+                                  ? const Color(0xFF2563EB)
+                                  : const Color(0xFFE2E8F0),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: Text(
+                            '${slotIndex + 1}',
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w900,
+                              color: (isPacked && isRevealed) || isNextToRecall
+                                  ? Colors.white
+                                  : const Color(0xFF475569),
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
+                      const SizedBox(width: 11),
+                      if (!isPacked)
+                        Text(
+                          isSi ? 'හිස්' : 'Empty Slot',
+                          style: const TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF94A3B8),
+                          ),
+                        )
+                      else if (isRevealed) ...[
+                        Icon(item!.icon, size: 20, color: item.color),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _itemLabel(item),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 14.5,
+                              fontWeight: FontWeight.w900,
+                              color: AppColors.navy,
+                            ),
+                          ),
+                        ),
+                        const Icon(
+                          LucideIcons.check,
+                          size: 16,
+                          color: Color(0xFF10B981),
+                        ),
+                      ] else ...[
+                        const Icon(
+                          LucideIcons.helpCircle,
+                          size: 18,
+                          color: Color(0xFF2563EB),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          isNextToRecall
+                              ? (isSi ? 'මෙය තෝරන්න!' : 'Tap this item!')
+                              : (isSi ? 'මතකයෙන් තෝරන්න' : 'Hidden in basket'),
+                          style: TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w800,
+                            color: isNextToRecall
+                                ? const Color(0xFF1D4ED8)
+                                : const Color(0xFF3B82F6),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                );
+              }),
+            ],
+          ),
 
-          // Hint or non-duplicate guidance pill
-          if (_teammateHintText != null) ...[
-            const SizedBox(height: 7),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFAF5FF),
-                borderRadius: BorderRadius.circular(13),
-                border: Border.all(color: const Color(0xFFA78BFA)),
-              ),
-              child: Text(
-                '💡 ${_localizeHintText(_teammateHintText!)}',
-                style: const TextStyle(
-                  fontSize: 12.2,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF4C1D95),
-                  height: 1.3,
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Live Selected Spotlight inside left panel (zero vertical bloat above grid!)
+              if (spotlightVisible) ...[
+                const SizedBox(height: 6),
+                TweenAnimationBuilder<double>(
+                  key: ValueKey('live_picked_spotlight_${_lastSelectedAtMs ?? 0}'),
+                  tween: Tween(begin: 0.94, end: 1.0),
+                  duration: const Duration(milliseconds: 260),
+                  curve: Curves.easeOutBack,
+                  builder: (context, scale, child) =>
+                      Transform.scale(scale: scale, child: child),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: _lastSelectedAction == 'wrong'
+                            ? const Color(0xFFF59E0B)
+                            : lastPickedItem!.color,
+                        width: 1.7,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 30,
+                          height: 30,
+                          decoration: BoxDecoration(
+                            color: lastPickedItem!.color,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            lastPickedItem.icon,
+                            size: 16,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            () {
+                              final rawActor = _lastSelectedByName!;
+                              final actorDisp = isSi
+                                  ? SinhalaNameTransliterator.toSinhala(
+                                      rawActor,
+                                      fallback: rawActor,
+                                    )
+                                  : rawActor;
+                              final itemDisp = _itemLabel(lastPickedItem);
+                              if (_lastSelectedAction == 'packed') {
+                                return isSi
+                                    ? '✨ $actorDisp: "$itemDisp" කූඩයට දැම්මා!'
+                                    : '✨ $rawActor packed "$itemDisp"!';
+                              }
+                              if (_lastSelectedAction == 'recalled') {
+                                return isSi
+                                    ? '✅ $actorDisp: "$itemDisp" නිවැරදියි!'
+                                    : '✅ $rawActor recalled "$itemDisp"!';
+                              }
+                              return isSi
+                                  ? '💛 $actorDisp: "$itemDisp" — නැවත උත්සාහ කරමු!'
+                                  : '💛 $rawActor tapped "$itemDisp" — try again!';
+                            }(),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.navy,
+                              height: 1.25,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
-            ),
-          ] else if (showFeedback) ...[
-            const SizedBox(height: 7),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
-              decoration: BoxDecoration(
-                color: _isFeedbackPositive
-                    ? const Color(0xFFEFF6FF)
-                    : const Color(0xFFFFF7ED),
-                borderRadius: BorderRadius.circular(13),
-                border: Border.all(
-                  color: _isFeedbackPositive
-                      ? const Color(0xFF93C5FD)
-                      : const Color(0xFFF59E0B),
+              ],
+
+              // Hint or non-duplicate guidance pill
+              if (_teammateHintText != null) ...[
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFAF5FF),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFFA78BFA)),
+                  ),
+                  child: Text(
+                    '💡 ${_localizeHintText(_teammateHintText!)}',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF4C1D95),
+                      height: 1.3,
+                    ),
+                  ),
                 ),
-              ),
-              child: Text(
-                _localizeBannerText(rawFeedback),
-                style: const TextStyle(
-                  fontSize: 12.2,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.navy,
-                  height: 1.3,
+              ] else if (showFeedback) ...[
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _isFeedbackPositive
+                        ? const Color(0xFFEFF6FF)
+                        : const Color(0xFFFFF7ED),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: _isFeedbackPositive
+                          ? const Color(0xFF93C5FD)
+                          : const Color(0xFFF59E0B),
+                    ),
+                  ),
+                  child: Text(
+                    _localizeBannerText(rawFeedback),
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.navy,
+                      height: 1.3,
+                    ),
+                  ),
                 ),
-              ),
-            ),
-          ],
+              ],
+            ],
+          ),
         ],
       ),
     );
@@ -11156,26 +16330,254 @@ class _CollaborativeMemoryGameViewState
     required bool isSi,
     required bool isRecallStage,
     required String activeName,
+    bool isWide = true,
   }) {
     final isWaitingForPartner = _isLiveMultiplayerActive && !_isMyTurnNow;
+    final cols = isWide ? 4 : 2;
+    final double cardHeight = isWide ? 156 : 122;
+
+    Widget buildItemTile(_PicnicChainItem item) {
+      final alreadyPacked = _packedChain.any((c) => c.key == item.key);
+      final recalledThisTurn =
+          _currentRecallInput.any((c) => c.key == item.key);
+      final isDisabledInAddMode =
+          _stage == _ChainTurnStage.addNewItemToChain && alreadyPacked;
+      final isJustPickedByTeam = _lastSelectedItemKey == item.key &&
+          _lastSelectedByName != null &&
+          _lastSelectedByName!.isNotEmpty;
+      final pickerFirstName = isJustPickedByTeam
+          ? (() {
+              final rawFirst = _lastSelectedByName!.split(' ').first.trim();
+              return isSi
+                  ? SinhalaNameTransliterator.toSinhala(
+                      rawFirst,
+                      fallback: rawFirst,
+                    )
+                  : rawFirst;
+            })()
+          : '';
+
+      return Material(
+        color: Colors.transparent,
+        child: InkWell(
+          key: ValueKey('picnic_chain_item_${item.key}'),
+          onTap: (isDisabledInAddMode || isWaitingForPartner)
+              ? null
+              : () => _onTapPicnicItem(item),
+          borderRadius: BorderRadius.circular(20),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            height: cardHeight,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+            decoration: BoxDecoration(
+              gradient: isDisabledInAddMode && !isJustPickedByTeam
+                  ? null
+                  : LinearGradient(
+                      colors: isJustPickedByTeam
+                          ? [
+                              item.color.withValues(alpha: 0.24),
+                              const Color(0xFFFFFFFF),
+                            ]
+                          : recalledThisTurn
+                              ? const [
+                                  Color(0xFFECFDF5),
+                                  Color(0xFFD1FAE5),
+                                ]
+                              : [
+                                  Colors.white,
+                                  item.color.withValues(alpha: 0.14),
+                                ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+              color: isDisabledInAddMode && !isJustPickedByTeam
+                  ? const Color(0xFFF1F5F9)
+                  : null,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isJustPickedByTeam
+                    ? item.color
+                    : isDisabledInAddMode
+                        ? const Color(0xFFCBD5E1)
+                        : (recalledThisTurn
+                            ? const Color(0xFF10B981)
+                            : item.color.withValues(alpha: 0.50)),
+                width: isJustPickedByTeam ? 3.0 : (recalledThisTurn ? 2.4 : 1.7),
+              ),
+              boxShadow: isDisabledInAddMode && !isJustPickedByTeam
+                  ? null
+                  : [
+                      BoxShadow(
+                        color: item.color.withValues(
+                          alpha: isJustPickedByTeam ? 0.34 : 0.15,
+                        ),
+                        blurRadius: isJustPickedByTeam ? 18 : 12,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 58,
+                  height: 58,
+                  decoration: BoxDecoration(
+                    gradient: isDisabledInAddMode && !isJustPickedByTeam
+                        ? null
+                        : LinearGradient(
+                            colors: [
+                              item.color.withValues(alpha: 0.22),
+                              item.color.withValues(alpha: 0.08),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                    color: isDisabledInAddMode && !isJustPickedByTeam
+                        ? const Color(0xFFE2E8F0)
+                        : null,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 3),
+                    boxShadow: isDisabledInAddMode && !isJustPickedByTeam
+                        ? null
+                        : [
+                            BoxShadow(
+                              color: item.color.withValues(alpha: 0.24),
+                              blurRadius: 10,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                  ),
+                  child: Icon(
+                    item.icon,
+                    size: 29,
+                    color: isDisabledInAddMode && !isJustPickedByTeam
+                        ? AppColors.muted
+                        : item.color,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 9,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.85),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    _itemLabel(item),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w900,
+                      color: isDisabledInAddMode && !isJustPickedByTeam
+                          ? AppColors.muted
+                          : AppColors.navy,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                if (isJustPickedByTeam)
+                  Container(
+                    margin: const EdgeInsets.only(top: 5),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2.5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: item.color,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      isSi
+                          ? '👆 $pickerFirstName තේරුවා'
+                          : '👆 $pickerFirstName picked',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                      ),
+                    ),
+                  )
+                else if (isDisabledInAddMode)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      isSi ? '✓ දැම්මා' : '✓ Packed',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF059669),
+                      ),
+                    ),
+                  )
+                else if (recalledThisTurn)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      isSi ? '✓ හරි!' : '✓ Recalled!',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF059669),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    final itemRows = <Widget>[];
+    for (int i = 0; i < _picnicPool.length; i += cols) {
+      final rowChildren = <Widget>[];
+      for (int c = 0; c < cols; c++) {
+        final idx = i + c;
+        rowChildren.add(
+          Expanded(
+            child: idx < _picnicPool.length
+                ? buildItemTile(_picnicPool[idx])
+                : const SizedBox.shrink(),
+          ),
+        );
+        if (c < cols - 1) {
+          rowChildren.add(const SizedBox(width: 13));
+        }
+      }
+      itemRows.add(Row(children: rowChildren));
+      if (i + cols < _picnicPool.length) {
+        itemRows.add(const SizedBox(height: 13));
+      }
+    }
 
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFFFFFFFF), Color(0xFFF5F7FF)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFDBEAFE), width: 1.4),
+        color: Colors.white.withValues(alpha: 0.90),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: const Color(0xFFDBEAFE), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF2563EB).withValues(alpha: 0.06),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           // Clear High-Contrast Turn Prompt Strip
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
             decoration: BoxDecoration(
               gradient: isWaitingForPartner
                   ? const LinearGradient(
@@ -11184,18 +16586,27 @@ class _CollaborativeMemoryGameViewState
                   : const LinearGradient(
                       colors: [Color(0xFF4F46E5), Color(0xFF0D9488)],
                     ),
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(15),
               border: isWaitingForPartner
-                  ? Border.all(color: const Color(0xFFF59E0B), width: 1.3)
+                  ? Border.all(color: const Color(0xFFF59E0B), width: 1.4)
                   : null,
+              boxShadow: isWaitingForPartner
+                  ? null
+                  : [
+                      BoxShadow(
+                        color: const Color(0xFF4F46E5).withValues(alpha: 0.22),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
             ),
             child: Row(
               children: [
                 Text(
                   isWaitingForPartner ? '⏳' : (isRecallStage ? '🎯' : '🧺'),
-                  style: const TextStyle(fontSize: 17),
+                  style: const TextStyle(fontSize: 20),
                 ),
-                const SizedBox(width: 9),
+                const SizedBox(width: 11),
                 Expanded(
                   child: Text(
                     isWaitingForPartner
@@ -11210,7 +16621,7 @@ class _CollaborativeMemoryGameViewState
                                 ? '$activeName: කූඩයට අලුත් භාණ්ඩයක් තෝරන්න'
                                 : '$activeName: Pick 1 NEW item for the basket'),
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: 15,
                       fontWeight: FontWeight.w900,
                       color: isWaitingForPartner
                           ? const Color(0xFF92400E)
@@ -11221,207 +16632,14 @@ class _CollaborativeMemoryGameViewState
               ],
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 15),
 
-          // Plush 4x2 Zero-Scroll Tactile Picnic Item Grid
+          // Big Plush 4x2 Tactile Picnic Item Grid (Row+Expanded -> IntrinsicHeight safe!)
           Opacity(
-            opacity: isWaitingForPartner ? 0.72 : 1.0,
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final crossAxisCount = constraints.maxWidth >= 460 ? 4 : 2;
-                return GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: _picnicPool.length,
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: crossAxisCount,
-                    crossAxisSpacing: 10,
-                    mainAxisSpacing: 10,
-                    childAspectRatio: crossAxisCount == 4 ? 1.05 : 1.55,
-                  ),
-                  itemBuilder: (context, index) {
-                    final item = _picnicPool[index];
-                    final alreadyPacked =
-                        _packedChain.any((c) => c.key == item.key);
-                    final recalledThisTurn =
-                        _currentRecallInput.any((c) => c.key == item.key);
-                    final isDisabledInAddMode =
-                        _stage == _ChainTurnStage.addNewItemToChain &&
-                            alreadyPacked;
-                    final isJustPickedByTeam =
-                        _lastSelectedItemKey == item.key &&
-                            _lastSelectedByName != null &&
-                            _lastSelectedByName!.isNotEmpty;
-                    final pickerFirstName = isJustPickedByTeam
-                        ? (() {
-                            final rawFirst =
-                                _lastSelectedByName!.split(' ').first.trim();
-                            return isSi
-                                ? SinhalaNameTransliterator.toSinhala(
-                                    rawFirst,
-                                    fallback: rawFirst,
-                                  )
-                                : rawFirst;
-                          })()
-                        : '';
-
-                    return Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        key: ValueKey('picnic_chain_item_${item.key}'),
-                        onTap: (isDisabledInAddMode || isWaitingForPartner)
-                            ? null
-                            : () => _onTapPicnicItem(item),
-                        borderRadius: BorderRadius.circular(18),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 180),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            gradient:
-                                isDisabledInAddMode && !isJustPickedByTeam
-                                    ? null
-                                    : LinearGradient(
-                                        colors: isJustPickedByTeam
-                                            ? [
-                                                item.color
-                                                    .withValues(alpha: 0.24),
-                                                const Color(0xFFFFFFFF),
-                                              ]
-                                            : recalledThisTurn
-                                                ? const [
-                                                    Color(0xFFECFDF5),
-                                                    Color(0xFFD1FAE5),
-                                                  ]
-                                                : [
-                                                    Colors.white,
-                                                    item.color
-                                                        .withValues(alpha: 0.12),
-                                                  ],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                      ),
-                            color: isDisabledInAddMode && !isJustPickedByTeam
-                                ? const Color(0xFFF1F5F9)
-                                : null,
-                            borderRadius: BorderRadius.circular(18),
-                            border: Border.all(
-                              color: isJustPickedByTeam
-                                  ? item.color
-                                  : isDisabledInAddMode
-                                      ? const Color(0xFFCBD5E1)
-                                      : (recalledThisTurn
-                                          ? const Color(0xFF10B981)
-                                          : item.color.withValues(alpha: 0.55)),
-                              width: isJustPickedByTeam
-                                  ? 2.8
-                                  : (recalledThisTurn ? 2.2 : 1.6),
-                            ),
-                            boxShadow:
-                                isDisabledInAddMode && !isJustPickedByTeam
-                                    ? null
-                                    : [
-                                        BoxShadow(
-                                          color: item.color.withValues(
-                                            alpha: isJustPickedByTeam
-                                                ? 0.34
-                                                : 0.14,
-                                          ),
-                                          blurRadius:
-                                              isJustPickedByTeam ? 16 : 10,
-                                          offset: const Offset(0, 4),
-                                        ),
-                                      ],
-                          ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Container(
-                                width: 42,
-                                height: 42,
-                                decoration: BoxDecoration(
-                                  color:
-                                      isDisabledInAddMode && !isJustPickedByTeam
-                                          ? const Color(0xFFE2E8F0)
-                                          : item.color.withValues(alpha: 0.18),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(
-                                  item.icon,
-                                  size: 22,
-                                  color:
-                                      isDisabledInAddMode && !isJustPickedByTeam
-                                          ? AppColors.muted
-                                          : item.color,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                _itemLabel(item),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w900,
-                                  color:
-                                      isDisabledInAddMode && !isJustPickedByTeam
-                                          ? AppColors.muted
-                                          : AppColors.navy,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                              if (isJustPickedByTeam)
-                                Container(
-                                  margin: const EdgeInsets.only(top: 3),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 7,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: item.color,
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Text(
-                                    isSi
-                                        ? '👆 $pickerFirstName තේරුවා'
-                                        : '👆 $pickerFirstName picked',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      fontSize: 9.5,
-                                      fontWeight: FontWeight.w900,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                )
-                              else if (isDisabledInAddMode)
-                                Text(
-                                  isSi ? '✓ දැම්මා' : '✓ Packed',
-                                  style: const TextStyle(
-                                    fontSize: 10.5,
-                                    fontWeight: FontWeight.w800,
-                                    color: Color(0xFF059669),
-                                  ),
-                                )
-                              else if (recalledThisTurn)
-                                Text(
-                                  isSi ? '✓ හරි!' : '✓ Recalled!',
-                                  style: const TextStyle(
-                                    fontSize: 10.5,
-                                    fontWeight: FontWeight.w800,
-                                    color: Color(0xFF059669),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                );
-              },
+            opacity: isWaitingForPartner ? 0.78 : 1.0,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: itemRows,
             ),
           ),
         ],
@@ -11430,134 +16648,540 @@ class _CollaborativeMemoryGameViewState
   }
 
   Widget _buildCompactVictoryPanel(bool isSi) {
+    final score = _lastScore ?? 100.0;
+    final starCount = score >= 85 ? 5 : (score >= 60 ? 4 : 3);
+    final players = _orderedTurnPlayers;
+
     return AuroraGradientBorderFrame(
       borderRadius: 24,
-      borderWidth: 3.2,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 24),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [
-              Color(0xFF1E1B4B),
-              Color(0xFF4C1D95),
-              Color(0xFF0F766E),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(20.8),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text('🎉🧺🏆', style: TextStyle(fontSize: 36)),
-            const SizedBox(height: 10),
-            Text(
-              isSi ? 'විශිෂ්ට කණ්ඩායම් ජයක්!' : 'Wonderful Teamwork!',
-              style: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w900,
-                color: Colors.white,
-              ),
-            ),
-            const SizedBox(height: 6),
-            TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0.0, end: _lastScore ?? 100.0),
-              duration: const Duration(milliseconds: 900),
-              curve: Curves.easeOutCubic,
-              builder: (context, val, _) => Text(
-                isSi
-                    ? 'කණ්ඩායම් ලකුණු: ${val.toStringAsFixed(0)}%'
-                    : 'Team Score: ${val.toStringAsFixed(0)}%',
-                style: const TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w900,
-                  color: Color(0xFFFDE68A),
-                ),
-              ),
-            ),
-            const SizedBox(height: 6),
-            const Text('⭐⭐⭐⭐⭐', style: TextStyle(fontSize: 20)),
-            if (_isSaving)
-              Padding(
-                padding: const EdgeInsets.only(top: 6),
-                child: Text(
-                  isSi ? 'සුරකිමින්...' : 'Saving session...',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.85),
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            if (_saveErrorMessage != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 6),
-                child: Text(
-                  _saveErrorMessage!,
-                  style: const TextStyle(color: Color(0xFFFCA5A5)),
-                ),
-              ),
-            const SizedBox(height: 18),
-            Wrap(
-              spacing: 10,
-              runSpacing: 8,
-              alignment: WrapAlignment.center,
-              children: [
-                ElevatedButton.icon(
-                  key: const ValueKey('play_chain_again_button'),
-                  onPressed: _isLiveMultiplayerActive
-                      ? _showInitiateRestartConfirmDialog
-                      : _startCollaborativeGame,
-                  icon: const Icon(LucideIcons.rotateCcw, size: 16),
-                  label: Text(
-                    isSi ? 'තව වටයක් ක්‍රීඩා කරන්න' : 'Play Another Round',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: const Color(0xFF4C1D95),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 12,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                ),
-                OutlinedButton.icon(
-                  onPressed: _returnToInviteLobby,
-                  icon: const Icon(LucideIcons.users, size: 16),
-                  label: Text(
-                    isSi ? 'කාමරයට ආපසු' : 'Back to Lobby',
-                    style: const TextStyle(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    side: BorderSide(
-                      color: Colors.white.withValues(alpha: 0.50),
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                ),
+      borderWidth: 3.0,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(21),
+        child: Container(
+          width: double.infinity,
+          constraints: const BoxConstraints(minHeight: 424),
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Color(0xFFFFFDF9),
+                Color(0xFFF5F3FF),
+                Color(0xFFECFDF5),
+                Color(0xFFFFFBEB),
               ],
+              stops: [0.0, 0.35, 0.72, 1.0],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-          ],
+          ),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              // Animated celebration streamers, ribbons & confetti bursting across the victory card
+              const Positioned.fill(
+                child: IgnorePointer(
+                  child: _SeqPopupConfettiOverlay(),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 26,
+                  vertical: 24,
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Glowing Trophy Emblem flanked by sparkles & party popper
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text('✨', style: TextStyle(fontSize: 26)),
+                        const SizedBox(width: 14),
+                        Container(
+                          width: 82,
+                          height: 82,
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [
+                                Color(0xFF7C3AED),
+                                Color(0xFF2563EB),
+                                Color(0xFF0D9488),
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 4),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF7C3AED)
+                                    .withValues(alpha: 0.32),
+                                blurRadius: 20,
+                                offset: const Offset(0, 6),
+                              ),
+                            ],
+                          ),
+                          child: const Center(
+                            child: Icon(
+                              Icons.emoji_events_rounded,
+                              size: 42,
+                              color: Color(0xFFFEF08A),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        const Text('🎉', style: TextStyle(fontSize: 26)),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+
+                    Text(
+                      isSi ? 'විශිෂ්ට කණ්ඩායම් ජයක්!' : 'Wonderful Teamwork!',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 27,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF1E1B4B),
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+
+                    // 5 Glowing Golden Stars
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(
+                        5,
+                        (i) => Icon(
+                          Icons.star_rounded,
+                          size: 30,
+                          color: i < starCount
+                              ? const Color(0xFFF59E0B)
+                              : const Color(0xFFCBD5E1),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Celebrating Team Member Profile Avatars Strip
+                    if (players.isNotEmpty)
+                      Wrap(
+                        alignment: WrapAlignment.center,
+                        spacing: 10,
+                        runSpacing: 8,
+                        children: players.map((p) {
+                          return Container(
+                            padding: const EdgeInsets.fromLTRB(6, 5, 13, 5),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.94),
+                              borderRadius: BorderRadius.circular(24),
+                              border: Border.all(
+                                color: p.color.withValues(alpha: 0.35),
+                                width: 1.4,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: p.color.withValues(alpha: 0.12),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                _buildLobbyProfileAvatar(p, radius: 16),
+                                const SizedBox(width: 8),
+                                Text(
+                                  _safePlayerDisplayName(p),
+                                  style: const TextStyle(
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.w800,
+                                    color: Color(0xFF1E293B),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    const SizedBox(height: 16),
+
+                    // Crisp 2-Tile Pastel Score Summary
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 13),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.92),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: const Color(0xFFDDD6FE),
+                                width: 1.5,
+                              ),
+                            ),
+                            child: Column(
+                              children: [
+                                TweenAnimationBuilder<double>(
+                                  tween: Tween(begin: 0.0, end: score),
+                                  duration: const Duration(milliseconds: 900),
+                                  curve: Curves.easeOutCubic,
+                                  builder: (context, val, _) => Text(
+                                    '${val.toStringAsFixed(0)}%',
+                                    style: const TextStyle(
+                                      fontSize: 25,
+                                      fontWeight: FontWeight.w900,
+                                      color: Color(0xFF6D28D9),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  isSi ? 'කණ්ඩායම් ලකුණු' : 'Team Score',
+                                  style: const TextStyle(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF64748B),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 13),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.92),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: const Color(0xFFA7F3D0),
+                                width: 1.5,
+                              ),
+                            ),
+                            child: Column(
+                              children: [
+                                Text(
+                                  '${_packedChain.length} / $_targetChainLength',
+                                  style: const TextStyle(
+                                    fontSize: 25,
+                                    fontWeight: FontWeight.w900,
+                                    color: Color(0xFF047857),
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  isSi ? 'කූඩයේ භාණ්ඩ' : 'Items Packed',
+                                  style: const TextStyle(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF64748B),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    if (_saveErrorMessage != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Text(
+                          _saveErrorMessage!,
+                          style: const TextStyle(
+                            color: Color(0xFFDC2626),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+
+                    const SizedBox(height: 20),
+
+                    // Crisp, Well-Proportioned Non-Stretched Action Buttons
+                    Row(
+                      children: [
+                        Expanded(
+                          flex: 6,
+                          child: Material(
+                            color: Colors.transparent,
+                            borderRadius: BorderRadius.circular(15),
+                            child: InkWell(
+                              key: const ValueKey('play_chain_again_button'),
+                              onTap: _isLiveMultiplayerActive
+                                  ? _showInitiateRestartConfirmDialog
+                                  : _startCollaborativeGame,
+                              borderRadius: BorderRadius.circular(15),
+                              child: Ink(
+                                height: 48,
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    colors: [
+                                      Color(0xFF2563EB),
+                                      Color(0xFF7C3AED),
+                                      Color(0xFF0D9488),
+                                    ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(15),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(0xFF2563EB)
+                                          .withValues(alpha: 0.30),
+                                      blurRadius: 12,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(
+                                      LucideIcons.rotateCcw,
+                                      size: 18,
+                                      color: Colors.white,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Flexible(
+                                      child: Text(
+                                        isSi
+                                            ? 'තව වටයක් ක්‍රීඩා කරන්න'
+                                            : 'Play Another Round',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w900,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          flex: 4,
+                          child: Material(
+                            color: Colors.white.withValues(alpha: 0.96),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(15),
+                              side: const BorderSide(
+                                color: Color(0xFFC4B5FD),
+                                width: 1.6,
+                              ),
+                            ),
+                            child: InkWell(
+                              onTap: _returnToInviteLobby,
+                              borderRadius: BorderRadius.circular(15),
+                              hoverColor: const Color(0xFFF5F3FF),
+                              child: SizedBox(
+                                height: 48,
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(
+                                      LucideIcons.users,
+                                      size: 17,
+                                      color: Color(0xFF4C1D95),
+                                    ),
+                                    const SizedBox(width: 7),
+                                    Flexible(
+                                      child: Text(
+                                        isSi ? 'කාමරයට' : 'Back to Lobby',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          fontSize: 14.5,
+                                          fontWeight: FontWeight.w800,
+                                          color: Color(0xFF4C1D95),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
+}
+
+class _LobbyElderPortraitPainter extends CustomPainter {
+  final Color accentColor;
+  final bool isFemale;
+
+  const _LobbyElderPortraitPainter({
+    required this.accentColor,
+    required this.isFemale,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cx = size.width / 2;
+    final cy = size.height / 2;
+    final s = size.width;
+
+    // Warm shoulders / shirt
+    final shirtPaint = Paint()..color = accentColor;
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: Offset(cx, cy + s * 0.42),
+        width: s * 0.78,
+        height: s * 0.50,
+      ),
+      shirtPaint,
+    );
+
+    // Subtle collar / saree accent
+    if (isFemale) {
+      canvas.drawLine(
+        Offset(cx - s * 0.16, cy + s * 0.24),
+        Offset(cx + s * 0.14, cy + s * 0.48),
+        Paint()
+          ..color = const Color(0xFFFDE68A)
+          ..strokeWidth = s * 0.07
+          ..strokeCap = StrokeCap.round,
+      );
+    } else {
+      final collar = Path()
+        ..moveTo(cx - s * 0.10, cy + s * 0.22)
+        ..lineTo(cx, cy + s * 0.34)
+        ..lineTo(cx + s * 0.10, cy + s * 0.22)
+        ..close();
+      canvas.drawPath(collar, Paint()..color = Colors.white.withValues(alpha: 0.90));
+    }
+
+    // Neck
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromCenter(
+          center: Offset(cx, cy + s * 0.19),
+          width: s * 0.15,
+          height: s * 0.14,
+        ),
+        Radius.circular(s * 0.05),
+      ),
+      Paint()..color = const Color(0xFFF6C8A8),
+    );
+
+    // Silver hair bun / back hair for grandma
+    if (isFemale) {
+      canvas.drawCircle(
+        Offset(cx, cy - s * 0.27),
+        s * 0.14,
+        Paint()..color = const Color(0xFFE2E8F0),
+      );
+      canvas.drawCircle(
+        Offset(cx, cy - s * 0.04),
+        s * 0.25,
+        Paint()..color = const Color(0xFFF1F5F9),
+      );
+    } else {
+      // Soft silver side hair for grandpa
+      canvas.drawCircle(
+        Offset(cx - s * 0.19, cy - s * 0.06),
+        s * 0.085,
+        Paint()..color = const Color(0xFFE2E8F0),
+      );
+      canvas.drawCircle(
+        Offset(cx + s * 0.19, cy - s * 0.06),
+        s * 0.085,
+        Paint()..color = const Color(0xFFE2E8F0),
+      );
+    }
+
+    // Face
+    final faceCenter = Offset(cx, cy - s * 0.02);
+    final faceR = s * 0.22;
+    canvas.drawCircle(
+      faceCenter,
+      faceR,
+      Paint()..color = const Color(0xFFFCD5B8),
+    );
+
+    // Top silver hair fringe
+    if (isFemale) {
+      final hair = Path()
+        ..addArc(
+          Rect.fromCircle(center: faceCenter, radius: faceR + 0.8),
+          pi * 1.05,
+          pi * 0.90,
+        )
+        ..close();
+      canvas.drawPath(hair, Paint()..color = const Color(0xFFF8FAFC));
+    }
+
+    // Rosy cheeks
+    final cheekPaint = Paint()
+      ..color = const Color(0xFFFDA4AF).withValues(alpha: 0.45);
+    canvas.drawCircle(
+      Offset(cx - s * 0.11, cy + s * 0.03),
+      s * 0.042,
+      cheekPaint,
+    );
+    canvas.drawCircle(
+      Offset(cx + s * 0.11, cy + s * 0.03),
+      s * 0.042,
+      cheekPaint,
+    );
+
+    // Eyes
+    final eyePaint = Paint()..color = const Color(0xFF1E293B);
+    canvas.drawCircle(Offset(cx - s * 0.075, cy - s * 0.03), s * 0.024, eyePaint);
+    canvas.drawCircle(Offset(cx + s * 0.075, cy - s * 0.03), s * 0.024, eyePaint);
+
+    // Cute round glasses for grandpa
+    if (!isFemale) {
+      final glassPaint = Paint()
+        ..color = const Color(0xFF334155)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.5;
+      canvas.drawCircle(Offset(cx - s * 0.075, cy - s * 0.03), s * 0.06, glassPaint);
+      canvas.drawCircle(Offset(cx + s * 0.075, cy - s * 0.03), s * 0.06, glassPaint);
+      canvas.drawLine(
+        Offset(cx - s * 0.015, cy - s * 0.03),
+        Offset(cx + s * 0.015, cy - s * 0.03),
+        glassPaint,
+      );
+    }
+
+    // Warm smile
+    final smilePaint = Paint()
+      ..color = const Color(0xFFB91C1C)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.8
+      ..strokeCap = StrokeCap.round;
+    canvas.drawArc(
+      Rect.fromCenter(
+        center: Offset(cx, cy + s * 0.04),
+        width: s * 0.15,
+        height: s * 0.10,
+      ),
+      0.15,
+      pi - 0.30,
+      false,
+      smilePaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _LobbyElderPortraitPainter oldDelegate) =>
+      oldDelegate.accentColor != accentColor ||
+      oldDelegate.isFemale != isFemale;
 }

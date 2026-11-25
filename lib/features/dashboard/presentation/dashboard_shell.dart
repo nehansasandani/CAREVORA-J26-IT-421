@@ -110,18 +110,100 @@ class DashboardShell extends ConsumerWidget {
     Widget? elderBellButton,
   }) {
     return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: isMobile ? 12 : 24,
-        vertical: isMobile ? 10 : 0,
+      constraints: const BoxConstraints(minHeight: 72),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [
+            Color(0xFFF5F0FF), // Soft lilac matching sidebar
+            Color(0xFFFAF7FF), // Airy pastel lavender
+            Color(0xFFF3F8FF), // Soft sky mist
+            Color(0xFFECFDF9), // Gentle Carevora mint-teal tint
+          ],
+          stops: [0.0, 0.36, 0.72, 1.0],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ),
+        border: const Border(
+          bottom: BorderSide(color: Color(0xFFE4DCFA), width: 1.4),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF6D28D9).withValues(alpha: 0.055),
+            blurRadius: 12,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
-      constraints: const BoxConstraints(minHeight: 70),
-      decoration: const BoxDecoration(
-        color: AppColors.card,
-        border: Border(bottom: BorderSide(color: AppColors.border, width: 1)),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
+      child: ClipRect(
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // Soft decorative pastel accents harmonized with sidebar & cards
+            Positioned(
+              left: -24,
+              top: -28,
+              child: IgnorePointer(
+                child: Container(
+                  width: 120,
+                  height: 120,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: RadialGradient(
+                      colors: [
+                        const Color(0xFFA78BFA).withValues(alpha: 0.16),
+                        const Color(0xFFA78BFA).withValues(alpha: 0.0),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              right: 80,
+              bottom: -36,
+              child: IgnorePointer(
+                child: Container(
+                  width: 130,
+                  height: 130,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: RadialGradient(
+                      colors: [
+                        const Color(0xFF2DD4BF).withValues(alpha: 0.14),
+                        const Color(0xFF2DD4BF).withValues(alpha: 0.0),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              left: 340,
+              top: -32,
+              child: IgnorePointer(
+                child: Container(
+                  width: 100,
+                  height: 100,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: RadialGradient(
+                      colors: [
+                        const Color(0xFFF472B6).withValues(alpha: 0.11),
+                        const Color(0xFFF472B6).withValues(alpha: 0.0),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: isMobile ? 12 : 24,
+                vertical: isMobile ? 10 : 10,
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
           if (isMobile) ...[
             Builder(
               builder: (ctx) => IconButton(
@@ -252,6 +334,10 @@ class DashboardShell extends ConsumerWidget {
             ],
           ),
         ],
+      ),
+            ),
+          ],
+        ),
       ),
     );
   }

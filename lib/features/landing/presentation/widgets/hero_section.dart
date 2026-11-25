@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../../core/responsive/responsive_builder.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
@@ -117,9 +116,8 @@ class _HeroSectionState extends State<HeroSection>
         ),
         const SizedBox(height: 20),
         // Headline
-        RichText(
-          textAlign: isCentered ? TextAlign.center : TextAlign.start,
-          text: TextSpan(
+        Text.rich(
+          TextSpan(
             style: AppTextStyles.h1.copyWith(
               fontSize: isCentered ? 40 : 56,
               fontWeight: FontWeight.w800,
@@ -131,6 +129,7 @@ class _HeroSectionState extends State<HeroSection>
               TextSpan(text: LandingContent.heroTitlePurple, style: TextStyle(color: AppColors.primary)),
             ],
           ),
+          textAlign: isCentered ? TextAlign.center : TextAlign.start,
         ),
         const SizedBox(height: 20),
         // Paragraph
@@ -158,7 +157,7 @@ class _HeroSectionState extends State<HeroSection>
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 elevation: 4,
               ),
-              icon: const Icon(LucideIcons.sparkles, size: 18),
+              icon: const Icon(Icons.auto_awesome_rounded, size: 18),
               label: const Text('Get Started', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
             ),
             OutlinedButton.icon(
@@ -169,7 +168,7 @@ class _HeroSectionState extends State<HeroSection>
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
-              icon: const Icon(LucideIcons.playCircle, size: 18, color: AppColors.primary),
+              icon: const Icon(Icons.play_circle_outline_rounded, size: 18, color: AppColors.primary),
               label: const Text('Learn More', style: TextStyle(fontSize: 15)),
             ),
           ],
@@ -228,37 +227,47 @@ class _HeroSectionState extends State<HeroSection>
               isArch: true,
             ),
             // Floating Glass Card 1 (Top Left: Wellness Index)
-            AnimatedBuilder(
-              animation: _floatAnimation,
-              builder: (context, child) {
-                return Positioned(
-                  top: 20 + _floatAnimation.value,
-                  left: -20,
-                  child: child!,
-                );
-              },
-              child: _buildGlassCard(
-                icon: LucideIcons.gauge,
-                iconColor: AppColors.riskModerate,
-                title: 'Wellness Index: 0.62',
-                subtitle: 'Moderate Risk Zone',
+            Positioned(
+              top: 20,
+              left: -20,
+              child: RepaintBoundary(
+                child: AnimatedBuilder(
+                  animation: _floatAnimation,
+                  builder: (context, child) {
+                    return Transform.translate(
+                      offset: Offset(0, _floatAnimation.value),
+                      child: child,
+                    );
+                  },
+                  child: _buildGlassCard(
+                    icon: Icons.speed_rounded,
+                    iconColor: AppColors.riskModerate,
+                    title: 'Wellness Index: 0.62',
+                    subtitle: 'Moderate Risk Zone',
+                  ),
+                ),
               ),
             ),
             // Floating Glass Card 2 (Bottom Right: Early Alert)
-            AnimatedBuilder(
-              animation: _floatAnimation,
-              builder: (context, child) {
-                return Positioned(
-                  bottom: 30 - _floatAnimation.value,
-                  right: -20,
-                  child: child!,
-                );
-              },
-              child: _buildGlassCard(
-                icon: LucideIcons.bell,
-                iconColor: AppColors.riskHigh,
-                title: 'Early Clinical Alert',
-                subtitle: 'Affect shift detected',
+            Positioned(
+              bottom: 30,
+              right: -20,
+              child: RepaintBoundary(
+                child: AnimatedBuilder(
+                  animation: _floatAnimation,
+                  builder: (context, child) {
+                    return Transform.translate(
+                      offset: Offset(0, -_floatAnimation.value),
+                      child: child,
+                    );
+                  },
+                  child: _buildGlassCard(
+                    icon: Icons.notifications_active_rounded,
+                    iconColor: AppColors.riskHigh,
+                    title: 'Early Clinical Alert',
+                    subtitle: 'Affect shift detected',
+                  ),
+                ),
               ),
             ),
           ],

@@ -9,7 +9,6 @@ import '../../core/localization/app_strings.dart';
 import '../../core/localization/sinhala_name_transliterator.dart';
 import '../../features/auth/application/auth_controller.dart';
 import 'carevora_avatar.dart';
-import 'carevora_logo.dart';
 
 class DesktopSidebar extends ConsumerWidget {
   final String currentRoute;
@@ -251,21 +250,18 @@ class DesktopSidebar extends ConsumerWidget {
                         child: Row(
                           children: [
                             Container(
-                              width: 38,
-                              height: 38,
+                              padding: const EdgeInsets.all(2),
                               decoration: BoxDecoration(
-                                color: Colors.white,
+                                color: Colors.white.withValues(alpha: 0.2),
                                 shape: BoxShape.circle,
                                 border: Border.all(color: Colors.white, width: 1.5),
                               ),
-                              alignment: Alignment.center,
-                              child: Text(
-                                initials,
-                                style: const TextStyle(
-                                  color: Color(0xFF6D28D9),
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w900,
-                                ),
+                              child: CarevoraAvatar(
+                                avatarUrl: authState.avatarUrl,
+                                radius: 19,
+                                initials: initials,
+                                backgroundColor: const Color(0xFFEDE9FE),
+                                foregroundColor: const Color(0xFF6D28D9),
                               ),
                             ),
                             const SizedBox(width: 10),
@@ -373,6 +369,7 @@ class DesktopSidebar extends ConsumerWidget {
               BoxShadow(
                 color: Colors.white.withValues(alpha: 0.35),
                 blurRadius: 10,
+                offset: const Offset(0, 2),
               ),
             ],
           ),

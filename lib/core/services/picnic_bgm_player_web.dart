@@ -41,21 +41,23 @@ class PicnicBgmPlayer {
     }
   }
 
-  void playTapChime() {
+  void playTapChime({double volume = 0.80}) {
     if (_isMuted) return;
     try {
-      final chime = html.AudioElement(_tapChimeDataUri)..volume = 0.80;
+      final chime = html.AudioElement(_tapChimeDataUri)
+        ..volume = volume.clamp(0.0, 1.0);
       chime.play();
     } catch (_) {}
   }
 
-  void playVictoryChime() {
+  void playVictoryChime({double volume = 0.88}) {
     if (_isMuted) return;
     try {
       // Gently pause background music so the joyful victory celebration rings out clearly!
       _bgmAudio?.pause();
       _isPlaying = false;
-      final win = html.AudioElement(_victoryChimeDataUri)..volume = 0.88;
+      final win = html.AudioElement(_victoryChimeDataUri)
+        ..volume = volume.clamp(0.0, 1.0);
       win.play();
     } catch (_) {}
   }
