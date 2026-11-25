@@ -14,6 +14,7 @@ import '../../../core/localization/app_strings.dart';
 import '../../../core/localization/sinhala_name_transliterator.dart';
 import '../../../data/mock/mock_carevora_data.dart';
 import '../../auth/application/auth_controller.dart';
+import 'alerts_notifications_page.dart';
 import 'widgets/elder_game_invite_notifications.dart';
 import '../../../shared/widgets/carevora_ambient_backdrop.dart';
 
@@ -38,7 +39,7 @@ class DashboardShell extends ConsumerWidget {
       builder: (ctx, elderBellButton) => Scaffold(
         backgroundColor: AppColors.dashboardBg,
         drawer: Drawer(
-          backgroundColor: const Color(0xFF6D28D9),
+          backgroundColor: AppColors.card,
           child: SafeArea(
             child: DesktopSidebar(currentRoute: location, isCollapsed: false),
           ),
@@ -79,10 +80,13 @@ class DashboardShell extends ConsumerWidget {
               ),
             ],
           ),
-          desktop: (context) => Row(
+          desktop: (context) => Stack(
+            clipBehavior: Clip.none,
             children: [
-              DesktopSidebar(currentRoute: location, isCollapsed: false),
-              Expanded(
+              // Main content area painted first so the sidebar's playful cottage
+              // hill edge always peeks cleanly on top across every page!
+              Positioned.fill(
+                left: 265,
                 child: Column(
                   children: [
                     _buildTopBar(
@@ -95,6 +99,13 @@ class DashboardShell extends ConsumerWidget {
                     _buildContentWithBackdrop(child),
                   ],
                 ),
+              ),
+              Positioned(
+                left: 0,
+                top: 0,
+                bottom: 0,
+                width: 265,
+                child: DesktopSidebar(currentRoute: location, isCollapsed: false),
               ),
             ],
           ),
@@ -311,42 +322,13 @@ class DashboardShell extends ConsumerWidget {
               // Live Date and Time Chip
               if (!isMobile) _LiveDateTimeChip(isSinhala: strings.isSinhala),
               if (!isMobile) const SizedBox(width: 10),
-              // Bell Notification Icon with Badge (Elder gets live game invite notifications; Staff keeps clinical alerts)
+              // Bell Notification Icon with Live Real Badge (Elder gets live game invites; Staff gets real clinical alert count)
               if (authState.isElder && elderBellButton != null)
                 elderBellButton
               else
-                Stack(
-                  alignment: Alignment.topRight,
-                  children: [
-                    IconButton(
-                      padding: EdgeInsets.all(isMobile ? 8 : 10),
-                      constraints: const BoxConstraints(),
-                      icon: const Icon(LucideIcons.bell, size: 24, color: AppColors.navy),
-                      onPressed: () => context.go('/dashboard/alerts'),
-                    ),
-                    Positioned(
-                      top: isMobile ? 2 : 4,
-                      right: isMobile ? 2 : 4,
-                      child: Container(
-                        width: 18,
-                        height: 18,
-                        decoration: const BoxDecoration(
-                          color: AppColors.riskHigh,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Center(
-                          child: Text(
-                            '${MockCarevoraData.alerts.length}',
-                            style: const TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+                _StaffAlertsBellButton(
+                  authState: authState,
+                  isMobile: isMobile,
                 ),
             ],
           ),
@@ -482,6 +464,103 @@ class _LiveDateTimeChipState extends State<_LiveDateTimeChip> {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Live reactive Staff/Caregiver notification bell button synced with real
+/// clinical alerts. Automatically syncs on login & updates instantly whenever
+/// alerts are refreshed or acknowledged.
+class _StaffAlertsBellButton extends StatefulWidget {
+  final AuthState authState;
+  final bool isMobile;
+
+  const _StaffAlertsBellButton({
+    required this.authState,
+    required this.isMobile,
+  });
+
+  @override
+  State<_StaffAlertsBellButton> createState() => _StaffAlertsBellButtonState();
+}
+
+class _StaffAlertsBellButtonState extends State<_StaffAlertsBellButton> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ClinicalAlertsSync.sync(widget.authState);
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant _StaffAlertsBellButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.authState.elderHomeId != widget.authState.elderHomeId ||
+        oldWidget.authState.token != widget.authState.token) {
+      ClinicalAlertsSync.sync(widget.authState, force: true);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<int>(
+      valueListenable: MockCarevoraData.alertsVersion,
+      builder: (context, _, __) {
+        final count = MockCarevoraData.alerts
+            .where(
+              (a) =>
+                  a.id != 'ALT-1' &&
+                  a.id != 'ALT-3' &&
+                  !MockCarevoraData.acknowledgedAlertIds.contains(a.id),
+            )
+            .length;
+
+        return Stack(
+          alignment: Alignment.topRight,
+          children: [
+            IconButton(
+              padding: EdgeInsets.all(widget.isMobile ? 8 : 10),
+              constraints: const BoxConstraints(),
+              icon: const Icon(
+                LucideIcons.bell,
+                size: 24,
+                color: AppColors.navy,
+              ),
+              onPressed: () => context.go('/dashboard/alerts'),
+            ),
+            if (count > 0)
+              Positioned(
+                top: widget.isMobile ? 2 : 4,
+                right: widget.isMobile ? 2 : 4,
+                child: IgnorePointer(
+                  child: Container(
+                    constraints: const BoxConstraints(
+                      minWidth: 19,
+                      minHeight: 19,
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 5),
+                    decoration: BoxDecoration(
+                      color: AppColors.riskHigh,
+                      borderRadius: BorderRadius.circular(99),
+                      border: Border.all(color: Colors.white, width: 1.5),
+                    ),
+                    child: Center(
+                      child: Text(
+                        count > 99 ? '99+' : '$count',
+                        style: const TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }

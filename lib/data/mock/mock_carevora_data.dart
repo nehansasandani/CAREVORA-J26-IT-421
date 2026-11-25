@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/carevora_models.dart';
 
 class MockCarevoraData {
@@ -51,22 +54,55 @@ class MockCarevoraData {
     ),
   ];
 
-  static final List<AlertItem> alerts = [
-    const AlertItem(
-      id: 'ALT-1',
-      title: 'High Emotional Withdrawal',
-      description: 'Affect scoring indicates acute withdrawal during morning session.',
-      severity: 'High',
-      timestamp: 'Today, 08:30 AM',
-    ),
-    const AlertItem(
-      id: 'ALT-3',
-      title: 'Vitals Logging Reminder',
-      description: 'Evening BP and blood glucose logging requested for room 105.',
-      severity: 'Reminder',
-      timestamp: '11 May 2025',
-    ),
-  ];
+  // Live clinical alerts populated strictly from real backend assessments & live care events
+  static final List<AlertItem> alerts = [];
+
+  // Shared acknowledged alert IDs + who-attended audit log + live notifier for top-bar bell
+  static const String _kAttendanceLogKey = 'carevora_alert_attendance_log_v1';
+  static final Set<String> acknowledgedAlertIds = {};
+  static final Map<String, Map<String, String>> alertAttendanceLog = {};
+  static bool _attendanceLogLoaded = false;
+  static final ValueNotifier<int> alertsVersion = ValueNotifier<int>(0);
+
+  static int get unacknowledgedAlertCount =>
+      alerts.where((a) => !acknowledgedAlertIds.contains(a.id)).length;
+
+  static void notifyAlertsChanged() {
+    alertsVersion.value = alertsVersion.value + 1;
+  }
+
+  static Future<void> loadAttendanceLog() async {
+    if (_attendanceLogLoaded) return;
+    _attendanceLogLoaded = true;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_kAttendanceLogKey);
+      if (raw != null && raw.isNotEmpty) {
+        final decoded = jsonDecode(raw);
+        if (decoded is Map) {
+          for (final entry in decoded.entries) {
+            final id = entry.key.toString();
+            final val = entry.value;
+            if (val is Map) {
+              acknowledgedAlertIds.add(id);
+              alertAttendanceLog[id] = {
+                'by': val['by']?.toString() ?? '',
+                'time': val['time']?.toString() ?? '',
+              };
+            }
+          }
+          notifyAlertsChanged();
+        }
+      }
+    } catch (_) {}
+  }
+
+  static Future<void> saveAttendanceLog() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_kAttendanceLogKey, jsonEncode(alertAttendanceLog));
+    } catch (_) {}
+  }
 
   static final List<AssessmentQuestion> cognitiveQuestions = [
     const AssessmentQuestion(

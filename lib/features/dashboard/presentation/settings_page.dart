@@ -1361,274 +1361,329 @@ class _SettingsAmbientPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final t = progress * 2 * math.pi;
 
-    // 1. Soft breathing pastel aurora orbs around the outer perimeter
-    _drawGlowOrb(
-      canvas,
-      Offset(
-        size.width * 0.04 + math.sin(t) * 18,
-        size.height * 0.14 + math.cos(t * 0.8) * 20,
-      ),
-      115,
-      const Color(0xFF8B5CF6).withValues(alpha: 0.14),
-    );
-    _drawGlowOrb(
-      canvas,
-      Offset(
-        size.width * 0.96 + math.cos(t) * 18,
-        size.height * 0.22 + math.sin(t * 0.9) * 24,
-      ),
-      125,
-      const Color(0xFF14B8A6).withValues(alpha: 0.14),
-    );
-    _drawGlowOrb(
-      canvas,
-      Offset(
-        size.width * 0.05 + math.cos(t * 1.1) * 16,
-        size.height * 0.72 + math.sin(t) * 22,
-      ),
-      120,
-      const Color(0xFF38BDF8).withValues(alpha: 0.13),
-    );
-    _drawGlowOrb(
-      canvas,
-      Offset(
-        size.width * 0.95 + math.sin(t * 0.9) * 16,
-        size.height * 0.78 + math.cos(t * 1.1) * 20,
-      ),
-      118,
-      const Color(0xFFF472B6).withValues(alpha: 0.13),
-    );
-
-    // 2. Delicate flowing translucent ribbons hugging the left & right edges
-    _drawEdgeRibbon(
+    // 1. Soft breathing silk-wave aurora curtains hugging the far left & right edges
+    _drawSilkWave(
       canvas,
       size,
       isLeft: true,
       phase: t,
-      color: const Color(0xFF7C3AED).withValues(alpha: 0.085),
+      width: 56,
+      color: const Color(0xFF7C3AED).withValues(alpha: 0.055),
     );
-    _drawEdgeRibbon(
+    _drawSilkWave(
+      canvas,
+      size,
+      isLeft: true,
+      phase: t + 1.6,
+      width: 34,
+      color: const Color(0xFF38BDF8).withValues(alpha: 0.065),
+    );
+    _drawSilkWave(
       canvas,
       size,
       isLeft: false,
-      phase: -t + 1.4,
-      color: const Color(0xFF0D9488).withValues(alpha: 0.085),
+      phase: -t + 0.9,
+      width: 56,
+      color: const Color(0xFF0D9488).withValues(alpha: 0.055),
+    );
+    _drawSilkWave(
+      canvas,
+      size,
+      isLeft: false,
+      phase: -t + 2.4,
+      width: 34,
+      color: const Color(0xFFF472B6).withValues(alpha: 0.06),
     );
 
-    // 3. Concentric drifting pastel rings along both side margins
-    _drawFloatingRing(
+    // 2. Interlocking rotating pastel precision Settings Gears (Cogs)
+    // Top-left meshing pair
+    final tlMain = Offset(size.width * 0.048, size.height * 0.17);
+    _drawSettingsGear(
       canvas,
-      Offset(
-        size.width * 0.045 + math.sin(t + 0.5) * 9,
-        size.height * 0.34 + math.cos(t) * 16,
-      ),
-      26,
-      const Color(0xFF7C3AED).withValues(alpha: 0.22),
-      innerRing: true,
+      tlMain,
+      outerRadius: 27,
+      teeth: 8,
+      angle: t * 0.5,
+      color: const Color(0xFF7C3AED).withValues(alpha: 0.22),
+      fillAlpha: 0.07,
     );
-    _drawFloatingRing(
+    _drawSettingsGear(
       canvas,
-      Offset(
-        size.width * 0.955 + math.cos(t + 1.1) * 9,
-        size.height * 0.46 + math.sin(t * 1.2) * 18,
-      ),
-      30,
-      const Color(0xFF0D9488).withValues(alpha: 0.22),
-      innerRing: true,
-    );
-    _drawFloatingRing(
-      canvas,
-      Offset(
-        size.width * 0.065 + math.cos(t * 1.3) * 8,
-        size.height * 0.86 + math.sin(t) * 12,
-      ),
-      20,
-      const Color(0xFFEC4899).withValues(alpha: 0.22),
-    );
-    _drawFloatingRing(
-      canvas,
-      Offset(
-        size.width * 0.94 + math.sin(t * 1.2) * 8,
-        size.height * 0.10 + math.cos(t * 1.1) * 12,
-      ),
-      18,
-      const Color(0xFF3B82F6).withValues(alpha: 0.22),
+      tlMain + const Offset(31, 27),
+      outerRadius: 17,
+      teeth: 6,
+      angle: -t * (0.5 * 8 / 6) + 0.35,
+      color: const Color(0xFF3B82F6).withValues(alpha: 0.22),
+      fillAlpha: 0.065,
     );
 
-    // 4. Gently rotating soft rounded hexagons on outer borders
-    _drawFloatingHexagon(
+    // Bottom-right meshing pair
+    final brMain = Offset(size.width * 0.952, size.height * 0.80);
+    _drawSettingsGear(
+      canvas,
+      brMain,
+      outerRadius: 29,
+      teeth: 8,
+      angle: -t * 0.5,
+      color: const Color(0xFF0D9488).withValues(alpha: 0.22),
+      fillAlpha: 0.07,
+    );
+    _drawSettingsGear(
+      canvas,
+      brMain + const Offset(-32, -28),
+      outerRadius: 18,
+      teeth: 6,
+      angle: t * (0.5 * 8 / 6) + 0.25,
+      color: const Color(0xFF8B5CF6).withValues(alpha: 0.22),
+      fillAlpha: 0.065,
+    );
+
+    // Top-right solo accent gear
+    _drawSettingsGear(
+      canvas,
+      Offset(size.width * 0.952, size.height * 0.20),
+      outerRadius: 21,
+      teeth: 7,
+      angle: t * 0.45,
+      color: const Color(0xFF0284C7).withValues(alpha: 0.20),
+      fillAlpha: 0.06,
+    );
+
+    // Bottom-left solo accent gear
+    _drawSettingsGear(
+      canvas,
+      Offset(size.width * 0.050, size.height * 0.82),
+      outerRadius: 22,
+      teeth: 7,
+      angle: -t * 0.45,
+      color: const Color(0xFFDB2777).withValues(alpha: 0.19),
+      fillAlpha: 0.055,
+    );
+
+    // 3. Minimalist gliding Comfort-Slider & Toggle motifs along side margins
+    _drawGlidingTogglePill(
       canvas,
       Offset(
-        size.width * 0.032 + math.cos(t) * 7,
-        size.height * 0.56 + math.sin(t * 1.1) * 14,
+        size.width * 0.048,
+        size.height * 0.47 + math.sin(t) * 8,
       ),
-      15,
-      t * 0.5,
-      const Color(0xFF6366F1).withValues(alpha: 0.24),
+      width: 44,
+      height: 20,
+      knobPos: 0.5 + 0.5 * math.sin(t * 2.0),
+      color: const Color(0xFF7C3AED),
     );
-    _drawFloatingHexagon(
+    _drawGlidingSliderBar(
       canvas,
       Offset(
-        size.width * 0.965 + math.sin(t * 0.9) * 7,
-        size.height * 0.66 + math.cos(t) * 14,
+        size.width * 0.052,
+        size.height * 0.61 + math.cos(t * 1.1) * 7,
       ),
-      16,
-      -t * 0.45,
-      const Color(0xFF14B8A6).withValues(alpha: 0.24),
+      width: 48,
+      knobPos: 0.5 + 0.42 * math.cos(t * 1.5 + 0.8),
+      color: const Color(0xFF0D9488),
     );
-
-    // 5. Twinkling 4-point sparkles along left, right, top corners
-    final sparkles = <(double, double, double, Color, double)>[
-      (0.03, 0.22, 8.5, const Color(0xFF8B5CF6), 0.0),
-      (0.075, 0.44, 6.5, const Color(0xFF0EA5E9), 1.3),
-      (0.04, 0.68, 7.5, const Color(0xFFEC4899), 2.5),
-      (0.08, 0.92, 6.0, const Color(0xFF14B8A6), 3.7),
-      (0.965, 0.16, 8.0, const Color(0xFF14B8A6), 0.8),
-      (0.925, 0.34, 6.5, const Color(0xFF8B5CF6), 2.1),
-      (0.96, 0.58, 8.5, const Color(0xFF3B82F6), 3.3),
-      (0.93, 0.84, 7.0, const Color(0xFFF43F5E), 4.6),
-    ];
-
-    for (final s in sparkles) {
-      final pulse = 0.55 + 0.45 * math.sin(t * 2 + s.$5);
-      final cx = size.width * s.$1 + math.sin(t + s.$5) * 6;
-      final cy = size.height * s.$2 + math.cos(t + s.$5) * 9;
-      _drawSparkle(
-        canvas,
-        Offset(cx, cy),
-        s.$3 * (0.78 + 0.28 * pulse),
-        s.$4.withValues(alpha: 0.20 + 0.32 * pulse),
-      );
-    }
-
-    // 6. Soft drifting pastel wellness dots around the outer frame
-    final dots = <(double, double, double, Color, double)>[
-      (0.055, 0.12, 4.5, const Color(0xFF6366F1), 0.4),
-      (0.025, 0.48, 3.8, const Color(0xFF14B8A6), 1.9),
-      (0.068, 0.77, 4.2, const Color(0xFFF59E0B), 3.1),
-      (0.945, 0.28, 4.4, const Color(0xFFEC4899), 1.1),
-      (0.972, 0.74, 3.8, const Color(0xFF6366F1), 2.7),
-      (0.935, 0.91, 4.6, const Color(0xFF0EA5E9), 4.2),
-    ];
-
-    for (final d in dots) {
-      final dotPaint = Paint()
-        ..color = d.$4.withValues(
-          alpha: 0.22 + 0.14 * math.sin(t * 1.5 + d.$5),
-        );
-      canvas.drawCircle(
-        Offset(
-          size.width * d.$1 + math.cos(t + d.$5) * 8,
-          size.height * d.$2 + math.sin(t * 1.2 + d.$5) * 11,
-        ),
-        d.$3,
-        dotPaint,
-      );
-    }
+    _drawGlidingTogglePill(
+      canvas,
+      Offset(
+        size.width * 0.952,
+        size.height * 0.44 + math.cos(t * 1.1) * 8,
+      ),
+      width: 44,
+      height: 20,
+      knobPos: 0.5 + 0.5 * math.cos(t * 2.0 + 1.2),
+      color: const Color(0xFF0D9488),
+    );
+    _drawGlidingSliderBar(
+      canvas,
+      Offset(
+        size.width * 0.948,
+        size.height * 0.58 + math.sin(t * 1.2) * 7,
+      ),
+      width: 48,
+      knobPos: 0.5 + 0.42 * math.sin(t * 1.5 + 2.1),
+      color: const Color(0xFFDB2777),
+    );
   }
 
-  void _drawGlowOrb(Canvas canvas, Offset center, double radius, Color color) {
-    final paint = Paint()
-      ..shader = RadialGradient(
-        colors: [color, color.withValues(alpha: 0.0)],
-      ).createShader(Rect.fromCircle(center: center, radius: radius));
-    canvas.drawCircle(center, radius, paint);
-  }
-
-  void _drawEdgeRibbon(
+  void _drawSilkWave(
     Canvas canvas,
     Size size, {
     required bool isLeft,
     required double phase,
+    required double width,
     required Color color,
   }) {
     final path = Path();
-    final baseX = isLeft ? 14.0 : size.width - 14.0;
+    final edgeX = isLeft ? 0.0 : size.width;
     final dir = isLeft ? 1.0 : -1.0;
-    const steps = 28;
+    path.moveTo(edgeX, 0);
+    const steps = 32;
     for (int i = 0; i <= steps; i++) {
       final frac = i / steps;
       final y = size.height * frac;
-      final wave = math.sin(frac * math.pi * 3 + phase) * 14 * dir +
-          math.cos(frac * math.pi * 2 - phase * 0.7) * 8 * dir;
-      final x = baseX + wave;
-      if (i == 0) {
-        path.moveTo(x, y);
-      } else {
-        path.lineTo(x, y);
-      }
+      final swell = width * (0.55 + 0.45 * math.sin(frac * math.pi * 2.5 + phase)) +
+          math.cos(frac * math.pi * 1.5 - phase * 0.8) * 10.0;
+      path.lineTo(edgeX + swell * dir, y);
     }
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0
-      ..strokeCap = StrokeCap.round;
-    canvas.drawPath(path, paint);
+    path.lineTo(edgeX, size.height);
+    path.close();
+
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = color
+        ..style = PaintingStyle.fill,
+    );
   }
 
-  void _drawFloatingRing(
+  void _drawSettingsGear(
     Canvas canvas,
-    Offset center,
-    double radius,
-    Color color, {
-    bool innerRing = false,
+    Offset center, {
+    required double outerRadius,
+    required int teeth,
+    required double angle,
+    required Color color,
+    required double fillAlpha,
   }) {
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.8;
-    canvas.drawCircle(center, radius, paint);
-    if (innerRing) {
-      canvas.drawCircle(
-        center,
-        radius * 0.56,
-        Paint()
-          ..color = color.withValues(alpha: color.a * 0.6)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.2,
-      );
-    }
-  }
+    final innerR = outerRadius * 0.76;
+    final hubR = outerRadius * 0.36;
+    final step = (2 * math.pi) / teeth;
 
-  void _drawFloatingHexagon(
-    Canvas canvas,
-    Offset center,
-    double radius,
-    double angle,
-    Color color,
-  ) {
     final path = Path();
-    for (int i = 0; i < 6; i++) {
-      final a = angle + i * math.pi / 3;
-      final pt = Offset(
-        center.dx + math.cos(a) * radius,
-        center.dy + math.sin(a) * radius,
+    for (int i = 0; i < teeth; i++) {
+      final a0 = angle + i * step;
+      final a1 = a0 + step * 0.22;
+      final a2 = a0 + step * 0.48;
+      final a3 = a0 + step * 0.70;
+
+      final p0 = Offset(
+        center.dx + math.cos(a0) * innerR,
+        center.dy + math.sin(a0) * innerR,
       );
+      final p1 = Offset(
+        center.dx + math.cos(a1) * outerRadius,
+        center.dy + math.sin(a1) * outerRadius,
+      );
+      final p2 = Offset(
+        center.dx + math.cos(a2) * outerRadius,
+        center.dy + math.sin(a2) * outerRadius,
+      );
+      final p3 = Offset(
+        center.dx + math.cos(a3) * innerR,
+        center.dy + math.sin(a3) * innerR,
+      );
+
       if (i == 0) {
-        path.moveTo(pt.dx, pt.dy);
+        path.moveTo(p0.dx, p0.dy);
       } else {
-        path.lineTo(pt.dx, pt.dy);
+        path.lineTo(p0.dx, p0.dy);
       }
+      path.lineTo(p1.dx, p1.dy);
+      path.lineTo(p2.dx, p2.dy);
+      path.lineTo(p3.dx, p3.dy);
     }
     path.close();
+
+    // Cut out center circular hub using even-odd fill rule
+    path.addOval(Rect.fromCircle(center: center, radius: hubR));
+    path.fillType = PathFillType.evenOdd;
+
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = color.withValues(alpha: fillAlpha)
+        ..style = PaintingStyle.fill,
+    );
     canvas.drawPath(
       path,
       Paint()
         ..color = color
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.7,
+        ..strokeWidth = 1.6
+        ..strokeJoin = StrokeJoin.round,
     );
   }
 
-  void _drawSparkle(Canvas canvas, Offset center, double radius, Color color) {
-    final path = Path()
-      ..moveTo(center.dx, center.dy - radius)
-      ..quadraticBezierTo(center.dx, center.dy, center.dx + radius, center.dy)
-      ..quadraticBezierTo(center.dx, center.dy, center.dx, center.dy + radius)
-      ..quadraticBezierTo(center.dx, center.dy, center.dx - radius, center.dy)
-      ..quadraticBezierTo(center.dx, center.dy, center.dx, center.dy - radius)
-      ..close();
-    canvas.drawPath(path, Paint()..color = color);
+  void _drawGlidingTogglePill(
+    Canvas canvas,
+    Offset center, {
+    required double width,
+    required double height,
+    required double knobPos,
+    required Color color,
+  }) {
+    final rect = Rect.fromCenter(center: center, width: width, height: height);
+    final rrect = RRect.fromRectAndRadius(rect, Radius.circular(height / 2));
+
+    canvas.drawRRect(
+      rrect,
+      Paint()
+        ..color = color.withValues(alpha: 0.08 + 0.07 * knobPos)
+        ..style = PaintingStyle.fill,
+    );
+    canvas.drawRRect(
+      rrect,
+      Paint()
+        ..color = color.withValues(alpha: 0.24)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.4,
+    );
+
+    final knobR = height * 0.34;
+    final minX = rect.left + height * 0.5;
+    final maxX = rect.right - height * 0.5;
+    final kx = minX + (maxX - minX) * knobPos.clamp(0.0, 1.0);
+
+    canvas.drawCircle(
+      Offset(kx, center.dy),
+      knobR,
+      Paint()..color = color.withValues(alpha: 0.34),
+    );
+  }
+
+  void _drawGlidingSliderBar(
+    Canvas canvas,
+    Offset center, {
+    required double width,
+    required double knobPos,
+    required Color color,
+  }) {
+    final left = center.dx - width / 2;
+    final right = center.dx + width / 2;
+    final kx = left + width * knobPos.clamp(0.0, 1.0);
+
+    // Base track
+    canvas.drawLine(
+      Offset(left, center.dy),
+      Offset(right, center.dy),
+      Paint()
+        ..color = color.withValues(alpha: 0.16)
+        ..strokeWidth = 3.0
+        ..strokeCap = StrokeCap.round,
+    );
+    // Active filled segment
+    canvas.drawLine(
+      Offset(left, center.dy),
+      Offset(kx, center.dy),
+      Paint()
+        ..color = color.withValues(alpha: 0.32)
+        ..strokeWidth = 3.0
+        ..strokeCap = StrokeCap.round,
+    );
+    // Slider thumb
+    canvas.drawCircle(
+      Offset(kx, center.dy),
+      5.5,
+      Paint()..color = Colors.white.withValues(alpha: 0.85),
+    );
+    canvas.drawCircle(
+      Offset(kx, center.dy),
+      5.5,
+      Paint()
+        ..color = color.withValues(alpha: 0.38)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.8,
+    );
   }
 
   @override
