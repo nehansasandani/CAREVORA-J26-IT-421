@@ -27,17 +27,6 @@ class _CarevoraAppState extends ConsumerState<CarevoraApp> {
     0, 0, 0, 1, 0,
   ];
 
-  Key _routerKey = UniqueKey();
-
-  @override
-  void reassemble() {
-    super.reassemble();
-    AppRouter.reload();
-    setState(() {
-      _routerKey = UniqueKey();
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     final settings = ref.watch(appSettingsProvider);
@@ -56,7 +45,6 @@ class _CarevoraAppState extends ConsumerState<CarevoraApp> {
         : baseTheme;
 
     return MaterialApp.router(
-      key: _routerKey,
       title: 'Carevora – Compassionate Care, Smarter Tomorrow',
       theme: effectiveTheme,
       debugShowCheckedModeBanner: false,

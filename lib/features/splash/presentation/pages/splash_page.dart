@@ -13,6 +13,7 @@ class SplashPage extends StatefulWidget {
 class _SplashPageState extends State<SplashPage>
     with SingleTickerProviderStateMixin {
   late AnimationController _progressController;
+  Timer? _navTimer;
 
   @override
   void initState() {
@@ -24,8 +25,8 @@ class _SplashPageState extends State<SplashPage>
 
     _progressController.forward();
 
-    // Navigate to landing page '/' after loading completes
-    Timer(const Duration(milliseconds: 3200), () {
+    // Navigate to landing page '/landing' after loading completes
+    _navTimer = Timer(const Duration(milliseconds: 3200), () {
       if (mounted) {
         context.go('/landing');
       }
@@ -34,6 +35,7 @@ class _SplashPageState extends State<SplashPage>
 
   @override
   void dispose() {
+    _navTimer?.cancel();
     _progressController.dispose();
     super.dispose();
   }
