@@ -89,6 +89,13 @@ class DesktopSidebar extends ConsumerWidget {
                   _buildNavItem(
                     context,
                     icon: LucideIcons.brain,
+                    label: strings.isSinhala ? 'මතක පරීක්ෂාව' : strings.cognitiveAssessment,
+                    route: '/dashboard/cognitive/session',
+                    showDivider: true,
+                  ),
+                  _buildNavItem(
+                    context,
+                    icon: LucideIcons.heart,
                     label: strings.isSinhala ? 'මානසික ක්‍රියාකාරකම්' : strings.emotionalWellness,
                     route: '/dashboard/emotional',
                     showDivider: true,
