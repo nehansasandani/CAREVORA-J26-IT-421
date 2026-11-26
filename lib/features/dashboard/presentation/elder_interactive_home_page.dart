@@ -552,13 +552,11 @@ class _ElderInteractiveHomePageState
         Expanded(
           child: _buildMockupSlotCard(
             label: 'උදෑසන',
-            timeLine1: '6.00 –',
-            timeLine2: '10.00',
-            iconWidget: const Text('🌅', style: TextStyle(fontSize: 22)),
+            timeText: '(6.00 – 10.00)',
+            iconWidget: const Text('🌅', style: TextStyle(fontSize: 20)),
             isDone: morningDone,
             isCurrent: currentSlot == DailyAssessmentSlot.morning,
             slotType: DailyAssessmentSlot.morning,
-            activeColor: const Color(0xFF5B21B6),
           ),
         ),
         const SizedBox(width: 8),
@@ -567,13 +565,11 @@ class _ElderInteractiveHomePageState
         Expanded(
           child: _buildMockupSlotCard(
             label: 'දහවල්',
-            timeLine1: '10.00 –',
-            timeLine2: '4.00',
-            iconWidget: const Text('☀️', style: TextStyle(fontSize: 22)),
+            timeText: '(10.00 – 4.00)',
+            iconWidget: const Text('☀️', style: TextStyle(fontSize: 20)),
             isDone: afternoonDone,
             isCurrent: currentSlot == DailyAssessmentSlot.afternoon,
             slotType: DailyAssessmentSlot.afternoon,
-            activeColor: const Color(0xFF5B21B6),
           ),
         ),
         const SizedBox(width: 8),
@@ -582,13 +578,11 @@ class _ElderInteractiveHomePageState
         Expanded(
           child: _buildMockupSlotCard(
             label: 'රාත්‍රී',
-            timeLine1: '4.00 –',
-            timeLine2: '9.00',
-            iconWidget: const Text('🌙', style: TextStyle(fontSize: 22)),
+            timeText: '(4.00 – 9.00)',
+            iconWidget: const Text('🌙', style: TextStyle(fontSize: 20)),
             isDone: nightDone,
             isCurrent: currentSlot == DailyAssessmentSlot.night,
             slotType: DailyAssessmentSlot.night,
-            activeColor: const Color(0xFF5B21B6),
           ),
         ),
       ],
@@ -597,107 +591,102 @@ class _ElderInteractiveHomePageState
 
   Widget _buildMockupSlotCard({
     required String label,
-    required String timeLine1,
-    required String timeLine2,
+    required String timeText,
     required Widget iconWidget,
     required bool isDone,
     required bool isCurrent,
     required DailyAssessmentSlot slotType,
-    required Color activeColor,
   }) {
     Color bg;
     Color borderColor;
     double borderWidth;
-    Color titleColor;
-    Color timeColor;
 
     if (isDone) {
       bg = const Color(0xFFF0FDF4); // Soft therapeutic mint
-      borderColor = const Color(0xFF16A34A); // Emerald border
-      borderWidth = 2.0;
-      titleColor = const Color(0xFF166534);
-      timeColor = const Color(0xFF15803D);
+      borderColor = const Color(0xFF86EFAC); // Emerald mint border
+      borderWidth = 1.4;
     } else if (isCurrent) {
-      bg = const Color(0xFFFAF5FF); // Light lavender tint
-      borderColor = const Color(0xFF5B21B6); // Bold purple border matching mockup
-      borderWidth = 2.5;
-      titleColor = const Color(0xFF1E1B4B);
-      timeColor = const Color(0xFF5B21B6);
+      bg = const Color(0xFFFAF5FF); // Light lavender
+      borderColor = const Color(0xFF7C3AED); // Purple border
+      borderWidth = 1.6;
+    } else if (slotType == DailyAssessmentSlot.morning) {
+      bg = const Color(0xFFFFFBEB); // Soft morning amber
+      borderColor = const Color(0xFFFEF08A);
+      borderWidth = 1.2;
     } else {
       bg = Colors.white;
-      borderColor = const Color(0xFFE2E8F0); // Subtle neutral border
-      borderWidth = 1.4;
-      titleColor = const Color(0xFF1E1B4B);
-      timeColor = const Color(0xFF64748B);
+      borderColor = const Color(0xFFE2E8F0);
+      borderWidth = 1.2;
     }
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: borderColor, width: borderWidth),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          iconWidget,
-          const SizedBox(height: 6),
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 15.5,
-              fontWeight: FontWeight.w900,
-              color: titleColor,
-              letterSpacing: 0.1,
-            ),
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 4),
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: borderColor, width: borderWidth),
           ),
-          const SizedBox(height: 4),
-          Text(
-            timeLine1,
-            maxLines: 1,
-            style: TextStyle(
-              fontSize: 12.5,
-              fontWeight: FontWeight.w700,
-              color: timeColor,
-            ),
-          ),
-          Text(
-            timeLine2,
-            maxLines: 1,
-            style: TextStyle(
-              fontSize: 12.5,
-              fontWeight: FontWeight.w700,
-              color: timeColor,
-            ),
-          ),
-          const SizedBox(height: 4),
-          if (isCurrent)
-            const Text(
-              'දැන්',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w900,
-                color: Color(0xFF5B21B6),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              iconWidget,
+              const SizedBox(height: 5),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFF1E1B4B),
+                  letterSpacing: -0.1,
+                ),
               ),
-            )
-          else if (isDone)
-            const Text(
-              '✓',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w900,
+              const SizedBox(height: 3),
+              Text(
+                timeText,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF475569),
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (isDone)
+          Positioned(
+            top: -5,
+            right: -3,
+            child: Container(
+              width: 19,
+              height: 19,
+              decoration: const BoxDecoration(
                 color: Color(0xFF16A34A),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Color(0x3316A34A),
+                    blurRadius: 4,
+                    offset: Offset(0, 1),
+                  ),
+                ],
               ),
-            )
-          else
-            const SizedBox(height: 19), // Preserves uniform height across all 3 cards
-        ],
-      ),
+              child: const Icon(
+                Icons.check,
+                color: Colors.white,
+                size: 13,
+              ),
+            ),
+          ),
+      ],
     );
   }
 
@@ -1609,27 +1598,22 @@ class _ElderInteractiveHomePageState
               _wrapWithFloatingReminder(
                 isDone: emotionalDone,
                 child: _buildTopAssessmentCard(
-                  backgroundColor: Colors.white,
-                  borderColor: emotionalDone ? const Color(0xFFC084FC) : const Color(0xFFDDD6FE),
-                  iconBorderColor: const Color(0xFFC084FC),
-                  badgeIcon: '🧘',
+                  badgeIconWidget: const Icon(Icons.psychology_rounded, color: Colors.white, size: 28),
                   title: 'මානසික ක්‍රියාකාරකම්',
-                  description: 'ඔබගේ මානසික සුවය වැඩි\nදියුණු කරයි.',
-                  statusBadgeWidget: const SizedBox.shrink(),
+                  description: 'ඔබගේ මානසික සුවය වැඩි දියුණු කරයි.',
                   sessionTrackerWidget: _buildDailySessionTracker(
                     activity: 'emotional',
                     currentSlot: currentSlot,
-                    activeThemeColor: const Color(0xFF5B21B6),
+                    activeThemeColor: const Color(0xFF6D28D9),
                   ),
-                  topRightIllustration: null,
+                  topRightIllustration: _buildGrandmaIllustrationExact(),
                   buttonText: emotionalDone
                       ? 'සම්පූර්ණයි ($nextSlotTime ට) ⏰'
                       : 'ඊලඟ ක්‍රියාකාරකම කරන්න',
+                  buttonIcon: const Icon(Icons.psychology_rounded, color: Colors.white, size: 20),
                   buttonGradient: emotionalDone
-                      ? const [Color(0xFF4C1D95), Color(0xFF5B21B6)]
-                      : const [Color(0xFF5B21B6), Color(0xFF6D28D9)],
-                  isEmotionalCard: true,
-                  bottomDecoration: null,
+                      ? const [Color(0xFF5B21B6), Color(0xFF6D28D9)]
+                      : const [Color(0xFF6D28D9), Color(0xFF7C3AED)],
                   onTap: () {
                     if (emotionalDone) {
                       _showSessionAlreadyCompletedDialog(
@@ -1650,36 +1634,31 @@ class _ElderInteractiveHomePageState
                 ),
               ),
 
-              // Card 2: මනස පරීක්ෂණ ක්‍රියාකාරකම් (Exact mockup match)
+              // Card 2: මතක පරීක්ෂණ ක්‍රියාකාරකම් (Exact mockup match)
               _wrapWithFloatingReminder(
                 isDone: memoryDone,
                 child: _buildTopAssessmentCard(
-                  backgroundColor: Colors.white,
-                  borderColor: memoryDone ? const Color(0xFFC084FC) : const Color(0xFFDDD6FE),
-                  iconBorderColor: const Color(0xFFC084FC),
-                  badgeIcon: '🧩',
-                  title: 'මනස පරීක්ෂණ ක්‍රියාකාරකම්',
-                  description: 'මනස හා අවධානය වැඩි\nකර කරයි.',
-                  statusBadgeWidget: const SizedBox.shrink(),
+                  badgeIconWidget: const Icon(Icons.extension_rounded, color: Colors.white, size: 26),
+                  title: 'මතක පරීක්ෂණ ක්‍රියාකාරකම්',
+                  description: 'මතක හා අවධානය වර්ධනයනය කරයි.',
                   sessionTrackerWidget: _buildDailySessionTracker(
                     activity: 'memory',
                     currentSlot: currentSlot,
-                    activeThemeColor: const Color(0xFF5B21B6),
+                    activeThemeColor: const Color(0xFF6D28D9),
                   ),
-                  topRightIllustration: null,
+                  topRightIllustration: _buildCrosswordLightbulbIllustrationExact(),
                   buttonText: memoryDone
                       ? 'සම්පූර්ණයි ($nextSlotTime ට) ⏰'
                       : 'ඊලඟ ක්‍රීඩාව කරන්න',
+                  buttonIcon: const Icon(Icons.sports_esports_rounded, color: Colors.white, size: 20),
                   buttonGradient: memoryDone
-                      ? const [Color(0xFF4C1D95), Color(0xFF5B21B6)]
-                      : const [Color(0xFF5B21B6), Color(0xFF6D28D9)],
-                  isEmotionalCard: false,
-                  bottomDecoration: null,
+                      ? const [Color(0xFF5B21B6), Color(0xFF6D28D9)]
+                      : const [Color(0xFF6D28D9), Color(0xFF7C3AED)],
                   onTap: () {
                     if (memoryDone) {
                       _showSessionAlreadyCompletedDialog(
                         context: context,
-                        activityTitle: 'මනස පරීක්ෂණ ක්‍රියාකාරකම්',
+                        activityTitle: 'මතක පරීක්ෂණ ක්‍රියාකාරකම්',
                         activityKey: 'memory',
                         slot: currentSlot,
                         onContinueAnyway: () {
@@ -1688,7 +1667,7 @@ class _ElderInteractiveHomePageState
                       );
                     } else {
                       _markSessionCompleted('memory', currentSlot);
-                      _speak('මනස පරීක්ෂණ ක්‍රියාකාරකම් පිටුවට යමු.');
+                      _speak('මතක පරීක්ෂණ ක්‍රියාකාරකම් පිටුවට යමු.');
                       context.go('/dashboard/memory-games');
                     }
                   },
@@ -1697,58 +1676,39 @@ class _ElderInteractiveHomePageState
             ];
 
             final leisureCards = [
-              // Card 1: පොත් කියවීම (Reading Books - White Card with Royal Purple Button)
+              // Card 1: පොත් කියවීම (Reading Books - Exact Mockup)
               _buildMockupLeisureCard(
-                backgroundColor: Colors.white,
-                borderColor: const Color(0xFFE9D5FF),
-                badgeIcon: const Icon(Icons.menu_book_rounded, color: Color(0xFF7C3AED), size: 21),
+                leadingIcon: const Icon(Icons.menu_book_rounded, color: Color(0xFF7C3AED), size: 36),
                 title: 'පොත් කියවීම',
-                titleColor: const Color(0xFF3B0764),
-                description: 'ඔබ කැමති කතා, නවකතා සහ උපදේශනා පොත් කියවමින් දැනුම සහ සතුට වැඩි කරගන්න.',
-                illustration: _buildGrandmaReadingBookIllustration(),
+                subtitle: 'හිත සැනසෙන කියවීමේ කාලයක්.',
+                illustration: _buildStackedBooksIllustration(),
                 buttonText: 'පොත් කියවන්න',
-                buttonIcon: const Icon(Icons.menu_book_rounded, color: Colors.white, size: 16),
-                buttonGradient: const [Color(0xFF6D28D9), Color(0xFF8B5CF6)],
-                bottomTrim: _buildLavenderBlossomTrim(),
                 onTap: () {
                   _showReadingLibraryModal(context);
                 },
               ),
 
-              // Card 2: නිර්මාණාත්මක ක්‍රියාකාරකම් (Creative Activities - Golden Sunflowers Trim)
+              // Card 2: නිර්මාණාත්මක ක්‍රියාකාරකම් (Creative Activities - Exact Mockup)
               _buildMockupLeisureCard(
-                backgroundColor: Colors.white,
-                borderColor: const Color(0xFFE9D5FF),
-                badgeIcon: const Text('🎨', style: TextStyle(fontSize: 20)),
+                leadingIcon: const Text('🎨', style: TextStyle(fontSize: 34)),
                 title: 'නිර්මාණාත්මක ක්‍රියාකාරකම්',
-                titleColor: const Color(0xFF3B0764),
-                description: 'චිත්‍ර ඇඳීම, මල් වගාව හෝ අත්කම් නිර්මාණයේ නිරතව සතුටක් ලබාගන්න.',
-                illustration: _buildGrandmaPaintingArtIllustration(),
+                subtitle: 'ඔබගේ නිර්මාණශීලීත්වය පුළුල් කරයි.',
+                illustration: _buildEaselPaintingIllustration(),
                 buttonText: 'නිර්මාණය කරන්න',
-                buttonIcon: const Text('🎨', style: TextStyle(fontSize: 15)),
-                buttonGradient: const [Color(0xFF6D28D9), Color(0xFF8B5CF6)],
-                bottomTrim: _buildGoldenFloraTrim(),
                 onTap: () {
                   _showCreativeActivitiesModal(context);
                 },
               ),
 
-              // Card 3: සංගීතය සහ විවේකය (Music & Relaxation - Sky Blue Trim)
+              // Card 3: සංගීතය සහ රසවින්දනය (Music & Enjoyment - Exact Mockup)
               _buildMockupLeisureCard(
-                backgroundColor: Colors.white,
-                borderColor: const Color(0xFFE9D5FF),
-                badgeIcon: const Icon(Icons.headphones_rounded, color: Color(0xFF7C3AED), size: 21),
-                title: 'සංගීතය සහ විවේකය',
-                titleColor: const Color(0xFF3B0764),
-                topTrailingWidget: const Text('🎵', style: TextStyle(fontSize: 18)),
-                description: 'සංගීතය අසමින් සිත නිදහස් කරගන්න හා විවේක ගන්න.',
-                illustration: _buildElderListeningMusicIllustration(),
-                buttonText: 'සංගීතය අසන්න',
-                buttonIcon: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 18),
-                buttonGradient: const [Color(0xFF6D28D9), Color(0xFF8B5CF6)],
-                bottomTrim: _buildSkyBlueFloraTrim(),
+                leadingIcon: const Icon(Icons.headphones_rounded, color: Color(0xFF7C3AED), size: 34),
+                title: 'සංගීතය සහ රසවින්දනය',
+                subtitle: 'සුවදායක සංගීතයෙන් සිත සනසන්න.',
+                illustration: _buildMusicalNotesIllustration(),
+                buttonText: 'සංගීතය අහන්න',
                 onTap: () {
-                  _speak('සන්සුන් සංගීතය සහ ස්වභාවික ශබ්ද ඔබ වෙනුවෙන් වාදනය කරමු.');
+                  _speak('සන්සුන් සංගීතය සහ රසවින්දනය ඔබ වෙනුවෙන් වාදනය කරමු.');
                   _showMusicPlayerModal(context);
                 },
               ),
@@ -1756,31 +1716,21 @@ class _ElderInteractiveHomePageState
 
             final isDesktopWide = constraints.maxWidth >= 950;
             final isTablet = constraints.maxWidth >= 650 && constraints.maxWidth < 950;
-            final cardSpacing = constraints.maxWidth >= 1000 ? 36.0 : 24.0;
             final rowSpacing = constraints.maxWidth >= 1000 ? 28.0 : 22.0;
-
-            final assessmentRow = Wrap(
-              spacing: 24,
-              runSpacing: 20,
-              alignment: WrapAlignment.start,
-              children: [
-                SizedBox(
-                  width: 325,
-                  child: assessmentCards[0],
-                ),
-                SizedBox(
-                  width: 325,
-                  child: assessmentCards[1],
-                ),
-              ],
-            );
 
             if (isDesktopWide) {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Row 1 (Top Assessment Cards): Exact Mockup Size (325px wide portrait cards)
-                  assessmentRow,
+                  // Row 1 (Top Assessment Cards): Exact Mockup Side-by-Side
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(child: assessmentCards[0]),
+                      const SizedBox(width: 24),
+                      Expanded(child: assessmentCards[1]),
+                    ],
+                  ),
                   SizedBox(height: rowSpacing + 8),
 
                   // Section Heading: නිදහසේ කාලය ගත කරන්න කැමතිද? [මගේ කැමැත්ත තෝරන්න]
@@ -1804,7 +1754,14 @@ class _ElderInteractiveHomePageState
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  assessmentRow,
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(child: assessmentCards[0]),
+                      const SizedBox(width: 16),
+                      Expanded(child: assessmentCards[1]),
+                    ],
+                  ),
                   const SizedBox(height: 24),
                   _buildLeisureSectionHeader(isSinhala),
                   const SizedBox(height: 16),
@@ -1824,15 +1781,9 @@ class _ElderInteractiveHomePageState
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 340),
-                    child: assessmentCards[0],
-                  ),
+                  assessmentCards[0],
                   const SizedBox(height: 20),
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 340),
-                    child: assessmentCards[1],
-                  ),
+                  assessmentCards[1],
                   const SizedBox(height: 24),
                   _buildLeisureSectionHeader(isSinhala),
                   const SizedBox(height: 16),
@@ -1977,55 +1928,23 @@ class _ElderInteractiveHomePageState
   // TOP ROW ASSESSMENT CARD (EXACT MOCKUP DESIGN FOR CARDS 1 & 2)
   // =========================================================================
   Widget _buildTopAssessmentCard({
-    required Color backgroundColor,
-    required Color borderColor,
-    required Color iconBorderColor,
-    required String badgeIcon,
+    required Widget badgeIconWidget,
     required String title,
-    String? description,
-    required Widget statusBadgeWidget,
+    required String description,
     required Widget sessionTrackerWidget,
-    Widget? topRightIllustration,
+    required Widget topRightIllustration,
     required String buttonText,
+    required Widget buttonIcon,
     required List<Color> buttonGradient,
-    required bool isEmotionalCard,
-    Widget? bottomDecoration,
     required VoidCallback onTap,
   }) {
-    // 2-line title matching reference mockup
-    final titleLine1 = isEmotionalCard ? 'මානසික' : 'මනස පරීක්ෂණ';
-    final titleLine2 = 'ක්‍රියාකාරකම්';
-    final iconEmoji = isEmotionalCard ? '🧘' : '🧩';
-
-    // 2-line button text matching reference mockup
-    String buttonLine1 = '';
-    String buttonLine2 = '';
-    if (buttonText.contains('ක්‍රියාකාරකම')) {
-      buttonLine1 = 'ඊළඟ ක්‍රියාකාරකම';
-      buttonLine2 = 'කරන්න';
-    } else if (buttonText.contains('ක්‍රීඩාව')) {
-      buttonLine1 = 'ඊළඟ ක්‍රීඩාව';
-      buttonLine2 = 'කරන්න';
-    } else if (buttonText.contains('සම්පූර්ණයි')) {
-      buttonLine1 = 'සම්පූර්ණයි';
-      buttonLine2 = buttonText.replaceFirst('සම්පූර්ණයි', '').trim();
-    } else {
-      final parts = buttonText.split(' ');
-      if (parts.length > 1) {
-        buttonLine1 = parts.sublist(0, parts.length - 1).join(' ');
-        buttonLine2 = parts.last;
-      } else {
-        buttonLine1 = buttonText;
-      }
-    }
-
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
           color: const Color(0xFFDDD6FE),
-          width: 1.6,
+          width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
@@ -2040,123 +1959,143 @@ class _ElderInteractiveHomePageState
           ),
         ],
       ),
-      padding: const EdgeInsets.fromLTRB(18, 22, 18, 18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Line 1: Emoji + Title Line 1
-          Row(
-            children: [
-              Text(
-                iconEmoji,
-                style: const TextStyle(fontSize: 26),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  titleLine1,
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w900,
-                    color: Color(0xFF1E1B4B),
-                    letterSpacing: -0.2,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          // Line 2: Title Line 2
-          Text(
-            titleLine2,
-            style: const TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w900,
-              color: Color(0xFF1E1B4B),
-              letterSpacing: -0.2,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: Stack(
+          children: [
+            // Bottom-Left Purple Botanical Corner Sprig (Matching Mockup)
+            Positioned(
+              left: -2,
+              bottom: -2,
+              child: _buildPurpleCornerSprig(isLeft: true),
             ),
-          ),
-          const SizedBox(height: 10),
 
-          // Subtitle (2-line description)
-          if (description != null && description.isNotEmpty)
-            Text(
-              description,
-              style: const TextStyle(
-                fontSize: 14.5,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF475569),
-                height: 1.35,
-              ),
-            ),
-          const SizedBox(height: 18),
-
-          // 3-Slot Time Session Tracker
-          sessionTrackerWidget,
-          const SizedBox(height: 20),
-
-          // Action Button matching reference mockup
-          Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: onTap,
-              borderRadius: BorderRadius.circular(16),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: buttonGradient,
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: buttonGradient.first.withValues(alpha: 0.35),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 30),
-                    const SizedBox(width: 8),
-                    Flexible(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            buttonLine1,
-                            style: const TextStyle(
-                              fontSize: 16.5,
-                              fontWeight: FontWeight.w900,
-                              color: Colors.white,
-                              height: 1.2,
-                            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Top Header: Squircle Badge + Title & Subtitle on left, Illustration on right
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      // Purple Squircle Badge
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF7C3AED), Color(0xFF6D28D9)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
                           ),
-                          if (buttonLine2.isNotEmpty)
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF7C3AED).withValues(alpha: 0.28),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        alignment: Alignment.center,
+                        child: badgeIconWidget,
+                      ),
+                      const SizedBox(width: 14),
+
+                      // Title & Subtitle
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
                             Text(
-                              buttonLine2,
+                              title,
                               style: const TextStyle(
-                                fontSize: 16.5,
+                                fontSize: 18.5,
                                 fontWeight: FontWeight.w900,
-                                color: Colors.white,
-                                height: 1.2,
+                                color: Color(0xFF1E1B4B),
+                                letterSpacing: -0.2,
                               ),
                             ),
-                        ],
+                            const SizedBox(height: 3),
+                            Text(
+                              description,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF64748B),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+
+                      // Top-Right Illustration
+                      topRightIllustration,
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Middle: 3-Slot Daily Session Tracker
+                  sessionTrackerWidget,
+                  const SizedBox(height: 18),
+
+                  // Bottom Action Pill Button (Centered royal purple pill)
+                  Center(
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: onTap,
+                        borderRadius: BorderRadius.circular(99),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 11),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: buttonGradient,
+                              begin: Alignment.centerLeft,
+                              end: Alignment.centerRight,
+                            ),
+                            borderRadius: BorderRadius.circular(99),
+                            boxShadow: [
+                              BoxShadow(
+                                color: buttonGradient.first.withValues(alpha: 0.35),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              buttonIcon,
+                              const SizedBox(width: 8),
+                              Text(
+                                buttonText,
+                                style: const TextStyle(
+                                  fontSize: 15.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white,
+                                  letterSpacing: 0.2,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 18),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -2824,43 +2763,28 @@ class _ElderInteractiveHomePageState
   // LEISURE SECTION CARDS: EXACT REFERENCE MOCKUP DESIGN
   // =========================================================================
 
-  // Mockup Leisure Card Widget
+  // Mockup Leisure Card Widget (Exact Mockup Match)
   Widget _buildMockupLeisureCard({
-    required Color backgroundColor,
-    required Color borderColor,
-    required Widget badgeIcon,
+    required Widget leadingIcon,
     required String title,
-    required Color titleColor,
-    required String description,
+    required String subtitle,
     required Widget illustration,
     required String buttonText,
-    required Widget buttonIcon,
-    required List<Color> buttonGradient,
-    required Widget bottomTrim,
-    Widget? topTrailingWidget,
     required VoidCallback onTap,
   }) {
     return Container(
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.white,
-            Color(0xFFFCFAFF),
-            Color(0xFFF9F5FF),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(24),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(
-          color: const Color(0xFFE9D5FF).withValues(alpha: 0.95),
-          width: 1.6,
+          color: const Color(0xFFE9D5FF),
+          width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF7C3AED).withValues(alpha: 0.08),
-            blurRadius: 18,
-            offset: const Offset(0, 6),
+            color: const Color(0xFF7C3AED).withValues(alpha: 0.07),
+            blurRadius: 16,
+            offset: const Offset(0, 5),
           ),
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.02),
@@ -2869,140 +2793,341 @@ class _ElderInteractiveHomePageState
           ),
         ],
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(22),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Top Row: Badge + Title + Optional Trailing
-                  Row(
-                    children: [
-                      Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFFF5F3FF), Color(0xFFEDE9FE)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: const Color(0xFFDDD6FE), width: 1.5),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFF7C3AED).withValues(alpha: 0.12),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        alignment: Alignment.center,
-                        child: badgeIcon,
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Top Row: Leading Icon + Title & Subtitle + Illustration
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              leadingIcon,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 16.5,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF1E1B4B),
+                        letterSpacing: -0.1,
                       ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          title,
-                          style: TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w900,
-                            color: titleColor,
-                            letterSpacing: 0.1,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF64748B),
                       ),
-                      if (topTrailingWidget != null) topTrailingWidget,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              illustration,
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Bottom: Centered Royal Purple Action Pill Button
+          Center(
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: onTap,
+                borderRadius: BorderRadius.circular(99),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 10),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF6D28D9), Color(0xFF7C3AED)],
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                    ),
+                    borderRadius: BorderRadius.circular(99),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF6D28D9).withValues(alpha: 0.35),
+                        blurRadius: 9,
+                        offset: const Offset(0, 3),
+                      ),
                     ],
                   ),
-                  const SizedBox(height: 10),
-
-                  // Middle Row: Description text on left, Illustration on right
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Expanded(
-                        flex: 6,
-                        child: Text(
-                          description,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF475569),
-                            height: 1.35,
-                          ),
+                      Text(
+                        buttonText,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.2,
                         ),
                       ),
                       const SizedBox(width: 6),
-                      Expanded(
-                        flex: 5,
-                        child: illustration,
-                      ),
+                      const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 16),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-                  // Action Pill Button (centered with elegant royal gradient)
-                  Center(
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: onTap,
-                        borderRadius: BorderRadius.circular(99),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: buttonGradient,
-                              begin: Alignment.centerLeft,
-                              end: Alignment.centerRight,
-                            ),
-                            borderRadius: BorderRadius.circular(99),
-                            boxShadow: [
-                              BoxShadow(
-                                color: buttonGradient.first.withValues(alpha: 0.35),
-                                blurRadius: 9,
-                                offset: const Offset(0, 3),
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              buttonIcon,
-                              const SizedBox(width: 7),
-                              Text(
-                                buttonText,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: 0.2,
-                                ),
-                              ),
-                              const SizedBox(width: 5),
-                              const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 16),
-                            ],
-                          ),
-                        ),
-                      ),
+  // Card 1 Illustration: 3 Stacked Books (Coral Pink, Soft Blue, Teal Green - Exact Mockup)
+  Widget _buildStackedBooksIllustration() {
+    return SizedBox(
+      width: 58,
+      height: 48,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // Bottom Book (Teal Green)
+          Positioned(
+            bottom: 3,
+            child: Container(
+              width: 52,
+              height: 12,
+              decoration: BoxDecoration(
+                color: const Color(0xFF0D9488),
+                borderRadius: BorderRadius.circular(3),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.12),
+                    blurRadius: 3,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Container(width: 5, color: const Color(0xFF115E59)),
+                  Expanded(
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(vertical: 2, horizontal: 2),
+                      color: const Color(0xFFF0FDFA),
                     ),
                   ),
                 ],
               ),
             ),
+          ),
+          // Middle Book (Soft Sky Blue)
+          Positioned(
+            bottom: 16,
+            child: Container(
+              width: 48,
+              height: 12,
+              decoration: BoxDecoration(
+                color: const Color(0xFF38BDF8),
+                borderRadius: BorderRadius.circular(3),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.10),
+                    blurRadius: 3,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Container(width: 5, color: const Color(0xFF0284C7)),
+                  Expanded(
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(vertical: 2, horizontal: 2),
+                      color: const Color(0xFFF0F9FF),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // Top Book (Coral Pink)
+          Positioned(
+            bottom: 29,
+            child: Container(
+              width: 44,
+              height: 12,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF43F5E),
+                borderRadius: BorderRadius.circular(3),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.12),
+                    blurRadius: 3,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Container(width: 5, color: const Color(0xFFBE123C)),
+                  Expanded(
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(vertical: 2, horizontal: 2),
+                      color: const Color(0xFFFFF1F2),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-            // Bottom Floral Trim
-            bottomTrim,
-          ],
-        ),
+  // Card 2 Illustration: Easel with Landscape Painting (Exact Mockup)
+  Widget _buildEaselPaintingIllustration() {
+    return SizedBox(
+      width: 48,
+      height: 52,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // Tripod Legs
+          Positioned(
+            bottom: 0,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Transform.rotate(
+                  angle: -0.22,
+                  child: Container(width: 3, height: 34, color: const Color(0xFFD97706)),
+                ),
+                const SizedBox(width: 18),
+                Transform.rotate(
+                  angle: 0.22,
+                  child: Container(width: 3, height: 34, color: const Color(0xFFD97706)),
+                ),
+              ],
+            ),
+          ),
+          // Center Mast
+          Positioned(
+            top: 2,
+            child: Container(width: 3.5, height: 42, color: const Color(0xFFB45309)),
+          ),
+          // Shelf
+          Positioned(
+            bottom: 12,
+            child: Container(
+              width: 42,
+              height: 3.5,
+              decoration: BoxDecoration(
+                color: const Color(0xFF92400E),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          // Canvas Painting (Sun & Green Mountains)
+          Positioned(
+            top: 7,
+            child: Container(
+              width: 36,
+              height: 28,
+              decoration: BoxDecoration(
+                color: const Color(0xFFBAE6FD),
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(color: const Color(0xFFD97706), width: 1.2),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.12),
+                    blurRadius: 3,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(2.5),
+                child: Stack(
+                  children: [
+                    // Sun
+                    Positioned(
+                      top: 3,
+                      left: 5,
+                      child: Container(
+                        width: 6,
+                        height: 6,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFFBBF24),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                    // Green Mountain
+                    Positioned(
+                      bottom: -5,
+                      left: -2,
+                      right: -2,
+                      child: Container(
+                        height: 16,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF10B981),
+                          borderRadius: BorderRadius.only(
+                            topLeft: Radius.circular(16),
+                            topRight: Radius.circular(16),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      bottom: -6,
+                      right: 1,
+                      child: Container(
+                        width: 18,
+                        height: 16,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF059669),
+                          borderRadius: BorderRadius.only(
+                            topLeft: Radius.circular(14),
+                            topRight: Radius.circular(14),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Card 3 Illustration: Floating Musical Notes (Exact Mockup)
+  Widget _buildMusicalNotesIllustration() {
+    return const SizedBox(
+      width: 44,
+      height: 46,
+      child: Stack(
+        children: [
+          Positioned(
+            top: 2,
+            left: 2,
+            child: Text('🎵', style: TextStyle(fontSize: 20)),
+          ),
+          Positioned(
+            bottom: 2,
+            right: 2,
+            child: Text('🎶', style: TextStyle(fontSize: 22)),
+          ),
+        ],
       ),
     );
   }
