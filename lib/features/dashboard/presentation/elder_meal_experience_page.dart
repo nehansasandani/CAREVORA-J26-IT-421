@@ -355,20 +355,20 @@ class _ElderMealExperiencePageState extends ConsumerState<ElderMealExperiencePag
 
             // Scrollable Content
             SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(24, 16, 24, 40),
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
               child: Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 1200),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // 1. TOP BAR (Back button + CAREVORA Logo + Flowers decoration)
+                      // 1. TOP BAR (Back button + Flowers decoration)
                       _buildTopHeader(context),
-                      const SizedBox(height: 18),
+                      const SizedBox(height: 10),
 
                       // 2. HERO PURPLE BANNER (Plate of food + Title + Grandma Thumbs up)
                       _buildHeroMealBanner(),
-                      const SizedBox(height: 22),
+                      const SizedBox(height: 16),
 
                       // 3. MAIN INTERACTIVE CONTENT CARD
                       _buildMainExperienceCard(),

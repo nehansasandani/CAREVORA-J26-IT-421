@@ -1184,7 +1184,7 @@ class _ElderInteractiveHomePageState
           _routine1AnsweredNo = false;
         });
         _speak('අද දින ආහාරය පිළිබඳ තොරතුරු සටහන් කරමු.');
-        await Navigator.of(context).push(
+        await Navigator.of(context, rootNavigator: true).push(
           MaterialPageRoute(
             builder: (_) => const ElderMealExperiencePage(),
           ),
