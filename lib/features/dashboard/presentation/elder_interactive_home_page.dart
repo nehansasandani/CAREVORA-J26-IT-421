@@ -5885,3 +5885,84 @@ class _PurpleBotanicalCornerPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
+
+// =========================================================================
+// 3D BOOKMARK RIBBON PAINTER (Golden Ribbon at top spine)
+// =========================================================================
+class _RibbonBookmarkPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final ribbonPaint = Paint()
+      ..shader = const LinearGradient(
+        colors: [
+          Color(0xFFFBBF24), // amber
+          Color(0xFFF59E0B), // gold
+          Color(0xFFD97706), // dark gold
+        ],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+
+    final path = Path()
+      ..moveTo(0, 0)
+      ..lineTo(size.width, 0)
+      ..lineTo(size.width, size.height)
+      ..lineTo(size.width / 2, size.height - 7) // V-cut ribbon tail
+      ..lineTo(0, size.height)
+      ..close();
+
+    // Drop shadow
+    final shadowPaint = Paint()
+      ..color = Colors.black.withValues(alpha: 0.18)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2);
+    canvas.drawPath(path.shift(const Offset(1, 2)), shadowPaint);
+
+    canvas.drawPath(path, ribbonPaint);
+
+    // Golden vertical shine highlight
+    final shinePaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.45)
+      ..strokeWidth = 1.2
+      ..style = PaintingStyle.stroke;
+    canvas.drawLine(
+      Offset(size.width * 0.35, 2),
+      Offset(size.width * 0.35, size.height - 8),
+      shinePaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+// =========================================================================
+// BOOK CORNER FLOURISH PAINTER (Delicate filigree corner on cover)
+// =========================================================================
+class _BookCornerFlourishPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.65)
+      ..strokeWidth = 1.2
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    final path = Path()
+      ..moveTo(2, size.height)
+      ..quadraticBezierTo(2, 2, size.width, 2);
+    canvas.drawPath(path, paint);
+
+    final innerPath = Path()
+      ..moveTo(5, size.height * 0.75)
+      ..quadraticBezierTo(5, 5, size.width * 0.75, 5);
+    canvas.drawPath(innerPath, paint);
+
+    final dotPaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.8)
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(const Offset(7, 7), 1.5, dotPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
