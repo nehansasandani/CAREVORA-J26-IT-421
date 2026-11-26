@@ -856,69 +856,15 @@ class _ElderInteractiveHomePageState
         builder: (context, _) {
           final sway = _floatingController.value; // 0.0 -> 1.0 -> 0.0 (3.2s cycle)
           final breeze = _ambientBgAnimation.value; // slow 14s drift
-          final angleLeft = (sway - 0.5) * 0.08;
-          final angleRight = (0.5 - sway) * 0.08;
 
           return SizedBox(
             height: 110,
             width: double.infinity,
-            child: Stack(
-              alignment: Alignment.bottomCenter,
-              clipBehavior: Clip.none,
-              children: [
-                // Custom-painted swaying meadow of flowers, stems, leaves & floating petals
-                Positioned.fill(
-                  child: CustomPaint(
-                    painter: _SwayingFloralMeadowPainter(
-                      swayValue: sway,
-                      breezeValue: breeze,
-                    ),
-                  ),
-                ),
-
-                // Left corner swaying floral bouquet accent
-                Positioned(
-                  left: 16,
-                  bottom: -14,
-                  child: Transform.rotate(
-                    angle: angleLeft,
-                    alignment: Alignment.bottomCenter,
-                    child: Opacity(
-                      opacity: 0.72,
-                      child: Image.asset(
-                        'assets/images/banner_flowers_fade.png',
-                        width: 120,
-                        height: 110,
-                        fit: BoxFit.contain,
-                        errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-                      ),
-                    ),
-                  ),
-                ),
-
-                // Right corner swaying floral bouquet accent
-                Positioned(
-                  right: 16,
-                  bottom: -14,
-                  child: Transform.scale(
-                    scaleX: -1,
-                    child: Transform.rotate(
-                      angle: angleRight,
-                      alignment: Alignment.bottomCenter,
-                      child: Opacity(
-                        opacity: 0.72,
-                        child: Image.asset(
-                          'assets/images/banner_flowers_fade.png',
-                          width: 120,
-                          height: 110,
-                          fit: BoxFit.contain,
-                          errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+            child: CustomPaint(
+              painter: _SwayingFloralMeadowPainter(
+                swayValue: sway,
+                breezeValue: breeze,
+              ),
             ),
           );
         },
