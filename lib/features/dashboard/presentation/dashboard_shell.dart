@@ -122,7 +122,8 @@ class DashboardShell extends ConsumerWidget {
         currentRoute.startsWith('/dashboard/memory-games') ||
         currentRoute.startsWith('/dashboard/settings') ||
         currentRoute.startsWith('/dashboard/alerts') ||
-        currentRoute.startsWith('/dashboard/metabolic');
+        currentRoute.startsWith('/dashboard/metabolic') ||
+        currentRoute.startsWith('/dashboard/station-help');
 
     if (hasOwnAnimation) {
       return Expanded(child: content);
