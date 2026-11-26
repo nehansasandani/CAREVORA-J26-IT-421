@@ -8,6 +8,7 @@ class EmotionalShapExplanationCard extends StatelessWidget {
   final double? lonelinessScore;
   final double? wellnessScore;
   final bool isCompact;
+  final bool isSinhala;
   final List<ShapFeatureDriver>? customDrivers;
   final Map<int, bool?>? sessionAnswers;
   final Set<int>? skippedQuestions;
@@ -18,6 +19,7 @@ class EmotionalShapExplanationCard extends StatelessWidget {
     this.lonelinessScore,
     this.wellnessScore,
     this.isCompact = false,
+    this.isSinhala = false,
     this.customDrivers,
     this.sessionAnswers,
     this.skippedQuestions,
@@ -25,9 +27,11 @@ class EmotionalShapExplanationCard extends StatelessWidget {
 
   String _normalizeTier(String raw) {
     final lower = raw.toLowerCase().trim();
-    if (lower.contains('high')) return 'High';
-    if (lower.contains('moderate') || lower.contains('medium')) return 'Moderate';
-    if (lower.contains('low')) return 'Low';
+    if (lower.contains('high') || lower.contains('ඉහළ')) return 'High';
+    if (lower.contains('moderate') || lower.contains('medium') || lower.contains('මධ්‍යම')) {
+      return 'Moderate';
+    }
+    if (lower.contains('low') || lower.contains('අඩු')) return 'Low';
     if (lonelinessScore != null) {
       if (lonelinessScore! >= 60.0) return 'High';
       if (lonelinessScore! >= 35.0) return 'Moderate';
@@ -39,6 +43,19 @@ class EmotionalShapExplanationCard extends StatelessWidget {
       return 'Low';
     }
     return 'Low';
+  }
+
+  String _tierLabel(String tier) {
+    if (!isSinhala) return '$tier Risk • SHAP Explainability';
+    switch (tier) {
+      case 'High':
+        return 'ඉහළ අවදානම් • AI විශ්ලේෂණය';
+      case 'Moderate':
+        return 'මධ්‍යම අවදානම් • AI විශ්ලේෂණය';
+      case 'Low':
+      default:
+        return 'අඩු අවදානම් • AI විශ්ලේෂණය';
+    }
   }
 
   List<ShapFeatureDriver> _computeDynamicDrivers(String tier) {
@@ -219,6 +236,84 @@ class EmotionalShapExplanationCard extends StatelessWidget {
   }
 
   List<ShapFeatureDriver> _getStandardDriversForTier(String tier) {
+    if (isSinhala) {
+      switch (tier) {
+        case 'High':
+          return const [
+            ShapFeatureDriver(
+              featureName: 'කාමරය තුළ තනිව සිටීම වැඩි වීම',
+              impactLabel: '+34% අවදානම් සාධකය',
+              weight: 0.34,
+              isRiskDriver: true,
+              description: 'දවසේ වැඩි වේලාවක් කාමරය තුළ තනිවම ගත කරයි.',
+            ),
+            ShapFeatureDriver(
+              featureName: 'සමීප මිතුරෙකු නොමැති වීම',
+              impactLabel: '+28% අවදානම් සාධකය',
+              weight: 0.28,
+              isRiskDriver: true,
+              description: 'සිතේ දුක බෙදා ගැනීමට සමීප කෙනෙකු නැති බව දන්වයි.',
+            ),
+            ShapFeatureDriver(
+              featureName: 'ඉදිරි දින පිළිබඳ බලාපොරොත්තු අඩු වීම',
+              impactLabel: '+22% අවදානම් සාධකය',
+              weight: 0.22,
+              isRiskDriver: true,
+              description: 'ඉදිරිය ගැන ධනාත්මක හැඟීම අඩු බවක් පෙන්නුම් කරයි.',
+            ),
+          ];
+        case 'Moderate':
+          return const [
+            ShapFeatureDriver(
+              featureName: 'විටින් විට තනිකමක් දැනීම',
+              impactLabel: '+24% අවදානම් සාධකය',
+              weight: 0.24,
+              isRiskDriver: true,
+              description: 'අනෙක් අය සමඟ එක්වීමේදී සුළු පැකිලීමක් පෙන්වයි.',
+            ),
+            ShapFeatureDriver(
+              featureName: 'පවුලේ අය සමඟ සම්බන්ධතා අඩු වීම',
+              impactLabel: '+18% අවදානම් සාධකය',
+              weight: 0.18,
+              isRiskDriver: true,
+              description: 'දුරකථන ඇමතුම් හෝ පැමිණීම් සතියකට වරකට වඩා අඩුයි.',
+            ),
+            ShapFeatureDriver(
+              featureName: 'උදෑසන ප්‍රබෝධමත් බව',
+              impactLabel: 'ආරක්ෂිතයි (29%)',
+              weight: 0.29,
+              isRiskDriver: false,
+              description: 'උදෑසන සුවපහසු මානසිකත්වය අවදානම පාලනය කිරීමට උදව් වේ.',
+            ),
+          ];
+        case 'Low':
+        default:
+          return const [
+            ShapFeatureDriver(
+              featureName: 'හොඳ මිතුරු සබඳතා',
+              impactLabel: 'ආරක්ෂිතයි (38%)',
+              weight: 0.38,
+              isRiskDriver: false,
+              description: 'අනෙක් නේවාසිකයින් සමඟ සුහදව හා සතුටින් කාලය ගත කරයි.',
+            ),
+            ShapFeatureDriver(
+              featureName: 'කාමරයෙන් පිටත ක්‍රියාකාරකම්වල යෙදීම',
+              impactLabel: 'ආරක්ෂිතයි (31%)',
+              weight: 0.31,
+              isRiskDriver: false,
+              description: 'තේ වේලාවන්, උද්‍යාන ඇවිදීම් සහ කණ්ඩායම් වැඩවලට එක්වේ.',
+            ),
+            ShapFeatureDriver(
+              featureName: 'ධනාත්මක බලාපොරොත්තු',
+              impactLabel: 'ආරක්ෂිතයි (23%)',
+              weight: 0.23,
+              isRiskDriver: false,
+              description: 'ඉදිරි දින පිළිබඳ සතුටින් සහ ප්‍රබෝධයෙන් සිතයි.',
+            ),
+          ];
+      }
+    }
+
     switch (tier) {
       case 'High':
         return const [
@@ -299,6 +394,17 @@ class EmotionalShapExplanationCard extends StatelessWidget {
   }
 
   String _getCaregiverTakeaway(String tier) {
+    if (isSinhala) {
+      switch (tier) {
+        case 'High':
+          return 'සත්කාර සැලසුම් උපදෙස: තනිකම ඉහළ මට්ටමක ඇත! පෞද්ගලිකව කතාබහ කරන්න, සවස තේ හමුවට ආරාධනා කරන්න, හෙද කාර්ය මණ්ඩලය දැනුවත් කරන්න.';
+        case 'Moderate':
+          return 'සත්කාර සැලසුම් උපදෙස: මධ්‍යම තනිකම අවදානමක් ඇත. කෑම වේලේදී මිතුරෙකු සමඟ එක් කරන්න, උද්‍යාන ඇවිදීම්වලට යොමු කර දින 10කින් නැවත පරීක්ෂා කරන්න.';
+        case 'Low':
+        default:
+          return 'සත්කාර සැලසුම් උපදෙස: මානසික සුවතාවය ඉතා යහපත්! දිනපතා සුහද කතාබහ, සංගීත වැඩසටහන් සහ මිතුරු සබඳතා දිගටම පවත්වාගෙන යන්න.';
+      }
+    }
     switch (tier) {
       case 'High':
         return 'Caregiver Care Plan Tip: High Loneliness Risk! Initiate 1-on-1 comforting check-ins, invite to afternoon tea circle, and coordinate with attending nurse for supportive companionship.';
@@ -349,7 +455,9 @@ class EmotionalShapExplanationCard extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Emotional Wellness SHAP AI Attribution',
+                  isSinhala
+                      ? 'මානසික සුවතා AI විශ්ලේෂණය'
+                      : 'Emotional Wellness SHAP AI Attribution',
                   style: TextStyle(
                     fontSize: isCompact ? 13 : 14.5,
                     fontWeight: FontWeight.w700,
@@ -377,7 +485,7 @@ class EmotionalShapExplanationCard extends StatelessWidget {
                     ),
                     const SizedBox(width: 5),
                     Text(
-                      '$tier Risk • SHAP Explainability',
+                      _tierLabel(tier),
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
@@ -391,7 +499,9 @@ class EmotionalShapExplanationCard extends StatelessWidget {
           ),
           const SizedBox(height: 5),
           Text(
-            'Feature importance and contribution analysis for Loneliness & Social Isolation:',
+            isSinhala
+                ? 'තනිකම සහ සමාජ හුදකලාව පිළිබඳ ප්‍රධාන බලපෑම් සාධක:'
+                : 'Feature importance and contribution analysis for Loneliness & Social Isolation:',
             style: TextStyle(
               fontSize: isCompact ? 11 : 11.5,
               color: AppColors.muted,
