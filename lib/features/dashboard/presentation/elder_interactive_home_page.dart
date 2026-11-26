@@ -837,12 +837,7 @@ class _ElderInteractiveHomePageState
             ),
           ),
 
-          // 2. Beautiful floating butterflies overlay (IgnorePointer - completely touch & scroll safe)
-          const Positioned.fill(
-            child: IgnorePointer(
-              child: _FloatingButterfliesOverlay(),
-            ),
-          ),
+          // 2. Overlay area (cleaned up for elder readability)
         ],
       ),
     );
@@ -876,7 +871,7 @@ class _ElderInteractiveHomePageState
   // 2. HERO PURPLE INTERACTIVE GREETING BANNER
   // =========================================================================
   String _formatElderHonorific(String name) {
-    if (name.contains('මහත්මිය') || name.contains('මහතා')) return name;
+    if (name.contains('මහත්මිය') || name.contains('මහතා') || name.contains('මහත්මයා')) return name;
     return '$name මහත්මිය';
   }
 
@@ -1163,15 +1158,15 @@ class _ElderInteractiveHomePageState
     const card3NoFeedback = 'ජලය ප්‍රමාණවත් ලෙස පානය කිරීමට අමතක නොකරන්න. මම සහායකයාට දැන්වුවා ඔබට ජලය ගෙන එන්න.';
 
     final card1 = _buildMockupRoutineCard(
-      backgroundColor: const Color(0xFFFFF7ED), // Warm peach #FFF1DC
-      borderColor: const Color(0xFFFED7AA),
+      backgroundColor: Colors.white,
+      borderColor: const Color(0xFFE9D5FF),
       iconWidget: Container(
         width: 46,
         height: 46,
         decoration: BoxDecoration(
-          color: const Color(0xFFFEF3C7),
+          color: const Color(0xFFFFF7ED),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFFFDE68A), width: 1.4),
+          border: Border.all(color: const Color(0xFFFED7AA), width: 1.3),
         ),
         alignment: Alignment.center,
         child: Text(card1Icon, style: const TextStyle(fontSize: 23)),
@@ -1192,8 +1187,8 @@ class _ElderInteractiveHomePageState
     );
 
     final card2 = _buildMockupRoutineCard(
-      backgroundColor: const Color(0xFFEFF6FF), // Pale sky #EAF3FF
-      borderColor: const Color(0xFFBFDBFE),
+      backgroundColor: Colors.white,
+      borderColor: const Color(0xFFE9D5FF),
       iconWidget: Stack(
         clipBehavior: Clip.none,
         children: [
@@ -1201,9 +1196,9 @@ class _ElderInteractiveHomePageState
             width: 46,
             height: 46,
             decoration: BoxDecoration(
-              color: const Color(0xFFEFF6FF),
+              color: const Color(0xFFF0F9FF),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0xFFBFDBFE), width: 1.4),
+              border: Border.all(color: const Color(0xFFBAE6FD), width: 1.3),
             ),
             alignment: Alignment.center,
             child: Text(card2Icon, style: const TextStyle(fontSize: 23)),
@@ -1231,15 +1226,15 @@ class _ElderInteractiveHomePageState
     );
 
     final card3 = _buildMockupRoutineCard(
-      backgroundColor: const Color(0xFFF0FDF4), // Light aqua #E6F6FF
-      borderColor: const Color(0xFFBAE6FD),
+      backgroundColor: Colors.white,
+      borderColor: const Color(0xFFE9D5FF),
       iconWidget: Container(
         width: 46,
         height: 46,
         decoration: BoxDecoration(
-          color: const Color(0xFFF0F9FF),
+          color: const Color(0xFFF0FDF4),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFFBAE6FD), width: 1.4),
+          border: Border.all(color: const Color(0xFFBBF7D0), width: 1.3),
         ),
         alignment: Alignment.center,
         child: const Text('🥛', style: TextStyle(fontSize: 23)),
@@ -1354,14 +1349,14 @@ class _ElderInteractiveHomePageState
                 // Pill Action Button
                 if (isAnsweredYes)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF15803D), // Success Green #15803D
+                      color: const Color(0xFF15803D), // Accessible Forest Green
                       borderRadius: BorderRadius.circular(99),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF15803D).withValues(alpha: 0.35),
-                          blurRadius: 8,
+                          color: const Color(0xFF15803D).withValues(alpha: 0.28),
+                          blurRadius: 6,
                           offset: const Offset(0, 2),
                         ),
                       ],
@@ -1370,7 +1365,7 @@ class _ElderInteractiveHomePageState
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         const Icon(LucideIcons.check, size: 15, color: Colors.white),
-                        const SizedBox(width: 4),
+                        const SizedBox(width: 5),
                         Text(
                           yesButtonText,
                           style: const TextStyle(
@@ -1382,18 +1377,18 @@ class _ElderInteractiveHomePageState
                       ],
                     ),
                   )
-                else if (isWaterCard)
+                else
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFBF8FF),
+                      color: const Color(0xFFF5F3FF),
                       borderRadius: BorderRadius.circular(99),
-                      border: Border.all(color: const Color(0xFFDDD6FE), width: 1.4),
+                      border: Border.all(color: const Color(0xFFDDD6FE), width: 1.3),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF7C3AED).withValues(alpha: 0.08),
-                          blurRadius: 6,
-                          offset: const Offset(0, 2),
+                          color: const Color(0xFF7C3AED).withValues(alpha: 0.06),
+                          blurRadius: 4,
+                          offset: const Offset(0, 1),
                         ),
                       ],
                     ),
@@ -1401,44 +1396,13 @@ class _ElderInteractiveHomePageState
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         const Icon(LucideIcons.clock, size: 14, color: Color(0xFF7C3AED)),
-                        const SizedBox(width: 4),
+                        const SizedBox(width: 5),
                         Text(
                           noButtonText,
                           style: const TextStyle(
                             color: Color(0xFF6D28D9),
                             fontSize: 13.0,
                             fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                else
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFFBEB),
-                      borderRadius: BorderRadius.circular(99),
-                      border: Border.all(color: const Color(0xFFFDE68A), width: 1.4),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFFD97706).withValues(alpha: 0.08),
-                          blurRadius: 6,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(LucideIcons.clock, size: 14, color: Color(0xFFD97706)),
-                        const SizedBox(width: 4),
-                        Text(
-                          noButtonText,
-                          style: const TextStyle(
-                            color: Color(0xFFB45309),
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.w700,
                           ),
                         ),
                       ],
@@ -1866,18 +1830,18 @@ class _ElderInteractiveHomePageState
 
     return _buildOpenBookFrame(
       coverGradient: const [
-        Color(0xFFA63DB8), // magenta-purple palette #A63DB8 -> #6B21A8
-        Color(0xFF8B28A8),
-        Color(0xFF6B21A8),
+        Color(0xFF8B5CF6), // Royal Purple & Violet palette
+        Color(0xFF7C3AED),
+        Color(0xFF6D28D9),
       ],
       bindingGradient: const [
-        Color(0xFF7E22CE),
-        Color(0xFF581C87),
+        Color(0xFF6D28D9),
+        Color(0xFF5B21B6),
       ],
-      bindingBorderColor: const Color(0xFF6B21A8),
+      bindingBorderColor: const Color(0xFF6D28D9),
       buttonGradient: const [
-        Color(0xFF7E22CE),
-        Color(0xFF9333EA),
+        Color(0xFF7C3AED),
+        Color(0xFF6D28D9),
       ],
       buttonLeadingIcon: const Icon(Icons.psychology_rounded, color: Colors.white, size: 16),
       coverIcon: const Icon(Icons.psychology_rounded, size: 28, color: Colors.white),
@@ -1978,18 +1942,18 @@ class _ElderInteractiveHomePageState
 
     return _buildOpenBookFrame(
       coverGradient: const [
-        Color(0xFF3B82F6), // royal blue palette #3B6FE0 -> #1E40AF
-        Color(0xFF2563EB),
-        Color(0xFF1E40AF),
+        Color(0xFF4F46E5), // Royal Indigo & Iris palette (Harmonious with purple)
+        Color(0xFF4338CA),
+        Color(0xFF3730A3),
       ],
       bindingGradient: const [
-        Color(0xFF1E40AF),
-        Color(0xFF172554),
+        Color(0xFF3730A3),
+        Color(0xFF312E81),
       ],
-      bindingBorderColor: const Color(0xFF1E40AF),
+      bindingBorderColor: const Color(0xFF3730A3),
       buttonGradient: const [
-        Color(0xFF1D4ED8),
-        Color(0xFF3B82F6),
+        Color(0xFF4F46E5),
+        Color(0xFF4338CA),
       ],
       buttonLeadingIcon: const Icon(Icons.sports_esports_rounded, color: Colors.white, size: 16),
       coverIcon: const Icon(Icons.extension_rounded, size: 26, color: Colors.white),
