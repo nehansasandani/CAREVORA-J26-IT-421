@@ -355,26 +355,22 @@ class _ElderMealExperiencePageState extends ConsumerState<ElderMealExperiencePag
 
             // Scrollable Content
             SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+              padding: const EdgeInsets.fromLTRB(20, 14, 20, 32),
               child: Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 1200),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // 1. TOP BAR (Back button + Flowers decoration)
-                      _buildTopHeader(context),
-                      const SizedBox(height: 10),
-
-                      // 2. HERO PURPLE BANNER (Plate of food + Title + Grandma Thumbs up)
+                      // 1. HERO PURPLE BANNER (Plate of food + Title + Grandma Thumbs up)
                       _buildHeroMealBanner(),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 18),
 
-                      // 3. MAIN INTERACTIVE CONTENT CARD
+                      // 2. MAIN INTERACTIVE CONTENT CARD
                       _buildMainExperienceCard(),
                       const SizedBox(height: 26),
 
-                      // 4. BOTTOM SAVE ACTION BUTTON
+                      // 3. BOTTOM SAVE ACTION BUTTON
                       _buildSaveButton(),
                     ],
                   ),
@@ -388,72 +384,7 @@ class _ElderMealExperiencePageState extends ConsumerState<ElderMealExperiencePag
   }
 
   // =========================================================================
-  // 1. TOP HEADER (Back Button + Center Carevora Logo)
-  // =========================================================================
-  Widget _buildTopHeader(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        // Pill Back Button
-        Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () {
-              if (Navigator.of(context).canPop()) {
-                Navigator.of(context).pop();
-              } else {
-                context.go('/dashboard/elder-home');
-              }
-            },
-            borderRadius: BorderRadius.circular(99),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(99),
-                border: Border.all(color: const Color(0xFFE9D5FF), width: 1.4),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF7C3AED).withValues(alpha: 0.08),
-                    blurRadius: 10,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.arrow_back_rounded, color: Color(0xFF6D28D9), size: 20),
-                  SizedBox(width: 6),
-                  Text(
-                    'ආපසු',
-                    style: TextStyle(
-                      color: Color(0xFF5B21B6),
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-
-        // Top-Right Floral Lavender Trim
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: const [
-            Text('🌸', style: TextStyle(fontSize: 22)),
-            SizedBox(width: 4),
-            Text('🌿', style: TextStyle(fontSize: 20)),
-          ],
-        ),
-      ],
-    );
-  }
-
-  // =========================================================================
-  // 2. HERO PURPLE BANNER (Plate of Food + Title + Smiling Grandma Thumbs Up)
+  // HERO PURPLE BANNER (Plate of Food + Title + Smiling Grandma Thumbs Up)
   // =========================================================================
   Widget _buildHeroMealBanner() {
     return Container(
@@ -480,6 +411,25 @@ class _ElderMealExperiencePageState extends ConsumerState<ElderMealExperiencePag
         borderRadius: BorderRadius.circular(32),
         child: Stack(
           children: [
+            // Close Button in Top-Right
+            Positioned(
+              top: 8,
+              right: 8,
+              child: Material(
+                color: Colors.transparent,
+                child: IconButton(
+                  icon: const Icon(Icons.close_rounded, color: Colors.white, size: 22),
+                  tooltip: 'වසන්න',
+                  onPressed: () {
+                    if (Navigator.of(context).canPop()) {
+                      Navigator.of(context).pop();
+                    } else {
+                      context.go('/dashboard/elder-home');
+                    }
+                  },
+                ),
+              ),
+            ),
             // Background subtle lavender blossoms fade
             Positioned(
               right: 0,
