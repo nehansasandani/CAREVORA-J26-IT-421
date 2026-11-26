@@ -1830,18 +1830,18 @@ class _ElderInteractiveHomePageState
 
     return _buildOpenBookFrame(
       coverGradient: const [
-        Color(0xFF8B5CF6), // Royal Purple & Violet palette
+        Color(0xFFA78BFA), // Soft luminous Lavender-Violet (elder-friendly & matches page)
+        Color(0xFF8B5CF6),
         Color(0xFF7C3AED),
-        Color(0xFF6D28D9),
       ],
       bindingGradient: const [
-        Color(0xFF6D28D9),
-        Color(0xFF5B21B6),
+        Color(0xFFEDE9FE), // Soft Lavender Casing
+        Color(0xFFDDD6FE),
       ],
-      bindingBorderColor: const Color(0xFF6D28D9),
+      bindingBorderColor: const Color(0xFFC4B5FD),
       buttonGradient: const [
+        Color(0xFF8B5CF6),
         Color(0xFF7C3AED),
-        Color(0xFF6D28D9),
       ],
       buttonLeadingIcon: const Icon(Icons.psychology_rounded, color: Colors.white, size: 16),
       coverIcon: const Icon(Icons.psychology_rounded, size: 28, color: Colors.white),
@@ -1942,18 +1942,18 @@ class _ElderInteractiveHomePageState
 
     return _buildOpenBookFrame(
       coverGradient: const [
-        Color(0xFF4F46E5), // Royal Indigo & Iris palette (Harmonious with purple)
-        Color(0xFF4338CA),
-        Color(0xFF3730A3),
+        Color(0xFF60A5FA), // Cheerful, soft Sky & Cornflower Blue (elder-friendly)
+        Color(0xFF3B82F6),
+        Color(0xFF2563EB),
       ],
       bindingGradient: const [
-        Color(0xFF3730A3),
-        Color(0xFF312E81),
+        Color(0xFFEFF6FF), // Soft Sky Casing
+        Color(0xFFDBEAFE),
       ],
-      bindingBorderColor: const Color(0xFF3730A3),
+      bindingBorderColor: const Color(0xFFBAE6FD),
       buttonGradient: const [
-        Color(0xFF4F46E5),
-        Color(0xFF4338CA),
+        Color(0xFF3B82F6),
+        Color(0xFF2563EB),
       ],
       buttonLeadingIcon: const Icon(Icons.sports_esports_rounded, color: Colors.white, size: 16),
       coverIcon: const Icon(Icons.extension_rounded, size: 26, color: Colors.white),
@@ -2029,14 +2029,14 @@ class _ElderInteractiveHomePageState
         borderRadius: BorderRadius.circular(22),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF3B0764).withValues(alpha: 0.16),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
+            color: const Color(0xFF7C3AED).withValues(alpha: 0.08),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
           ),
           BoxShadow(
-            color: const Color(0xFF7C3AED).withValues(alpha: 0.09),
-            blurRadius: 32,
-            offset: const Offset(0, 14),
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -2048,13 +2048,13 @@ class _ElderInteractiveHomePageState
             child: Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: bindingGradient ?? const [Color(0xFF5B21B6), Color(0xFF4C1D95)],
+                  colors: bindingGradient ?? const [Color(0xFFEDE9FE), Color(0xFFDDD6FE)],
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                 ),
                 borderRadius: BorderRadius.circular(22),
                 border: Border.all(
-                  color: bindingBorderColor ?? const Color(0xFF7C3AED),
+                  color: bindingBorderColor ?? const Color(0xFFC4B5FD),
                   width: 2.2,
                 ),
               ),
@@ -2113,7 +2113,7 @@ class _ElderInteractiveHomePageState
                                   gradient: LinearGradient(
                                     colors: [
                                       Colors.transparent,
-                                      Colors.black.withValues(alpha: 0.22),
+                                      Colors.black.withValues(alpha: 0.06),
                                     ],
                                     begin: Alignment.centerLeft,
                                     end: Alignment.centerRight,
@@ -2227,7 +2227,7 @@ class _ElderInteractiveHomePageState
                                 decoration: BoxDecoration(
                                   gradient: LinearGradient(
                                     colors: [
-                                      Colors.black.withValues(alpha: 0.15),
+                                      Colors.black.withValues(alpha: 0.05),
                                       Colors.transparent,
                                     ],
                                     begin: Alignment.centerLeft,
@@ -2503,12 +2503,12 @@ class _ElderInteractiveHomePageState
         curve: Curves.easeInOut,
         padding: const EdgeInsets.symmetric(vertical: 5.5),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF6D28D9) : Colors.transparent,
+          color: isSelected ? const Color(0xFF7C3AED) : Colors.transparent,
           borderRadius: BorderRadius.circular(99),
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: const Color(0xFF6D28D9).withValues(alpha: 0.35),
+                    color: const Color(0xFF7C3AED).withValues(alpha: 0.25),
                     blurRadius: 6,
                     offset: const Offset(0, 2),
                   ),
