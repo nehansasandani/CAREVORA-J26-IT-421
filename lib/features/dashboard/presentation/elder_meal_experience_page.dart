@@ -2,7 +2,6 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../../../core/services/tts_service.dart';
 
@@ -456,7 +455,7 @@ class _ElderMealExperiencePageState extends ConsumerState<ElderMealExperiencePag
                   end: Alignment.bottomRight,
                 ),
               ),
-              child: const Icon(LucideIcons.heartHandshake, color: Colors.white, size: 22),
+              child: const Icon(Icons.favorite_rounded, color: Colors.white, size: 22),
             ),
             const SizedBox(width: 10),
             Column(
@@ -834,8 +833,8 @@ class _ElderMealExperiencePageState extends ConsumerState<ElderMealExperiencePag
             ),
             SizedBox(height: 3),
             Text(
-              'කෑ ආහාර වර්ග තෝරන්න
-(කීපයක් එකවර තෝරන්න පුළුවන්)',
+              'කෑ ආහාර වර්ග තෝරන්න\n'
+              '(කීපයක් එකවර තෝරන්න පුළුවන්)',
               style: TextStyle(
                 fontSize: 12.0,
                 fontWeight: FontWeight.w600,
@@ -1116,8 +1115,8 @@ class _ElderMealExperiencePageState extends ConsumerState<ElderMealExperiencePag
         _buildSectionIconSquircle(const Text('👥', style: TextStyle(fontSize: 22))),
         const SizedBox(width: 12),
         const Text(
-          'ආහාරය ගත්තේ
-කවුරුද සමගද?',
+          'ආහාරය ගත්තේ\n'
+          'කවුරුද සමගද?',
           style: TextStyle(
             fontSize: 15.5,
             fontWeight: FontWeight.w900,
@@ -1238,8 +1237,8 @@ class _ElderMealExperiencePageState extends ConsumerState<ElderMealExperiencePag
         _buildSectionIconSquircle(const Text('🥤', style: TextStyle(fontSize: 22))),
         const SizedBox(width: 12),
         const Text(
-          'ආහාරයට අමතරව
-මොනවා බිව්වාද?',
+          'ආහාරයට අමතරව\n'
+          'මොනවා බිව්වාද?',
           style: TextStyle(
             fontSize: 15.5,
             fontWeight: FontWeight.w900,
