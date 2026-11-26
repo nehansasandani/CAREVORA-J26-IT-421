@@ -2060,408 +2060,424 @@ class _ElderInteractiveHomePageState
     List<Color>? buttonGradient,
     Widget? buttonLeadingIcon,
   }) {
-    const double spineRatio = 0.38;
-
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        // 1. 3D Hardcover Base & Stacked Page Layers
-        Positioned.fill(
-          child: CustomPaint(
-            painter: _OpenBookBasePainter(
-              spineRatio: spineRatio,
-              casingGradient: bindingGradient ??
-                  const [Color(0xFF5B21B6), Color(0xFF4C1D95)],
-              casingBorderColor:
-                  bindingBorderColor ?? const Color(0xFF7C3AED),
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF3B0764).withValues(alpha: 0.16),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+          BoxShadow(
+            color: const Color(0xFF7C3AED).withValues(alpha: 0.09),
+            blurRadius: 32,
+            offset: const Offset(0, 14),
+          ),
+        ],
+      ),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          // Hardcover Outer Binding Frame
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: bindingGradient ?? const [Color(0xFF5B21B6), Color(0xFF4C1D95)],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(
+                  color: bindingBorderColor ?? const Color(0xFF7C3AED),
+                  width: 2.2,
+                ),
+              ),
             ),
           ),
-        ),
 
-        // 2. Open Two-Page Spread clipped to authentic Open Book shape
-        ClipPath(
-          clipper: const _OpenBookShapeClipper(spineRatio: spineRatio),
-          child: Container(
-            color: Colors.white,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // LEFT COVER PAGE (38% width)
-                Expanded(
-                  flex: 38,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: coverGradient ??
-                            const [
+          // Layered 3D Paper Stack Edge & Spine Arch Curvature effect at bottom
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            height: 12,
+            child: CustomPaint(
+              size: Size.infinite,
+              painter: _BookSpineArchPainter(
+                spineRatio: 0.38,
+                casingColor: bindingBorderColor ?? const Color(0xFF7C3AED),
+              ),
+            ),
+          ),
+
+          // Open Two-Page Spread (Left Purple Cover Page + Right Cream/White Page)
+          Container(
+            margin: const EdgeInsets.only(bottom: 6),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(18),
+              child: IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // LEFT PAGE (Cover / Theme page - 38% width)
+                    Expanded(
+                      flex: 38,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: coverGradient ?? const [
                               Color(0xFF8B5CF6),
                               Color(0xFF7C3AED),
                               Color(0xFF6D28D9),
                             ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                    ),
-                    child: Stack(
-                      children: [
-                        // Spine gutter shadow on right edge of left cover
-                        Positioned(
-                          top: 0,
-                          bottom: 0,
-                          right: 0,
-                          width: 18,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [
-                                  Colors.transparent,
-                                  Colors.black.withValues(alpha: 0.30),
-                                ],
-                                begin: Alignment.centerLeft,
-                                end: Alignment.centerRight,
-                              ),
-                            ),
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
                           ),
                         ),
-                        // Top-left filigree corner flourish
-                        Positioned(
-                          top: 8,
-                          left: 8,
-                          child: _buildBookCornerFlourish(),
-                        ),
-                        // Bottom-left botanical leaves flourish (Matching Mockup)
-                        const Positioned(
-                          bottom: 8,
-                          left: 8,
-                          child: Text('🌿', style: TextStyle(fontSize: 20)),
-                        ),
-                        // Cover Contents
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(14, 16, 14, 18),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              // Glowing circular badge
-                              Container(
-                                width: 42,
-                                height: 42,
+                        child: Stack(
+                          children: [
+                            // Crease / gutter shadow on right edge of left page
+                            Positioned(
+                              top: 0,
+                              bottom: 0,
+                              right: 0,
+                              width: 16,
+                              child: Container(
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.20),
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: Colors.white.withValues(alpha: 0.45),
-                                    width: 1.5,
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      Colors.transparent,
+                                      Colors.black.withValues(alpha: 0.22),
+                                    ],
+                                    begin: Alignment.centerLeft,
+                                    end: Alignment.centerRight,
                                   ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.12),
-                                      blurRadius: 6,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ],
                                 ),
-                                alignment: Alignment.center,
-                                child: coverIcon,
-                              ),
-                              const SizedBox(height: 6),
-
-                              // Title lines
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: coverTitleLines.map((line) {
-                                  return Text(
-                                    line,
-                                    style: const TextStyle(
-                                      fontSize: 18.5,
-                                      fontWeight: FontWeight.w900,
-                                      color: Colors.white,
-                                      letterSpacing: -0.2,
-                                      height: 1.15,
-                                    ),
-                                  );
-                                }).toList(),
-                              ),
-                              const SizedBox(height: 6),
-
-                              // Subtitle
-                              Text(
-                                coverSubtitle,
-                                style: TextStyle(
-                                  fontSize: 11.5,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.white.withValues(alpha: 0.88),
-                                  height: 1.25,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-
-                              // Bottom accent
-                              Align(
-                                alignment: Alignment.centerRight,
-                                child: coverBottomWidget,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-                // RIGHT PAGE (Interactive Content & 3D Flipping Page - 62% width)
-                Expanded(
-                  flex: 62,
-                  child: Container(
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          Color(0xFFF9F7FF),
-                          Colors.white,
-                          Color(0xFFFCFAFF),
-                        ],
-                        begin: Alignment.centerLeft,
-                        end: Alignment.centerRight,
-                      ),
-                    ),
-                    child: Stack(
-                      children: [
-                        // Left edge crease shadow from spine
-                        Positioned(
-                          top: 0,
-                          bottom: 0,
-                          left: 0,
-                          width: 16,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [
-                                  Colors.black.withValues(alpha: 0.20),
-                                  Colors.transparent,
-                                ],
-                                begin: Alignment.centerLeft,
-                                end: Alignment.centerRight,
                               ),
                             ),
+                            // Corner flourish
+                            Positioned(
+                              top: 8,
+                              left: 8,
+                              child: _buildBookCornerFlourish(),
+                            ),
+                            // Bottom-left Botanical leaves flourish (Matching Mockup)
+                            const Positioned(
+                              bottom: 4,
+                              left: 6,
+                              child: Text('🌿', style: TextStyle(fontSize: 19)),
+                            ),
+                            // Cover Contents
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(14, 16, 14, 14),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  // Glowing Circular Badge
+                                  Container(
+                                    width: 42,
+                                    height: 42,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withValues(alpha: 0.18),
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: Colors.white.withValues(alpha: 0.40),
+                                        width: 1.5,
+                                      ),
+                                    ),
+                                    alignment: Alignment.center,
+                                    child: coverIcon,
+                                  ),
+                                  const SizedBox(height: 6),
+
+                                  // Title Lines
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: coverTitleLines.map((line) {
+                                      return Text(
+                                        line,
+                                        style: const TextStyle(
+                                          fontSize: 18.5,
+                                          fontWeight: FontWeight.w900,
+                                          color: Colors.white,
+                                          letterSpacing: -0.2,
+                                          height: 1.15,
+                                        ),
+                                      );
+                                    }).toList(),
+                                  ),
+                                  const SizedBox(height: 6),
+
+                                  // Subtitle
+                                  Text(
+                                    coverSubtitle,
+                                    style: TextStyle(
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white.withValues(alpha: 0.88),
+                                      height: 1.25,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+
+                                  // Bottom Accent
+                                  Align(
+                                    alignment: Alignment.centerRight,
+                                    child: coverBottomWidget,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    // RIGHT PAGE (Interactive Content & Flipping Page - 62% width)
+                    Expanded(
+                      flex: 62,
+                      child: Container(
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Color(0xFFF9F7FF),
+                              Colors.white,
+                              Color(0xFFFCFAFF),
+                            ],
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
                           ),
                         ),
-
-                        // Content on Right Page
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(14, 12, 14, 18),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              // Top Slot Pills (☀️ උදෑසන | 🌤️ දවල් | 🌙 රාත්‍රී)
-                              _buildBookSlotTabBar(
-                                selectedSlot: selectedSlot,
-                                currentSlot: currentSlot,
-                                onSlotChanged: onSlotChanged,
-                              ),
-                              const SizedBox(height: 10),
-
-                              // 3D Realistic Page-Turn Animated Switcher
-                              AnimatedSwitcher(
-                                duration: const Duration(milliseconds: 450),
-                                switchInCurve: Curves.easeOutCubic,
-                                switchOutCurve: Curves.easeInCubic,
-                                layoutBuilder: (currentChild, previousChildren) {
-                                  return Stack(
-                                    alignment: Alignment.topLeft,
-                                    children: <Widget>[
-                                      ...previousChildren,
-                                      if (currentChild != null) currentChild,
+                        child: Stack(
+                          children: [
+                            // Left edge crease shadow from spine
+                            Positioned(
+                              top: 0,
+                              bottom: 0,
+                              left: 0,
+                              width: 14,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      Colors.black.withValues(alpha: 0.15),
+                                      Colors.transparent,
                                     ],
-                                  );
-                                },
-                                transitionBuilder: (child, animation) {
-                                  final isIncoming = child.key == pageKey;
-                                  return AnimatedBuilder(
-                                    animation: animation,
-                                    child: child,
-                                    builder: (context, child) {
-                                      final val = animation.value;
-                                      final double angle = isIncoming
-                                          ? (1.0 - val) * (math.pi / 3.0)
-                                          : -(1.0 - val) * (math.pi / 3.0);
-                                      final double shadow = isIncoming
-                                          ? (1.0 - val) * 0.24
-                                          : (1.0 - val) * 0.28;
+                                    begin: Alignment.centerLeft,
+                                    end: Alignment.centerRight,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            // Content on Right Page
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  // Top Slot Pills (☀️ උදෑසන | 🌤️ දවල් | 🌙 රාත්‍රී)
+                                  _buildBookSlotTabBar(
+                                    selectedSlot: selectedSlot,
+                                    currentSlot: currentSlot,
+                                    onSlotChanged: onSlotChanged,
+                                  ),
+                                  const SizedBox(height: 10),
 
-                                      return Transform(
-                                        transform: Matrix4.identity()
-                                          ..setEntry(3, 2, 0.0015)
-                                          ..rotateY(angle),
-                                        alignment: Alignment.centerLeft,
-                                        child: Stack(
-                                          children: [
-                                            child!,
-                                            if (shadow > 0.01)
-                                              Positioned.fill(
-                                                child: IgnorePointer(
-                                                  child: Container(
-                                                    decoration: BoxDecoration(
-                                                      gradient: LinearGradient(
-                                                        colors: [
-                                                          Colors.black.withValues(alpha: shadow),
-                                                          Colors.black.withValues(alpha: shadow * 0.25),
-                                                          Colors.transparent,
-                                                        ],
-                                                        begin: Alignment.centerLeft,
-                                                        end: Alignment.centerRight,
+                                  // Animated 3D Page Turn Content with Dynamic Paper Lighting Shadow
+                                  AnimatedSwitcher(
+                                    duration: const Duration(milliseconds: 420),
+                                    transitionBuilder: (child, animation) {
+                                      final flipAnimation = Tween<double>(
+                                        begin: math.pi / 2.2,
+                                        end: 0.0,
+                                      ).animate(
+                                        CurvedAnimation(
+                                          parent: animation,
+                                          curve: Curves.easeInOutCubic,
+                                        ),
+                                      );
+                                      return AnimatedBuilder(
+                                        animation: flipAnimation,
+                                        child: child,
+                                        builder: (context, child) {
+                                          final shadowAlpha = (flipAnimation.value / (math.pi / 2.2)) * 0.22;
+                                          return Transform(
+                                            transform: Matrix4.identity()
+                                              ..setEntry(3, 2, 0.0014)
+                                              ..rotateY(flipAnimation.value),
+                                            alignment: Alignment.centerLeft,
+                                            child: Stack(
+                                              children: [
+                                                child!,
+                                                if (shadowAlpha > 0.01)
+                                                  Positioned.fill(
+                                                    child: IgnorePointer(
+                                                      child: Container(
+                                                        decoration: BoxDecoration(
+                                                          gradient: LinearGradient(
+                                                            colors: [
+                                                              Colors.black.withValues(alpha: shadowAlpha),
+                                                              Colors.black.withValues(alpha: shadowAlpha * 0.25),
+                                                              Colors.transparent,
+                                                            ],
+                                                            begin: Alignment.centerLeft,
+                                                            end: Alignment.centerRight,
+                                                          ),
+                                                        ),
                                                       ),
                                                     ),
+                                                  ),
+                                              ],
+                                            ),
+                                          );
+                                        },
+                                      );
+                                    },
+                                    child: KeyedSubtree(
+                                      key: pageKey,
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          // Middle Row: Illustration + Checklist
+                                          Row(
+                                            crossAxisAlignment: CrossAxisAlignment.center,
+                                            children: [
+                                              pageIllustration,
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    Text(
+                                                      pageSlotTitle,
+                                                      style: const TextStyle(
+                                                        fontSize: 14.5,
+                                                        fontWeight: FontWeight.w900,
+                                                        color: Color(0xFF1E1B4B),
+                                                        letterSpacing: -0.1,
+                                                      ),
+                                                      maxLines: 1,
+                                                      overflow: TextOverflow.ellipsis,
+                                                    ),
+                                                    const SizedBox(height: 2),
+                                                    Row(
+                                                      children: [
+                                                        const Icon(
+                                                          Icons.access_time_rounded,
+                                                          size: 12,
+                                                          color: Color(0xFF64748B),
+                                                        ),
+                                                        const SizedBox(width: 4),
+                                                        Text(
+                                                          pageTimeText,
+                                                          style: const TextStyle(
+                                                            fontSize: 11.5,
+                                                            fontWeight: FontWeight.w700,
+                                                            color: Color(0xFF64748B),
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                    const SizedBox(height: 6),
+                                                    ...pageChecklist.map(_buildBookChecklistItem),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 10),
+
+                                          // Bottom Action Pill Button
+                                          Center(
+                                            child: Material(
+                                              color: Colors.transparent,
+                                              child: InkWell(
+                                                onTap: onButtonPressed,
+                                                borderRadius: BorderRadius.circular(99),
+                                                child: Container(
+                                                  width: double.infinity,
+                                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8.5),
+                                                  decoration: BoxDecoration(
+                                                    gradient: LinearGradient(
+                                                      colors: buttonGradient ?? const [Color(0xFF6D28D9), Color(0xFF7C3AED)],
+                                                      begin: Alignment.centerLeft,
+                                                      end: Alignment.centerRight,
+                                                    ),
+                                                    borderRadius: BorderRadius.circular(99),
+                                                    boxShadow: [
+                                                      BoxShadow(
+                                                        color: (buttonGradient?.first ?? const Color(0xFF6D28D9)).withValues(alpha: 0.35),
+                                                        blurRadius: 8,
+                                                        offset: const Offset(0, 3),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  child: Row(
+                                                    mainAxisAlignment: MainAxisAlignment.center,
+                                                    children: [
+                                                      if (buttonLeadingIcon != null) ...[
+                                                        buttonLeadingIcon,
+                                                        const SizedBox(width: 6),
+                                                      ],
+                                                      Text(
+                                                        buttonText,
+                                                        style: const TextStyle(
+                                                          color: Colors.white,
+                                                          fontSize: 13,
+                                                          fontWeight: FontWeight.w800,
+                                                          letterSpacing: 0.2,
+                                                        ),
+                                                      ),
+                                                      const SizedBox(width: 5),
+                                                      const Icon(
+                                                        Icons.arrow_forward_rounded,
+                                                        color: Colors.white,
+                                                        size: 15,
+                                                      ),
+                                                    ],
                                                   ),
                                                 ),
                                               ),
-                                          ],
-                                        ),
-                                      );
-                                    },
-                                  );
-                                },
-                                child: KeyedSubtree(
-                                  key: pageKey,
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      // Middle Row: Illustration + Checklist
-                                      Row(
-                                        crossAxisAlignment: CrossAxisAlignment.center,
-                                        children: [
-                                          pageIllustration,
-                                          const SizedBox(width: 8),
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                Text(
-                                                  pageSlotTitle,
-                                                  style: const TextStyle(
-                                                    fontSize: 14.5,
-                                                    fontWeight: FontWeight.w900,
-                                                    color: Color(0xFF1E1B4B),
-                                                    letterSpacing: -0.1,
-                                                  ),
-                                                  maxLines: 1,
-                                                  overflow: TextOverflow.ellipsis,
-                                                ),
-                                                const SizedBox(height: 2),
-                                                Row(
-                                                  children: [
-                                                    const Icon(
-                                                      Icons.access_time_rounded,
-                                                      size: 12,
-                                                      color: Color(0xFF64748B),
-                                                    ),
-                                                    const SizedBox(width: 4),
-                                                    Text(
-                                                      pageTimeText,
-                                                      style: const TextStyle(
-                                                        fontSize: 11.5,
-                                                        fontWeight: FontWeight.w700,
-                                                        color: Color(0xFF64748B),
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                                const SizedBox(height: 6),
-                                                ...pageChecklist.map(_buildBookChecklistItem),
-                                              ],
                                             ),
                                           ),
                                         ],
                                       ),
-                                      const SizedBox(height: 10),
-
-                                      // Bottom Action Pill Button
-                                      Center(
-                                        child: Material(
-                                          color: Colors.transparent,
-                                          child: InkWell(
-                                            onTap: onButtonPressed,
-                                            borderRadius: BorderRadius.circular(99),
-                                            child: Container(
-                                              width: double.infinity,
-                                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8.5),
-                                              decoration: BoxDecoration(
-                                                gradient: LinearGradient(
-                                                  colors: buttonGradient ??
-                                                      const [Color(0xFF6D28D9), Color(0xFF7C3AED)],
-                                                  begin: Alignment.centerLeft,
-                                                  end: Alignment.centerRight,
-                                                ),
-                                                borderRadius: BorderRadius.circular(99),
-                                                boxShadow: [
-                                                  BoxShadow(
-                                                    color: (buttonGradient?.first ?? const Color(0xFF6D28D9))
-                                                        .withValues(alpha: 0.35),
-                                                    blurRadius: 8,
-                                                    offset: const Offset(0, 3),
-                                                  ),
-                                                ],
-                                              ),
-                                              child: Row(
-                                                mainAxisAlignment: MainAxisAlignment.center,
-                                                children: [
-                                                  if (buttonLeadingIcon != null) ...[
-                                                    buttonLeadingIcon,
-                                                    const SizedBox(width: 6),
-                                                  ],
-                                                  Text(
-                                                    buttonText,
-                                                    style: const TextStyle(
-                                                      color: Colors.white,
-                                                      fontSize: 13,
-                                                      fontWeight: FontWeight.w800,
-                                                      letterSpacing: 0.2,
-                                                    ),
-                                                  ),
-                                                  const SizedBox(width: 5),
-                                                  const Icon(
-                                                    Icons.arrow_forward_rounded,
-                                                    color: Colors.white,
-                                                    size: 15,
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
+                                    ),
                                   ),
-                                ),
+                                ],
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
-                  ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
-        ),
 
-        // 3. Golden Ribbon Bookmark at top spine junction
-        Positioned(
-          top: -2,
-          left: 0,
-          right: 0,
-          child: Align(
-            alignment: const Alignment(-0.24, 0), // At the 38% spine fold
-            child: CustomPaint(
-              size: const Size(20, 32),
-              painter: _RibbonBookmarkPainter(),
+          // Golden Ribbon Bookmark at top spine junction
+          Positioned(
+            top: -2,
+            left: 0,
+            right: 0,
+            child: Align(
+              alignment: const Alignment(-0.24, 0), // At the 38% spine fold
+              child: CustomPaint(
+                size: const Size(20, 30),
+                painter: _RibbonBookmarkPainter(),
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -5978,173 +5994,78 @@ class _BookCornerFlourishPainter extends CustomPainter {
 
 
 // =========================================================================
-// REALISTIC 3D OPEN BOOK SHAPE CLIPPER
+// REALISTIC 3D OPEN BOOK BOTTOM ARCH & PAPER STACK PAINTER
 // =========================================================================
-class _OpenBookShapeClipper extends CustomClipper<Path> {
+class _BookSpineArchPainter extends CustomPainter {
   final double spineRatio;
-  const _OpenBookShapeClipper({this.spineRatio = 0.38});
+  final Color casingColor;
 
-  @override
-  Path getClip(Size size) {
-    final w = size.width;
-    final h = size.height;
-    final s = w * spineRatio;
-
-    final path = Path();
-    // Top-left corner
-    path.moveTo(0, 16);
-    path.quadraticBezierTo(0, 3, 14, 3);
-
-    // Left page top gentle arch down to spine
-    path.quadraticBezierTo(s * 0.45, 1, s - 6, 7);
-    // Center spine top notch
-    path.quadraticBezierTo(s, 8.5, s + 6, 7);
-
-    // Right page top gentle arch
-    path.quadraticBezierTo(s + (w - s) * 0.52, 1, w - 16, 3);
-    // Top-right corner
-    path.quadraticBezierTo(w, 3, w, 16);
-
-    // Right edge
-    path.lineTo(w, h - 18);
-
-    // Bottom-right corner
-    path.quadraticBezierTo(w, h - 5, w - 14, h - 5);
-
-    // Right page bottom belly: curves down into the page belly, then arches UPWARDS to spine fold
-    path.quadraticBezierTo(s + (w - s) * 0.55, h, s + 8, h - 15);
-
-    // Center spine bottom arch (distinct upward concave arch of open book)
-    path.quadraticBezierTo(s, h - 17, s - 8, h - 15);
-
-    // Left page bottom belly: curves down into the page belly, then curves up to corner
-    path.quadraticBezierTo(s * 0.45, h, 14, h - 5);
-
-    // Bottom-left corner
-    path.quadraticBezierTo(0, h - 5, 0, h - 18);
-
-    path.close();
-    return path;
-  }
-
-  @override
-  bool shouldReclip(covariant _OpenBookShapeClipper oldClipper) =>
-      oldClipper.spineRatio != spineRatio;
-}
-
-// =========================================================================
-// REALISTIC 3D OPEN BOOK BASE PAINTER (Hardcover Casing & Stacked Paper Layers)
-// =========================================================================
-class _OpenBookBasePainter extends CustomPainter {
-  final double spineRatio;
-  final List<Color> casingGradient;
-  final Color casingBorderColor;
-
-  const _OpenBookBasePainter({
+  const _BookSpineArchPainter({
     this.spineRatio = 0.38,
-    required this.casingGradient,
-    required this.casingBorderColor,
+    required this.casingColor,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
+    if (size.width <= 0 || size.height <= 0) return;
     final w = size.width;
     final h = size.height;
     final s = w * spineRatio;
 
-    // 1. HARDCOVER BASE CASING (Extended by 6px bottom, 4px sides for authentic casing rim)
-    final casingPath = Path();
-    const exX = 3.5;
-    const exBottom = 6.0;
-    const exTop = 2.0;
+    // 1. Center spine upward arch cavity (dark shading)
+    final spineCavityPaint = Paint()
+      ..color = casingColor.withValues(alpha: 0.90)
+      ..style = PaintingStyle.fill;
 
-    casingPath.moveTo(-exX, 16);
-    casingPath.quadraticBezierTo(-exX, -exTop, 14, -exTop);
-    casingPath.quadraticBezierTo(s * 0.45, -exTop - 1, s - 6, 6);
-    casingPath.quadraticBezierTo(s, 7.5, s + 6, 6);
-    casingPath.quadraticBezierTo(s + (w - s) * 0.52, -exTop - 1, w - 16, -exTop);
-    casingPath.quadraticBezierTo(w + exX, -exTop, w + exX, 16);
+    final spineArchPath = Path();
+    spineArchPath.moveTo(s - 14, h);
+    spineArchPath.quadraticBezierTo(s, h - 8, s + 14, h);
+    spineArchPath.close();
+    canvas.drawPath(spineArchPath, spineCavityPaint);
 
-    casingPath.lineTo(w + exX, h + exBottom - 18);
-    casingPath.quadraticBezierTo(w + exX, h + exBottom, w - 14, h + exBottom);
-    casingPath.quadraticBezierTo(s + (w - s) * 0.55, h + exBottom + 2, s + 8, h + exBottom - 15);
-    casingPath.quadraticBezierTo(s, h + exBottom - 17, s - 8, h + exBottom - 15);
-    casingPath.quadraticBezierTo(s * 0.45, h + exBottom + 2, 14, h + exBottom);
-    casingPath.quadraticBezierTo(-exX, h + exBottom, -exX, h + exBottom - 18);
-    casingPath.close();
-
-    // 1a. Table Ambient Drop Shadow under the Book
-    final shadowPaint = Paint()
-      ..color = const Color(0xFF1E1B4B).withValues(alpha: 0.18)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 16);
-    canvas.drawPath(casingPath.shift(const Offset(0, 8)), shadowPaint);
-
-    final softShadowPaint = Paint()
-      ..color = const Color(0xFF0F172A).withValues(alpha: 0.10)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
-    canvas.drawPath(casingPath.shift(const Offset(0, 3)), softShadowPaint);
-
-    // 1b. Hardcover Casing Fill
-    final casingPaint = Paint()
-      ..shader = LinearGradient(
-        colors: casingGradient,
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      ).createShader(Rect.fromLTWH(-exX, -exTop, w + exX * 2, h + exBottom + exTop));
-    canvas.drawPath(casingPath, casingPaint);
-
-    // 1c. Casing Border / Bevel Stroke
-    final borderPaint = Paint()
-      ..color = casingBorderColor.withValues(alpha: 0.5)
-      ..strokeWidth = 1.4
+    // Spine binding crease highlight
+    final creasePaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.35)
+      ..strokeWidth = 1.2
       ..style = PaintingStyle.stroke;
-    canvas.drawPath(casingPath, borderPaint);
+    canvas.drawLine(Offset(s, 0), Offset(s, h - 7), creasePaint);
 
-    // 2. STACKED PAPER LAYERS (Multi-sheet page thickness on the right page)
+    // 2. Right page stacked paper layers (Multi-sheet page thickness)
     for (int i = 1; i <= 3; i++) {
       final double dy = (i * 1.8);
       final pageEdgePaint = Paint()
         ..color = (i == 1
                 ? Colors.white
                 : (i == 2 ? const Color(0xFFF1F5F9) : const Color(0xFFE2E8F0)))
-            .withValues(alpha: 0.95 - (i * 0.15))
-        ..strokeWidth = 1.1
+            .withValues(alpha: 0.95 - (i * 0.12))
+        ..strokeWidth = 1.2
         ..style = PaintingStyle.stroke;
 
       final paperEdgePath = Path();
-      paperEdgePath.moveTo(s + 10, h - 14 + dy);
+      paperEdgePath.moveTo(s + 12, h - 6 + dy);
       paperEdgePath.quadraticBezierTo(
         s + (w - s) * 0.55,
         h - 1 + dy,
         w - 12,
         h - 4 + dy,
       );
-      paperEdgePath.quadraticBezierTo(
-        w + (i * 0.8),
-        h - 4 + dy,
-        w + (i * 0.8),
-        h - 14,
-      );
       canvas.drawPath(paperEdgePath, pageEdgePaint);
     }
 
-    // Vertical right page block lines
-    for (int i = 1; i <= 2; i++) {
-      final vLinePaint = Paint()
-        ..color = const Color(0xFFE2E8F0).withValues(alpha: 0.7)
-        ..strokeWidth = 0.8
-        ..style = PaintingStyle.stroke;
-      canvas.drawLine(
-        Offset(w + (i * 1.0), 18),
-        Offset(w + (i * 1.0), h - 18),
-        vLinePaint,
-      );
-    }
+    // 3. Left cover bottom curved edge
+    final coverEdgePaint = Paint()
+      ..color = casingColor.withValues(alpha: 0.75)
+      ..strokeWidth = 1.5
+      ..style = PaintingStyle.stroke;
+
+    final coverEdgePath = Path();
+    coverEdgePath.moveTo(12, h - 3);
+    coverEdgePath.quadraticBezierTo(s * 0.5, h, s - 12, h - 5);
+    canvas.drawPath(coverEdgePath, coverEdgePaint);
   }
 
   @override
-  bool shouldRepaint(covariant _OpenBookBasePainter oldDelegate) =>
+  bool shouldRepaint(covariant _BookSpineArchPainter oldDelegate) =>
       oldDelegate.spineRatio != spineRatio ||
-      oldDelegate.casingGradient != casingGradient ||
-      oldDelegate.casingBorderColor != casingBorderColor;
+      oldDelegate.casingColor != casingColor;
 }
