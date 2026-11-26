@@ -1109,15 +1109,15 @@ class _ElderInteractiveHomePageState
 
     switch (period) {
       case DayPeriod.morning:
-        card1Icon = '☕';
+        card1Icon = '🍲';
         card1Question = 'උදෑසන ආහාර\nගත්තාද?';
         card1YesFeedback = 'ඔබ උදෑසන ආහාරය ලබාගෙන තිබීම සතුටක්!';
         card1NoFeedback = 'උදෑසන ආහාරය ලබා ගැනීමට සහායකයා ඔබට උදව් කරනු ඇත.';
 
-        card2Icon = '🚿';
-        card2Question = 'මුහුණ හෝදා\nගත්තාද?';
+        card2Icon = '🛏️';
+        card2Question = 'විවේක\nගත්තාද?';
         card2YesFeedback = 'ඉතා විශිෂ්ටයි! ඔබ ප්‍රබෝධමත්ව අද දවස සතුටින් ගත කිරීමට සූදානම්.';
-        card2NoFeedback = 'අපි මුහුණ සෝදා ප්‍රබෝධමත් වෙමු. සහායකයා දැනුවත් කර ඇත.';
+        card2NoFeedback = 'සුවදායක කෙටි විවේකයක් ලබා ගැනීමට සහායකයා දැනුවත් කර ඇත.';
         break;
 
       case DayPeriod.afternoon:
@@ -1163,6 +1163,8 @@ class _ElderInteractiveHomePageState
     const card3NoFeedback = 'ජලය ප්‍රමාණවත් ලෙස පානය කිරීමට අමතක නොකරන්න. මම සහායකයාට දැන්වුවා ඔබට ජලය ගෙන එන්න.';
 
     final card1 = _buildMockupRoutineCard(
+      backgroundColor: const Color(0xFFFFF7ED), // Warm peach #FFF1DC
+      borderColor: const Color(0xFFFED7AA),
       iconWidget: Container(
         width: 46,
         height: 46,
@@ -1190,6 +1192,8 @@ class _ElderInteractiveHomePageState
     );
 
     final card2 = _buildMockupRoutineCard(
+      backgroundColor: const Color(0xFFEFF6FF), // Pale sky #EAF3FF
+      borderColor: const Color(0xFFBFDBFE),
       iconWidget: Stack(
         clipBehavior: Clip.none,
         children: [
@@ -1227,6 +1231,8 @@ class _ElderInteractiveHomePageState
     );
 
     final card3 = _buildMockupRoutineCard(
+      backgroundColor: const Color(0xFFF0FDF4), // Light aqua #E6F6FF
+      borderColor: const Color(0xFFBAE6FD),
       iconWidget: Container(
         width: 46,
         height: 46,
@@ -1290,23 +1296,18 @@ class _ElderInteractiveHomePageState
     required String noButtonText,
     required bool isWaterCard,
     required VoidCallback onToggle,
+    Color? backgroundColor,
+    Color? borderColor,
   }) {
     return Container(
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.white,
-            Color(0xFFFCFAFF),
-            Color(0xFFFAF5FF),
-          ],
-        ),
+        color: backgroundColor ?? Colors.white,
         borderRadius: BorderRadius.circular(22),
         border: Border.all(
-          color: isAnsweredYes
-              ? const Color(0xFFA855F7)
-              : const Color(0xFFE9D5FF),
+          color: borderColor ??
+              (isAnsweredYes
+                  ? const Color(0xFFA855F7)
+                  : const Color(0xFFE9D5FF)),
           width: 1.6,
         ),
         boxShadow: [
@@ -1355,13 +1356,11 @@ class _ElderInteractiveHomePageState
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF059669), Color(0xFF10B981)],
-                      ),
+                      color: const Color(0xFF15803D), // Success Green #15803D
                       borderRadius: BorderRadius.circular(99),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF10B981).withValues(alpha: 0.35),
+                          color: const Color(0xFF15803D).withValues(alpha: 0.35),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
@@ -1387,12 +1386,12 @@ class _ElderInteractiveHomePageState
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF0F9FF),
+                      color: const Color(0xFFFBF8FF),
                       borderRadius: BorderRadius.circular(99),
-                      border: Border.all(color: const Color(0xFFBAE6FD), width: 1.4),
+                      border: Border.all(color: const Color(0xFFDDD6FE), width: 1.4),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF0284C7).withValues(alpha: 0.08),
+                          color: const Color(0xFF7C3AED).withValues(alpha: 0.08),
                           blurRadius: 6,
                           offset: const Offset(0, 2),
                         ),
@@ -1401,13 +1400,13 @@ class _ElderInteractiveHomePageState
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(LucideIcons.droplets, size: 14, color: Color(0xFF0284C7)),
+                        const Icon(LucideIcons.clock, size: 14, color: Color(0xFF7C3AED)),
                         const SizedBox(width: 4),
                         Text(
                           noButtonText,
                           style: const TextStyle(
-                            color: Color(0xFF0284C7),
-                            fontSize: 13.5,
+                            color: Color(0xFF6D28D9),
+                            fontSize: 13.0,
                             fontWeight: FontWeight.w800,
                           ),
                         ),
@@ -1836,9 +1835,9 @@ class _ElderInteractiveHomePageState
         slotTitle = 'උදෑසන ක්‍රියාකාරකම්';
         timeText = 'පෙ.ව. 6.00 – 10.00';
         checklist = [
-          'මනස සන්සුන් කරන breathing exercise',
-          'ධනාත්මක චින්තන',
-          'දෙවි ඇදහිලි කිරීමේ භාවනා',
+          'හෙමින් හුස්ම ගැනීම (Breathing Exercise)',
+          'සිතැඟි විඳිමු',
+          'හොඳ අදහස් සටහන් කිරීම',
         ];
         break;
       case DailyAssessmentSlot.afternoon:
@@ -1863,12 +1862,27 @@ class _ElderInteractiveHomePageState
 
     final buttonText = isDone
         ? 'සම්පූර්ණයි ($nextSlotTime ට) ⏰'
-        : 'මෙම වෙලාවේ ක්‍රියාකාරකම් බලන්න';
+        : 'මෙම වේලාවේ ක්‍රියාකාරකම් බලන්න';
 
     return _buildOpenBookFrame(
+      coverGradient: const [
+        Color(0xFFA63DB8), // magenta-purple palette #A63DB8 -> #6B21A8
+        Color(0xFF8B28A8),
+        Color(0xFF6B21A8),
+      ],
+      bindingGradient: const [
+        Color(0xFF7E22CE),
+        Color(0xFF581C87),
+      ],
+      bindingBorderColor: const Color(0xFF6B21A8),
+      buttonGradient: const [
+        Color(0xFF7E22CE),
+        Color(0xFF9333EA),
+      ],
+      buttonLeadingIcon: const Icon(Icons.psychology_rounded, color: Colors.white, size: 16),
       coverIcon: const Icon(Icons.psychology_rounded, size: 28, color: Colors.white),
       coverTitleLines: const ['මානසික', 'ක්‍රියාකාරකම්'],
-      coverSubtitle: 'ඔබගේ මානසික\nසුවය වැඩි දියුණු\nකරගන්න.',
+      coverSubtitle: 'ඔබගේ මානසික\nසුවය වර්ධනය කරයි.',
       coverBottomWidget: Text(
         '♡',
         style: TextStyle(
@@ -1934,7 +1948,7 @@ class _ElderInteractiveHomePageState
         timeText = 'පෙ.ව. 6.00 – 10.00';
         checklist = [
           'පද මාලා (Word Puzzle)',
-          'මතක ශක්තිය ප්‍රගුණකරගන්න ක්‍රීඩා',
+          'මතක ශක්තිය පරීක්ෂණ ක්‍රීඩා',
           'ලොජික් ප්‍රශ්න (Brain Quiz)',
         ];
         break;
@@ -1960,12 +1974,27 @@ class _ElderInteractiveHomePageState
 
     final buttonText = isDone
         ? 'සම්පූර්ණයි ($nextSlotTime ට) ⏰'
-        : 'මෙම වෙලාවේ ක්‍රීඩා බලන්න';
+        : 'මෙම වේලාවේ ක්‍රීඩා බලන්න';
 
     return _buildOpenBookFrame(
+      coverGradient: const [
+        Color(0xFF3B82F6), // royal blue palette #3B6FE0 -> #1E40AF
+        Color(0xFF2563EB),
+        Color(0xFF1E40AF),
+      ],
+      bindingGradient: const [
+        Color(0xFF1E40AF),
+        Color(0xFF172554),
+      ],
+      bindingBorderColor: const Color(0xFF1E40AF),
+      buttonGradient: const [
+        Color(0xFF1D4ED8),
+        Color(0xFF3B82F6),
+      ],
+      buttonLeadingIcon: const Icon(Icons.sports_esports_rounded, color: Colors.white, size: 16),
       coverIcon: const Icon(Icons.extension_rounded, size: 26, color: Colors.white),
       coverTitleLines: const ['මනස', 'පරීක්ෂණ', 'ක්‍රියාකාරකම්'],
-      coverSubtitle: 'මනස සහ අභ්‍යාස\nවර්ධනය කිරීම.',
+      coverSubtitle: 'මනස හා අවධානය\nවර්ධනය කරයි.',
       coverBottomWidget: Icon(
         Icons.sports_esports_rounded,
         size: 24,
@@ -2025,6 +2054,11 @@ class _ElderInteractiveHomePageState
     required List<String> pageChecklist,
     required String buttonText,
     required VoidCallback onButtonPressed,
+    List<Color>? coverGradient,
+    List<Color>? bindingGradient,
+    Color? bindingBorderColor,
+    List<Color>? buttonGradient,
+    Widget? buttonLeadingIcon,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -2045,17 +2079,20 @@ class _ElderInteractiveHomePageState
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          // Hardcover Purple Outer Binding Frame
+          // Hardcover Outer Binding Frame
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF5B21B6), Color(0xFF4C1D95)],
+                gradient: LinearGradient(
+                  colors: bindingGradient ?? const [Color(0xFF5B21B6), Color(0xFF4C1D95)],
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                 ),
                 borderRadius: BorderRadius.circular(22),
-                border: Border.all(color: const Color(0xFF7C3AED), width: 2.2),
+                border: Border.all(
+                  color: bindingBorderColor ?? const Color(0xFF7C3AED),
+                  width: 2.2,
+                ),
               ),
             ),
           ),
@@ -2091,9 +2128,9 @@ class _ElderInteractiveHomePageState
                     Expanded(
                       flex: 38,
                       child: Container(
-                        decoration: const BoxDecoration(
+                        decoration: BoxDecoration(
                           gradient: LinearGradient(
-                            colors: [
+                            colors: coverGradient ?? const [
                               Color(0xFF8B5CF6),
                               Color(0xFF7C3AED),
                               Color(0xFF6D28D9),
@@ -2128,6 +2165,12 @@ class _ElderInteractiveHomePageState
                               top: 8,
                               left: 8,
                               child: _buildBookCornerFlourish(),
+                            ),
+                            // Bottom-left Botanical leaves flourish (Matching Mockup)
+                            const Positioned(
+                              bottom: 4,
+                              left: 6,
+                              child: Text('🌿', style: TextStyle(fontSize: 19)),
                             ),
                             // Cover Contents
                             Padding(
@@ -2239,7 +2282,7 @@ class _ElderInteractiveHomePageState
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  // Top Slot Pills (☀️ උදෑසන | 🌤️ දහවල් | 🌙 රාත්‍රී)
+                                  // Top Slot Pills (☀️ උදෑසන | 🌤️ දවල් | 🌙 රාත්‍රී)
                                   _buildBookSlotTabBar(
                                     selectedSlot: selectedSlot,
                                     currentSlot: currentSlot,
@@ -2341,15 +2384,15 @@ class _ElderInteractiveHomePageState
                                                   width: double.infinity,
                                                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8.5),
                                                   decoration: BoxDecoration(
-                                                    gradient: const LinearGradient(
-                                                      colors: [Color(0xFF6D28D9), Color(0xFF7C3AED)],
+                                                    gradient: LinearGradient(
+                                                      colors: buttonGradient ?? const [Color(0xFF6D28D9), Color(0xFF7C3AED)],
                                                       begin: Alignment.centerLeft,
                                                       end: Alignment.centerRight,
                                                     ),
                                                     borderRadius: BorderRadius.circular(99),
                                                     boxShadow: [
                                                       BoxShadow(
-                                                        color: const Color(0xFF6D28D9).withValues(alpha: 0.35),
+                                                        color: (buttonGradient?.first ?? const Color(0xFF6D28D9)).withValues(alpha: 0.35),
                                                         blurRadius: 8,
                                                         offset: const Offset(0, 3),
                                                       ),
@@ -2358,6 +2401,10 @@ class _ElderInteractiveHomePageState
                                                   child: Row(
                                                     mainAxisAlignment: MainAxisAlignment.center,
                                                     children: [
+                                                      if (buttonLeadingIcon != null) ...[
+                                                        buttonLeadingIcon,
+                                                        const SizedBox(width: 6),
+                                                      ],
                                                       Text(
                                                         buttonText,
                                                         style: const TextStyle(
@@ -2439,7 +2486,7 @@ class _ElderInteractiveHomePageState
           ),
           Expanded(
             child: _buildBookSlotTabItem(
-              label: 'දහවල්',
+              label: 'දවල්',
               icon: '🌤️',
               isSelected: selectedSlot == DailyAssessmentSlot.afternoon,
               onTap: () => onSlotChanged(DailyAssessmentSlot.afternoon),
