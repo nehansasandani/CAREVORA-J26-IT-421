@@ -24,6 +24,7 @@ import '../../features/metabolic/presentation/metabolic_health_page.dart';
 import '../../features/dashboard/presentation/emotional_wellness_games_page.dart';
 import '../../features/assessment/presentation/emotional_ralpa_trajectory_page.dart';
 import '../../features/dashboard/presentation/elder_interactive_home_page.dart';
+import '../../features/dashboard/presentation/elder_meal_experience_page.dart';
 
 GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
 GlobalKey<NavigatorState> _shellNavigatorKey = GlobalKey<NavigatorState>();
@@ -80,6 +81,10 @@ class AppRouter {
       GoRoute(
         path: '/admin/dashboard',
         builder: (context, state) => const AdminDashboardPage(),
+      ),
+      GoRoute(
+        path: '/dashboard/elder-meal',
+        builder: (context, state) => const ElderMealExperiencePage(),
       ),
       ShellRoute(
         navigatorKey: _shellNavigatorKey,
