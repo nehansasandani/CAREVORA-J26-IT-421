@@ -392,14 +392,15 @@ class _ElderMealExperiencePageState extends ConsumerState<ElderMealExperiencePag
   // =========================================================================
   Widget _buildTopHeader(BuildContext context) {
     return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         // Pill Back Button
         Material(
           color: Colors.transparent,
           child: InkWell(
             onTap: () {
-              if (context.canPop()) {
-                context.pop();
+              if (Navigator.of(context).canPop()) {
+                Navigator.of(context).pop();
               } else {
                 context.go('/dashboard/elder-home');
               }
@@ -437,54 +438,6 @@ class _ElderMealExperiencePageState extends ConsumerState<ElderMealExperiencePag
             ),
           ),
         ),
-
-        const Spacer(),
-
-        // CAREVORA Center Logo
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 38,
-              height: 38,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: [Color(0xFF7C3AED), Color(0xFFC026D3)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
-              child: const Icon(Icons.favorite_rounded, color: Colors.white, size: 22),
-            ),
-            const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: const [
-                Text(
-                  'CAREVORA',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                    color: Color(0xFF1E1B4B),
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                Text(
-                  'Elder Care Platform',
-                  style: TextStyle(
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF64748B),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-
-        const Spacer(),
 
         // Top-Right Floral Lavender Trim
         Row(
