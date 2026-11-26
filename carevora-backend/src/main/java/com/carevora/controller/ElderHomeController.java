@@ -34,6 +34,14 @@ public class ElderHomeController {
         return ResponseEntity.ok(elderHomeService.getElderHomeById(id));
     }
 
+    @GetMapping("/{id}/caregivers")
+    @Operation(summary = "Get active caregivers with avatars for an elder home")
+    public ResponseEntity<ApiResponse<List<java.util.Map<String, Object>>>> getCaregiversByElderHome(
+            @PathVariable Long id
+    ) {
+        return ResponseEntity.ok(elderHomeService.getCaregiversByElderHomeId(id));
+    }
+
     @PostMapping("/register")
     @Operation(summary = "Register a new elder home facility")
     public ResponseEntity<ApiResponse<ElderHomeResponse>> registerElderHome(

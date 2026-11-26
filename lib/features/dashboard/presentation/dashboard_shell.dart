@@ -116,11 +116,14 @@ class DashboardShell extends ConsumerWidget {
 
   Widget _buildContentWithBackdrop(Widget content, String currentRoute) {
     // Pages that already have their own dedicated bespoke animations
+    // or explicitly opt out of the global ambient backdrop
     final bool hasOwnAnimation =
         currentRoute.startsWith('/dashboard/cognitive') ||
         currentRoute.startsWith('/dashboard/memory-games') ||
         currentRoute.startsWith('/dashboard/settings') ||
-        currentRoute.startsWith('/dashboard/alerts');
+        currentRoute.startsWith('/dashboard/alerts') ||
+        currentRoute.startsWith('/dashboard/metabolic') ||
+        currentRoute.startsWith('/dashboard/station-help');
 
     if (hasOwnAnimation) {
       return Expanded(child: content);
