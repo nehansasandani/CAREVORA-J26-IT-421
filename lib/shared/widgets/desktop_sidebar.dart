@@ -207,10 +207,7 @@ class DesktopSidebar extends ConsumerWidget {
             ),
           ),
 
-          // 3. Pastoral Country Cottage Landscape (Shown in expanded mode)
-          if (!isCollapsed) _buildSidebarLandscapeTrim(),
-
-          // 4. User Profile Card & Log Out Button
+          // User Profile Card & Log Out Button
           Padding(
             padding: EdgeInsets.symmetric(
               horizontal: isCollapsed ? 8 : 12,
@@ -445,112 +442,6 @@ class DesktopSidebar extends ConsumerWidget {
           ),
         ),
       ],
-    );
-  }
-
-  // Pastoral Country Cottage Landscape Trim
-  Widget _buildSidebarLandscapeTrim() {
-    return IgnorePointer(
-      child: Container(
-        height: 84,
-        width: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFFFAF7FF),
-              Color(0xFFF3E8FF),
-              Color(0xFFE9D5FF),
-            ],
-          ),
-        ),
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            // Background Purple Mountain Hills
-            Positioned(
-              left: -15,
-              right: -15,
-              bottom: 20,
-              child: Container(
-                height: 44,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFDDD6FE).withValues(alpha: 0.8),
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(100),
-                    topRight: Radius.circular(80),
-                  ),
-                ),
-              ),
-            ),
-            Positioned(
-              left: 40,
-              right: -30,
-              bottom: 18,
-              child: Container(
-                height: 40,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFC4B5FD).withValues(alpha: 0.75),
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(90),
-                    topRight: Radius.circular(110),
-                  ),
-                ),
-              ),
-            ),
-
-            // Foreground Green Lawn
-            Positioned(
-              left: -10,
-              right: -10,
-              bottom: -15,
-              child: Container(
-                height: 44,
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Color(0xFF86EFAC),
-                      Color(0xFF22C55E),
-                      Color(0xFF16A34A),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(140),
-                    topRight: Radius.circular(120),
-                  ),
-                ),
-              ),
-            ),
-
-            // Country Cottage with Purple Roof
-            const Positioned(
-              left: 82,
-              bottom: 8,
-              child: Text('🏡', style: TextStyle(fontSize: 38)),
-            ),
-
-            // Green Shade Tree next to Cottage
-            const Positioned(
-              right: 24,
-              bottom: 6,
-              child: Text('🌳', style: TextStyle(fontSize: 42)),
-            ),
-
-            // Small shrubs & daisy
-            const Positioned(
-              left: 60,
-              bottom: 10,
-              child: Text('🌿', style: TextStyle(fontSize: 16)),
-            ),
-            const Positioned(
-              left: 18,
-              bottom: 6,
-              child: Text('🌼', style: TextStyle(fontSize: 14)),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
