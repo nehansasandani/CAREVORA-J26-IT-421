@@ -165,7 +165,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       children: [
         const Positioned.fill(
           child: IgnorePointer(
-            child: SizedBox.shrink(),
+            child: _SettingsAmbientBackdrop(),
           ),
         ),
         SingleChildScrollView(
