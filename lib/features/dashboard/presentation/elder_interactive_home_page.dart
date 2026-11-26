@@ -10,6 +10,7 @@ import '../../../core/localization/sinhala_name_transliterator.dart';
 import '../../../core/services/tts_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../auth/application/auth_controller.dart';
+import 'elder_meal_experience_page.dart';
 
 enum DayPeriod { morning, afternoon, evening, night }
 
@@ -1183,8 +1184,12 @@ class _ElderInteractiveHomePageState
           _routine1AnsweredNo = false;
         });
         _speak('අද දින ආහාරය පිළිබඳ තොරතුරු සටහන් කරමු.');
-        final result = await context.push<bool>('/dashboard/elder-meal');
-        if (result == true && mounted) {
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => const ElderMealExperiencePage(),
+          ),
+        );
+        if (mounted) {
           setState(() {
             _routine1AnsweredYes = true;
             _routine1AnsweredNo = false;
