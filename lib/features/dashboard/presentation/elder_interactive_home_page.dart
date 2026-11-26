@@ -1616,7 +1616,7 @@ class _ElderInteractiveHomePageState
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(child: assessmentCards[0]),
-                      const SizedBox(width: 24),
+                      const SizedBox(width: 38),
                       Expanded(child: assessmentCards[1]),
                     ],
                   ),
@@ -1647,7 +1647,7 @@ class _ElderInteractiveHomePageState
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(child: assessmentCards[0]),
-                      const SizedBox(width: 16),
+                      const SizedBox(width: 28),
                       Expanded(child: assessmentCards[1]),
                     ],
                   ),
@@ -2574,10 +2574,11 @@ class _ElderInteractiveHomePageState
             child: Text(
               text,
               style: const TextStyle(
-                fontSize: 12,
+                fontSize: 11.2,
                 fontWeight: FontWeight.w700,
                 color: Color(0xFF334155),
                 height: 1.25,
+                letterSpacing: -0.2,
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
