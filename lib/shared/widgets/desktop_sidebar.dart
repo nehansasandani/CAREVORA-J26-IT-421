@@ -207,7 +207,10 @@ class DesktopSidebar extends ConsumerWidget {
             ),
           ),
 
-          // User Profile Card & Log Out Button
+          // 3. Pastoral Country Cottage Landscape (Shown in expanded mode)
+          if (!isCollapsed) _buildSidebarLandscapeTrim(),
+
+          // 4. User Profile Card & Log Out Button
           Padding(
             padding: EdgeInsets.symmetric(
               horizontal: isCollapsed ? 8 : 12,
@@ -353,6 +356,11 @@ class DesktopSidebar extends ConsumerWidget {
     );
   }
 
+  // Pastoral Country Cottage Landscape Trim (Removed per request)
+  Widget _buildSidebarLandscapeTrim() {
+    return const SizedBox.shrink();
+  }
+
   // Brand Header with Official Transparent Carevora Logo & Top Corner Leaves
   Widget _buildBrandHeader(bool isCollapsed) {
     if (isCollapsed) {
@@ -454,7 +462,8 @@ class DesktopSidebar extends ConsumerWidget {
     String? badge,
   }) {
     final isActive = currentRoute == route ||
-        (route != '/dashboard' && currentRoute.startsWith(route));
+        (route != '/dashboard' && currentRoute.startsWith(route)) ||
+        (route == '/dashboard/elder-home' && currentRoute == '/dashboard/elder-meal');
 
     final effectiveIconColor = _resolveIconColor(icon);
 

@@ -259,6 +259,9 @@ class DashboardShell extends ConsumerWidget {
           Expanded(
             child: Builder(
               builder: (context) {
+                if (authState.isElder) {
+                  return const SizedBox.shrink();
+                }
                 final hour = DateTime.now().hour;
                 String timeGreetingSi = 'සුබ සවසක්';
                 String timeGreetingEn = 'Good evening';

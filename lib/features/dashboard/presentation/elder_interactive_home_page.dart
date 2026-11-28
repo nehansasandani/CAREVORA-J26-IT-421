@@ -10,6 +10,7 @@ import '../../../core/localization/sinhala_name_transliterator.dart';
 import '../../../core/services/tts_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../auth/application/auth_controller.dart';
+import 'elder_meal_experience_page.dart';
 
 enum DayPeriod { morning, afternoon, evening, night }
 
@@ -835,100 +836,13 @@ class _ElderInteractiveHomePageState
 
                 // 3. Quick Access Title & Large Action Cards
                 _buildQuickAccessSection(context, isSinhala),
-                const SizedBox(height: 24),
-
-                // 4. Animated swaying floral garden at the bottom of the page content
-                _buildAnimatedBottomFlowerGarden(),
                 const SizedBox(height: 20),
               ],
             ),
           ),
 
-          // 2. Beautiful floating butterflies overlay (IgnorePointer - completely touch & scroll safe)
-          const Positioned.fill(
-            child: IgnorePointer(
-              child: _FloatingButterfliesOverlay(),
-            ),
-          ),
+          // 2. Overlay area (cleaned up for elder readability)
         ],
-      ),
-    );
-  }
-
-  // Animated swaying floral garden along the bottom of the screen
-  Widget _buildAnimatedBottomFlowerGarden() {
-    return IgnorePointer(
-      child: AnimatedBuilder(
-        animation: Listenable.merge([_floatingController, _ambientBgController]),
-        builder: (context, _) {
-          final sway = _floatingController.value; // 0.0 -> 1.0 -> 0.0 (3.2s cycle)
-          final breeze = _ambientBgAnimation.value; // slow 14s drift
-          final angleLeft = (sway - 0.5) * 0.08;
-          final angleRight = (0.5 - sway) * 0.08;
-
-          return SizedBox(
-            height: 110,
-            width: double.infinity,
-            child: Stack(
-              alignment: Alignment.bottomCenter,
-              clipBehavior: Clip.none,
-              children: [
-                // Custom-painted swaying meadow of flowers, stems, leaves & floating petals
-                Positioned.fill(
-                  child: CustomPaint(
-                    painter: _SwayingFloralMeadowPainter(
-                      swayValue: sway,
-                      breezeValue: breeze,
-                    ),
-                  ),
-                ),
-
-                // Left corner swaying floral bouquet accent
-                Positioned(
-                  left: 16,
-                  bottom: -14,
-                  child: Transform.rotate(
-                    angle: angleLeft,
-                    alignment: Alignment.bottomCenter,
-                    child: Opacity(
-                      opacity: 0.72,
-                      child: Image.asset(
-                        'assets/images/banner_flowers_fade.png',
-                        width: 120,
-                        height: 110,
-                        fit: BoxFit.contain,
-                        errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-                      ),
-                    ),
-                  ),
-                ),
-
-                // Right corner swaying floral bouquet accent
-                Positioned(
-                  right: 16,
-                  bottom: -14,
-                  child: Transform.scale(
-                    scaleX: -1,
-                    child: Transform.rotate(
-                      angle: angleRight,
-                      alignment: Alignment.bottomCenter,
-                      child: Opacity(
-                        opacity: 0.72,
-                        child: Image.asset(
-                          'assets/images/banner_flowers_fade.png',
-                          width: 120,
-                          height: 110,
-                          fit: BoxFit.contain,
-                          errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
       ),
     );
   }
@@ -937,7 +851,7 @@ class _ElderInteractiveHomePageState
   // 2. HERO PURPLE INTERACTIVE GREETING BANNER
   // =========================================================================
   String _formatElderHonorific(String name) {
-    if (name.contains('මහත්මිය') || name.contains('මහතා')) return name;
+    if (name.contains('මහත්මිය') || name.contains('මහතා') || name.contains('මහත්මයා')) return name;
     return '$name මහත්මිය';
   }
 
@@ -1170,15 +1084,15 @@ class _ElderInteractiveHomePageState
 
     switch (period) {
       case DayPeriod.morning:
-        card1Icon = '☕';
+        card1Icon = '🍲';
         card1Question = 'උදෑසන ආහාර\nගත්තාද?';
         card1YesFeedback = 'ඔබ උදෑසන ආහාරය ලබාගෙන තිබීම සතුටක්!';
         card1NoFeedback = 'උදෑසන ආහාරය ලබා ගැනීමට සහායකයා ඔබට උදව් කරනු ඇත.';
 
-        card2Icon = '🚿';
-        card2Question = 'මුහුණ හෝදා\nගත්තාද?';
+        card2Icon = '🛏️';
+        card2Question = 'විවේක\nගත්තාද?';
         card2YesFeedback = 'ඉතා විශිෂ්ටයි! ඔබ ප්‍රබෝධමත්ව අද දවස සතුටින් ගත කිරීමට සූදානම්.';
-        card2NoFeedback = 'අපි මුහුණ සෝදා ප්‍රබෝධමත් වෙමු. සහායකයා දැනුවත් කර ඇත.';
+        card2NoFeedback = 'සුවදායක කෙටි විවේකයක් ලබා ගැනීමට සහායකයා දැනුවත් කර ඇත.';
         break;
 
       case DayPeriod.afternoon:
@@ -1224,13 +1138,15 @@ class _ElderInteractiveHomePageState
     const card3NoFeedback = 'ජලය ප්‍රමාණවත් ලෙස පානය කිරීමට අමතක නොකරන්න. මම සහායකයාට දැන්වුවා ඔබට ජලය ගෙන එන්න.';
 
     final card1 = _buildMockupRoutineCard(
+      backgroundColor: Colors.white,
+      borderColor: const Color(0xFFE9D5FF),
       iconWidget: Container(
         width: 46,
         height: 46,
         decoration: BoxDecoration(
-          color: const Color(0xFFFEF3C7),
+          color: const Color(0xFFFFF7ED),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFFFDE68A), width: 1.4),
+          border: Border.all(color: const Color(0xFFFED7AA), width: 1.3),
         ),
         alignment: Alignment.center,
         child: Text(card1Icon, style: const TextStyle(fontSize: 23)),
@@ -1243,14 +1159,17 @@ class _ElderInteractiveHomePageState
       isWaterCard: false,
       onToggle: () {
         setState(() {
-          _routine1AnsweredYes = !_routine1AnsweredYes;
-          _routine1AnsweredNo = !_routine1AnsweredYes;
+          _routine1AnsweredYes = true;
+          _routine1AnsweredNo = false;
         });
-        _speak(_routine1AnsweredYes ? card1YesFeedback : card1NoFeedback);
+        _speak('අද දින ආහාරය පිළිබඳ තොරතුරු සටහන් කරමු.');
+        context.go('/dashboard/elder-meal');
       },
     );
 
     final card2 = _buildMockupRoutineCard(
+      backgroundColor: Colors.white,
+      borderColor: const Color(0xFFE9D5FF),
       iconWidget: Stack(
         clipBehavior: Clip.none,
         children: [
@@ -1258,9 +1177,9 @@ class _ElderInteractiveHomePageState
             width: 46,
             height: 46,
             decoration: BoxDecoration(
-              color: const Color(0xFFEFF6FF),
+              color: const Color(0xFFF0F9FF),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0xFFBFDBFE), width: 1.4),
+              border: Border.all(color: const Color(0xFFBAE6FD), width: 1.3),
             ),
             alignment: Alignment.center,
             child: Text(card2Icon, style: const TextStyle(fontSize: 23)),
@@ -1288,13 +1207,15 @@ class _ElderInteractiveHomePageState
     );
 
     final card3 = _buildMockupRoutineCard(
+      backgroundColor: Colors.white,
+      borderColor: const Color(0xFFE9D5FF),
       iconWidget: Container(
         width: 46,
         height: 46,
         decoration: BoxDecoration(
-          color: const Color(0xFFF0F9FF),
+          color: const Color(0xFFF0FDF4),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFFBAE6FD), width: 1.4),
+          border: Border.all(color: const Color(0xFFBBF7D0), width: 1.3),
         ),
         alignment: Alignment.center,
         child: const Text('🥛', style: TextStyle(fontSize: 23)),
@@ -1351,23 +1272,18 @@ class _ElderInteractiveHomePageState
     required String noButtonText,
     required bool isWaterCard,
     required VoidCallback onToggle,
+    Color? backgroundColor,
+    Color? borderColor,
   }) {
     return Container(
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.white,
-            Color(0xFFFCFAFF),
-            Color(0xFFFAF5FF),
-          ],
-        ),
+        color: backgroundColor ?? Colors.white,
         borderRadius: BorderRadius.circular(22),
         border: Border.all(
-          color: isAnsweredYes
-              ? const Color(0xFFA855F7)
-              : const Color(0xFFE9D5FF),
+          color: borderColor ??
+              (isAnsweredYes
+                  ? const Color(0xFFA855F7)
+                  : const Color(0xFFE9D5FF)),
           width: 1.6,
         ),
         boxShadow: [
@@ -1414,16 +1330,14 @@ class _ElderInteractiveHomePageState
                 // Pill Action Button
                 if (isAnsweredYes)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF059669), Color(0xFF10B981)],
-                      ),
+                      color: const Color(0xFF15803D), // Accessible Forest Green
                       borderRadius: BorderRadius.circular(99),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF10B981).withValues(alpha: 0.35),
-                          blurRadius: 8,
+                          color: const Color(0xFF15803D).withValues(alpha: 0.28),
+                          blurRadius: 6,
                           offset: const Offset(0, 2),
                         ),
                       ],
@@ -1432,7 +1346,7 @@ class _ElderInteractiveHomePageState
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         const Icon(LucideIcons.check, size: 15, color: Colors.white),
-                        const SizedBox(width: 4),
+                        const SizedBox(width: 5),
                         Text(
                           yesButtonText,
                           style: const TextStyle(
@@ -1444,63 +1358,32 @@ class _ElderInteractiveHomePageState
                       ],
                     ),
                   )
-                else if (isWaterCard)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF0F9FF),
-                      borderRadius: BorderRadius.circular(99),
-                      border: Border.all(color: const Color(0xFFBAE6FD), width: 1.4),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF0284C7).withValues(alpha: 0.08),
-                          blurRadius: 6,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(LucideIcons.droplets, size: 14, color: Color(0xFF0284C7)),
-                        const SizedBox(width: 4),
-                        Text(
-                          noButtonText,
-                          style: const TextStyle(
-                            color: Color(0xFF0284C7),
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
                 else
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFFFBEB),
+                      color: const Color(0xFFF5F3FF),
                       borderRadius: BorderRadius.circular(99),
-                      border: Border.all(color: const Color(0xFFFDE68A), width: 1.4),
+                      border: Border.all(color: const Color(0xFFDDD6FE), width: 1.3),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFFD97706).withValues(alpha: 0.08),
-                          blurRadius: 6,
-                          offset: const Offset(0, 2),
+                          color: const Color(0xFF7C3AED).withValues(alpha: 0.06),
+                          blurRadius: 4,
+                          offset: const Offset(0, 1),
                         ),
                       ],
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(LucideIcons.clock, size: 14, color: Color(0xFFD97706)),
-                        const SizedBox(width: 4),
+                        const Icon(LucideIcons.clock, size: 14, color: Color(0xFF7C3AED)),
+                        const SizedBox(width: 5),
                         Text(
                           noButtonText,
                           style: const TextStyle(
-                            color: Color(0xFFB45309),
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF6D28D9),
+                            fontSize: 13.0,
+                            fontWeight: FontWeight.w800,
                           ),
                         ),
                       ],
@@ -1678,7 +1561,7 @@ class _ElderInteractiveHomePageState
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(child: assessmentCards[0]),
-                      const SizedBox(width: 24),
+                      const SizedBox(width: 38),
                       Expanded(child: assessmentCards[1]),
                     ],
                   ),
@@ -1709,7 +1592,7 @@ class _ElderInteractiveHomePageState
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(child: assessmentCards[0]),
-                      const SizedBox(width: 16),
+                      const SizedBox(width: 28),
                       Expanded(child: assessmentCards[1]),
                     ],
                   ),
@@ -1897,9 +1780,9 @@ class _ElderInteractiveHomePageState
         slotTitle = 'උදෑසන ක්‍රියාකාරකම්';
         timeText = 'පෙ.ව. 6.00 – 10.00';
         checklist = [
-          'මනස සන්සුන් කරන breathing exercise',
-          'ධනාත්මක චින්තන',
-          'දෙවි ඇදහිලි කිරීමේ භාවනා',
+          'හෙමින් හුස්ම ගැනීම (Breathing Exercise)',
+          'සිතැඟි විඳිමු',
+          'හොඳ අදහස් සටහන් කිරීම',
         ];
         break;
       case DailyAssessmentSlot.afternoon:
@@ -1924,12 +1807,27 @@ class _ElderInteractiveHomePageState
 
     final buttonText = isDone
         ? 'සම්පූර්ණයි ($nextSlotTime ට) ⏰'
-        : 'මෙම වෙලාවේ ක්‍රියාකාරකම් බලන්න';
+        : 'මෙම වේලාවේ ක්‍රියාකාරකම් බලන්න';
 
     return _buildOpenBookFrame(
+      coverGradient: const [
+        Color(0xFFA78BFA), // Soft luminous Lavender-Violet (elder-friendly & matches page)
+        Color(0xFF8B5CF6),
+        Color(0xFF7C3AED),
+      ],
+      bindingGradient: const [
+        Color(0xFFEDE9FE), // Soft Lavender Casing
+        Color(0xFFDDD6FE),
+      ],
+      bindingBorderColor: const Color(0xFFC4B5FD),
+      buttonGradient: const [
+        Color(0xFF8B5CF6),
+        Color(0xFF7C3AED),
+      ],
+      buttonLeadingIcon: const Icon(Icons.psychology_rounded, color: Colors.white, size: 16),
       coverIcon: const Icon(Icons.psychology_rounded, size: 28, color: Colors.white),
       coverTitleLines: const ['මානසික', 'ක්‍රියාකාරකම්'],
-      coverSubtitle: 'ඔබගේ මානසික\nසුවය වැඩි දියුණු\nකරගන්න.',
+      coverSubtitle: 'ඔබගේ මානසික\nසුවය වර්ධනය කරයි.',
       coverBottomWidget: Text(
         '♡',
         style: TextStyle(
@@ -1995,7 +1893,7 @@ class _ElderInteractiveHomePageState
         timeText = 'පෙ.ව. 6.00 – 10.00';
         checklist = [
           'පද මාලා (Word Puzzle)',
-          'මතක ශක්තිය ප්‍රගුණකරගන්න ක්‍රීඩා',
+          'මතක ශක්තිය පරීක්ෂණ ක්‍රීඩා',
           'ලොජික් ප්‍රශ්න (Brain Quiz)',
         ];
         break;
@@ -2021,12 +1919,27 @@ class _ElderInteractiveHomePageState
 
     final buttonText = isDone
         ? 'සම්පූර්ණයි ($nextSlotTime ට) ⏰'
-        : 'මෙම වෙලාවේ ක්‍රීඩා බලන්න';
+        : 'මෙම වේලාවේ ක්‍රීඩා බලන්න';
 
     return _buildOpenBookFrame(
+      coverGradient: const [
+        Color(0xFF60A5FA), // Cheerful, soft Sky & Cornflower Blue (elder-friendly)
+        Color(0xFF3B82F6),
+        Color(0xFF2563EB),
+      ],
+      bindingGradient: const [
+        Color(0xFFEFF6FF), // Soft Sky Casing
+        Color(0xFFDBEAFE),
+      ],
+      bindingBorderColor: const Color(0xFFBAE6FD),
+      buttonGradient: const [
+        Color(0xFF3B82F6),
+        Color(0xFF2563EB),
+      ],
+      buttonLeadingIcon: const Icon(Icons.sports_esports_rounded, color: Colors.white, size: 16),
       coverIcon: const Icon(Icons.extension_rounded, size: 26, color: Colors.white),
       coverTitleLines: const ['මනස', 'පරීක්ෂණ', 'ක්‍රියාකාරකම්'],
-      coverSubtitle: 'මනස සහ අභ්‍යාස\nවර්ධනය කිරීම.',
+      coverSubtitle: 'මනස හා අවධානය\nවර්ධනය කරයි.',
       coverBottomWidget: Icon(
         Icons.sports_esports_rounded,
         size: 24,
@@ -2086,55 +1999,60 @@ class _ElderInteractiveHomePageState
     required List<String> pageChecklist,
     required String buttonText,
     required VoidCallback onButtonPressed,
+    List<Color>? coverGradient,
+    List<Color>? bindingGradient,
+    Color? bindingBorderColor,
+    List<Color>? buttonGradient,
+    Widget? buttonLeadingIcon,
   }) {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(22),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF3B0764).withValues(alpha: 0.16),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
+            color: const Color(0xFF7C3AED).withValues(alpha: 0.08),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
           ),
           BoxShadow(
-            color: const Color(0xFF7C3AED).withValues(alpha: 0.09),
-            blurRadius: 32,
-            offset: const Offset(0, 14),
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          // Hardcover Purple Outer Binding Frame
+          // Hardcover Outer Binding Frame
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF5B21B6), Color(0xFF4C1D95)],
+                gradient: LinearGradient(
+                  colors: bindingGradient ?? const [Color(0xFFEDE9FE), Color(0xFFDDD6FE)],
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                 ),
                 borderRadius: BorderRadius.circular(22),
-                border: Border.all(color: const Color(0xFF7C3AED), width: 2.2),
+                border: Border.all(
+                  color: bindingBorderColor ?? const Color(0xFFC4B5FD),
+                  width: 2.2,
+                ),
               ),
             ),
           ),
 
-          // Layered 3D Paper Stack Edge effect at bottom and sides
+          // Layered 3D Paper Stack Edge & Spine Arch Curvature effect at bottom
           Positioned(
-            left: 5,
-            right: 5,
-            bottom: 2,
-            height: 7,
-            child: Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFFF1F5F9),
-                borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(16),
-                  bottomRight: Radius.circular(16),
-                ),
-                border: Border.all(color: const Color(0xFFCBD5E1), width: 0.8),
+            left: 0,
+            right: 0,
+            bottom: 0,
+            height: 12,
+            child: CustomPaint(
+              size: Size.infinite,
+              painter: _BookSpineArchPainter(
+                spineRatio: 0.38,
+                casingColor: bindingBorderColor ?? const Color(0xFF7C3AED),
               ),
             ),
           ),
@@ -2152,9 +2070,9 @@ class _ElderInteractiveHomePageState
                     Expanded(
                       flex: 38,
                       child: Container(
-                        decoration: const BoxDecoration(
+                        decoration: BoxDecoration(
                           gradient: LinearGradient(
-                            colors: [
+                            colors: coverGradient ?? const [
                               Color(0xFF8B5CF6),
                               Color(0xFF7C3AED),
                               Color(0xFF6D28D9),
@@ -2176,7 +2094,7 @@ class _ElderInteractiveHomePageState
                                   gradient: LinearGradient(
                                     colors: [
                                       Colors.transparent,
-                                      Colors.black.withValues(alpha: 0.22),
+                                      Colors.black.withValues(alpha: 0.06),
                                     ],
                                     begin: Alignment.centerLeft,
                                     end: Alignment.centerRight,
@@ -2189,6 +2107,12 @@ class _ElderInteractiveHomePageState
                               top: 8,
                               left: 8,
                               child: _buildBookCornerFlourish(),
+                            ),
+                            // Bottom-left Botanical leaves flourish (Matching Mockup)
+                            const Positioned(
+                              bottom: 4,
+                              left: 6,
+                              child: Text('🌿', style: TextStyle(fontSize: 19)),
                             ),
                             // Cover Contents
                             Padding(
@@ -2284,7 +2208,7 @@ class _ElderInteractiveHomePageState
                                 decoration: BoxDecoration(
                                   gradient: LinearGradient(
                                     colors: [
-                                      Colors.black.withValues(alpha: 0.15),
+                                      Colors.black.withValues(alpha: 0.05),
                                       Colors.transparent,
                                     ],
                                     begin: Alignment.centerLeft,
@@ -2300,7 +2224,7 @@ class _ElderInteractiveHomePageState
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  // Top Slot Pills (☀️ උදෑසන | 🌤️ දහවල් | 🌙 රාත්‍රී)
+                                  // Top Slot Pills (☀️ උදෑසන | 🌤️ දවල් | 🌙 රාත්‍රී)
                                   _buildBookSlotTabBar(
                                     selectedSlot: selectedSlot,
                                     currentSlot: currentSlot,
@@ -2308,29 +2232,52 @@ class _ElderInteractiveHomePageState
                                   ),
                                   const SizedBox(height: 10),
 
-                                  // Animated 3D Page Turn Content
+                                  // Animated 3D Page Turn Content with Dynamic Paper Lighting Shadow
                                   AnimatedSwitcher(
-                                    duration: const Duration(milliseconds: 360),
+                                    duration: const Duration(milliseconds: 420),
                                     transitionBuilder: (child, animation) {
                                       final flipAnimation = Tween<double>(
-                                        begin: math.pi / 2,
+                                        begin: math.pi / 2.2,
                                         end: 0.0,
                                       ).animate(
                                         CurvedAnimation(
                                           parent: animation,
-                                          curve: Curves.easeOutCubic,
+                                          curve: Curves.easeInOutCubic,
                                         ),
                                       );
                                       return AnimatedBuilder(
                                         animation: flipAnimation,
                                         child: child,
                                         builder: (context, child) {
+                                          final shadowAlpha = (flipAnimation.value / (math.pi / 2.2)) * 0.22;
                                           return Transform(
                                             transform: Matrix4.identity()
-                                              ..setEntry(3, 2, 0.0012)
+                                              ..setEntry(3, 2, 0.0014)
                                               ..rotateY(flipAnimation.value),
                                             alignment: Alignment.centerLeft,
-                                            child: child,
+                                            child: Stack(
+                                              children: [
+                                                child!,
+                                                if (shadowAlpha > 0.01)
+                                                  Positioned.fill(
+                                                    child: IgnorePointer(
+                                                      child: Container(
+                                                        decoration: BoxDecoration(
+                                                          gradient: LinearGradient(
+                                                            colors: [
+                                                              Colors.black.withValues(alpha: shadowAlpha),
+                                                              Colors.black.withValues(alpha: shadowAlpha * 0.25),
+                                                              Colors.transparent,
+                                                            ],
+                                                            begin: Alignment.centerLeft,
+                                                            end: Alignment.centerRight,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                              ],
+                                            ),
                                           );
                                         },
                                       );
@@ -2402,15 +2349,15 @@ class _ElderInteractiveHomePageState
                                                   width: double.infinity,
                                                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8.5),
                                                   decoration: BoxDecoration(
-                                                    gradient: const LinearGradient(
-                                                      colors: [Color(0xFF6D28D9), Color(0xFF7C3AED)],
+                                                    gradient: LinearGradient(
+                                                      colors: buttonGradient ?? const [Color(0xFF6D28D9), Color(0xFF7C3AED)],
                                                       begin: Alignment.centerLeft,
                                                       end: Alignment.centerRight,
                                                     ),
                                                     borderRadius: BorderRadius.circular(99),
                                                     boxShadow: [
                                                       BoxShadow(
-                                                        color: const Color(0xFF6D28D9).withValues(alpha: 0.35),
+                                                        color: (buttonGradient?.first ?? const Color(0xFF6D28D9)).withValues(alpha: 0.35),
                                                         blurRadius: 8,
                                                         offset: const Offset(0, 3),
                                                       ),
@@ -2419,6 +2366,10 @@ class _ElderInteractiveHomePageState
                                                   child: Row(
                                                     mainAxisAlignment: MainAxisAlignment.center,
                                                     children: [
+                                                      if (buttonLeadingIcon != null) ...[
+                                                        buttonLeadingIcon,
+                                                        const SizedBox(width: 6),
+                                                      ],
                                                       Text(
                                                         buttonText,
                                                         style: const TextStyle(
@@ -2500,7 +2451,7 @@ class _ElderInteractiveHomePageState
           ),
           Expanded(
             child: _buildBookSlotTabItem(
-              label: 'දහවල්',
+              label: 'දවල්',
               icon: '🌤️',
               isSelected: selectedSlot == DailyAssessmentSlot.afternoon,
               onTap: () => onSlotChanged(DailyAssessmentSlot.afternoon),
@@ -2533,12 +2484,12 @@ class _ElderInteractiveHomePageState
         curve: Curves.easeInOut,
         padding: const EdgeInsets.symmetric(vertical: 5.5),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF6D28D9) : Colors.transparent,
+          color: isSelected ? const Color(0xFF7C3AED) : Colors.transparent,
           borderRadius: BorderRadius.circular(99),
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: const Color(0xFF6D28D9).withValues(alpha: 0.35),
+                    color: const Color(0xFF7C3AED).withValues(alpha: 0.25),
                     blurRadius: 6,
                     offset: const Offset(0, 2),
                   ),
@@ -2588,10 +2539,11 @@ class _ElderInteractiveHomePageState
             child: Text(
               text,
               style: const TextStyle(
-                fontSize: 12,
+                fontSize: 11.2,
                 fontWeight: FontWeight.w700,
                 color: Color(0xFF334155),
                 height: 1.25,
+                letterSpacing: -0.2,
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -2624,6 +2576,17 @@ class _ElderInteractiveHomePageState
           CustomPaint(
             size: const Size(62, 72),
             painter: _GrandmaAvatarPainter(),
+          ),
+          // Floating Pink Hearts next to Grandma (Matching Mockup)
+          const Positioned(
+            right: 0,
+            top: 10,
+            child: Text('💖', style: TextStyle(fontSize: 14)),
+          ),
+          const Positioned(
+            right: -6,
+            top: 24,
+            child: Text('💕', style: TextStyle(fontSize: 11)),
           ),
         ],
       ),
@@ -4828,207 +4791,6 @@ class _ElderInteractiveHomePageState
   }
 }
 
-/// Animated swaying flower garden painter for the bottom of the Elder Interactive Home view
-class _SwayingFloralMeadowPainter extends CustomPainter {
-  final double swayValue;
-  final double breezeValue;
-
-  _SwayingFloralMeadowPainter({
-    required this.swayValue,
-    required this.breezeValue,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (size.width <= 0 || size.height <= 0) return;
-
-    // 1. Soft rolling pastel garden hill at the base
-    final hillPath1 = Path()
-      ..moveTo(0, size.height)
-      ..lineTo(0, size.height * 0.68)
-      ..quadraticBezierTo(
-        size.width * 0.25,
-        size.height * (0.50 + 0.04 * swayValue),
-        size.width * 0.52,
-        size.height * 0.66,
-      )
-      ..quadraticBezierTo(
-        size.width * 0.78,
-        size.height * (0.80 - 0.04 * swayValue),
-        size.width,
-        size.height * 0.60,
-      )
-      ..lineTo(size.width, size.height)
-      ..close();
-
-    final hillPaint1 = Paint()
-      ..shader = LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [
-          const Color(0xFFDDD6FE).withValues(alpha: 0.42),
-          const Color(0xFFC4B5FD).withValues(alpha: 0.68),
-        ],
-      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
-    canvas.drawPath(hillPath1, hillPaint1);
-
-    final hillPath2 = Path()
-      ..moveTo(0, size.height)
-      ..lineTo(0, size.height * 0.78)
-      ..quadraticBezierTo(
-        size.width * 0.35,
-        size.height * (0.64 - 0.03 * swayValue),
-        size.width * 0.68,
-        size.height * 0.76,
-      )
-      ..quadraticBezierTo(
-        size.width * 0.88,
-        size.height * (0.84 + 0.03 * swayValue),
-        size.width,
-        size.height * 0.72,
-      )
-      ..lineTo(size.width, size.height)
-      ..close();
-
-    final hillPaint2 = Paint()
-      ..shader = LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [
-          const Color(0xFFEDE9FE).withValues(alpha: 0.55),
-          const Color(0xFFD8B4FE).withValues(alpha: 0.75),
-        ],
-      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
-    canvas.drawPath(hillPath2, hillPaint2);
-
-    // 2. Swaying Flowers across the meadow
-    final flowerSpecs = <List<double>>[
-      // [xRatio, stemHeight, petalRadius, phaseOffset, colorIdx]
-      [0.06, 56, 10.5, 0.0, 0],
-      [0.12, 42, 8.5, 0.8, 1],
-      [0.18, 64, 12.0, 1.5, 2],
-      [0.25, 48, 9.5, 2.2, 3],
-      [0.32, 58, 11.0, 0.4, 0],
-      [0.39, 44, 8.5, 1.9, 1],
-      [0.46, 62, 11.5, 2.8, 2],
-      [0.54, 50, 9.5, 0.7, 3],
-      [0.61, 60, 11.0, 1.3, 0],
-      [0.68, 45, 8.5, 2.5, 1],
-      [0.75, 65, 12.0, 0.3, 2],
-      [0.82, 47, 9.0, 1.7, 3],
-      [0.88, 58, 11.0, 2.1, 0],
-      [0.94, 44, 8.5, 0.9, 1],
-    ];
-
-    const petalPalettes = <List<Color>>[
-      [Color(0xFFA78BFA), Color(0xFF7C3AED)], // Lavender Violet
-      [Color(0xFFF472B6), Color(0xFFEC4899)], // Soft Rose Pink
-      [Color(0xFFC084FC), Color(0xFF9333EA)], // Orchid Purple
-      [Color(0xFF818CF8), Color(0xFF6366F1)], // Periwinkle Indigo
-    ];
-
-    for (final spec in flowerSpecs) {
-      final xBase = size.width * spec[0];
-      final yBase = size.height;
-      final stemH = spec[1];
-      final petalR = spec[2];
-      final phase = spec[3];
-      final palette = petalPalettes[spec[4].toInt() % petalPalettes.length];
-
-      // Smooth sinusoidal sway offset
-      final wave = math.sin((swayValue * math.pi) + phase) * 11.0 +
-          math.cos((breezeValue * 2 * math.pi) + phase) * 4.0;
-      final xTip = xBase + wave;
-      final yTip = yBase - stemH;
-
-      // Draw curved stem
-      final stemPath = Path()
-        ..moveTo(xBase, yBase)
-        ..quadraticBezierTo(
-          xBase + wave * 0.45,
-          yBase - stemH * 0.55,
-          xTip,
-          yTip,
-        );
-
-      final stemPaint = Paint()
-        ..color = const Color(0xFF10B981).withValues(alpha: 0.55)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.4
-        ..strokeCap = StrokeCap.round;
-      canvas.drawPath(stemPath, stemPaint);
-
-      // Draw pair of small swaying leaves on the stem
-      final leafX = xBase + wave * 0.48;
-      final leafY = yBase - stemH * 0.45;
-      final leafPaint = Paint()
-        ..color = const Color(0xFF34D399).withValues(alpha: 0.60)
-        ..style = PaintingStyle.fill;
-
-      final leftLeaf = Path()
-        ..moveTo(leafX, leafY)
-        ..quadraticBezierTo(leafX - 11, leafY - 7, leafX - 14, leafY - 1)
-        ..quadraticBezierTo(leafX - 7, leafY + 4, leafX, leafY);
-      canvas.drawPath(leftLeaf, leafPaint);
-
-      final rightLeaf = Path()
-        ..moveTo(leafX, leafY - 5)
-        ..quadraticBezierTo(leafX + 11, leafY - 12, leafX + 14, leafY - 6)
-        ..quadraticBezierTo(leafX + 7, leafY - 1, leafX, leafY - 5);
-      canvas.drawPath(rightLeaf, leafPaint);
-
-      // Draw 6 blooming petals around (xTip, yTip)
-      final petalPaint = Paint()
-        ..color = palette[0].withValues(alpha: 0.85)
-        ..style = PaintingStyle.fill;
-      final petalInnerPaint = Paint()
-        ..color = palette[1].withValues(alpha: 0.55)
-        ..style = PaintingStyle.fill;
-
-      final rotOffset = wave * 0.03;
-      for (int p = 0; p < 6; p++) {
-        final angle = (p * math.pi / 3.0) + rotOffset;
-        final px = xTip + math.cos(angle) * (petalR * 0.68);
-        final py = yTip + math.sin(angle) * (petalR * 0.68);
-        canvas.drawCircle(Offset(px, py), petalR * 0.56, petalPaint);
-        canvas.drawCircle(Offset(px, py), petalR * 0.30, petalInnerPaint);
-      }
-
-      // Warm golden flower center
-      final centerGlow = Paint()
-        ..color = const Color(0xFFFDE68A)
-        ..style = PaintingStyle.fill;
-      final centerCore = Paint()
-        ..color = const Color(0xFFF59E0B)
-        ..style = PaintingStyle.fill;
-      canvas.drawCircle(Offset(xTip, yTip), petalR * 0.42, centerGlow);
-      canvas.drawCircle(Offset(xTip, yTip), petalR * 0.25, centerCore);
-    }
-
-    // 3. Gentle floating petals & sparkles drifting above the flowers
-    for (int i = 0; i < 8; i++) {
-      final px = size.width * (0.10 + i * 0.11) +
-          math.sin((breezeValue * 2 * math.pi) + i) * 14.0;
-      final py = size.height * 0.22 +
-          math.cos((swayValue * math.pi) + i * 0.9) * 10.0;
-      final dotPaint = Paint()
-        ..color = (i.isEven ? const Color(0xFFF472B6) : const Color(0xFFA78BFA))
-            .withValues(alpha: 0.45)
-        ..style = PaintingStyle.fill;
-      canvas.drawOval(
-        Rect.fromCenter(center: Offset(px, py), width: 7, height: 4.5),
-        dotPaint,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _SwayingFloralMeadowPainter oldDelegate) {
-    return oldDelegate.swayValue != swayValue ||
-        oldDelegate.breezeValue != breezeValue;
-  }
-}
-
 /// Animated floating butterflies overlay that flutters gracefully across the Elder Home Page
 class _FloatingButterfliesOverlay extends StatefulWidget {
   const _FloatingButterfliesOverlay();
@@ -5972,6 +5734,83 @@ class _BookCornerFlourishPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+// =========================================================================
+// REALISTIC 3D OPEN BOOK BOTTOM ARCH & PAPER STACK PAINTER
+// =========================================================================
+class _BookSpineArchPainter extends CustomPainter {
+  final double spineRatio;
+  final Color casingColor;
+
+  const _BookSpineArchPainter({
+    this.spineRatio = 0.38,
+    required this.casingColor,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.width <= 0 || size.height <= 0) return;
+    final w = size.width;
+    final h = size.height;
+    final s = w * spineRatio;
+
+    // 1. Center spine upward arch cavity (dark shading)
+    final spineCavityPaint = Paint()
+      ..color = casingColor.withValues(alpha: 0.90)
+      ..style = PaintingStyle.fill;
+
+    final spineArchPath = Path();
+    spineArchPath.moveTo(s - 14, h);
+    spineArchPath.quadraticBezierTo(s, h - 8, s + 14, h);
+    spineArchPath.close();
+    canvas.drawPath(spineArchPath, spineCavityPaint);
+
+    // Spine binding crease highlight
+    final creasePaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.35)
+      ..strokeWidth = 1.2
+      ..style = PaintingStyle.stroke;
+    canvas.drawLine(Offset(s, 0), Offset(s, h - 7), creasePaint);
+
+    // 2. Right page stacked paper layers (Multi-sheet page thickness)
+    for (int i = 1; i <= 3; i++) {
+      final double dy = (i * 1.8);
+      final pageEdgePaint = Paint()
+        ..color = (i == 1
+                ? Colors.white
+                : (i == 2 ? const Color(0xFFF1F5F9) : const Color(0xFFE2E8F0)))
+            .withValues(alpha: 0.95 - (i * 0.12))
+        ..strokeWidth = 1.2
+        ..style = PaintingStyle.stroke;
+
+      final paperEdgePath = Path();
+      paperEdgePath.moveTo(s + 12, h - 6 + dy);
+      paperEdgePath.quadraticBezierTo(
+        s + (w - s) * 0.55,
+        h - 1 + dy,
+        w - 12,
+        h - 4 + dy,
+      );
+      canvas.drawPath(paperEdgePath, pageEdgePaint);
+    }
+
+    // 3. Left cover bottom curved edge
+    final coverEdgePaint = Paint()
+      ..color = casingColor.withValues(alpha: 0.75)
+      ..strokeWidth = 1.5
+      ..style = PaintingStyle.stroke;
+
+    final coverEdgePath = Path();
+    coverEdgePath.moveTo(12, h - 3);
+    coverEdgePath.quadraticBezierTo(s * 0.5, h, s - 12, h - 5);
+    canvas.drawPath(coverEdgePath, coverEdgePaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _BookSpineArchPainter oldDelegate) =>
+      oldDelegate.spineRatio != spineRatio ||
+      oldDelegate.casingColor != casingColor;
 }
 
 // =========================================================================
