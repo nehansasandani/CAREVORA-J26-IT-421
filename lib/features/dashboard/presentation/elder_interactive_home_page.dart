@@ -1178,23 +1178,13 @@ class _ElderInteractiveHomePageState
       yesButtonText: card1YesText,
       noButtonText: card1NoText,
       isWaterCard: false,
-      onToggle: () async {
+      onToggle: () {
         setState(() {
           _routine1AnsweredYes = true;
           _routine1AnsweredNo = false;
         });
         _speak('අද දින ආහාරය පිළිබඳ තොරතුරු සටහන් කරමු.');
-        await Navigator.of(context, rootNavigator: true).push(
-          MaterialPageRoute(
-            builder: (_) => const ElderMealExperiencePage(),
-          ),
-        );
-        if (mounted) {
-          setState(() {
-            _routine1AnsweredYes = true;
-            _routine1AnsweredNo = false;
-          });
-        }
+        context.go('/dashboard/elder-meal');
       },
     );
 

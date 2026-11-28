@@ -316,11 +316,7 @@ class _ElderMealExperiencePageState extends ConsumerState<ElderMealExperiencePag
                 ),
                 onPressed: () {
                   Navigator.pop(ctx);
-                  if (context.canPop()) {
-                    context.pop(true);
-                  } else {
-                    context.go('/dashboard/elder-home');
-                  }
+                  context.go('/dashboard/elder-home');
                 },
                 child: const Text(
                   'හරි, මුල් පිටුවට යන්න',
@@ -421,11 +417,7 @@ class _ElderMealExperiencePageState extends ConsumerState<ElderMealExperiencePag
                   icon: const Icon(Icons.close_rounded, color: Colors.white, size: 22),
                   tooltip: 'වසන්න',
                   onPressed: () {
-                    if (Navigator.of(context).canPop()) {
-                      Navigator.of(context).pop();
-                    } else {
-                      context.go('/dashboard/elder-home');
-                    }
+                    context.go('/dashboard/elder-home');
                   },
                 ),
               ),

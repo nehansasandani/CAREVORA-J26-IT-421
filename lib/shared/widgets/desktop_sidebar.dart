@@ -462,7 +462,8 @@ class DesktopSidebar extends ConsumerWidget {
     String? badge,
   }) {
     final isActive = currentRoute == route ||
-        (route != '/dashboard' && currentRoute.startsWith(route));
+        (route != '/dashboard' && currentRoute.startsWith(route)) ||
+        (route == '/dashboard/elder-home' && currentRoute == '/dashboard/elder-meal');
 
     final effectiveIconColor = _resolveIconColor(icon);
 
