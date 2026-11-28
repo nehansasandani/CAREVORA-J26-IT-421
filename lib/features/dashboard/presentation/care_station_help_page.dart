@@ -445,26 +445,29 @@ class _CareStationHelpPageState extends ConsumerState<CareStationHelpPage> {
       roleOrRoom: 'Geriatric Specialist & Medical Lead',
       subtitle: 'Attending Physician • Weekly Review',
       phoneOrExt: '+94 77 123 4567',
+      whatsappNumber: '94771234567',
       status: 'On Call Today',
       statusColor: AppColors.riskLow,
       icon: LucideIcons.stethoscope,
     ),
     CallContactItem(
       id: 'DOC-2',
-      name: 'Dr. Aris Thorne',
+      name: 'Dr. Kasun Jayasinghe',
       roleOrRoom: 'Neurology Specialist',
       subtitle: 'Cognitive Health Consultant',
       phoneOrExt: '+94 71 987 6543',
+      whatsappNumber: '94719876543',
       status: 'Available for Urgent Calls',
       statusColor: AppColors.riskLow,
       icon: LucideIcons.brain,
     ),
     CallContactItem(
       id: 'DOC-3',
-      name: 'Dr. Samantha Reed',
+      name: 'Dr. Sanduni Wijesinghe',
       roleOrRoom: 'General Care Physician',
       subtitle: 'Resident Wellness Consultant',
       phoneOrExt: '+94 72 345 6789',
+      whatsappNumber: '94723456789',
       status: 'Consulting Desk',
       statusColor: AppColors.primary,
       icon: LucideIcons.stethoscope,
@@ -966,8 +969,8 @@ class _CareStationHelpPageState extends ConsumerState<CareStationHelpPage> {
                         ? 'ඔබට උදව්වක් අවශ්‍ය ඕනෑම වෙලාවක ඔබේ සත්කාර නිවසේ සත්කාරකයින් අමතන්න.'
                         : 'Contact any caregiver at your care home whenever you need friendly assistance.')
                     : (isSi
-                        ? 'නේවාසිකයින්, සත්කාර කණ්ඩායම, වෛද්‍යවරුන් සහ හෙද මධ්‍යස්ථාන වෙත ක්ෂණික හඬ/වීඩියෝ ඇමතුම් ලබා ගන්න.'
-                        : 'Immediate direct intercom and audio/video calling to residents, fellow caregivers, on-call doctors, and nurse stations.'),
+                        ? 'නේවාසිකයින්, සත්කාර කණ්ඩායම සහ වෛද්‍යවරුන් වෙත ක්ෂණික හඬ ඇමතුම් ලබා ගන්න.'
+                        : 'Immediate direct voice and WhatsApp calling to residents, fellow caregivers, and on-call doctors.'),
                 style: TextStyle(
                   fontSize: 13,
                   color: Colors.white.withValues(alpha: 0.88),
@@ -1436,10 +1439,29 @@ class _CareStationHelpPageState extends ConsumerState<CareStationHelpPage> {
                         child: InkWell(
                           onTap: () {
                             final wpNumber = contact.whatsappNumber ?? contact.phoneOrExt;
-                            UrlLauncherService.launchWhatsApp(
-                              wpNumber,
-                              'Hello ${contact.name}, this is from Carevora. Please start a voice call with me for assistance.',
-                            );
+                            final auth = ref.read(authProvider).state;
+                            final rawElderName = auth.userName?.trim() ?? '';
+                            final hasElderName =
+                                rawElderName.isNotEmpty && rawElderName != '-';
+                            final elderLabel = hasElderName
+                                ? (isSi
+                                    ? SinhalaNameTransliterator.toSinhala(
+                                        rawElderName,
+                                        fallback: rawElderName,
+                                      )
+                                    : rawElderName)
+                                : '';
+                            final homeLabel = (auth.elderHomeName ?? '').trim();
+                            final homeSuffix =
+                                homeLabel.isNotEmpty ? ' ($homeLabel)' : '';
+                            final msg = isSi
+                                ? (hasElderName
+                                    ? 'ආයුබෝවන් $displayName, මම $elderLabel$homeSuffix. මට පොඩි උදව්වක් අවශ්‍යයි — පුළුවන් වෙලාවට මට කතා කරන්න හෝ මාව බලන්න පුළුවන්ද?'
+                                    : 'ආයුබෝවන් $displayName, මට පොඩි උදව්වක් අවශ්‍යයි — පුළුවන් වෙලාවට මට කතා කරන්න පුළුවන්ද?')
+                                : (hasElderName
+                                    ? 'Hello ${contact.name}, this is $elderLabel$homeSuffix. I need a little help — could you please call me or check in when you can?'
+                                    : 'Hello ${contact.name}, I need a little help — could you please call me or check in when you can?');
+                            UrlLauncherService.launchWhatsApp(wpNumber, msg);
                             _showLaunchToast(
                               isSi
                                   ? '$displayName සඳහා WhatsApp විවෘත වෙමින්...'
@@ -1501,15 +1523,14 @@ class _CareStationHelpPageState extends ConsumerState<CareStationHelpPage> {
     final residents = _getCaregiverResidents(authState);
     final otherCaregivers = _getOtherCaregivers(authState);
 
+    final activeTab = _caregiverSelectedTab > 2 ? 0 : _caregiverSelectedTab;
     List<CallContactItem> currentList;
-    if (_caregiverSelectedTab == 0) {
+    if (activeTab == 0) {
       currentList = residents;
-    } else if (_caregiverSelectedTab == 1) {
+    } else if (activeTab == 1) {
       currentList = otherCaregivers;
-    } else if (_caregiverSelectedTab == 2) {
-      currentList = _elderDoctors;
     } else {
-      currentList = _caregiverStations;
+      currentList = _elderDoctors;
     }
 
     if (_searchQuery.trim().isNotEmpty) {
@@ -1527,7 +1548,7 @@ class _CareStationHelpPageState extends ConsumerState<CareStationHelpPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Tab selector
+        // Tab selector (Residents, Team Caregivers, Doctors)
         Container(
           padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(
@@ -1568,14 +1589,6 @@ class _CareStationHelpPageState extends ConsumerState<CareStationHelpPage> {
                   count: _elderDoctors.length,
                 ),
               ),
-              Expanded(
-                child: _buildSegmentButton(
-                  index: 3,
-                  label: isSi ? 'හෙද මධ්‍යස්ථාන' : 'Duty Stations',
-                  icon: LucideIcons.radio,
-                  count: _caregiverStations.length,
-                ),
-              ),
             ],
           ),
         ),
@@ -1587,21 +1600,17 @@ class _CareStationHelpPageState extends ConsumerState<CareStationHelpPage> {
           controller: _searchController,
           onChanged: (val) => setState(() => _searchQuery = val),
           decoration: InputDecoration(
-            hintText: _caregiverSelectedTab == 0
+            hintText: activeTab == 0
                 ? (isSi
                     ? 'නේවාසිකයාගේ නම හෝ කාමර අංකය සොයන්න...'
                     : 'Search resident name or room number (e.g. James Perera, 105)...')
-                : (_caregiverSelectedTab == 1
+                : (activeTab == 1
                     ? (isSi
                         ? 'සත්කාරකයාගේ නම සොයන්න...'
                         : 'Search caregiver name or role (e.g. Sarangi, Maya)...')
-                    : (_caregiverSelectedTab == 2
-                        ? (isSi
-                            ? 'වෛද්‍යවරයාගේ නම හෝ අංශය සොයන්න...'
-                            : 'Search doctor by name or specialty (e.g. Dr. Nimal, Neurology)...')
-                        : (isSi
-                            ? 'හෙද මධ්‍යස්ථානය හෝ මහල සොයන්න...'
-                            : 'Search station or wing...'))),
+                    : (isSi
+                        ? 'වෛද්‍යවරයාගේ නම හෝ අංශය සොයන්න...'
+                        : 'Search doctor by name or specialty (e.g. Dr. Nimal, Neurology)...')),
             prefixIcon: const Icon(LucideIcons.search, size: 18, color: AppColors.muted),
             suffixIcon: _searchQuery.isNotEmpty
                 ? IconButton(
@@ -1662,8 +1671,43 @@ class _CareStationHelpPageState extends ConsumerState<CareStationHelpPage> {
             ),
           )
         else
-          for (int i = 0; i < currentList.length; i++)
-            _buildContactCard(currentList[i], index: i, isSi: isSi),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final int cols = constraints.maxWidth >= 720 ? 2 : 1;
+              final List<Widget> rows = [];
+              for (int i = 0; i < currentList.length; i += cols) {
+                final rowChildren = <Widget>[];
+                for (int j = 0; j < cols; j++) {
+                  final idx = i + j;
+                  if (j > 0) rowChildren.add(const SizedBox(width: 16));
+                  if (idx < currentList.length) {
+                    rowChildren.add(
+                      Expanded(
+                        child: _buildContactCard(
+                          currentList[idx],
+                          index: idx,
+                          isSi: isSi,
+                        ),
+                      ),
+                    );
+                  } else {
+                    rowChildren.add(const Expanded(child: SizedBox.shrink()));
+                  }
+                }
+                if (i > 0) rows.add(const SizedBox(height: 16));
+                rows.add(
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: rowChildren,
+                  ),
+                );
+              }
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: rows,
+              );
+            },
+          ),
       ],
     );
   }
@@ -1762,210 +1806,278 @@ class _CareStationHelpPageState extends ConsumerState<CareStationHelpPage> {
     final displayStatus = _localizeStatus(contact.status, isSi);
     final displaySubtitle =
         contact.subtitle != null ? _localizeSubtitle(contact.subtitle!, isSi) : null;
+    final activeTab = _caregiverSelectedTab > 2 ? 0 : _caregiverSelectedTab;
+    final wpNumber = (contact.whatsappNumber != null && contact.whatsappNumber!.isNotEmpty)
+        ? contact.whatsappNumber!
+        : contact.phoneOrExt.replaceAll(RegExp(r'[^0-9]'), '');
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: _HoverCareCard(
-        accentColor: gradientColors.first,
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: AppColors.border, width: 1.1),
+    String buildWhatsAppMessage() {
+      final cleanEn = contact.name.trim();
+      final hasRealName = cleanEn.isNotEmpty && cleanEn != '-';
+      final targetName = hasRealName ? (isSi ? displayName : cleanEn) : '';
+      final authName = ref.read(authProvider).state.userName?.trim() ?? '';
+      final senderEn = authName.isNotEmpty ? authName : 'your caregiver';
+
+      if (activeTab == 0) {
+        // Caregiver checking in on an Elder (Resident)
+        if (isSi) {
+          return hasRealName
+              ? 'ආයුබෝවන් $targetName, මම Carevora සත්කාර කණ්ඩායමෙන් කතා කරන්නේ. ඔබ අද කොහොමද? ඔබට කිසියම් උදව්වක් අවශ්‍ය නම් දන්වන්න.'
+              : 'ආයුබෝවන්, මම Carevora සත්කාර කණ්ඩායමෙන් කතා කරන්නේ. ඔබ අද කොහොමද? ඔබට කිසියම් උදව්වක් අවශ්‍ය නම් දන්වන්න.';
+        }
+        return hasRealName
+            ? 'Hello $targetName, this is $senderEn from Carevora checking in on you. How are you feeling today? Please let me know if you need anything.'
+            : 'Hello, this is $senderEn from Carevora checking in on you. How are you feeling today? Please let me know if you need anything.';
+      } else if (activeTab == 1) {
+        // Caregiver contacting a fellow Team Caregiver
+        if (isSi) {
+          return 'ආයුබෝවන් $targetName, මම Carevora සත්කාර කණ්ඩායමෙන්. නේවාසික සත්කාර කටයුත්තක් පිළිබඳව කතා කරන්න පුළුවන්ද?';
+        }
+        return 'Hello $targetName, this is $senderEn from Carevora. Could we coordinate on resident care when you have a moment?';
+      } else {
+        // Caregiver contacting a Doctor
+        if (isSi) {
+          return 'ආයුබෝවන් $targetName, මම Carevora සත්කාර කණ්ඩායමෙන්. නේවාසිකයෙකුගේ සෞඛ්‍ය තත්ත්වය පිළිබඳව වෛද්‍ය උපදෙසක් අවශ්‍යයි.';
+        }
+        return 'Hello $targetName, this is $senderEn from Carevora requesting a quick clinical consultation regarding a resident.';
+      }
+    }
+
+    return _HoverCareCard(
+      accentColor: gradientColors.first,
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Colors.white, Color(0xFFFAF9FF)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final isNarrow = constraints.maxWidth < 680;
-              final actionButtons = Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  if (contact.whatsappNumber != null &&
-                      contact.whatsappNumber!.isNotEmpty)
-                    ElevatedButton.icon(
-                      onPressed: () {
-                        UrlLauncherService.launchWhatsApp(
-                          contact.whatsappNumber!,
-                          'Hello ${contact.name}, this is from Carevora. I need assistance.',
-                        );
-                        _showLaunchToast(
-                          isSi
-                              ? '$displayName සඳහා WhatsApp විවෘත වෙමින්...'
-                              : 'Opening WhatsApp for $displayName...',
-                        );
-                      },
-                      icon: const Icon(LucideIcons.messageCircle, size: 14, color: Colors.white),
-                      label: const Text(
-                        'WhatsApp',
-                        style: TextStyle(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF25D366),
-                        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        elevation: 0,
-                      ),
-                    ),
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      if (contact.phoneOrExt.startsWith('+') ||
-                          RegExp(r'^\d{9,}').hasMatch(contact.phoneOrExt)) {
-                        UrlLauncherService.launchTel(contact.phoneOrExt);
-                      } else if (contact.whatsappNumber != null &&
-                          contact.whatsappNumber!.isNotEmpty) {
-                        UrlLauncherService.launchWhatsApp(
-                          contact.whatsappNumber!,
-                          'Hello ${contact.name}, Carevora care team calling.',
-                        );
-                      }
-                      _showLaunchToast(
-                        isSi
-                            ? '$displayName වෙත ඇමතුම සම්බන්ධ කරමින් (${contact.phoneOrExt})...'
-                            : 'Calling $displayName (${contact.phoneOrExt})...',
-                      );
-                    },
-                    icon: const Icon(LucideIcons.phone, size: 14, color: Colors.white),
-                    label: Text(
-                      isSi ? 'හඬ ඇමතුම' : 'Voice Call',
-                      style: const TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF4F46E5),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      elevation: 0,
-                    ),
-                  ),
-                ],
-              );
-
-              final avatarAndDetails = Row(
-                children: [
-                  Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(2),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: LinearGradient(colors: gradientColors),
-                        ),
-                        child: Container(
-                          padding: const EdgeInsets.all(1.5),
-                          decoration: const BoxDecoration(
-                            color: Colors.white,
-                            shape: BoxShape.circle,
-                          ),
-                          child: CarevoraAvatar(
-                            avatarUrl: avatarUrl,
-                            radius: 23,
-                            initials: initials,
-                            backgroundColor: gradientColors.first,
-                            foregroundColor: Colors.white,
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        right: -1,
-                        bottom: -1,
-                        child: Container(
-                          padding: const EdgeInsets.all(2),
-                          decoration: const BoxDecoration(
-                            color: Colors.white,
-                            shape: BoxShape.circle,
-                          ),
-                          child: _PulsingStatusDot(color: contact.statusColor),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xFFE4E0F7), width: 1.2),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(19),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Matching top gradient accent strip
+              Container(
+                height: 4,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(colors: gradientColors),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 4,
-                          crossAxisAlignment: WrapCrossAlignment.center,
+                        // Glowing gradient halo + real DB CarevoraAvatar + live pulsing dot
+                        Stack(
+                          clipBehavior: Clip.none,
                           children: [
-                            Text(
-                              displayName,
-                              style: const TextStyle(
-                                fontSize: 15.5,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.navy,
+                            Container(
+                              padding: const EdgeInsets.all(2.5),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: LinearGradient(
+                                  colors: gradientColors,
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: gradientColors.first.withValues(alpha: 0.25),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: Container(
+                                padding: const EdgeInsets.all(1.5),
+                                decoration: const BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: CarevoraAvatar(
+                                  avatarUrl: avatarUrl,
+                                  radius: 26,
+                                  initials: initials,
+                                  backgroundColor: gradientColors.first,
+                                  foregroundColor: Colors.white,
+                                ),
                               ),
                             ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
-                              decoration: BoxDecoration(
-                                color: contact.statusColor.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Text(
-                                displayStatus,
-                                style: TextStyle(
-                                  fontSize: 10.5,
-                                  fontWeight: FontWeight.w800,
-                                  color: contact.statusColor,
+                            Positioned(
+                              right: 0,
+                              bottom: 0,
+                              child: Container(
+                                padding: const EdgeInsets.all(2.5),
+                                decoration: const BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
                                 ),
+                                child: _PulsingStatusDot(color: contact.statusColor),
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 3),
-                        Text(
-                          displayRole,
-                          style: TextStyle(
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w700,
-                            color: gradientColors.first,
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                displayName,
+                                style: const TextStyle(
+                                  fontSize: 16.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.navy,
+                                  height: 1.25,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 5),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: contact.statusColor.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: contact.statusColor.withValues(alpha: 0.25),
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      width: 6,
+                                      height: 6,
+                                      decoration: BoxDecoration(
+                                        color: contact.statusColor,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 5),
+                                    Text(
+                                      displayStatus,
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w800,
+                                        color: contact.statusColor,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                displayRole,
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: gradientColors.first,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              if (displaySubtitle != null && displaySubtitle.isNotEmpty) ...[
+                                const SizedBox(height: 2),
+                                Text(
+                                  contact.phoneOrExt.isNotEmpty
+                                      ? '$displaySubtitle • ${contact.phoneOrExt}'
+                                      : displaySubtitle,
+                                  style: const TextStyle(
+                                    fontSize: 11.5,
+                                    color: AppColors.muted,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ] else if (contact.phoneOrExt.isNotEmpty) ...[
+                                const SizedBox(height: 2),
+                                Text(
+                                  contact.phoneOrExt,
+                                  style: const TextStyle(
+                                    fontSize: 11.5,
+                                    color: AppColors.muted,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ],
                           ),
                         ),
-                        if (displaySubtitle != null) ...[
-                          const SizedBox(height: 1),
-                          Text(
-                            contact.phoneOrExt.isNotEmpty
-                                ? '$displaySubtitle • ${contact.phoneOrExt}'
-                                : displaySubtitle,
-                            style: const TextStyle(fontSize: 11.5, color: AppColors.muted),
-                          ),
-                        ],
                       ],
                     ),
-                  ),
-                ],
-              );
+                    const SizedBox(height: 16),
 
-              if (isNarrow) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    avatarAndDetails,
-                    const SizedBox(height: 12),
-                    actionButtons,
+                    // Full-width green WhatsApp button only (Voice Call removed per request)
+                    SizedBox(
+                      width: double.infinity,
+                      child: Material(
+                        color: Colors.transparent,
+                        borderRadius: BorderRadius.circular(13),
+                        child: InkWell(
+                          onTap: () {
+                            UrlLauncherService.launchWhatsApp(
+                              wpNumber,
+                              buildWhatsAppMessage(),
+                            );
+                            _showLaunchToast(
+                              isSi
+                                  ? '$displayName සඳහා WhatsApp විවෘත වෙමින්...'
+                                  : 'Opening WhatsApp for $displayName...',
+                            );
+                          },
+                          borderRadius: BorderRadius.circular(13),
+                          child: Ink(
+                            padding: const EdgeInsets.symmetric(vertical: 13, horizontal: 16),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFF16A34A), Color(0xFF22C55E)],
+                                begin: Alignment.centerLeft,
+                                end: Alignment.centerRight,
+                              ),
+                              borderRadius: BorderRadius.circular(13),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF16A34A).withValues(alpha: 0.24),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(LucideIcons.messageCircle, size: 17, color: Colors.white),
+                                SizedBox(width: 8),
+                                Text(
+                                  'WhatsApp',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.white,
+                                    letterSpacing: 0.2,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
-                );
-              }
-
-              return Row(
-                children: [
-                  Expanded(child: avatarAndDetails),
-                  const SizedBox(width: 14),
-                  actionButtons,
-                ],
-              );
-            },
+                ),
+              ),
+            ],
           ),
         ),
       ),
