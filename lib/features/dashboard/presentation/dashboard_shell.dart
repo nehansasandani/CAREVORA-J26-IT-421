@@ -54,7 +54,7 @@ class DashboardShell extends ConsumerWidget {
                 isMobile: true,
                 elderBellButton: elderBellButton,
               ),
-              _buildContentWithBackdrop(child),
+              _buildContentWithBackdrop(child, location),
               MobileBottomNav(
                 currentRoute: location,
                 isElder: authState.isElder,
@@ -74,7 +74,7 @@ class DashboardShell extends ConsumerWidget {
                        isMobile: false,
                        elderBellButton: elderBellButton,
                      ),
-                    _buildContentWithBackdrop(child),
+                    _buildContentWithBackdrop(child, location),
                   ],
                 ),
               ),
@@ -96,7 +96,7 @@ class DashboardShell extends ConsumerWidget {
                       isMobile: false,
                       elderBellButton: elderBellButton,
                     ),
-                    _buildContentWithBackdrop(child),
+                    _buildContentWithBackdrop(child, location),
                   ],
                 ),
               ),
@@ -114,17 +114,31 @@ class DashboardShell extends ConsumerWidget {
     );
   }
 
-  Widget _buildContentWithBackdrop(Widget content) {
+  Widget _buildContentWithBackdrop(Widget content, String currentRoute) {
+    // Pages that already have their own dedicated bespoke animations
+    // or explicitly opt out of the global ambient backdrop
+    final bool hasOwnAnimation =
+        currentRoute.startsWith('/dashboard/cognitive') ||
+        currentRoute.startsWith('/dashboard/memory-games') ||
+        currentRoute.startsWith('/dashboard/settings') ||
+        currentRoute.startsWith('/dashboard/alerts') ||
+        currentRoute.startsWith('/dashboard/metabolic') ||
+        currentRoute.startsWith('/dashboard/station-help');
+
+    if (hasOwnAnimation) {
+      return Expanded(child: content);
+    }
+
     return Expanded(
       child: Stack(
         fit: StackFit.expand,
         children: [
-          content,
           const Positioned.fill(
             child: IgnorePointer(
               child: CarevoraAmbientBackdrop(),
             ),
           ),
+          content,
         ],
       ),
     );

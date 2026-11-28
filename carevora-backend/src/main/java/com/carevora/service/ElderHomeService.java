@@ -43,6 +43,27 @@ public class ElderHomeService {
         return ApiResponse.ok(mapToResponse(home));
     }
 
+    @Transactional(readOnly = true)
+    public ApiResponse<List<java.util.Map<String, Object>>> getCaregiversByElderHomeId(Long elderHomeId) {
+        List<Caregiver> caregivers = caregiverRepository.findByElderHomeIdWithUser(elderHomeId);
+        List<java.util.Map<String, Object>> result = caregivers.stream()
+                .filter(cg -> cg.getUser() != null && !Boolean.FALSE.equals(cg.getUser().getActive()))
+                .map(cg -> {
+                    java.util.Map<String, Object> item = new java.util.LinkedHashMap<>();
+                    item.put("id", cg.getId());
+                    item.put("name", cg.getUser().getFullName());
+                    item.put("avatarUrl", cg.getUser().getAvatarUrl());
+                    item.put("title", cg.getTitle());
+                    item.put("department", cg.getDepartment());
+                    item.put("staffCode", cg.getStaffCode());
+                    item.put("elderHomeId", elderHomeId);
+                    item.put("elderHomeName", cg.getElderHome() != null ? cg.getElderHome().getName() : null);
+                    return item;
+                })
+                .collect(Collectors.toList());
+        return ApiResponse.ok(result);
+    }
+
     @Transactional
     public ApiResponse<ElderHomeResponse> registerElderHome(ElderHomeRequest request) {
         if (request.getName() == null || request.getName().trim().isEmpty()) {

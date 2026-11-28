@@ -813,6 +813,13 @@ class _ElderInteractiveHomePageState
       backgroundColor: const Color(0xFFFAF7FD),
       body: Stack(
         children: [
+          // 0. Serene Pastel Garden Sunbeam, Blossom Petals & Firefly Backdrop
+          const Positioned.fill(
+            child: IgnorePointer(
+              child: _ElderHomeGardenBackdrop(),
+            ),
+          ),
+
           // 1. Scrollable main dashboard content
           SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
@@ -5958,7 +5965,6 @@ class _BookCornerFlourishPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-
 // =========================================================================
 // REALISTIC 3D OPEN BOOK BOTTOM ARCH & PAPER STACK PAINTER
 // =========================================================================
@@ -6034,4 +6040,294 @@ class _BookSpineArchPainter extends CustomPainter {
   bool shouldRepaint(covariant _BookSpineArchPainter oldDelegate) =>
       oldDelegate.spineRatio != spineRatio ||
       oldDelegate.casingColor != casingColor;
+}
+
+// =========================================================================
+// ELDER HOME SERENE GARDEN SUNBEAM, BLOSSOM PETALS & FIREFLY BACKDROP
+// =========================================================================
+class _ElderHomeGardenBackdrop extends StatefulWidget {
+  const _ElderHomeGardenBackdrop();
+
+  @override
+  State<_ElderHomeGardenBackdrop> createState() =>
+      _ElderHomeGardenBackdropState();
+}
+
+class _ElderHomeGardenBackdropState extends State<_ElderHomeGardenBackdrop>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 24),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return RepaintBoundary(
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, _) {
+          return CustomPaint(
+            painter: _ElderHomeGardenPainter(t: _controller.value),
+            size: Size.infinite,
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _ElderHomeGardenPainter extends CustomPainter {
+  final double t;
+
+  const _ElderHomeGardenPainter({required this.t});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.width <= 0 || size.height <= 0) return;
+
+    final double angle = t * 2 * math.pi;
+
+    // 1. Warm pastel garden aurora halos in the corners & margins
+    _drawGlowOrb(
+      canvas,
+      Offset(
+        size.width * 0.05 + math.sin(angle) * 28,
+        size.height * 0.14 + math.cos(angle * 0.85) * 22,
+      ),
+      230,
+      const Color(0xFFA855F7).withValues(alpha: 0.12),
+    );
+    _drawGlowOrb(
+      canvas,
+      Offset(
+        size.width * 0.95 + math.cos(angle * 0.9) * 26,
+        size.height * 0.16 + math.sin(angle) * 20,
+      ),
+      220,
+      const Color(0xFFFBBF24).withValues(alpha: 0.11),
+    );
+    _drawGlowOrb(
+      canvas,
+      Offset(
+        size.width * 0.06 + math.cos(angle * 0.75) * 24,
+        size.height * 0.84 + math.sin(angle) * 22,
+      ),
+      235,
+      const Color(0xFFF472B6).withValues(alpha: 0.11),
+    );
+    _drawGlowOrb(
+      canvas,
+      Offset(
+        size.width * 0.94 + math.sin(angle * 0.8) * 26,
+        size.height * 0.80 + math.cos(angle * 0.95) * 24,
+      ),
+      230,
+      const Color(0xFF34D399).withValues(alpha: 0.10),
+    );
+
+    // 2. Soft garden breeze silk ribbons sweeping along top & lower bands
+    _drawBreezeWave(
+      canvas,
+      size,
+      yBase: 16,
+      amplitude: 9,
+      phase: angle,
+      color: const Color(0xFFA855F7).withValues(alpha: 0.14),
+    );
+    _drawBreezeWave(
+      canvas,
+      size,
+      yBase: size.height * 0.54,
+      amplitude: 14,
+      phase: -angle * 0.9 + 1.2,
+      color: const Color(0xFFF472B6).withValues(alpha: 0.08),
+    );
+    _drawBreezeWave(
+      canvas,
+      size,
+      yBase: size.height - 20,
+      amplitude: 10,
+      phase: angle * 1.1 + 2.4,
+      color: const Color(0xFF10B981).withValues(alpha: 0.14),
+    );
+
+    // 3. Gently drifting pastel blossom petals (lavender, rose, peach, lilac)
+    const petals = [
+      (0.025, 0.00, 1.0, Color(0xFFC084FC)),
+      (0.975, 0.14, 0.95, Color(0xFFF472B6)),
+      (0.040, 0.32, 0.85, Color(0xFFF9A8D4)),
+      (0.960, 0.48, 1.05, Color(0xFFA78BFA)),
+      (0.020, 0.65, 0.90, Color(0xFFFDE68A)),
+      (0.980, 0.78, 0.95, Color(0xFFD8B4FE)),
+      (0.180, 0.22, 0.80, Color(0xFFF472B6)),
+      (0.820, 0.58, 0.85, Color(0xFFC084FC)),
+      (0.500, 0.10, 0.75, Color(0xFFF9A8D4)),
+      (0.360, 0.82, 0.80, Color(0xFFA78BFA)),
+    ];
+
+    for (final p in petals) {
+      final (rx, shift, scale, color) = p;
+      final localT = (t + shift) % 1.0;
+      final y = size.height * localT;
+      final sway = math.sin(localT * 4 * math.pi + rx * 9) * 16.0;
+      final x = size.width * rx + sway;
+      final rot = localT * 2.5 * math.pi + rx * 5.0;
+      final fade = (localT < 0.10)
+          ? localT / 0.10
+          : (localT > 0.88 ? (1.0 - localT) / 0.12 : 1.0);
+
+      _drawBlossomPetal(
+        canvas,
+        Offset(x, y),
+        8.5 * scale,
+        rot,
+        color.withValues(alpha: 0.36 * fade),
+      );
+    }
+
+    // 4. Rising warm garden fireflies & twinkling dewdrop sparkles along edges
+    const sparkles = [
+      (0.015, 0.18, 0.05, Color(0xFFF59E0B), false),
+      (0.985, 0.30, 0.28, Color(0xFF9333EA), true),
+      (0.022, 0.50, 0.52, Color(0xFF10B981), true),
+      (0.978, 0.62, 0.71, Color(0xFFF59E0B), false),
+      (0.018, 0.76, 0.37, Color(0xFFEC4899), true),
+      (0.984, 0.84, 0.88, Color(0xFF8B5CF6), false),
+      (0.240, 0.018, 0.19, Color(0xFFF59E0B), true),
+      (0.740, 0.016, 0.64, Color(0xFFEC4899), true),
+      (0.300, 0.980, 0.44, Color(0xFF10B981), false),
+      (0.700, 0.982, 0.82, Color(0xFF9333EA), true),
+    ];
+
+    for (final s in sparkles) {
+      final (rx, ry, shift, color, isStar) = s;
+      final localT = (t + shift) % 1.0;
+      final driftY = math.sin(localT * 2 * math.pi) * 12.0;
+      final driftX = math.cos(localT * 2 * math.pi) * 5.0;
+      final pulse = 0.35 + 0.65 * (0.5 + 0.5 * math.sin(localT * 4 * math.pi));
+      final center = Offset(size.width * rx + driftX, size.height * ry + driftY);
+
+      if (isStar) {
+        _drawSparkle(
+          canvas,
+          center,
+          5.5 + pulse * 3.5,
+          color.withValues(alpha: 0.25 + pulse * 0.28),
+        );
+      } else {
+        // Warm glowing firefly orb
+        _drawGlowOrb(
+          canvas,
+          center,
+          12.0 + pulse * 7.0,
+          color.withValues(alpha: 0.22 + pulse * 0.18),
+        );
+        canvas.drawCircle(
+          center,
+          2.6 + pulse * 1.2,
+          Paint()..color = color.withValues(alpha: 0.45 + pulse * 0.30),
+        );
+      }
+    }
+  }
+
+  void _drawGlowOrb(Canvas canvas, Offset center, double radius, Color color) {
+    final paint = Paint()
+      ..shader = RadialGradient(
+        colors: [color, color.withValues(alpha: 0.0)],
+      ).createShader(Rect.fromCircle(center: center, radius: radius));
+    canvas.drawCircle(center, radius, paint);
+  }
+
+  void _drawBreezeWave(
+    Canvas canvas,
+    Size size, {
+    required double yBase,
+    required double amplitude,
+    required double phase,
+    required Color color,
+  }) {
+    final path = Path();
+    const steps = 40;
+    for (int i = 0; i <= steps; i++) {
+      final frac = i / steps;
+      final x = size.width * frac;
+      final y = yBase +
+          math.sin(frac * 2.5 * math.pi + phase) * amplitude +
+          math.cos(frac * 4.0 * math.pi - phase * 0.6) * (amplitude * 0.35);
+      if (i == 0) {
+        path.moveTo(x, y);
+      } else {
+        path.lineTo(x, y);
+      }
+    }
+    canvas.drawPath(
+      path,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.0
+        ..color = color,
+    );
+  }
+
+  void _drawBlossomPetal(
+    Canvas canvas,
+    Offset center,
+    double radius,
+    double rotation,
+    Color color,
+  ) {
+    canvas.save();
+    canvas.translate(center.dx, center.dy);
+    canvas.rotate(rotation);
+    final path = Path()
+      ..moveTo(0, -radius)
+      ..cubicTo(
+        radius * 0.9,
+        -radius * 0.55,
+        radius * 0.8,
+        radius * 0.75,
+        0,
+        radius,
+      )
+      ..cubicTo(
+        -radius * 0.8,
+        radius * 0.75,
+        -radius * 0.9,
+        -radius * 0.55,
+        0,
+        -radius,
+      )
+      ..close();
+    canvas.drawPath(path, Paint()..color = color);
+    canvas.restore();
+  }
+
+  void _drawSparkle(Canvas canvas, Offset c, double r, Color color) {
+    final path = Path()
+      ..moveTo(c.dx, c.dy - r)
+      ..quadraticBezierTo(c.dx + r * 0.18, c.dy - r * 0.18, c.dx + r, c.dy)
+      ..quadraticBezierTo(c.dx + r * 0.18, c.dy + r * 0.18, c.dx, c.dy + r)
+      ..quadraticBezierTo(c.dx - r * 0.18, c.dy + r * 0.18, c.dx - r, c.dy)
+      ..quadraticBezierTo(c.dx - r * 0.18, c.dy - r * 0.18, c.dx, c.dy - r)
+      ..close();
+    canvas.drawPath(path, Paint()..color = color);
+  }
+
+  @override
+  bool shouldRepaint(covariant _ElderHomeGardenPainter oldDelegate) {
+    return oldDelegate.t != t;
+  }
 }

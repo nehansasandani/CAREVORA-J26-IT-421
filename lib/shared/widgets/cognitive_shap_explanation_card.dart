@@ -22,19 +22,23 @@ class CognitiveShapExplanationCard extends StatelessWidget {
   final String riskLevel;
   final double? acrfScore;
   final bool isCompact;
+  final bool isSinhala;
 
   const CognitiveShapExplanationCard({
     super.key,
     required this.riskLevel,
     this.acrfScore,
     this.isCompact = false,
+    this.isSinhala = false,
   });
 
   String _normalizeTier(String raw) {
     final lower = raw.toLowerCase().trim();
-    if (lower.contains('high')) return 'High';
-    if (lower.contains('moderate') || lower.contains('medium')) return 'Moderate';
-    if (lower.contains('low')) return 'Low';
+    if (lower.contains('high') || lower.contains('ඉහළ')) return 'High';
+    if (lower.contains('moderate') || lower.contains('medium') || lower.contains('මධ්‍යම')) {
+      return 'Moderate';
+    }
+    if (lower.contains('low') || lower.contains('අඩු')) return 'Low';
     if (acrfScore != null) {
       final scoreVal = (acrfScore! <= 1.0 && acrfScore! > 0.0) ? acrfScore! * 100.0 : acrfScore!;
       if (scoreVal >= 70.0) return 'Low';
@@ -44,7 +48,98 @@ class CognitiveShapExplanationCard extends StatelessWidget {
     return 'Moderate';
   }
 
+  String _tierLabel(String tier) {
+    if (!isSinhala) return '$tier Risk • SHAP AI';
+    switch (tier) {
+      case 'High':
+        return 'ඉහළ අවදානම් • AI විශ්ලේෂණය';
+      case 'Moderate':
+        return 'මධ්‍යම අවදානම් • AI විශ්ලේෂණය';
+      case 'Low':
+      default:
+        return 'අඩු අවදානම් • AI විශ්ලේෂණය';
+    }
+  }
+
   List<ShapFeatureDriver> _getDriversForTier(String tier) {
+    if (isSinhala) {
+      switch (tier) {
+        case 'High':
+          return const [
+            ShapFeatureDriver(
+              featureName: 'සමස්ත ලකුණු අඩු වීම',
+              impactLabel: 'බලපෑම 38%',
+              weight: 0.38,
+              isRiskDriver: true,
+              description: 'සාමාන්‍ය මට්ටමට වඩා මතක පරීක්ෂණ ලකුණු පහළ ගොස් ඇත.',
+            ),
+            ShapFeatureDriver(
+              featureName: 'දේවල් මතක තබා ගැනීමේ අපහසුව',
+              impactLabel: 'බලපෑම 29%',
+              weight: 0.29,
+              isRiskDriver: true,
+              description: 'වචන, දිනය හෝ ස්ථානය මතකයට ගැනීමේදී අපහසුතා දක්වයි.',
+            ),
+            ShapFeatureDriver(
+              featureName: 'පිළිතුරු දීමට වැඩි වේලාවක් ගැනීම',
+              impactLabel: 'බලපෑම 21%',
+              weight: 0.21,
+              isRiskDriver: true,
+              description: 'ප්‍රශ්නවලට පිළිතුරු දීමේදී පැකිලීම් සහ ප්‍රමාදයන් දක්නට ලැබේ.',
+            ),
+          ];
+        case 'Moderate':
+          return const [
+            ShapFeatureDriver(
+              featureName: 'විටින් විට අමතක වීම්',
+              impactLabel: 'බලපෑම 24%',
+              weight: 0.24,
+              isRiskDriver: true,
+              description: 'පියවර කිහිපයක් ඇති මතක ප්‍රශ්නවලදී සුළු අමතක වීම් දක්වයි.',
+            ),
+            ShapFeatureDriver(
+              featureName: 'පිළිතුරු දීමේදී සුළු ප්‍රමාදයක්',
+              impactLabel: 'බලපෑම 18%',
+              weight: 0.18,
+              isRiskDriver: true,
+              description: 'සමහර අභ්‍යාස සඳහා කෙටි වේලාවක් සිතා බැලීමට ගනී.',
+            ),
+            ShapFeatureDriver(
+              featureName: 'අවට පරිසරය පිළිබඳ හොඳ අවබෝධය',
+              impactLabel: 'ආරක්ෂිතයි (26%)',
+              weight: 0.26,
+              isRiskDriver: false,
+              description: 'සිටින ස්ථානය සහ වටපිටාව හොඳින් හඳුනා ගැනීම අවදානම අඩු කරයි.',
+            ),
+          ];
+        case 'Low':
+        default:
+          return const [
+            ShapFeatureDriver(
+              featureName: 'ස්ථාවර ඉහළ නිරවද්‍යතාව',
+              impactLabel: 'ආරක්ෂිතයි (42%)',
+              weight: 0.42,
+              isRiskDriver: false,
+              description: 'සෑම පරීක්ෂණයකින්ම දිගටම ඉහළ ලකුණු ලබා ගෙන ඇත.',
+            ),
+            ShapFeatureDriver(
+              featureName: 'ඉක්මන් සහ විශ්වාසදායක පිළිතුරු',
+              impactLabel: 'ආරක්ෂිතයි (28%)',
+              weight: 0.28,
+              isRiskDriver: false,
+              description: 'පැකිලීමකින් තොරව ඉක්මනින් නිවැරදි පිළිතුරු ලබා දෙයි.',
+            ),
+            ShapFeatureDriver(
+              featureName: 'සියලු අංශවල සමබර දක්ෂතාව',
+              impactLabel: 'ආරක්ෂිතයි (18%)',
+              weight: 0.18,
+              isRiskDriver: false,
+              description: 'මතකය, අවධානය සහ කල්පනා ශක්තිය යහපත් මට්ටමක පවතී.',
+            ),
+          ];
+      }
+    }
+
     switch (tier) {
       case 'High':
         return const [
@@ -125,6 +220,17 @@ class CognitiveShapExplanationCard extends StatelessWidget {
   }
 
   String _getCaregiverTakeaway(String tier) {
+    if (isSinhala) {
+      switch (tier) {
+        case 'High':
+          return 'සත්කාර උපදෙස: දිනය සහ වේලාව සෙමින් සිහිපත් කර දෙන්න, දෛනික කටයුතුවලට උදව් කරන්න, වෛද්‍යවරයා දැනුවත් කරන්න.';
+        case 'Moderate':
+          return 'සත්කාර උපදෙස: මනස සක්‍රීයව තබා ගැනීමට දිනපතා මිනිත්තු 10ක් මතක ක්‍රීඩා කරවන්න, සති දෙකකින් නැවත පරීක්ෂා කරන්න.';
+        case 'Low':
+        default:
+          return 'සත්කාර උපදෙස: මතක ශක්තිය ඉතා හොඳ මට්ටමක පවතී! දිනපතා සතුටින් කතාබහ කිරීම සහ ක්‍රියාකාරකම් දිගටම කරගෙන යන්න.';
+      }
+    }
     switch (tier) {
       case 'High':
         return 'Caregiver Tip: Give gentle reminders for date and time, help with daily routines, and let the doctor know.';
@@ -175,7 +281,7 @@ class CognitiveShapExplanationCard extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Why this Risk?',
+                  isSinhala ? 'මෙම තත්ත්වයට හේතු මොනවාද?' : 'Why this Risk?',
                   style: TextStyle(
                     fontSize: isCompact ? 13 : 14.5,
                     fontWeight: FontWeight.w700,
@@ -203,7 +309,7 @@ class CognitiveShapExplanationCard extends StatelessWidget {
                     ),
                     const SizedBox(width: 5),
                     Text(
-                      '$tier Risk • SHAP AI',
+                      _tierLabel(tier),
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
@@ -217,7 +323,9 @@ class CognitiveShapExplanationCard extends StatelessWidget {
           ),
           const SizedBox(height: 5),
           Text(
-            'Main reasons identified during the assessment:',
+            isSinhala
+                ? 'පරීක්ෂාවේදී හඳුනාගත් ප්‍රධාන කරුණු:'
+                : 'Main reasons identified during the assessment:',
             style: TextStyle(
               fontSize: isCompact ? 11 : 11.5,
               color: AppColors.muted,
