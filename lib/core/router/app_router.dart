@@ -50,7 +50,7 @@ class AppRouter {
         return const DashboardShell(child: CareStationHelpPage());
       }
       if (state.uri.toString().contains('elder-meal')) {
-        return const ElderMealExperiencePage();
+        return const DashboardShell(child: ElderMealExperiencePage());
       }
       return Scaffold(
         body: Center(
@@ -84,10 +84,6 @@ class AppRouter {
       GoRoute(
         path: '/admin/dashboard',
         builder: (context, state) => const AdminDashboardPage(),
-      ),
-      GoRoute(
-        path: '/dashboard/elder-meal',
-        builder: (context, state) => const ElderMealExperiencePage(),
       ),
       ShellRoute(
         navigatorKey: _shellNavigatorKey,
