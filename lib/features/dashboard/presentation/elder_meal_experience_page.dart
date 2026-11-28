@@ -84,6 +84,19 @@ class _ElderMealExperiencePageState extends ConsumerState<ElderMealExperiencePag
     super.dispose();
   }
 
+  String _resolveMealBannerTitle() {
+    final hour = DateTime.now().hour;
+    final String mealName;
+    if (hour < 12) {
+      mealName = 'උදෑසන ආහාරය';
+    } else if (hour < 17) {
+      mealName = 'දහවල් ආහාරය';
+    } else {
+      mealName = 'රාත්‍රී ආහාරය';
+    }
+    return '$mealName ගැන ඔබගේ අත්දැකීම්';
+  }
+
   void _speak(String text) async {
     try {
       await TtsService.instance.speak(text, isSinhala: true);
@@ -452,21 +465,26 @@ class _ElderMealExperiencePageState extends ConsumerState<ElderMealExperiencePag
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Text(
-                          'අද දින ආහාරය ගැන ඔබගේ අත්දැකීම්',
-                          style: TextStyle(
-                            fontSize: 26,
-                            fontWeight: FontWeight.w900,
-                            color: Colors.white,
-                            letterSpacing: -0.2,
-                            shadows: [
-                              Shadow(
-                                color: Colors.black26,
-                                blurRadius: 6,
-                                offset: Offset(0, 2),
+                        StreamBuilder<int>(
+                          stream: Stream.periodic(const Duration(minutes: 1), (i) => i),
+                          builder: (context, _) {
+                            return Text(
+                              _resolveMealBannerTitle(),
+                              style: const TextStyle(
+                                fontSize: 26,
+                                fontWeight: FontWeight.w900,
+                                color: Colors.white,
+                                letterSpacing: -0.2,
+                                shadows: [
+                                  Shadow(
+                                    color: Colors.black26,
+                                    blurRadius: 6,
+                                    offset: Offset(0, 2),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
+                            );
+                          },
                         ),
                         const SizedBox(height: 4),
                         // Cheerful warm yellow smile curve stroke
